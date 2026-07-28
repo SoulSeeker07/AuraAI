@@ -1,0 +1,34 @@
+[project]
+name = "aura-ai"
+version = "0.1.0"
+description = "Aura — Desktop AI assistant (foundation)"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+
+dependencies = [
+  "PySide6>=6.8",
+  "fastapi>=0.95",
+  "uvicorn[standard]>=0.22",
+  "websockets>=11.0",
+  "httpx>=0.24",
+  "pydantic>=2.0",
+  "pydantic-settings>=1.0",
+  "loguru>=0.7",
+  "python-dotenv>=1.0",
+  "pywin32>=305; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "mypy",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

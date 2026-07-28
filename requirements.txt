@@ -1,7 +1,2 @@
 PySide6
-python-dotenv
-keyboard
-playwright
-faster-whisper
-piper
-pywinauto
+loguru
