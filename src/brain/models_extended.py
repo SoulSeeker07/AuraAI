@@ -5,7 +5,7 @@ These are separate from the core conversation models to avoid conflicts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 # Re-export for convenience
@@ -26,6 +26,10 @@ class WebSearchResult:
     content: str | None = None  # Full content if available
     score: float = 0.0  # Relevance score
     source_rank: int = 0  # Source ranking position
+
+
+# Alias for backward compatibility
+SearchResult = WebSearchResult
 
 
 @dataclass(frozen=True)
