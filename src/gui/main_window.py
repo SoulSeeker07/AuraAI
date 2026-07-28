@@ -20,6 +20,7 @@ from gui.titlebar import TitleBar
 class MainWindow(QMainWindow):
     show_overlay_requested = Signal()
     settings_requested = Signal()
+    hidden_to_tray = Signal()
 
     def __init__(self):
         super().__init__()
@@ -38,7 +39,7 @@ class MainWindow(QMainWindow):
     def add_history_entry(self, prompt: str) -> None:
         prefix = "Command" if prompt.startswith(">") else "Prompt"
         self.history_list.insertItem(0, f"{prefix}: {prompt}")
-        self.status_label.setText("Captured from overlay. AI routing arrives in the next phase.")
+        self.status_label.setText("Captured from overlay. Aura brain is thinking.")
 
     def add_response_entry(self, response: str) -> None:
         first_line = response.splitlines()[0] if response else "Response ready."
@@ -53,6 +54,7 @@ class MainWindow(QMainWindow):
 
     def close_to_tray(self) -> None:
         self.hide()
+        self.hidden_to_tray.emit()
 
     def toggle_maximized(self) -> None:
         if self.isMaximized():
@@ -145,7 +147,7 @@ class MainWindow(QMainWindow):
         header.setObjectName("pageTitle")
         content_layout.addWidget(header)
 
-        self.status_label = QLabel("Sprint 1 shell ready: custom window, overlay, tray, hotkey, theme engine.")
+        self.status_label = QLabel("Aura brain ready. Open the overlay to chat with memory.")
         self.status_label.setObjectName("status")
         self.status_label.setWordWrap(True)
         content_layout.addWidget(self.status_label)

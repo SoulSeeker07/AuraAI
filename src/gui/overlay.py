@@ -1,5 +1,5 @@
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtGui import QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSizeGrip,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -22,6 +23,8 @@ class OverlayWindow(QWidget):
     def __init__(self):
         super().__init__()
         self._fade_animation = None
+        self._drag_offset: QPoint | None = None
+        self._has_custom_position = False
         self._last_prompt = ""
         self._live_screen_active = False
         self.setWindowTitle("Aura Overlay")
@@ -31,22 +34,23 @@ class OverlayWindow(QWidget):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(720, 390)
+        self.setMinimumSize(460, 270)
+        self.resize(620, 330)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(18, 18, 18, 18)
+        root.setContentsMargins(12, 12, 12, 12)
 
-        panel = QFrame(self)
-        panel.setObjectName("overlayPanel")
-        root.addWidget(panel)
+        self.panel = QFrame(self)
+        self.panel.setObjectName("overlayPanel")
+        root.addWidget(self.panel)
 
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(26, 22, 26, 22)
-        layout.setSpacing(16)
+        layout = QVBoxLayout(self.panel)
+        layout.setContentsMargins(22, 18, 22, 18)
+        layout.setSpacing(12)
 
-        title = QLabel("Aura")
-        title.setObjectName("overlayTitle")
-        layout.addWidget(title)
+        self.title = QLabel("Aura")
+        self.title.setObjectName("overlayTitle")
+        layout.addWidget(self.title)
 
         subtitle = QLabel("Ask anything or type a command")
         subtitle.setObjectName("overlaySubtitle")
@@ -83,9 +87,15 @@ class OverlayWindow(QWidget):
         self.response = QTextEdit()
         self.response.setObjectName("overlayResponse")
         self.response.setReadOnly(True)
-        self.response.setFixedHeight(118)
+        self.response.setMinimumHeight(96)
         self.response.setPlainText("Ready.")
         layout.addWidget(self.response)
+
+        grip_row = QHBoxLayout()
+        grip_row.setContentsMargins(0, 0, 0, 0)
+        grip_row.addStretch(1)
+        grip_row.addWidget(QSizeGrip(self))
+        layout.addLayout(grip_row)
 
     def set_response(self, response: str) -> None:
         self.response.setPlainText(response)
@@ -114,10 +124,17 @@ class OverlayWindow(QWidget):
     def show_overlay(self) -> None:
         screen = QApplication.primaryScreen()
         geometry = screen.availableGeometry()
-        self.move(
-            geometry.center().x() - self.width() // 2,
-            geometry.top() + max(70, geometry.height() // 7),
-        )
+        width = min(620, max(460, int(geometry.width() * 0.42)))
+        height = min(330, max(270, int(geometry.height() * 0.34)))
+        self.resize(width, height)
+
+        if not self._has_custom_position:
+            self.move(
+                geometry.center().x() - self.width() // 2,
+                geometry.top() + max(54, geometry.height() // 9),
+            )
+        else:
+            self._keep_inside_screen()
         self.setWindowOpacity(0.0)
         self.show()
         self.raise_()
@@ -138,6 +155,29 @@ class OverlayWindow(QWidget):
             return
         super().keyPressEvent(event)
 
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._can_drag_from(event.position().toPoint()):
+            self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self._drag_offset is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_offset)
+            self._has_custom_position = True
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._drag_offset is not None:
+            self._drag_offset = None
+            self._keep_inside_screen()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
     def _submit(self) -> None:
         text = self.input.text().strip()
         if not text:
@@ -149,3 +189,18 @@ class OverlayWindow(QWidget):
     def _toggle_live_screen(self) -> None:
         requested_state = self.live_screen_button.isChecked()
         self.live_screen_toggled.emit(requested_state)
+
+    def _can_drag_from(self, position: QPoint) -> bool:
+        child = self.childAt(position)
+        blocked = (self.input, self.response, self.live_screen_button)
+        return child not in blocked and not isinstance(child, QPushButton)
+
+    def _keep_inside_screen(self) -> None:
+        screen = QApplication.screenAt(self.frameGeometry().center()) or QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        geometry = screen.availableGeometry()
+        x = min(max(self.x(), geometry.left()), geometry.right() - self.width())
+        y = min(max(self.y(), geometry.top()), geometry.bottom() - self.height())
+        self.move(x, y)

@@ -1,4 +1,11 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+import json
+from datetime import datetime, timezone
+from uuid import uuid4
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from Chatbot import get_default_bot
+
 from .ws_manager import WebSocketManager
 from .logger import get_logger
 from .config import settings
@@ -19,13 +26,15 @@ def get_manager() -> WebSocketManager:
 @router.websocket(settings.ws_path)
 async def websocket_endpoint(websocket: WebSocket):
     manager = get_manager()
+    chatbot = get_default_bot()
     await manager.connect(websocket)
     log.info("WebSocket connected")
     try:
         while True:
             data = await websocket.receive_text()
-            # Echo for now
-            await manager.send_personal_message(f"echo: {data}", websocket)
+            prompt = _extract_prompt(data)
+            response = chatbot.ask(prompt) if prompt else "I did not receive any text to answer."
+            await manager.send_personal_message(_chat_response(response), websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         log.info("WebSocket disconnected")
@@ -35,3 +44,30 @@ async def websocket_endpoint(websocket: WebSocket):
 def set_manager(mgr: WebSocketManager):
     global _manager
     _manager = mgr
+
+
+def _extract_prompt(data: str) -> str:
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError:
+        return data.strip()
+
+    if isinstance(payload, dict):
+        nested = payload.get("payload")
+        if isinstance(nested, dict):
+            return str(nested.get("text") or nested.get("message") or "").strip()
+        return str(payload.get("text") or payload.get("message") or "").strip()
+    return str(payload).strip()
+
+
+def _chat_response(text: str) -> str:
+    return json.dumps(
+        {
+            "id": str(uuid4()),
+            "type": "chat.response",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source": "service",
+            "target": "desktop",
+            "payload": {"text": text},
+        }
+    )

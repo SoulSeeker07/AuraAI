@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QApplication
 
 from core.event_bus import Event, EventBus
 from core.logger import get_logger
+from core.settings import Settings
 from gui.main_window import MainWindow
 from gui.overlay import OverlayWindow
 from gui.tray import AuraTrayIcon
@@ -10,12 +11,13 @@ logger = get_logger("window_manager")
 
 
 class WindowManager:
-    def __init__(self, app: QApplication, event_bus: EventBus):
+    def __init__(self, app: QApplication, event_bus: EventBus, settings: Settings):
         self.app = app
         self.event_bus = event_bus
+        self.settings = settings
         self.main_window = MainWindow()
         self.overlay_window = OverlayWindow()
-        self.tray_icon = AuraTrayIcon(self.main_window, self.overlay_window, self.app)
+        self.tray_icon = AuraTrayIcon(self.main_window, self.overlay_window, self.app, self.settings)
         self._connect_qt_signals()
         self._subscribe_events()
 
@@ -40,6 +42,7 @@ class WindowManager:
         self.tray_icon.show_overlay_requested.connect(
             lambda: self.event_bus.publish("overlay.show")
         )
+        self.main_window.hidden_to_tray.connect(self.tray_icon.sync_visibility_actions)
 
     def _subscribe_events(self) -> None:
         self.event_bus.subscribe("overlay.show", self._show_overlay)

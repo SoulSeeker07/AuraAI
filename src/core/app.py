@@ -37,7 +37,7 @@ class AuraApplication:
             parent=self.qt_app,
         )
         self.local_responder = LocalResponder(self.screen_context, self.live_screen)
-        self.window_manager = WindowManager(self.qt_app, self.event_bus)
+        self.window_manager = WindowManager(self.qt_app, self.event_bus, self.settings)
         self.overlay_manager = OverlayManager(self.event_bus, self.local_responder)
         self.hotkeys = GlobalHotkeyManager(self.settings.overlay_hotkey, parent=self.qt_app)
 

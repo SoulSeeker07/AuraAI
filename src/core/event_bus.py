@@ -33,7 +33,10 @@ class EventBus:
 
     def publish(self, event_name: str, **payload: Any) -> None:
         event = Event(event_name, payload)
-        logger.info("Event published: %s", event_name)
+        if event_name == "live_screen.frame_captured":
+            logger.debug("Event published: %s", event_name)
+        else:
+            logger.info("Event published: %s", event_name)
 
         for callback in list(self._listeners.get(event_name, [])):
             try:

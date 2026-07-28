@@ -24,12 +24,13 @@ DEFAULT_HOTKEYS = {
 
 DEFAULT_SETTINGS = {
     "theme": DEFAULT_THEME,
-    "ai_provider": "none",
+    "ai_provider": "groq",
     "model": "",
     "overlay_hotkey": DEFAULT_HOTKEYS["overlay"],
     "voice_enabled": False,
     "auto_start": False,
     "live_screen_interval_ms": 1500,
+    "web_search_enabled": True,
 }
 
 

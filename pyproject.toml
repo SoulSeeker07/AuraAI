@@ -16,6 +16,7 @@ dependencies = [
   "pydantic-settings>=1.0",
   "loguru>=0.7",
   "python-dotenv>=1.0",
+  "groq>=0.9",
   "pywin32>=305; platform_system == 'Windows'",
 ]
 
