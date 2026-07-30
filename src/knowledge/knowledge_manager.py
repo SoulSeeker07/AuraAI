@@ -116,6 +116,7 @@ class KnowledgeManager:
             cache_manager: CacheManager instance
         """
         self.knowledge_db = knowledge_db or KnowledgeDB()
+        self.cache_manager = cache_manager or CacheManager()
         self.topic_memory = topic_memory or TopicMemory(self.knowledge_db)
         self.knowledge_graph = knowledge_graph or KnowledgeGraph(self.knowledge_db)
         self.freshness_checker = freshness_checker or FreshnessChecker(self.knowledge_db)
@@ -126,7 +127,6 @@ class KnowledgeManager:
             self.freshness_checker,
             self.cache_manager
         )
-        self.cache_manager = cache_manager or CacheManager()
 
         self._lock = threading.Lock()
         self._total_retrievals = 0

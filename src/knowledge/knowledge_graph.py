@@ -449,7 +449,7 @@ class KnowledgeGraph:
             "total_nodes": len(self.nodes),
             "total_edges": len(self.graph.edges()),
             "total_topics": len([n for n in self.nodes if n.startswith("topic:")]),
-            "connected_components": nx.number_connected_components(self.graph),
+            "connected_components": nx.number_weakly_connected_components(self.graph),
             "density": nx.density(self.graph)
         }
 

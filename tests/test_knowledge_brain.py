@@ -256,7 +256,7 @@ def test_knowledge_graph():
 
     # Find related concepts
     print("\n2. Finding related concepts...")
-    related = graph.get_related_nodes("Python", max_results=5)
+    related = graph.get_related_nodes("Python", depth=2)
     print(f"   Related to 'Python': {len(related)} concepts")
     for concept, score in related:
         print(f"   - {concept}: {score:.2f}")

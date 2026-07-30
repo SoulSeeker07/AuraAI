@@ -317,12 +317,30 @@ class FreshnessChecker:
             all_facts = self.knowledge_db.get_facts(limit=1000)
             all_scores = [self.get_freshness_score(fact) for fact in all_facts]
 
+            # Count by freshness status
+            fresh_facts = 0
+            stale_facts = 0
+            expiring_soon = 0
+            for fact in all_facts:
+                age = self.get_age_days(fact)
+                lifetime = self.get_category_lifetime(fact.category)
+                if age < lifetime * 0.5:
+                    fresh_facts += 1
+                elif age > lifetime:
+                    stale_facts += 1
+                elif age >= lifetime * 0.8:
+                    expiring_soon += 1
+
             return {
                 "total_facts": total_facts,
                 "categories_analyzed": len(categories),
                 "category_stats": category_stats,
                 "avg_freshness_score": sum(all_scores) / len(all_scores) if all_scores else 0,
-                "total_lifetime_days": sum(self.get_category_lifetime(cat) for cat in categories)
+                "total_lifetime_days": sum(self.get_category_lifetime(cat) for cat in categories),
+                "fresh_facts": fresh_facts,
+                "expired_facts": stale_facts,
+                "stale_facts": stale_facts,
+                "expiring_soon": expiring_soon
             }
 
     async def auto_refresh_all_categories(self, refresh_interval: int = 3600) -> None:
