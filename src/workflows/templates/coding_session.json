@@ -1,0 +1,90 @@
+{
+  "id": "coding_session",
+  "name": "Coding Session",
+  "description": "Opens project, syncs Git, runs tests, and prepares coding environment",
+  "type": "project",
+  "trigger_type": "workspace",
+  "trigger_config": {
+    "workspace_patterns": ["*aura*", "*project*", "*src*"]
+  },
+  "priority": "HIGH",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "VS Code"
+      },
+      "description": "Open VS Code"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "check_git_status",
+      "description": "Check Git status"
+    },
+    {
+      "id": "step_3",
+      "type": "CONDITION",
+      "condition": {
+        "type": "attribute_check",
+        "params": {
+          "attribute": "has_uncommitted_changes",
+          "expected_value": true
+        }
+      },
+      "error_handling": "CONTINUE",
+      "description": "Check for uncommitted changes"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "git pull origin main",
+        "directory": "{{workspace_path}}"
+      },
+      "description": "Pull latest changes"
+    },
+    {
+      "id": "step_5",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "python -m pytest tests/ -v",
+        "directory": "{{workspace_path}}"
+      },
+      "description": "Run tests"
+    },
+    {
+      "id": "step_6",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_file",
+      "parameters": {
+        "file": "README.md"
+      },
+      "description": "Open README"
+    },
+    {
+      "id": "step_7",
+      "type": "ECHO",
+      "message": "Coding Session: VS Code opened, Git synced, tests run, README opened",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "has_uncommitted_changes": false,
+    "test_passed": true,
+    "workspace_path": "",
+    "current_branch": ""
+  },
+  "error_handling": "CONTINUE"
+}

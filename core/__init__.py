@@ -8,3 +8,17 @@ Contains core system components including:
 - Vision capabilities
 - Workspace management
 """
+
+from . import memory
+from . import plugins
+from . import tools
+from . import vision
+from . import workspace
+
+__all__ = [
+    'memory',
+    'plugins',
+    'tools',
+    'vision',
+    'workspace',
+]

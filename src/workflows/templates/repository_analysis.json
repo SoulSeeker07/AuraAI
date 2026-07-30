@@ -1,0 +1,91 @@
+{
+  "id": "repository_analysis",
+  "name": "Repository Analysis",
+  "description": "Analyzes repository structure, counts lines of code, and generates summary report",
+  "type": "scheduled",
+  "trigger_type": "scheduled",
+  "trigger_config": {
+    "schedule": "0 18 * * 1",
+    "timezone": "America/New_York"
+  },
+  "priority": "NORMAL",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "find . -type f -name '*.py' | wc -l",
+        "directory": "{{workspace_path}}",
+        "return_output": "python_files_count"
+      },
+      "description": "Count Python files"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "cloc {{workspace_path}}",
+        "directory": "",
+        "return_output": "total_lines"
+      },
+      "description": "Count total lines of code"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "git log --pretty=format:'%h %s' --since={{days_ago}} 30 | wc -l",
+        "directory": "{{workspace_path}}",
+        "return_output": "recent_commits"
+      },
+      "description": "Count recent commits"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "generate_repo_report",
+      "parameters": {
+        "workspace_path": "{{workspace_path}}",
+        "python_files": "{{python_files_count}}",
+        "total_lines": "{{total_lines}}",
+        "commits": "{{recent_commits}}"
+      },
+      "description": "Generate analysis report"
+    },
+    {
+      "id": "step_5",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "create_file",
+      "parameters": {
+        "file": "REPO_ANALYSIS.md",
+        "content": "{{repo_report}}"
+      },
+      "description": "Save report"
+    },
+    {
+      "id": "step_6",
+      "type": "ECHO",
+      "message": "Repository Analysis: Report generated at REPO_ANALYSIS.md",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "workspace_path": "",
+    "python_files_count": 0,
+    "total_lines": 0,
+    "recent_commits": 0,
+    "days_ago": 30,
+    "repo_report": ""
+  },
+  "error_handling": "CONTINUE"
+}

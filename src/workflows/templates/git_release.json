@@ -1,0 +1,67 @@
+{
+  "id": "git_release",
+  "name": "Git Release",
+  "description": "Creates Git release, generates release notes, and updates documentation",
+  "type": "event",
+  "trigger_type": "plugin",
+  "trigger_config": {
+    "plugin": "git",
+    "event": "commit_complete"
+  },
+  "priority": "HIGH",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "git tag -a v{{version}} -m \"Release version {{version}}\" && git push origin v{{version}}",
+        "directory": "{{workspace_path}}"
+      },
+      "description": "Create and push Git tag"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "generate_release_notes",
+      "description": "Generate release notes from recent commits"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "create_file",
+      "parameters": {
+        "file": "RELEASE_NOTES.md",
+        "content": "{{release_notes}}"
+      },
+      "description": "Create release notes file"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_file",
+      "parameters": {
+        "file": "CHANGELOG.md"
+      },
+      "description": "Open CHANGELOG for review"
+    },
+    {
+      "id": "step_5",
+      "type": "ECHO",
+      "message": "Git Release: Version {{version}} tagged and released",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "version": "1.0.0",
+    "workspace_path": "",
+    "release_notes": ""
+  },
+  "error_handling": "ASK_USER"
+}

@@ -1,0 +1,83 @@
+{
+  "id": "network_lab_setup",
+  "name": "Network Lab Setup",
+  "description": "Sets up network lab environment with configured tools and services",
+  "type": "event",
+  "trigger_type": "event",
+  "trigger_config": {
+    "event": "usb_inserted",
+    "event_data": {
+      "device_type": "storage"
+    }
+  },
+  "priority": "HIGH",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "create_folder",
+      "parameters": {
+        "folder": "network_lab"
+      },
+      "description": "Create network lab folder"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "setup_docker",
+      "description": "Setup Docker environment"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "configure_network",
+      "description": "Configure network settings"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "VS Code"
+      },
+      "description": "Open VS Code in lab folder"
+    },
+    {
+      "id": "step_5",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_file",
+      "parameters": {
+        "file": "docker-compose.yml"
+      },
+      "description": "Open docker-compose.yml"
+    },
+    {
+      "id": "step_6",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "start_containers",
+      "description": "Start all containers"
+    },
+    {
+      "id": "step_7",
+      "type": "ACTION",
+      "action": "ECHO",
+      "message": "Network Lab Setup: Docker environment ready, containers started",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "lab_folder": "network_lab",
+    "docker_ready": false,
+    "containers_running": 0,
+    "containers_total": 5
+  },
+  "error_handling": "CONTINUE"
+}

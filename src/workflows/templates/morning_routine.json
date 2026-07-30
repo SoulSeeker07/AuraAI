@@ -1,0 +1,82 @@
+{
+  "id": "morning_routine",
+  "name": "Morning Routine",
+  "description": "Opens configured apps, checks emails, and prepares workspace for the day",
+  "type": "daily",
+  "trigger_type": "scheduled",
+  "trigger_config": {
+    "schedule": "0 9 * * *",
+    "timezone": "America/New_York"
+  },
+  "priority": "NORMAL",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "Outlook"
+      },
+      "description": "Open Outlook for emails"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "Microsoft Teams"
+      },
+      "description": "Open Teams for meetings"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "Chrome"
+      },
+      "description": "Open Chrome for browsing"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "VS Code"
+      },
+      "description": "Open VS Code for coding"
+    },
+    {
+      "id": "step_5",
+      "type": "CONDITION",
+      "condition": {
+        "type": "attribute_check",
+        "params": {
+          "attribute": "has_email",
+          "expected_value": true
+        }
+      },
+      "error_handling": "ASK_USER",
+      "description": "Check for new emails"
+    },
+    {
+      "id": "step_6",
+      "type": "ECHO",
+      "message": "Morning Routine: Outlook opened, Teams opened, Chrome opened, VS Code opened",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "has_email": false,
+    "meeting_count": 0,
+    "tasks_completed": 0,
+    "total_tasks": 5
+  },
+  "error_handling": "CONTINUE"
+}

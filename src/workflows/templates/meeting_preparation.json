@@ -1,0 +1,81 @@
+{
+  "id": "meeting_preparation",
+  "name": "Meeting Preparation",
+  "description": "Prepares meeting documents, checks calendar, and launches meeting tools",
+  "type": "event",
+  "trigger_type": "workspace",
+  "trigger_config": {
+    "workspace_patterns": ["*meeting*", "*project*"],
+    "event": "file_opened"
+  },
+  "priority": "HIGH",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "Google Calendar"
+      },
+      "description": "Open Google Calendar"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "Zoom"
+      },
+      "description": "Open Zoom"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_file",
+      "parameters": {
+        "file": "{{meeting_file}}"
+      },
+      "description": "Open meeting materials"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "set_reminder",
+      "parameters": {
+        "time": "15 minutes before meeting",
+        "message": "Meeting starting: {{meeting_title}}"
+      },
+      "description": "Set meeting reminder"
+    },
+    {
+      "id": "step_5",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "check_calendar",
+      "parameters": {
+        "check_upcoming": true,
+        "next_meeting": "{{meeting_title}}"
+      },
+      "description": "Check upcoming meetings"
+    },
+    {
+      "id": "step_6",
+      "type": "ECHO",
+      "message": "Meeting Preparation: Calendar opened, Zoom ready, materials loaded, reminder set",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "meeting_file": "",
+    "meeting_title": "",
+    "meeting_time": "",
+    "attendees": []
+  },
+  "error_handling": "CONTINUE"
+}

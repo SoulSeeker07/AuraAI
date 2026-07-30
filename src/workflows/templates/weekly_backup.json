@@ -1,0 +1,72 @@
+{
+  "id": "weekly_backup",
+  "name": "Weekly Backup",
+  "description": "Backs up project files and stores in secure location",
+  "type": "scheduled",
+  "trigger_type": "scheduled",
+  "trigger_config": {
+    "schedule": "0 3 * * 0",
+    "timezone": "America/New_York"
+  },
+  "priority": "HIGH",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "SCRIPT",
+      "script": "check_disk_space",
+      "description": "Check available disk space"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "run_command",
+      "parameters": {
+        "command": "tar -czf {{backup_path}}/{{date}}_backup.tar.gz {{workspace_path}}",
+        "directory": ""
+      },
+      "description": "Create backup archive"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "create_file",
+      "parameters": {
+        "file": "BACKUP_LOG.md",
+        "content": "Backup completed: {{backup_path}}/{{date}}_backup.tar.gz"
+      },
+      "description": "Create backup log"
+    },
+    {
+      "id": "step_4",
+      "type": "CONDITION",
+      "condition": {
+        "type": "attribute_check",
+        "params": {
+          "attribute": "backup_size_ok",
+          "expected_value": true
+        }
+      },
+      "error_handling": "CONTINUE",
+      "description": "Verify backup size"
+    },
+    {
+      "id": "step_5",
+      "type": "ECHO",
+      "message": "Weekly Backup: Completed successfully",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "backup_path": "/path/to/backup",
+    "workspace_path": "",
+    "backup_size_ok": false,
+    "backup_size": 0,
+    "backup_file": ""
+  },
+  "error_handling": "CONTINUE"
+}

@@ -332,7 +332,7 @@ class AuraBrain:
         Returns:
             Unified context object
         """
-        return await self.context_builder.build(
+        return await self.context_builder.build_aura(
             user_input=request.text,
             attachments=request.attachments,
             workspace_info=request.context,

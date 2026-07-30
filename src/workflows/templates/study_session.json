@@ -1,0 +1,66 @@
+{
+  "id": "study_session",
+  "name": "Study Session",
+  "description": "Opens notes, PDFs, and focus tools for deep work",
+  "type": "manual",
+  "trigger_type": "manual",
+  "trigger_config": {},
+  "priority": "NORMAL",
+  "version": "1.0",
+  "created_at": "2026-07-30T00:00:00Z",
+  "steps": [
+    {
+      "id": "step_1",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_file",
+      "parameters": {
+        "file": "notes.txt"
+      },
+      "description": "Open notes"
+    },
+    {
+      "id": "step_2",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_file",
+      "parameters": {
+        "file": "study_materials.pdf"
+      },
+      "description": "Open study materials"
+    },
+    {
+      "id": "step_3",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "open_application",
+      "parameters": {
+        "application": "Notion"
+      },
+      "description": "Open Notion for note-taking"
+    },
+    {
+      "id": "step_4",
+      "type": "ACTION",
+      "action": "TOOL",
+      "tool": "set_reminder",
+      "parameters": {
+        "time": "1 hour from now",
+        "message": "Study session reminder"
+      },
+      "description": "Set study reminder"
+    },
+    {
+      "id": "step_5",
+      "type": "ECHO",
+      "message": "Study Session: Notes opened, materials loaded, Notion ready, reminder set",
+      "description": "Log completion"
+    }
+  ],
+  "variables": {
+    "study_duration": 60,
+    "materials_opened": false,
+    "notes_opened": false
+  },
+  "error_handling": "CONTINUE"
+}
