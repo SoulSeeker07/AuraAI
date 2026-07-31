@@ -1,14 +1,14 @@
 import logging
 
-from core.config import LOG_DIR
+from core.config import log_dir
 
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+log_dir.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
-        logging.FileHandler(LOG_DIR / "app.log"),
+        logging.FileHandler(log_dir / "app.log"),
         logging.StreamHandler(),
     ],
 )
