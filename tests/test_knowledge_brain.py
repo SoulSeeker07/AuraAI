@@ -87,7 +87,6 @@ def test_knowledge_db():
     print(f"   Total categories: {categories_count}")
 
     print("\n✓ KnowledgeDB tests passed!")
-    return True
 
 
 def test_topic_memory():
@@ -151,7 +150,6 @@ def test_topic_memory():
     print(f"   - Last updated: {stats.get('last_updated', 'N/A')}")
 
     print("\n✓ TopicMemory tests passed!")
-    return True
 
 
 def test_freshness_checker():
@@ -216,7 +214,6 @@ def test_freshness_checker():
         print(f"   - {category}: {days} days")
 
     print("\n✓ FreshnessChecker tests passed!")
-    return True
 
 
 def test_knowledge_graph():
@@ -291,7 +288,6 @@ def test_knowledge_graph():
         print(f"   Note: Graph visualization requires matplotlib: {e}")
 
     print("\n✓ KnowledgeGraph tests passed!")
-    return True
 
 
 def test_learning_engine():
@@ -367,7 +363,6 @@ def test_learning_engine():
     print(f"   Learned {len(learned)} facts from batch")
 
     print("\n✓ LearningEngine tests passed!")
-    return True
 
 
 def test_cache_manager():
@@ -434,7 +429,6 @@ def test_cache_manager():
     print(f"   Cached {cached} entries in batch")
 
     print("\n✓ CacheManager tests passed!")
-    return True
 
 
 def test_knowledge_manager():
@@ -500,7 +494,6 @@ def test_knowledge_manager():
     print(f"   Total learned: {learning_stats['total_learned']}")
 
     print("\n✓ KnowledgeManager tests passed!")
-    return True
 
 
 def main():

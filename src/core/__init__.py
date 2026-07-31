@@ -13,6 +13,7 @@ Contains core system components including:
 - Screen context
 - Settings
 - Window manager
+- Knowledge (RAG 2.0)
 """
 
 from . import local_responder

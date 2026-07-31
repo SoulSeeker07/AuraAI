@@ -44,7 +44,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import threading
 
 from .knowledge_db import KnowledgeDB, KnowledgeFact
@@ -127,10 +127,6 @@ class KnowledgeManager:
             self.freshness_checker,
             self.cache_manager
         )
-
-        self.vector_store = None
-        self.retrieval_engine = None
-        self.indexer = None
 
         self._lock = threading.Lock()
         self._total_retrievals = 0
@@ -574,37 +570,3 @@ class KnowledgeManager:
             Dictionary with statistics
         """
         return self.learning_engine.get_statistics()
-
-
-@dataclass
-class IndexingProgress:
-    """
-    Progress tracking for indexing operations.
-    """
-
-    id: str
-    status: str = "pending"  # pending, in_progress, completed, failed
-    progress: float = 0.0  # 0.0 to 100.0
-    current_file: Optional[str] = None
-    total_files: int = 0
-    processed_files: int = 0
-    failed_files: int = 0
-    error_message: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
-        return {
-            'id': self.id,
-            'status': self.status,
-            'progress': self.progress,
-            'current_file': self.current_file,
-            'total_files': self.total_files,
-            'processed_files': self.processed_files,
-            'failed_files': self.failed_files,
-            'error_message': self.error_message,
-            'created_at': self.created_at.isoformat(),
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-        }
-

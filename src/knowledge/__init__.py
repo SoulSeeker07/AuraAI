@@ -43,16 +43,36 @@ Usage:
     manager.refresh_expired_knowledge()
 """
 
+# ==================== OLD KNOWLEDGE SYSTEM (Backward Compatibility) ====================
 from .knowledge_db import KnowledgeDB, KnowledgeFact
 from .topic_memory import TopicMemory, TopicNode
 from .freshness_checker import FreshnessChecker, KnowledgeCategory
 from .knowledge_graph import KnowledgeGraph, KnowledgeNode
 from .learning_engine import LearningEngine, LearnedFact
 from .cache_manager import CacheManager, CachedSearchResult
-from .knowledge_manager import KnowledgeManager, KnowledgeRetrievalResult
 
-__version__ = "1.0.0"
+# ==================== NEW RAG 2.0 SYSTEM ====================
+from .models import (
+    DocumentChunk, KnowledgeNode as RAGKnowledgeNode,
+    KnowledgeEdge, Citation, KnowledgeContext, RetrievalResult,
+    IndexingTask, KnowledgeStats, RetrievalMode
+)
+from .metadata_manager import MetadataManager
+from .chunker import Chunker
+from .embedding_manager import EmbeddingManager
+from .vector_store import VectorStore
+from .graph_store import GraphStore
+from .retrieval_engine import RetrievalEngine
+from .ranking_engine import RankingEngine
+from .citation_engine import CitationEngine
+from .knowledge_context import KnowledgeContext as ContextBuilder
+from .indexer import Indexer
+from .file_watcher import KnowledgeFileWatcher
+from .knowledge_manager import KnowledgeManager, IndexingProgress
+
+__version__ = "2.0.0"
 __all__ = [
+    # Old Knowledge System
     "KnowledgeDB",
     "KnowledgeFact",
     "TopicMemory",
@@ -67,6 +87,26 @@ __all__ = [
     "CachedSearchResult",
     "KnowledgeManager",
     "KnowledgeRetrievalResult",
+    # New RAG 2.0 System
+    "DocumentChunk",
+    "KnowledgeNode as RAGKnowledgeNode",
+    "KnowledgeEdge",
+    "Citation",
+    "KnowledgeContext",
+    "RetrievalResult",
+    "IndexingTask",
+    "KnowledgeStats",
+    "RetrievalMode",
+    "MetadataManager",
+    "Chunker",
+    "EmbeddingManager",
+    "VectorStore",
+    "GraphStore",
+    "RetrievalEngine",
+    "RankingEngine",
+    "CitationEngine",
+    "IndexingProgress",
+    "KnowledgeFileWatcher",
 ]
 
 __doc__ = """
