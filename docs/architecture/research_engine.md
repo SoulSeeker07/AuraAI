@@ -263,7 +263,7 @@ print(f"Conflicts: {len(report.conflicts)}")
 Run the integration test:
 
 ```bash
-python test_research_integration.py
+python tests/test_research_integration.py
 ```
 
 Run the research engine tests:

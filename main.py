@@ -20,11 +20,12 @@ SRC_DIR = PROJECT_ROOT / "src"
 
 sys.path.insert(0, str(PROJECT_ROOT))  # project root first to find core/
 sys.path.insert(1, str(SRC_DIR))  # src second to find logger
+sys.path.insert(2, str(PROJECT_ROOT / "scripts"))  # scripts third to find utilities
 
 from core.aura_core import AuraCore
 from clients.cli_client import CLIClient
 from clients.gui_client import GUIClient
-from aura_monitor import AuraMonitor
+from scripts.aura_monitor import AuraMonitor
 
 
 # Singleton instance of AuraCore

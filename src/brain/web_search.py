@@ -28,18 +28,32 @@ class WebSearchClient:
         self.google_search_engine_id = google_search_engine_id
 
     def search(self, query: str, limit: int = 5) -> list[WebSearchResult]:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[WebSearch] Search called for: '{query}' with limit={limit}")
+        logger.info(f"[WebSearch] Google API configured: {bool(self.google_api_key and self.google_search_engine_id)}")
+
         if self.google_api_key and self.google_search_engine_id:
+            logger.info(f"[WebSearch] Attempting Google Custom Search")
             google_results = self._search_google_custom(query, limit)
             if google_results:
+                logger.info(f"[WebSearch] Google search returned {len(google_results)} results")
                 return google_results
+            else:
+                logger.info(f"[WebSearch] Google search returned no results")
 
         try:
+            logger.info(f"[WebSearch] Attempting Google News Search")
             news_results = self._search_google_news(query, limit)
             if news_results:
+                logger.info(f"[WebSearch] Google news search returned {len(news_results)} results")
                 return news_results
-        except Exception:
-            pass
+            else:
+                logger.info(f"[WebSearch] Google news search returned no results")
+        except Exception as exc:
+            logger.warning(f"[WebSearch] Google news search failed: {exc}")
 
+        logger.info(f"[WebSearch] Attempting DuckDuckGo search")
         urls = (
             f"https://html.duckduckgo.com/html/?q={quote_plus(query)}",
             f"https://duckduckgo.com/html/?q={quote_plus(query)}",
@@ -52,17 +66,24 @@ class WebSearchClient:
         last_error: Exception | None = None
         for url in urls:
             try:
+                logger.info(f"[WebSearch] Attempting DuckDuckGo URL: {url}")
                 request = Request(url, headers=headers)
                 with urlopen(request, timeout=self.timeout_seconds) as response:
                     body = response.read().decode("utf-8", errors="replace")
                 results = self._parse_results(body, limit)
                 if results:
+                    logger.info(f"[WebSearch] DuckDuckGo search returned {len(results)} results")
                     return results
+                else:
+                    logger.info(f"[WebSearch] DuckDuckGo search returned no results")
             except Exception as exc:
                 last_error = exc
+                logger.warning(f"[WebSearch] DuckDuckGo search failed: {exc}")
 
         if last_error is not None:
+            logger.error(f"[WebSearch] All search methods failed: {last_error}")
             raise last_error
+        logger.info(f"[WebSearch] No results returned from any search method")
         return []
 
     def _search_google_custom(self, query: str, limit: int) -> list[WebSearchResult]:

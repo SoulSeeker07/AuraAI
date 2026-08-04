@@ -430,5 +430,5 @@ class MyHandler(FileSystemEventHandler):
 
 - Read the [Plugin Architecture](architecture.md) document
 - See [plugin_interface.py](src/plugins/plugin_interface.py) for the interface definition
-- Run [test_plugin_integration.py](test_plugin_integration.py) to understand how plugins work
+- Run [tests/test_plugin_integration.py](tests/test_plugin_integration.py) to understand how plugins work
 - Create your first plugin using `aura-plugin-cli create-plugin`

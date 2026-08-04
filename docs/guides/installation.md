@@ -240,7 +240,7 @@ Or in your desktop app's configuration file or startup script.
 Create a simple test:
 
 ```python
-# test_integration.py
+# tests/test_integration.py
 from ai.provider_manager import ProviderManager
 from Memory import Memory
 from src.brain.conversation_engine import ConversationEngine
@@ -268,7 +268,7 @@ print(f"Intent: {result.intent.name}")
 Run the test:
 
 ```bash
-python test_integration.py
+python tests/test_integration.py
 ```
 
 ## Step 7: Verify Cache Stats

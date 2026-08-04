@@ -12,45 +12,62 @@ class IntentRouter:
         normalized = user_input.lower().strip(" ?!.")
         attachments = attachments or []
 
+        import logging
+        logger = logging.getLogger(__name__)
+
         if attachments and any(attachment.mime_type.startswith("image/") for attachment in attachments):
+            logger.info(f"[IntentRouter] Intent detected: vision")
             return Intent("vision")
 
         if self._asks_about_realtime_capability(normalized):
+            logger.info(f"[IntentRouter] Intent detected: capability_status")
             return Intent("capability_status")
 
         facts = self.memory.extract_facts(user_input)
+        logger.info(f"[IntentRouter] Extracted facts: {facts}")
         if facts and self._is_memory_statement(user_input):
+            logger.info(f"[IntentRouter] Memory statement detected, returning remember_fact intent")
             return Intent("remember_fact", {"facts": facts})
 
         if normalized in {"summarize me", "summarize my memory", "what do you remember"}:
+            logger.info(f"[IntentRouter] Intent detected: memory_summary")
             return Intent("memory_summary")
 
         if self._asks_for_time_or_date(normalized):
+            logger.info(f"[IntentRouter] Intent detected: local_time")
             return Intent("local_time")
 
         if "my name" in normalized or normalized in {"who am i", "what is my profile"}:
+            logger.info(f"[IntentRouter] Intent detected: profile_lookup")
             return Intent("profile_lookup")
 
         if "project" in normalized and any(word in normalized for word in ("my", "building", "working")):
+            logger.info(f"[IntentRouter] Intent detected: projects_lookup")
             return Intent("projects_lookup")
 
         if "skill" in normalized or "skills" in normalized:
+            logger.info(f"[IntentRouter] Intent detected: skills_lookup")
             return Intent("skills_lookup", {"wants_count": "how many" in normalized or "count" in normalized})
 
         if "goal" in normalized or "goals" in normalized:
+            logger.info(f"[IntentRouter] Intent detected: goals_lookup")
             return Intent("goals_lookup")
 
         if "preference" in normalized or "preferences" in normalized:
+            logger.info(f"[IntentRouter] Intent detected: preferences_lookup")
             return Intent("preferences_lookup")
 
         # Check for deep research intent
         if self._needs_deep_research(normalized):
+            logger.info(f"[IntentRouter] Intent detected: deep_research")
             return Intent("deep_research")
 
         # Check for regular web search
         if self._needs_realtime_data(normalized):
+            logger.info(f"[IntentRouter] Intent detected: web_search")
             return Intent("web_search")
 
+        logger.info(f"[IntentRouter] Intent detected: provider_chat")
         return Intent("provider_chat")
 
     def remember_detected_facts(self, facts: list[MemoryFact]) -> None:

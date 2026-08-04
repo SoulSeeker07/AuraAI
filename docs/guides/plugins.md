@@ -52,7 +52,7 @@ Successfully implemented the core Plugin Ecosystem infrastructure for Aura AI (M
 
 ### Testing (100% Complete)
 
-#### 7. Integration Test ([test_plugin_integration.py](test_plugin_integration.py) - 230 lines)
+#### 7. Integration Test ([tests/test_plugin_integration.py](tests/test_plugin_integration.py) - 230 lines)
 - **13 comprehensive tests** - ALL PASSED ✓
 - Tests: Import, Registry creation, Scanning, Metadata, Capabilities, Categories, Enable/Disable, Health Checks, Dependencies, PluginManifest, PluginManager, Statistics
 - Validates entire plugin system works correctly
@@ -301,7 +301,7 @@ The infrastructure is complete. Next phases would be:
 - [plugins/template.py](plugins/template.py) - 165 lines
 
 ### Testing
-- [test_plugin_integration.py](test_plugin_integration.py) - 230 lines
+- [tests/test_plugin_integration.py](tests/test_plugin_integration.py) - 230 lines
 
 ### Documentation
 - [docs/plugin_sdk.md](docs/plugin_sdk.md) - Complete plugin SDK guide

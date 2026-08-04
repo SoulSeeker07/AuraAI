@@ -20,3 +20,12 @@ database/*.sqlite3
 
 .DS_Store
 Thumbs.db
+
+# Runtime data
+data/
+
+# Generated code
+generated_code/
+
+node_modules/
+.git/

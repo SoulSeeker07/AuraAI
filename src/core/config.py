@@ -12,7 +12,7 @@ DATABASE_DIR = PROJECT_ROOT / "database"
 PLUGIN_DIR = PROJECT_ROOT / "plugins"
 LOG_DIR = PROJECT_ROOT / "logs"
 SCREENSHOT_DIR = LOG_DIR / "screenshots"
-SETTINGS_PATH = PROJECT_ROOT / "settings.json"
+SETTINGS_PATH = PROJECT_ROOT / "configs" / "settings.json"
 
 DEFAULT_THEME = "dark"
 

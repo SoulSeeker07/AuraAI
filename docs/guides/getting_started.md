@@ -68,7 +68,7 @@ I've successfully implemented a comprehensive web search system for Aura AI v2 t
 
 ### Documentation & Tests
 
-11. **test_aura_search.py** - Comprehensive test suite
+11. **tests/test_aura_search.py** - Comprehensive test suite
     - Intent analysis tests
     - Web search tests
     - Caching tests
@@ -225,7 +225,7 @@ pip install tavily-python beautifulsoup4 lxml
 Run the test suite:
 
 ```bash
-python tests/test_aura_search.py
+python tests/tests/test_aura_search.py
 ```
 
 Test Coverage:
@@ -257,7 +257,7 @@ Test Coverage:
 1. **Update dependencies** in `requirements.txt`
 2. **Get Tavily API key** and set environment variable
 3. **Follow migration guide** in `docs/migration_guide.md`
-4. **Test with** `tests/test_aura_search.py`
+4. **Test with** `tests/tests/test_aura_search.py`
 5. **Integrate** into `ConversationEngine`
 6. **Monitor** cache statistics
 
@@ -301,7 +301,7 @@ src/brain/
 └── context_builder.py          # (existing)
 
 tests/
-└── test_aura_search.py         # Comprehensive tests
+└── tests/test_aura_search.py         # Comprehensive tests
 
 docs/
 ├── aura_ai_v2_web_search.md    # Full documentation
@@ -319,7 +319,7 @@ requirements.txt                # Update with new dependencies
 1. Install dependencies: `pip install tavily-python beautifulsoup4 lxml`
 2. Get Tavily API key from [tavily.com](https://tavily.com)
 3. Set `export TAVILY_API_KEY="your-key"`
-4. Test the system: `python tests/test_aura_search.py`
+4. Test the system: `python tests/tests/test_aura_search.py`
 
 ### Short-term (This Week)
 1. Follow migration guide to integrate with ConversationEngine

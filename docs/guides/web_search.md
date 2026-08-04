@@ -396,7 +396,7 @@ class ConversationEngine:
 Run the test suite:
 
 ```bash
-python tests/test_aura_search.py
+python tests/tests/test_aura_search.py
 ```
 
 **Test Coverage:**
@@ -506,7 +506,7 @@ settings = {"tavily_api_key": "your-key-here"}
 1. Add new intent categories to `intent_analyzer.py`
 2. Update routing rules in `knowledge_router.py`
 3. Add authority weights to `source_ranker.py`
-4. Update test cases in `tests/test_aura_search.py`
+4. Update test cases in `tests/tests/test_aura_search.py`
 5. Document new features in this file
 
 ## License

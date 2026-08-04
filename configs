@@ -1,0 +1,46 @@
+{
+  "theme": "dark",
+  "ai_provider": "none",
+  "model": "",
+  "overlay_hotkey": "alt+space",
+  "voice_enabled": false,
+  "auto_start": false,
+  "live_screen_interval_ms": 1500,
+  "research": {
+    "enabled": true,
+    "cache_ttl": 1800,
+    "default_max_results": 10,
+    "default_mode": "standard",
+    "providers": {
+      "tavily": {
+        "enabled": true,
+        "api_key": ""
+      },
+      "github": {
+        "enabled": true,
+        "api_token": ""
+      },
+      "wikipedia": {
+        "enabled": true
+      },
+      "brave": {
+        "enabled": false,
+        "api_key": ""
+      },
+      "stackoverflow": {
+        "enabled": false
+      },
+      "documentation": {
+        "enabled": false,
+        "api_key": ""
+      },
+      "news": {
+        "enabled": false
+      }
+    }
+  },
+  "python": {
+    "languageServer": "Pylance",
+    "pythonPath": ".venv/Scripts/python.exe"
+  }
+}

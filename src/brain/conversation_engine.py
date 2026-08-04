@@ -36,6 +36,7 @@ class ConversationEngine:
         model: str | None = None,
         web_search: WebSearchClient | None = None,
         deep_research_enabled: bool = True,
+        aura_core = None,
     ):
         self.memory = memory
         self.provider_manager = provider_manager
@@ -49,6 +50,7 @@ class ConversationEngine:
             DeepResearchManager(provider_manager) if deep_research_enabled else None
         )
         self._use_deep_research = deep_research_enabled
+        self.aura_core = aura_core
 
     async def process(
         self,
@@ -72,9 +74,13 @@ class ConversationEngine:
 
         if intent.name == "remember_fact":
             facts = list(intent.data.get("facts", []))
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"[ConversationEngine] remember_fact intent detected with {len(facts)} facts")
             self.intent_router.remember_detected_facts(facts)
             text = self._fact_ack(facts)
             self._save_turn(context, text)
+            logger.info(f"[ConversationEngine] remember_fact processed, acknowledgment: {text}")
             return ConversationResult(text, intent, remembered_facts=facts)
 
         local_answer = self._answer_local_intent(intent)
@@ -150,15 +156,54 @@ class ConversationEngine:
         if self.settings.get("web_search_enabled", True) is False:
             return []
 
+        # Use ResearchEngine instead of directly calling WebSearchClient
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Check if AuraCore's research_integration is available
+        if hasattr(self, 'aura_core') and hasattr(self.aura_core, 'research_integration'):
+            try:
+                logger.info(f"[ConversationEngine] Using ResearchEngine for query: {user_input}")
+
+                # Use ResearchIntegration to perform research
+                # The ResearchEngine will handle planning, providers, evidence, etc.
+                logger.info(f"[ConversationEngine] Calling aura_core.perform_research() with query='{user_input}'")
+                logger.info(f"[ConversationEngine] aura_core.research_enabled={self.aura_core.research_enabled}, aura_core.research_integration is None={self.aura_core.research_integration is None}")
+                research_results = self.aura_core.perform_research(
+                    query=user_input
+                )
+                logger.info(f"[ConversationEngine] perform_research() returned: has_results={research_results.get('has_results', False) if research_results else False}")
+
+                # Convert ResearchEngine results to the expected format
+                if research_results and research_results.get('has_results'):
+                    logger.info(f"[ConversationEngine] ResearchEngine returned {len(research_results.get('citations', []))} citations")
+                    return [
+                        {
+                            "title": citation.get("title", ""),
+                            "url": citation.get("url", ""),
+                            "snippet": citation.get("score", ""),
+                            "score": citation.get("score", 0),
+                            "trust_level": citation.get("trust_level", "")
+                        }
+                        for citation in research_results.get('citations', [])
+                    ]
+                else:
+                    logger.warning(f"[ConversationEngine] ResearchEngine returned no results for: {user_input}")
+            except Exception as e:
+                logger.error(f"[ConversationEngine] ResearchEngine failed: {e}")
+
+        # Fallback to WebSearchClient if ResearchEngine is not available or failed
+        logger.warning(f"[ConversationEngine] Falling back to WebSearchClient for: {user_input}")
         try:
             results = self.web_search.search(user_input, limit=5)
+            return [
+                {"title": result.title, "url": result.url, "snippet": result.snippet}
+                for result in results
+            ]
         except Exception:
             return []
 
-        return [
-            {"title": result.title, "url": result.url, "snippet": result.snippet}
-            for result in results
-        ]
+        return []
     
     async def _perform_deep_research(
         self,

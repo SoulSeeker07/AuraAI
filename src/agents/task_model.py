@@ -61,6 +61,14 @@ class TaskType(Enum):
     WINDOW_MAXIMIZE = "window_maximize"
     WINDOW_MINIMIZE = "window_minimize"
 
+    # Process management tasks
+    PROCESS_LIST = "process_list"
+    PROCESS_GET = "process_get"
+    PROCESS_START = "process_start"
+    PROCESS_STOP = "process_stop"
+    PROCESS_KILL = "process_kill"
+    PROCESS_SEARCH = "process_search"
+
     # Vision tasks
     IMAGE_ANALYSIS = "image_analysis"
     DOCUMENT_READ = "document_read"

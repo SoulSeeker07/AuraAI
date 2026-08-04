@@ -240,9 +240,14 @@ class ResearchIntegration:
         Returns:
             Research results dictionary or None if failed
         """
+        logger.info(f"ResearchIntegration.perform_research() called with query='{query}', mode={mode}")
         try:
             report = self.research_engine.research(query, mode=mode)
-            
+            logger.info(f"ResearchEngine.research() returned: results_count={len(report.results)}, citations_count={len(report.citations)}")
+
+            if not report.results:
+                logger.warning(f"ResearchEngine returned empty results for query: {query}")
+
             return {
                 "query": report.query,
                 "has_results": len(report.results) > 0,
@@ -263,7 +268,7 @@ class ResearchIntegration:
             }
 
         except Exception as e:
-            logger.error(f"Research failed: {e}")
+            logger.error(f"Research failed: {e}", exc_info=True)
             return None
 
     def enhance_response_with_research(

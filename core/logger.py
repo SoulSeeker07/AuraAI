@@ -67,6 +67,18 @@ def setup_logger(
 
     return logger
 
+def get_logger(
+    name: str = 'AuraAI',
+    log_file: Optional[Path] = None,
+    level: int = logging.INFO,
+    console_level: Optional[int] = logging.WARNING,
+) -> logging.Logger:
+    """
+    Convenience alias for setup_logger, matching the common
+    `get_logger(__name__)` pattern used elsewhere in the codebase.
+    """
+    return setup_logger(name, log_file, level, console_level)
+
 
 # Default logger: everything goes to Data/aura.log,
 # console only shows WARNING and above (clean CLI).

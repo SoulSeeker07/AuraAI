@@ -1,53 +1,194 @@
-# Aura AI Architecture Roadmap
+# Aura AI Roadmap
 
-Complete architectural roadmap for Aura AI's development milestones.
+A comprehensive roadmap for building Aura AI from an assistant into a complete AI Operating System through 16 milestones across 5 phases.
 
----
+## Project Overview
 
-## Foundation Milestones (1-13)
-**Core Platform — Never Changes**
+Aura is being built as a modular AI Operating System rather than a chatbot. Each milestone extends the previous one without duplicating responsibilities. The project follows a phased approach, with each phase building on the foundation of the previous ones.
 
----
-
-## 🟡 Milestone 1 — Aura Brain ⭐⭐⭐⭐⭐
-
-**Purpose**
-Enable Aura to understand user intent, maintain context, and generate appropriate responses through AI-powered conversation processing.
-
-**Core Components**
-- [conversation_engine.py](src/brain/conversation_engine.py) - Main conversation handler
-- [intent_detector.py](src/brain/intent_detector.py) - Intent recognition
-- [user_profile.py](src/brain/user_profile.py) - User preferences and history
-- [context_manager.py](src/brain/context_manager.py) - Context tracking
-- [response_generator.py](src/brain/response_generator.py) - Response generation
-
-**Dependencies**
-- LLM API provider
-- User profiling system
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Intent detection accuracy
-- Context retention
-- Response generation quality
-
-**Next Work**
-- Multi-turn conversation memory
-- Context pruning optimization
-- Response personalization
-
-**Future Expansion**
-- Multimodal understanding
-- Emotional intelligence
-- Learning from user feedback
+**Current Status:** 2/16 Core Milestones Complete (12%, including partial milestones)
 
 ---
 
-## 🟡 Milestone 2 — Capability Router ⭐⭐⭐⭐⭐
+## Phase 1 — Core Intelligence
 
-**Purpose**
+Foundation milestones that establish the core AI capabilities.
+
+### Milestone 1 — Aura Brain ⭐⭐⭐⭐⭐
+The central intelligence of Aura as the single request entry point.
+
+**Status:** ❌ NOT COMPLETE (0%)
+
+**Link:** [Milestone 1 — Aura Brain](docs/milestones/milestone01.md)
+
+### Milestone 2 — Capability Router ⭐⭐⭐⭐⭐
+Routes requests to the correct subsystem instead of sending everything to an LLM.
+
+**Status:** 🟡 PARTIAL (40%)
+
+**Link:** [Milestone 2 — Capability Router](docs/milestones/milestone02.md)
+
+### Milestone 3 — Memory 2.0 ⭐⭐⭐⭐⭐
+Persistent intelligent memory that allows Aura to remember across sessions.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 3 — Memory 2.0](docs/milestones/milestone03.md)
+
+---
+
+## Phase 2 — Desktop Foundation
+
+Milestones that establish Aura's understanding and interaction with the desktop.
+
+### Milestone 4 — Workspace Awareness ⭐⭐⭐⭐⭐
+Continuous awareness of the user's desktop environment and workspace state.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 4 — Workspace Awareness](docs/milestones/milestone04.md)
+
+### Milestone 5 — Tool Execution Engine ⭐⭐⭐⭐⭐
+Unified execution pipeline for all tools and capabilities.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 5 — Tool Execution Engine](docs/milestones/milestone05.md)
+
+### Milestone 6 — Plugin Ecosystem ⭐⭐⭐⭐⭐
+Fully modular system where every capability becomes a plugin.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 6 — Plugin Ecosystem](docs/milestones/milestone06.md)
+
+### Milestone 7 — Vision System ⭐⭐⭐⭐⭐
+Visual understanding capabilities for Aura to see and interpret the desktop.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 7 — Vision System](docs/milestones/milestone07.md)
+
+### Milestone 8 — Voice System ⭐⭐⭐⭐⭐
+Real-time conversational voice capability for Aura.
+
+**Status:** ✅ COMPLETE (100%)
+
+**Link:** [Milestone 8 — Voice System](docs/milestones/milestone08.md)
+
+---
+
+## Phase 3 — Autonomous Execution
+
+Milestones that enable Aura to complete goals and execute complex workflows.
+
+### Milestone 9 — Agent Runtime ⭐⭐⭐⭐⭐⭐
+Goal-oriented agent capabilities that enable Aura to complete goals.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 9 — Agent Runtime](docs/milestones/milestone09.md)
+
+### Milestone 10 — Workflow Engine ⭐⭐⭐⭐⭐⭐
+Persistent automation platform for users to create and manage complex workflows.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 10 — Workflow Engine](docs/milestones/milestone10.md)
+
+### Milestone 11 — Knowledge Intelligence (RAG 2.0) ⭐⭐⭐⭐⭐⭐
+Searchable knowledge brain that understands repositories, documents, notes, and codebases.
+
+**Status:** ✅ COMPLETE (100%)
+
+**Link:** [Milestone 11 — Knowledge Intelligence](docs/milestones/milestone11.md)
+
+### Milestone 12 — Multi-Agent Intelligence ⭐⭐⭐⭐⭐⭐
+Specialized AI agents that collaborate to accomplish complex tasks.
+
+**Status:** 🟡 PARTIAL (50%)
+
+**Link:** [Milestone 12 — Multi-Agent Intelligence](docs/milestones/milestone12.md)
+
+---
+
+## Phase 4 — Advanced Intelligence
+
+Milestones that add specialized intelligence capabilities.
+
+### Milestone 13 — Engineering Intelligence ⭐⭐⭐⭐⭐⭐
+Engineering-focused agent for software development tasks.
+
+**Status:** 🟡 PARTIAL (30%)
+
+**Link:** [Milestone 13 — Engineering Intelligence](docs/milestones/milestone13.md)
+
+### Milestone 14 — Research Intelligence ⭐⭐⭐⭐⭐⭐
+Research-focused agent for comprehensive research on any topic.
+
+**Status:** 🟡 PARTIAL (40%)
+
+**Link:** [Milestone 14 — Research Intelligence](docs/milestones/milestone14.md)
+
+---
+
+## Phase 5 — Desktop AI OS
+
+The final milestone that completes the transition from assistant to AI Operating System.
+
+### Milestone 15 — Desktop Intelligence ⭐⭐⭐⭐⭐⭐⭐
+Complete integration of all components into a cohesive desktop intelligence platform.
+
+**Status:** 🟡 PARTIAL (20%)
+
+**Link:** [Milestone 15 — Desktop Intelligence](docs/milestones/milestone15.md)
+
+---
+
+### Milestone 16 — Intelligent AI Orchestration ⭐⭐⭐⭐⭐⭐⭐
+This becomes the **decision-making brain** of Aura. It decides **which intelligence source to use**.
+
+**Status:** 🟡 PARTIAL (0%)
+
+**Link:** [Milestone 16 — Intelligent AI Orchestration](docs/milestones/milestone16.md)
+
+## Progress Overview
+
+```
+Phase 1 — Core Intelligence      ████████████░░░░░░░░░░  0/3 (0 complete)
+Phase 2 — Desktop Foundation     ███████░░░░░░░░░░░░░░░░  1/6 (1 complete)
+Phase 3 — Autonomous Execution   ███░░░░░░░░░░░░░░░░░░░░  1/5 (1 complete)
+Phase 4 — Advanced Intelligence  ██░░░░░░░░░░░░░░░░░░░░░  0/2 (0 complete)
+Phase 5 — Desktop AI OS          ░░░░░░░░░░░░░░░░░░░░░░░  0/2 (0 complete)
+```
+
+**Overall Progress:** 2/16 Core Milestones Complete | 13/16 Core Milestones Partial | 1/16 Core Milestones Not Complete
+
+---
+
+## Development Philosophy
+
+- **Modular Design:** Each milestone extends the previous one without duplicating responsibilities
+- **Incremental Progress:** Build one piece at a time, testing and validating at each step
+- **Clear Dependencies:** Each milestone has clear dependencies on previous milestones
+- **Documentation First:** Design and document each milestone before implementation
+- **User-Centric:** Focus on solving real user problems at each step
+
+---
+
+## Links
+
+- **Architecture Documentation:** [docs/architecture/](docs/architecture/)
+- **API Documentation:** [docs/api/](docs/api/)
+- **User Guides:** [docs/guides/](docs/guides/)
+- **Examples:** [docs/examples/](docs/examples/)
+- **Milestones:** [docs/milestones/](docs/milestones/)
+
+---
+
+## License
+
+[See LICENSE file](LICENSE)
 Route user requests to the appropriate capabilities and tools with intelligent matching, priority-based selection, and fallback mechanisms.
 
 **Core Components**

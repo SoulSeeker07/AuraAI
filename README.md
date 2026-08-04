@@ -1,107 +1,331 @@
 # Aura AI
 
-An AI Operating System companion with 13 core milestones. This project evolves from a simple chatbot into a sophisticated AI engineering platform through incremental, modular development.
-
-**Current Status:** 3/14 Core Milestones Complete | 10/14 Core Milestones Partial | 1/14 Core Milestones Not Complete
-
-## Structure
-- src/ - application source code
-  - ai/ - AI providers (GROQ, GLM, OpenAI)
-  - agents/ - Multi-agent system
-  - brain/ - Conversation engine, web search, memory integration
-  - core/ - Application core (app, config, event_bus, logger)
-  - execution/ - Tool execution engine
-  - gui/ - Graphical interface (main_window, overlay, titlebar)
-  - knowledge/ - Knowledge brain, RAG 2.0
-  - memory/ - Memory system (Memory 2.0)
-  - plugins/ - Plugin ecosystem
-  - routing/ - Capability routing
-  - vision/ - Vision system
-  - voice/ - Voice system
-  - workspace/ - Workspace awareness
-  - agents/agent_runtime.py - Agent runtime
-  - agents/brain_integration.py - Brain integration
-- assets/ - images and static files
-- database/ - database files and models
-- plugins/ - extension/plugin modules
-- tests/ - test suite
-- docs/ - documentation
+The AI Operating System
 
 ---
 
-# 🗺️ Aura AI Development Roadmap
+## Overview
 
-Aura is being built as a modular AI Operating System rather than a chatbot. Each milestone extends the previous one without duplicating responsibilities.
-
----
-
-# 🟡 Milestone 1 — Aura Brain ⭐⭐⭐⭐⭐
-
-The central intelligence of Aura.
-
-**Status:** 🟡 PARTIAL - Implementation found in src/brain/
-
-### Responsibilities
-- Single request entry point
-- Context assembly
-- Decision making
-- Planning initiation
-- Response coordination
-- State management
-
-### Pipeline
-```
-User
-    ↓
-Aura Brain
-    ↓
-Planner
-    ↓
-Memory
-    ↓
-Capability Router
-    ↓
-Provider / Tool
-    ↓
-Response
-```
-
-**Status:** ❌ NOT COMPLETE
+Aura is an AI Operating System companion that evolves from a simple chatbot into a sophisticated AI engineering platform through incremental, modular development. It uses a phased approach to build core intelligence, desktop foundation, autonomous execution, and advanced intelligence capabilities.
 
 ---
 
-# 🟡 Milestone 2 — Capability Router ⭐⭐⭐⭐⭐
+## Features
 
-Routes requests to the correct subsystem instead of sending everything to an LLM.
+### Core Intelligence
+- **Aura Brain** — Central intelligence coordinating all subsystems
+- **Memory 2.0** — Persistent intelligent memory across sessions
+- **Capability Router** — Intelligent request routing to appropriate subsystems
 
-**Status:** 🟡 PARTIAL - Implementation found in src/routing/
+### Desktop Foundation
+- **Workspace Awareness** — Continuous desktop environment monitoring
+- **Tool Execution Engine** — Unified execution pipeline for all tools
+- **Plugin Ecosystem** — Fully modular plugin architecture
+- **Vision System** — Visual understanding of desktop environment
+- **Voice System** — Real-time conversational voice capability
 
-### Capabilities
-- Intent routing
-- Tool routing
-- Plugin routing
-- LLM routing
-- Local execution
-- Cost optimization
+### Autonomous Execution
+- **Agent Runtime** — Goal-oriented agent capabilities
+- **Workflow Engine** — Persistent automation platform
+- **Knowledge Intelligence** — Searchable knowledge brain
+- **Multi-Agent Intelligence** — Specialized agents collaborating
 
-### Example
-```
-Open Chrome
-      ↓
-Desktop Plugin
+### Advanced Intelligence
+- **Engineering Intelligence** — Software development assistance
+- **Research Intelligence** — Comprehensive research capabilities
 
-Delete File
-      ↓
-Filesystem Plugin
-
-Explain OSPF
-      ↓
-LLM
-```
-
-**Status:** ❌ NOT COMPLETE
+### Desktop AI OS (Milestone 15)
+- Complete integration of all components into a cohesive desktop intelligence platform
 
 ---
+
+## Current Status
+
+**Overall Progress:** 3/15 Core Milestones Complete | 10/15 Core Milestones Partial | 2/15 Core Milestones Not Complete
+
+**Complete Milestones:**
+- ✅ Milestone 8 — Voice System (100%)
+- ✅ Milestone 11 — Knowledge Intelligence (100%)
+
+**Most Recent Milestone:**
+- 🟡 Milestone 15 — Desktop Intelligence (20%)
+
+**Detailed Progress:** See [ROADMAP.md](roadmap.md)
+
+---
+
+## Core Systems
+
+- **Aura Brain** — [Architecture](docs/architecture/aura_brain.md) | [API](docs/api/)
+- **Memory 2.0** — [Architecture](docs/architecture/memory_2.md) | [API](docs/api/)
+- **Research Engine** — [Architecture](docs/architecture/research_engine.md) | [API](docs/api/research.md)
+- **Desktop Intelligence** — [Architecture](docs/architecture/desktop_intelligence.md) | [API](docs/api/desktop.md)
+- **Vision System** — [Architecture](docs/architecture/vision_system.md) | [API](docs/api/)
+- **Voice System** — [Architecture](docs/architecture/voice_system.md) | [API](docs/api/)
+- **Plugin Ecosystem** — [Architecture](docs/architecture/plugin_ecosystem.md) | [API](docs/api/plugins.md)
+- **Multi-Agent Runtime** — [Architecture](docs/architecture/multi_agent.md) | [API](docs/api/agents.md)
+
+---
+
+## Architecture Overview
+
+Aura is built as a modular AI Operating System with the following architecture:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Aura Brain                            │
+│              (Central Intelligence)                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+    ┌───────▼───────┐ ┌──────▼───────┐ ┌───────▼───────┐
+    │   Memory      │ │   Research   │ │   Desktop     │
+    │   2.0         │ │   Engine     │ │ Intelligence  │
+    └───────────────┘ └──────────────┘ └───────────────┘
+            │                 │                 │
+    ┌───────▼───────┐ ┌──────▼───────┐ ┌───────▼───────┐
+    │Capability     │ │  Plugin      │ │   Vision      │
+    │Router         │ │  Ecosystem   │ │   System      │
+    └───────────────┘ └──────────────┘ └───────────────┘
+            │                 │                 │
+    ┌───────▼───────┐ ┌──────▼───────┐ ┌───────▼───────┐
+    │  Tool         │ │  Voice       │ │   Tool        │
+    │  Execution    │ │  System      │ │  Engine       │
+    └───────────────┘ └──────────────┘ └───────────────┘
+```
+
+**Key Design Principles:**
+- **Modular** — Each component is independently testable and replaceable
+- **Pluggable** — All capabilities can be extended via plugins
+- **Scalable** — Architecture supports adding new milestones without refactoring
+- **Composable** — Components can be combined to create new features
+
+---
+
+## Installation
+
+### Prerequisites
+- Python 3.10+
+- Windows operating system
+- Basic Python environment setup
+
+### Installation Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/AuraAI.git
+   cd AuraAI
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure settings:**
+   ```bash
+   cp settings.json.example settings.json
+   # Edit settings.json with your preferences
+   ```
+
+4. **Run the application:**
+   ```bash
+   python run_aura.py
+   ```
+
+**Detailed Installation Guide:** See [Installation Guide](docs/guides/installation.md)
+
+---
+
+## Quick Start
+
+### First Run
+
+1. Launch Aura and wait for it to initialize
+2. Allow the voice system to access microphone
+3. Try a simple command: "Hello Aura"
+4. Use the overlay to interact with Aura
+5. Explore the documentation to learn more features
+
+### Getting Started Guide
+
+See the [Getting Started Guide](docs/guides/first_run.md) for step-by-step instructions on using Aura.
+
+---
+
+## Project Structure
+
+```
+AuraAI/
+├── README.md                     ⭐ Project landing page
+├── ROADMAP.md                    ⭐ Complete roadmap (Phases 1-5)
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── CODE_OF_CONDUCT.md
+│
+├── docs/                         📚 Documentation
+│   ├── architecture/            🏗️ Technical architecture docs
+│   ├── api/                     📡 API and SDK documentation
+│   ├── guides/                  📖 User and developer guides
+│   ├── examples/                💡 Example code and documentation
+│   └── milestones/              🎯 Milestone design documents
+│
+├── src/                          💻 Source code
+│   ├── ai/                      🤖 AI providers
+│   ├── agents/                  🧠 Multi-agent system
+│   ├── core/                    ⚙️ Core application
+│   ├── execution/               ⚡ Tool execution engine
+│   ├── gui/                     🖥️ Graphical interface
+│   ├── knowledge/               📚 Knowledge brain
+│   ├── memory/                  🧠 Memory system
+│   ├── plugins/                 🔌 Plugin ecosystem
+│   ├── routing/                 🧭 Capability routing
+│   ├── vision/                  👁️ Vision system
+│   ├── voice/                   🔊 Voice system
+│   └── workspace/               📱 Workspace awareness
+│
+├── tests/                        ✅ Test suite
+├── assets/                       🎨 Assets and images
+├── examples/                     📋 Examples
+└── plugins/                      🔌 Installed plugins
+```
+
+---
+
+## Documentation
+
+### Architecture
+- [Overview](docs/architecture/)
+- [Aura Brain](docs/architecture/aura_brain.md)
+- [Capability Router](docs/architecture/capability_router.md)
+- [Memory 2.0](docs/architecture/memory_2.md)
+- [Workspace Awareness](docs/architecture/workspace_awareness.md)
+- [Tool Execution Engine](docs/architecture/execution_engine.md)
+- [Plugin Ecosystem](docs/architecture/plugin_ecosystem.md)
+- [Vision System](docs/architecture/vision_system.md)
+- [Voice System](docs/architecture/voice_system.md)
+- [Workflow Engine](docs/architecture/workflow_engine.md)
+- [Knowledge Intelligence](docs/architecture/knowledge_engine.md)
+- [Multi-Agent Runtime](docs/architecture/multi_agent.md)
+- [Engineering Intelligence](docs/architecture/engineering_platform.md)
+- [Research Engine](docs/architecture/research_engine.md)
+- [Desktop Intelligence](docs/architecture/desktop_intelligence.md)
+
+### API
+- [Plugins API](docs/api/plugins.md)
+- [Execution Engine API](docs/api/execution_engine.md)
+- [Memory API](docs/api/memory.md)
+- [Research API](docs/api/research.md)
+- [Workflow API](docs/api/workflow.md)
+- [Desktop API](docs/api/desktop.md)
+- [Voice API](docs/api/voice.md)
+- [Vision API](docs/api/vision.md)
+- [Agents API](docs/api/agents.md)
+
+### Guides
+- [Installation](docs/guides/installation.md)
+- [Configuration](docs/guides/configuration.md)
+- [First Run](docs/guides/first_run.md)
+- [Plugin Development](docs/guides/plugin_development.md)
+- [Creating Agents](docs/guides/creating_agents.md)
+- [Research](docs/guides/research.md)
+- [Desktop Automation](docs/guides/desktop_automation.md)
+- [Engineering](docs/guides/engineering.md)
+- [Troubleshooting](docs/guides/troubleshooting.md)
+
+### Examples
+- [Plugins Examples](docs/examples/plugins.md)
+- [Workflows Examples](docs/examples/workflows.md)
+- [Research Examples](docs/examples/research.md)
+- [Desktop Examples](docs/examples/desktop.md)
+- [Engineering Examples](docs/examples/engineering.md)
+- [Multi-Agent Examples](docs/examples/multi_agent.md)
+
+### Milestones
+- [Milestone 1 — Aura Brain](docs/milestones/milestone01.md)
+- [Milestone 2 — Capability Router](docs/milestones/milestone02.md)
+- [Milestone 3 — Memory 2.0](docs/milestones/milestone03.md)
+- [Milestone 4 — Workspace Awareness](docs/milestones/milestone04.md)
+- [Milestone 5 — Tool Execution Engine](docs/milestones/milestone05.md)
+- [Milestone 6 — Plugin Ecosystem](docs/milestones/milestone06.md)
+- [Milestone 7 — Vision System](docs/milestones/milestone07.md)
+- [Milestone 8 — Voice System](docs/milestones/milestone08.md)
+- [Milestone 9 — Agent Runtime](docs/milestones/milestone09.md)
+- [Milestone 10 — Workflow Engine](docs/milestones/milestone10.md)
+- [Milestone 11 — Knowledge Intelligence](docs/milestones/milestone11.md)
+- [Milestone 12 — Multi-Agent Intelligence](docs/milestones/milestone12.md)
+- [Milestone 13 — Engineering Intelligence](docs/milestones/milestone13.md)
+- [Milestone 14 — Research Intelligence](docs/milestones/milestone14.md)
+- [Milestone 15 — Desktop Intelligence](docs/milestones/milestone15.md)
+
+---
+
+## Roadmap
+
+The complete roadmap is available in [ROADMAP.md](roadmap.md), which includes:
+- Phase-by-phase milestones
+- Detailed milestone descriptions
+- Progress tracking
+- Dependencies and completion status
+
+**Quick Progress Overview:**
+```
+Phase 1 — Core Intelligence      ████████████░░░░░░░░░░  1/3 complete
+Phase 2 — Desktop Foundation     ███████░░░░░░░░░░░░░░░░  1/5 complete
+Phase 3 — Autonomous Execution   ███░░░░░░░░░░░░░░░░░░░░  1/4 complete
+Phase 4 — Advanced Intelligence  ██░░░░░░░░░░░░░░░░░░░░░  0/2 complete
+Phase 5 — Desktop AI OS          ░░░░░░░░░░░░░░░░░░░░░░░  0/1 complete
+```
+
+---
+
+## License
+
+See [LICENSE](LICENSE) for the complete license information.
+
+---
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to Aura AI.
+
+**Guidelines:**
+- Follow the project structure and conventions
+- Add documentation for new features
+- Write tests for new functionality
+- Follow the development roadmap
+- Use semantic versioning
+
+---
+
+## Code of Conduct
+
+Please see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for our community guidelines.
+
+---
+
+## Contact & Support
+
+- **Issues:** [GitHub Issues](https://github.com/yourusername/AuraAI/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/yourusername/AuraAI/discussions)
+- **Documentation:** [Documentation](docs/)
+- **Community:** [Discord Community](https://discord.gg/yourserver)
+
+---
+
+## Acknowledgments
+
+This project builds upon various open-source projects and research. Special thanks to:
+- The open-source community
+- AI research community
+- Plugin and extension ecosystem developers
+- All contributors and users
+
+---
+
+**Made with ❤️ for the AI Operating System**
 
 # 🟡 Milestone 3 — Memory 2.0 ⭐⭐⭐⭐⭐
 
@@ -749,7 +973,7 @@ All Milestone 14 components have comprehensive tests:
 
 Run tests:
 ```bash
-python test_milestone14_integration.py
+python tests/test_milestone14_integration.py
 ```
 
 All 4 test suites passing ✅
@@ -1041,7 +1265,7 @@ All Milestone 14 components have comprehensive tests:
 
 Run tests:
 ```bash
-python test_milestone14_integration.py
+python tests/test_milestone14_integration.py
 ```
 
 All 4 test suites passing ✅
@@ -1386,7 +1610,7 @@ The engine includes comprehensive integration tests ([test_integration.py](test_
 
 All tests pass successfully:
 ```powershell
-python test_integration.py
+python tests/test_integration.py
 ```
 
 ### Key Features
@@ -1575,7 +1799,7 @@ pytest tests/test_vision_system.py -v
 Run the integration test to verify your plugin system:
 
 ```powershell
-python test_plugin_integration.py
+python tests/test_plugin_integration.py
 ```
 
 See [plugin_sdk.md](docs/plugin_sdk.md) for detailed plugin development guide.

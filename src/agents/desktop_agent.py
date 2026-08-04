@@ -7,6 +7,7 @@ The Desktop Agent provides safe, controlled access to:
 - System controls
 - Window management
 - Clipboard operations
+- Process management
 """
 
 from __future__ import annotations
@@ -26,6 +27,9 @@ from .task_model import (
     TaskOutput,
     TaskPriority
 )
+
+# Import ProcessManager
+from .process_manager import ProcessManager
 
 
 class DesktopAgent:
@@ -47,6 +51,9 @@ class DesktopAgent:
         self.task_manager = task_manager
         self._safety_layer = safety_layer
         self._permissions: dict[str, bool] = {}
+
+        # Initialize process manager for process management tasks
+        self.process_manager = ProcessManager()
 
     def _require_confirmation(self, action: str, details: str) -> bool:
         """
@@ -538,5 +545,202 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to minimize window",
+                error=str(e)
+            )
+
+    # ========================================
+    # PROCESS MANAGEMENT
+    # ========================================
+
+    def _execute_process_list(self, task: Task) -> TaskOutput:
+        """List all running processes"""
+        try:
+            filter_name = task.input.get("name")
+            filter_status = task.input.get("status")
+
+            processes = self.process_manager.list_processes(filter_by_name=filter_name,
+                                                          filter_by_status=filter_status)
+
+            return TaskOutput(
+                success=True,
+                message=f"Found {len(processes)} processes",
+                data={
+                    "processes": [p.to_dict() for p in processes],
+                    "count": len(processes),
+                    "total_cpu_percent": round(sum(p.cpu_percent for p in processes), 2),
+                    "total_memory_mb": round(sum(p.memory_mb for p in processes), 2)
+                }
+            )
+
+        except Exception as e:
+            return TaskOutput(
+                success=False,
+                message="Failed to list processes",
+                error=str(e)
+            )
+
+    def _execute_process_get(self, task: Task) -> TaskOutput:
+        """Get information about a specific process"""
+        try:
+            pid = task.input.get("pid")
+
+            if pid is None:
+                return TaskOutput(
+                    success=False,
+                    message="Failed to get process",
+                    error="PID not provided"
+                )
+
+            process = self.process_manager.get_process_info(pid)
+
+            if not process:
+                return TaskOutput(
+                    success=False,
+                    message=f"Process {pid} not found",
+                    error=f"No process with PID {pid} exists"
+                )
+
+            return TaskOutput(
+                success=True,
+                message=f"Process information retrieved",
+                data=process.to_dict()
+            )
+
+        except Exception as e:
+            return TaskOutput(
+                success=False,
+                message="Failed to get process",
+                error=str(e)
+            )
+
+    def _execute_process_start(self, task: Task) -> TaskOutput:
+        """Start a process"""
+        try:
+            command = task.input.get("command")
+            args = task.input.get("args", [])
+            cwd = task.input.get("cwd")
+            shell = task.input.get("shell", False)
+
+            if not command:
+                return TaskOutput(
+                    success=False,
+                    message="Failed to start process",
+                    error="Command not provided"
+                )
+
+            process = self.process_manager.start_process(command, args, cwd, shell)
+
+            return TaskOutput(
+                success=True,
+                message=f"Process started: {process.name} (PID: {process.pid})",
+                data=process.to_dict()
+            )
+
+        except Exception as e:
+            return TaskOutput(
+                success=False,
+                message="Failed to start process",
+                error=str(e)
+            )
+
+    def _execute_process_stop(self, task: Task) -> TaskOutput:
+        """Stop a process gracefully"""
+        try:
+            pid = task.input.get("pid")
+            timeout = task.input.get("timeout", 5)
+
+            if pid is None:
+                return TaskOutput(
+                    success=False,
+                    message="Failed to stop process",
+                    error="PID not provided"
+                )
+
+            success = self.process_manager.stop_process(pid, timeout)
+
+            if success:
+                return TaskOutput(
+                    success=True,
+                    message=f"Process stopped: PID {pid}",
+                    data={"pid": pid, "stopped": True}
+                )
+            else:
+                return TaskOutput(
+                    success=False,
+                    message=f"Failed to stop process {pid}",
+                    error="Process did not terminate gracefully"
+                )
+
+        except Exception as e:
+            return TaskOutput(
+                success=False,
+                message="Failed to stop process",
+                error=str(e)
+            )
+
+    def _execute_process_kill(self, task: Task) -> TaskOutput:
+        """Kill a process"""
+        try:
+            pid = task.input.get("pid")
+            force = task.input.get("force", False)
+
+            if pid is None:
+                return TaskOutput(
+                    success=False,
+                    message="Failed to kill process",
+                    error="PID not provided"
+                )
+
+            success = self.process_manager.kill_process(pid, force)
+
+            if success:
+                return TaskOutput(
+                    success=True,
+                    message=f"Process killed: PID {pid}",
+                    data={"pid": pid, "killed": True}
+                )
+            else:
+                return TaskOutput(
+                    success=False,
+                    message=f"Failed to kill process {pid}",
+                    error="Failed to kill process"
+                )
+
+        except Exception as e:
+            return TaskOutput(
+                success=False,
+                message="Failed to kill process",
+                error=str(e)
+            )
+
+    def _execute_process_search(self, task: Task) -> TaskOutput:
+        """Search for processes"""
+        try:
+            name = task.input.get("name")
+            max_results = task.input.get("max_results", 50)
+
+            if not name:
+                return TaskOutput(
+                    success=False,
+                    message="Failed to search processes",
+                    error="Search name not provided"
+                )
+
+            processes = self.process_manager.find_process_by_name(name)
+
+            return TaskOutput(
+                success=True,
+                message=f"Found {len(processes)} matching processes",
+                data={
+                    "processes": [p.to_dict() for p in processes[:max_results]],
+                    "count": len(processes),
+                    "search_name": name
+                }
+            )
+
+        except Exception as e:
+            return TaskOutput(
+                success=False,
+                message="Failed to search processes",
                 error=str(e)
             )

@@ -42,6 +42,11 @@ class Memory:
         db_path: Path | str = MEMORY_DB,
         chat_log_path: Path | str = CHAT_LOG_FILE,
     ):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[Memory] Initializing Memory with db_path: {db_path}")
+        logger.info(f"[Memory] Memory module PROJECT_ROOT: {PROJECT_ROOT}")
+
         self.db_path = Path(db_path)
         self.chat_log_path = Path(chat_log_path)
 
@@ -49,6 +54,9 @@ class Memory:
         self.chat_log_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.chat_log_path.exists():
             self.chat_log_path.write_text("[]", encoding="utf-8")
+
+        logger.info(f"[Memory] Database will be created at: {self.db_path}")
+        logger.info(f"[Memory] Chat log will be written to: {self.chat_log_path}")
 
         self._init_db()
         self.recover_profile_from_chat_log()
@@ -274,7 +282,7 @@ class Memory:
         facts: list[MemoryFact] = []
 
         # 1. Extract profile/name facts
-        name_match = re.search(r"\b(?:my name is|i am|i'm)\s+([A-Z][A-Za-z0-9 _.-]{1,40})$", cleaned)
+        name_match = re.search(r"\b(?:my name is|i am|i'm)\s+([A-Z][A-Za-z0-9 _.-]{1,40})$", cleaned, re.IGNORECASE)
         if name_match and not any(word in lower for word in ("learning", "studying", "building", "working")):
             facts.append(MemoryFact(MemoryCategory.PROFILE.value, "name", name_match.group(1).strip()))
         elif self.looks_like_name(cleaned) and self.fact_value(MemoryCategory.PROFILE.value, "name") is None:
@@ -408,6 +416,14 @@ class Memory:
 
     def upsert_fact(self, category: str, key: str, value: str) -> None:
         now = dt.datetime.now().isoformat(timespec="seconds")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[Memory] upsert_fact called: category={category}, key={key}, value={value}")
+
+        # Log current memory count before insertion
+        current_count = self.count_memories()
+        logger.info(f"[Memory] Current memory count before insertion: {current_count}")
+
         with self._connect() as conn:
             conn.execute(
                 """
@@ -417,6 +433,11 @@ class Memory:
                 """,
                 (category, key, value, now, now),
             )
+        logger.info(f"[Memory] Fact successfully inserted into database")
+
+        # Log memory count after insertion
+        new_count = self.count_memories()
+        logger.info(f"[Memory] Memory count after insertion: {new_count} (inserted 1 fact)")
 
     def upsert_topic(self, topic: str, summary: str) -> None:
         now = dt.datetime.now().isoformat(timespec="seconds")
