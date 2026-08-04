@@ -8,7 +8,7 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
-from .models import Evidence, SearchResult
+from .models import Evidence, SearchResult, normalize_trust_level
 from .evidence_merger import EvidenceMerger, EvidenceConflict
 
 logger = logging.getLogger(__name__)
@@ -151,7 +151,7 @@ class ConflictDetector:
             Conflict type string
         """
         # Compare trust levels
-        trust_levels = [evidence1.trust_level, evidence2.trust_level]
+        trust_levels = [normalize_trust_level(evidence1.trust_level), normalize_trust_level(evidence2.trust_level)]
         high_trust = [t for t in trust_levels if t in ['official', 'government']]
         low_trust = [t for t in trust_levels if t not in ['official', 'government']]
 
@@ -180,7 +180,7 @@ class ConflictDetector:
         Returns:
             Resolution strategy
         """
-        trust_levels = [evidence1.trust_level, evidence2.trust_level]
+        trust_levels = [normalize_trust_level(evidence1.trust_level), normalize_trust_level(evidence2.trust_level)]
 
         # Priority order: official > government > github > stackoverflow > wikipedia > reddit > blog
         trust_priority = {

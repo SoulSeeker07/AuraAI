@@ -111,14 +111,13 @@ class AuraCore:
         return cls._instance
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        Initialize Aura Core.
+        # Guard the WHOLE body — not just _initialize_components() — so a second
+        # AuraCore() call anywhere in the codebase can't wipe out live state.
+        if self._initialized:
+            self._load_conversation_history()
+            return
 
-        Args:
-            config: Configuration dictionary
-        """
         self.config = config or {}
-        # Ensure project_root is a Path object
         project_root_input = self.config.get('project_root')
         if project_root_input is not None:
             if isinstance(project_root_input, str):
@@ -129,79 +128,45 @@ class AuraCore:
             self.project_root = Path(__file__).resolve().parent.parent
         self.workspace = self.config.get('workspace', str(self.project_root))
 
-        # Conversation history data path
         self.chat_log_path = Path(self.config.get('data_path', self.project_root / "Data" / "ChatLog.json"))
         self.memory_db_path = Path(self.config.get('memory_db_path', self.project_root / "Memory.db"))
 
-        # Core components
         self.components: Dict[str, ComponentStatus] = {}
-
-        # Memory
         self.memory_enabled = True
         self.memory_stats = {}
-
-        # Knowledge
         self.knowledge_enabled = True
         self.knowledge_stats = {}
-
-        # Plugins
         self.plugins = []
         self.plugin_count = 0
-
-        # Workspace
         self.workspace_aware = False
         self.workspace_info = {}
-
-        # Multi-Agent Intelligence
         self.multi_agent_status = AuraCoreStatus.READY
         self.multi_agent_orchestrator = None
         self.multi_agent_registry = None
-
-        # Agent Runtime
         self.agent_runtime_status = AuraCoreStatus.READY
         self.agent_runtime = None
 
-        # Research Engine
         self.research_enabled = False
         self.research_integration = None
-        self._research_initialized = False  # Track if research has been initialized
+        self._research_initialized = False
 
-        # Planner
         self.planner_enabled = False
         self.planner = None
-
-        # Workflow Engine
         self.workflow_engine_status = AuraCoreStatus.READY
         self.workflow_engine = None
-
-        # Vision
         self.vision_enabled = False
-
-        # Voice
         self.voice_enabled = False
-
-        # Current task
         self.current_task: Optional[str] = None
         self.current_task_status: AuraCoreStatus = AuraCoreStatus.READY
-
-        # Conversation history (will be loaded from disk)
         self.conversation_history: List[Dict[str, str]] = []
         self.max_history = 100
 
-        # Only initialize components once
-        if not self._initialized:
-            AuraCore._initialized = True
-            # Initialize LLM first (groq_model is used by _init_brain)
-            self.groq_model = self.config.get('groq_model', 'llama-3.3-70b-versatile')
-            self.groq_client = None
-            self.llm_enabled = False
-            self._init_llm()
-
-            # Initialize core components
-            self._initialize_components()
-        else:
-            # Load conversation history from disk
-            self._load_conversation_history()
+        AuraCore._initialized = True
+        self.groq_model = self.config.get('groq_model', 'llama-3.3-70b-versatile')
+        self.groq_client = None
+        self.llm_enabled = False
+        self._init_llm()
+        self._initialize_components()
 
     def _init_llm(self):
         """Initialize the Groq LLM client."""
@@ -305,7 +270,7 @@ class AuraCore:
 
             self.components['memory'] = ComponentStatus(
                 name='Memory',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message=f'{total_memories} memories, {num_categories} categories'
             )
         except Exception as e:
@@ -313,7 +278,7 @@ class AuraCore:
             self.memory_enabled = False
             self.components['memory'] = ComponentStatus(
                 name='Memory',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -329,7 +294,7 @@ class AuraCore:
             }
             self.components['knowledge'] = ComponentStatus(
                 name='Knowledge',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message='Knowledge indexed'
             )
         except Exception as e:
@@ -337,7 +302,7 @@ class AuraCore:
             self.knowledge_enabled = False
             self.components['knowledge'] = ComponentStatus(
                 name='Knowledge',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -370,7 +335,7 @@ class AuraCore:
 
             self.components['plugins'] = ComponentStatus(
                 name='Plugins',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message=f'{self.plugin_count} plugins loaded'
             )
         except Exception as e:
@@ -378,7 +343,7 @@ class AuraCore:
             self.plugin_count = 0
             self.components['plugins'] = ComponentStatus(
                 name='Plugins',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -405,7 +370,7 @@ class AuraCore:
 
                 self.components['workspace'] = ComponentStatus(
                     name='Workspace',
-                    status= AuraCoreStatus.READY,
+                    status=AuraCoreStatus.READY,
                     message=f'{self.workspace_info["files"]} files, {self.workspace_info["folders"]} folders'
                 )
             else:
@@ -413,7 +378,7 @@ class AuraCore:
                 self.workspace_aware = False
                 self.components['workspace'] = ComponentStatus(
                     name='Workspace',
-                    status= AuraCoreStatus.ERROR,
+                    status=AuraCoreStatus.ERROR,
                     message='Path does not exist',
                     loaded=False
                 )
@@ -422,7 +387,7 @@ class AuraCore:
             self.workspace_aware = False
             self.components['workspace'] = ComponentStatus(
                 name='Workspace',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -448,7 +413,6 @@ class AuraCore:
             # Build provider manager
             from src.ai.groq_provider import GroqProvider  # adjust path if it lives elsewhere
 
-            # Build provider manager
             provider_manager = ProviderManager(default_provider='groq')
             provider_manager.register('groq', GroqProvider(api_key=os.environ.get("GROQ_API_KEY", "")))
 
@@ -467,7 +431,7 @@ class AuraCore:
             self.brain_enabled = True
             self.components['brain'] = ComponentStatus(
                 name='Brain',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message='Brain initialized with memory'
             )
 
@@ -477,7 +441,7 @@ class AuraCore:
             self.brain_enabled = False
             self.components['brain'] = ComponentStatus(
                 name='Brain',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -488,17 +452,19 @@ class AuraCore:
         if not hasattr(self, '_research_call_count'):
             self._research_call_count = 0
         self._research_call_count += 1
-        logger.info(f"[_init_research] ENTERING (call #{self._research_call_count}) - research_enabled={self.research_enabled}, research_integration is None={self.research_integration is None}, _research_initialized={self._research_initialized}")
+        logger.info(
+            f"[_init_research] ENTERING (call #{self._research_call_count}) - "
+            f"research_enabled={self.research_enabled}, "
+            f"research_integration is None={self.research_integration is None}, "
+            f"_research_initialized={self._research_initialized}"
+        )
         try:
-            # Always initialize research for testing purposes
-            # (Remove this check in production)
             logger.info("[_init_research] Creating ResearchEngine...")
 
             # Import research engine
             from src.research import ResearchEngine, ResearchConfig
 
-            # Build research config
-            research_settings = {}  # Use empty settings for testing
+            research_settings = self.config.get('research_settings', {})
 
             # Create ResearchEngine
             research_engine = ResearchEngine(config=ResearchConfig(
@@ -508,135 +474,53 @@ class AuraCore:
                 cache_ttl=research_settings.get('cache_ttl', 1800),
                 conflict_resolution=ConflictResolution.AUTO
             ))
+            # Add unique identifier to track this instance
+            research_engine.__id__ = f"research_engine_{id(self)}"
+            logger.info(
+                f"[_init_research] Created ResearchEngine with id={research_engine.__id__}, "
+                f"object={research_engine}"
+            )
 
             logger.info("[_init_research] Creating ResearchIntegration...")
-            # Create research integration
             from src.brain.research_integration import ResearchIntegration
             self.research_integration = ResearchIntegration(research_engine)
+            self.research_integration.__id__ = f"research_integration_{id(self)}"
+            logger.info(
+                f"[_init_research] Created ResearchIntegration with "
+                f"id={self.research_integration.__id__}, object={self.research_integration}"
+            )
 
             self.research_enabled = True
             self._research_initialized = True
-            logger.info(f"[_init_research] Set research_enabled=True, research_integration={self.research_integration}")
+            logger.info(
+                f"[_init_research] Set research_enabled=True, "
+                f"research_integration={self.research_integration}"
+            )
 
             self.components['research'] = ComponentStatus(
                 name='Research Engine',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message='Research engine initialized'
             )
 
             logger.info("Research engine initialized successfully")
         except ImportError as e:
-            logger.error(f"[_init_research] FIRST ImportError caught: {e}")
+            logger.error(f"[_init_research] ImportError caught: {e}")
             self.research_enabled = False
             self._research_initialized = False
             self.components['research'] = ComponentStatus(
                 name='Research Engine',
-                status= AuraCoreStatus.ERROR,
-                message=f'Research initialization failed: {str(e)}'
-            )
-        except Exception as e:
-            logger.exception(f"[_init_research] FIRST Exception caught: {type(e).__name__}: {e}")
-            self.research_enabled = False
-            self._research_initialized = False
-            self.components['research'] = ComponentStatus(
-                name='Research Engine',
-                status= AuraCoreStatus.ERROR,
-                message=str(e),
-                loaded=False
-            )
-
-            # Import research engine
-            from src.research import ResearchEngine, ResearchConfig
-
-            # Build research config
-            research_settings = research_config.get('settings', {})
-
-            # Create ResearchEngine
-            research_engine = ResearchEngine(config=ResearchConfig(
-                enabled=True,
-                default_mode=SearchMode.STANDARD,
-                default_max_results=research_settings.get('max_results', 10),
-                cache_ttl=research_settings.get('cache_ttl', 1800),
-                conflict_resolution=ConflictResolution.AUTO
-            ))
-
-            # Create research integration
-            from src.brain.research_integration import ResearchIntegration
-            self.research_integration = ResearchIntegration(research_engine)
-
-            self.research_enabled = True
-            self.components['research'] = ComponentStatus(
-                name='Research Engine',
-                status= AuraCoreStatus.READY,
-                message='Research engine initialized'
-            )
-
-            logger.info("Research engine initialized successfully")
-        except ImportError as e:
-            logger.error(f"[_init_research] SECOND ImportError caught: {e}")
-            self.research_enabled = False
-            self._research_initialized = False
-            self.components['research'] = ComponentStatus(
-                name='Research Engine',
-                status= AuraCoreStatus.ERROR,
-                message=f"Research module: {e}",
+                status=AuraCoreStatus.ERROR,
+                message=f'Research module: {e}',
                 loaded=False
             )
         except Exception as e:
-            logger.exception(f"[_init_research] FOURTH Exception caught: {type(e).__name__}: {e}")
+            logger.exception(f"[_init_research] Exception caught: {type(e).__name__}: {e}")
             self.research_enabled = False
             self._research_initialized = False
             self.components['research'] = ComponentStatus(
                 name='Research Engine',
-                status= AuraCoreStatus.ERROR,
-                message=str(e),
-                loaded=False
-            )
-
-            # Import research engine
-            from src.research import ResearchEngine, ResearchConfig
-
-            # Build research config
-            research_settings = research_config.get('settings', {})
-
-            # Create ResearchEngine
-            research_engine = ResearchEngine(config=ResearchConfig(
-                enabled=True,
-                default_mode=SearchMode.STANDARD,
-                default_max_results=research_settings.get('max_results', 10),
-                cache_ttl=research_settings.get('cache_ttl', 1800),
-                conflict_resolution=ConflictResolution.AUTO
-            ))
-
-            # Create research integration
-            from src.brain.research_integration import ResearchIntegration
-            self.research_integration = ResearchIntegration(research_engine)
-
-            self.research_enabled = True
-            self.components['research'] = ComponentStatus(
-                name='Research Engine',
-                status= AuraCoreStatus.READY,
-                message='Research engine initialized'
-            )
-
-            logger.info("Research engine initialized successfully")
-        except ImportError as e:
-            logger.error(f"[_init_research] Second ImportError caught: {e}")
-            self.research_enabled = False
-            self._research_initialized = False
-            self.components['research'] = ComponentStatus(
-                name='Research Engine',
-                status= AuraCoreStatus.ERROR,
-                message=f"Research module: {e}",
-                loaded=False
-            )
-        except Exception as e:
-            logger.exception("Failed to initialize research engine")
-            self.research_enabled = False
-            self._research_initialized = False
-            self.components['research'] = ComponentStatus(
-                name='Research Engine',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -668,14 +552,25 @@ class AuraCore:
             Research results dictionary or None if failed
         """
         logger.info(f"[AuraCore] perform_research() called with query='{query}', mode='{mode}'")
-        logger.info(f"[AuraCore] research_enabled={self.research_enabled}, research_integration is None={self.research_integration is None}")
+        logger.info(
+            f"[AuraCore] research_enabled={self.research_enabled}, "
+            f"research_integration is None={self.research_integration is None}"
+        )
         logger.info(f"[AuraCore] _research_initialized={self._research_initialized}")
+        if self.research_integration and hasattr(self.research_integration, '__id__'):
+            logger.info(f"[AuraCore] research_integration.id={self.research_integration.__id__}")
+        if self.research_integration and hasattr(self.research_integration.research_engine, '__id__'):
+            logger.info(
+                f"[AuraCore] research_integration.research_engine.id="
+                f"{self.research_integration.research_engine.__id__}"
+            )
 
         if not self.research_enabled or self.research_integration is None:
-            logger.warning(f"[AuraCore] Research is disabled or integration is None")
+            logger.warning("[AuraCore] Research is disabled or integration is None")
             return None
 
-        from research import SearchMode
+        # NOTE: was `from research import SearchMode` (wrong module path,
+        # would raise ImportError). Fixed to match the top-of-file import.
         search_mode = SearchMode.STANDARD
         if mode == 'quick':
             search_mode = SearchMode.QUICK
@@ -684,7 +579,10 @@ class AuraCore:
 
         logger.info(f"[AuraCore] Calling research_integration.perform_research() with mode={search_mode}")
         results = self.research_integration.perform_research(query, mode=search_mode)
-        logger.info(f"[AuraCore] research_integration.perform_research() returned: has_results={results.get('has_results', False) if results else False}")
+        logger.info(
+            f"[AuraCore] research_integration.perform_research() returned: "
+            f"has_results={results.get('has_results', False) if results else False}"
+        )
         return results
 
     def enhance_response_with_research(
@@ -739,30 +637,30 @@ class AuraCore:
             from src.agents.agent_registry import AgentRegistry
             from src.agents.orchestrator import AgentOrchestrator
             from src.agents.agent_context import ContextManager
-            
+
             # Create agent registry
             agent_registry = AgentRegistry()
-            
+
             # Create orchestrator
             orchestrator = AgentOrchestrator(
                 agent_registry=agent_registry,
                 context_manager=ContextManager()
             )
-            
+
             # Store orchestrator and registry
             self.multi_agent_orchestrator = orchestrator
             self.multi_agent_registry = agent_registry
-            
+
             self.components['multi_agent'] = ComponentStatus(
                 name='Multi-Agent Intelligence',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message='Multi-agent orchestrator initialized'
             )
         except Exception as e:
             logger.error(f"Failed to initialize multi-agent system: {e}")
             self.components['multi_agent'] = ComponentStatus(
                 name='Multi-Agent Intelligence',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -780,14 +678,14 @@ class AuraCore:
 
             self.components['agent_runtime'] = ComponentStatus(
                 name='Agent Runtime',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message='Agent runtime initialized'
             )
         except Exception as e:
             logger.exception("Failed to initialize agent runtime")
             self.components['agent_runtime'] = ComponentStatus(
                 name='Agent Runtime',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -796,23 +694,23 @@ class AuraCore:
         """Initialize workflow engine system."""
         try:
             from src.workflows.workflow_engine import WorkflowEngine
-            
+
             # Create workflow engine (agent_runtime will be None initially)
             workflow_engine = WorkflowEngine(agent_runtime=None)
-            
+
             # Store workflow engine
             self.workflow_engine = workflow_engine
-            
+
             self.components['workflow_engine'] = ComponentStatus(
                 name='Workflow Engine',
-                status= AuraCoreStatus.READY,
+                status=AuraCoreStatus.READY,
                 message='Workflow engine initialized'
             )
         except Exception as e:
             logger.error(f"Failed to initialize workflow engine: {e}")
             self.components['workflow_engine'] = ComponentStatus(
                 name='Workflow Engine',
-                status= AuraCoreStatus.ERROR,
+                status=AuraCoreStatus.ERROR,
                 message=str(e),
                 loaded=False
             )
@@ -1183,7 +1081,7 @@ class AuraCore:
         Returns:
             ASCII art representation
         """
-        return f"""Aura
+        return """Aura
 
 ↓
 
@@ -1202,7 +1100,7 @@ Engineering"""
         """Return knowledge database statistics."""
         # Get knowledge component status
         knowledge_comp = self.components.get('knowledge')
-        
+
         # Return basic knowledge stats from the ComponentStatus
         return {
             'enabled': self.knowledge_enabled,
@@ -1218,7 +1116,7 @@ Engineering"""
         """Return workspace information."""
         # Get workspace component status
         workspace_comp = self.components.get('workspace')
-        
+
         # Return workspace info with files/folders from workspace_info dict
         return {
             'path': self.workspace,
@@ -1324,25 +1222,26 @@ Engineering"""
         return f"AuraCore(project='{self.workspace}', plugins={self.plugin_count}, memory={self.memory_enabled})"
 
 
-# Create a default instance of AuraCore for testing and convenience
-_default_instance = None
+# ---------------------------------------------------------------------------
+# Default instance helper
+#
+# IMPORTANT: nothing at module scope constructs AuraCore() anymore. Doing so
+# used to run at import time — before main.py had a chance to pass in the
+# real config — which silently consumed the one-shot singleton init with
+# default settings. Construction now only happens the first time
+# get_default_instance() is actually called (or when main.py explicitly
+# constructs AuraCore(config) itself, which is the normal startup path).
+# ---------------------------------------------------------------------------
+_default_instance: Optional['AuraCore'] = None
 
 
-def get_default_instance():
-    """Get or create the default AuraCore instance."""
+def get_default_instance() -> Optional['AuraCore']:
+    """Get or lazily create the default AuraCore instance."""
     global _default_instance
     if _default_instance is None:
         try:
             _default_instance = AuraCore()
         except Exception as e:
-            logger.error(f"Failed to create default AuraCore instance: {e}")
+            logger.warning(f"Could not create default AuraCore instance: {e}")
             _default_instance = None
     return _default_instance
-
-
-# Create a default instance for convenience
-try:
-    _default_instance = AuraCore()
-except Exception as e:
-    logger.warning(f"Could not create default AuraCore instance: {e}")
-    _default_instance = None

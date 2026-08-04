@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-from .models import Evidence, SourceTrustLevel
+from .models import Evidence, SourceTrustLevel, normalize_trust_level
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ class CitationBuilder:
         }
 
         # Get trust level as lowercase string for matching
-        trust_level_str = evidence.trust_level.value if isinstance(evidence.trust_level, SourceTrustLevel) else evidence.trust_level
+        trust_level_str = normalize_trust_level(evidence.trust_level)
         confidence = trust_scores.get(trust_level_str, 0.50)
 
         # Adjust by source score

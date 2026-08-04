@@ -52,6 +52,14 @@ class ConversationEngine:
         self._use_deep_research = deep_research_enabled
         self.aura_core = aura_core
 
+        # Log the aura_core reference
+        import logging
+        logger = logging.getLogger(__name__)
+        if self.aura_core:
+            logger.info(f"[ConversationEngine.__init__] aura_core set correctly, research_enabled={self.aura_core.research_enabled}, research_integration is None={self.aura_core.research_integration is None}")
+        else:
+            logger.error(f"[ConversationEngine.__init__] aura_core is None")
+
     async def process(
         self,
         user_input: str,
@@ -165,6 +173,23 @@ class ConversationEngine:
             try:
                 logger.info(f"[ConversationEngine] Using ResearchEngine for query: {user_input}")
 
+                # Check if ResearchIntegration has an id
+                if hasattr(self.aura_core.research_integration, '__id__'):
+                    logger.info(f"[ConversationEngine] research_integration.id={self.aura_core.research_integration.__id__}")
+                else:
+                    logger.error(f"[ConversationEngine] research_integration does not have __id__ attribute")
+
+                # Check if ResearchIntegration has a research_engine attribute
+                if hasattr(self.aura_core.research_integration, 'research_engine'):
+                    logger.info(f"[ConversationEngine] research_integration.research_engine exists")
+                    if hasattr(self.aura_core.research_integration.research_engine, '__id__'):
+                        logger.info(f"[ConversationEngine] research_integration.research_engine.id={self.aura_core.research_integration.research_engine.__id__}")
+                    else:
+                        logger.error(f"[ConversationEngine] research_engine does not have __id__ attribute")
+                else:
+                    logger.error(f"[ConversationEngine] research_integration does not have research_engine attribute")
+                    logger.error(f"[ConversationEngine] self.aura_core.research_integration is None: {self.aura_core.research_integration is None}")
+
                 # Use ResearchIntegration to perform research
                 # The ResearchEngine will handle planning, providers, evidence, etc.
                 logger.info(f"[ConversationEngine] Calling aura_core.perform_research() with query='{user_input}'")
@@ -190,7 +215,9 @@ class ConversationEngine:
                 else:
                     logger.warning(f"[ConversationEngine] ResearchEngine returned no results for: {user_input}")
             except Exception as e:
-                logger.error(f"[ConversationEngine] ResearchEngine failed: {e}")
+                import traceback
+                logger.error(f"[ConversationEngine] ResearchEngine failed: {type(e).__name__}: {e}")
+                logger.error(f"[ConversationEngine] Traceback: {traceback.format_exc()}")
 
         # Fallback to WebSearchClient if ResearchEngine is not available or failed
         logger.warning(f"[ConversationEngine] Falling back to WebSearchClient for: {user_input}")

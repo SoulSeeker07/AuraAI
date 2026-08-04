@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from brain.models import ConversationAttachment, Intent
+from brain.research_decision import ResearchDecision, SearchMode
 from Memory import Memory, MemoryFact
 
 
 class IntentRouter:
     def __init__(self, memory: Memory):
         self.memory = memory
+        self.research_decision = ResearchDecision()
 
     def detect(self, user_input: str, attachments: list[ConversationAttachment] | None = None) -> Intent:
         normalized = user_input.lower().strip(" ?!.")
@@ -57,15 +59,15 @@ class IntentRouter:
             logger.info(f"[IntentRouter] Intent detected: preferences_lookup")
             return Intent("preferences_lookup")
 
-        # Check for deep research intent
-        if self._needs_deep_research(normalized):
-            logger.info(f"[IntentRouter] Intent detected: deep_research")
-            return Intent("deep_research")
-
-        # Check for regular web search
-        if self._needs_realtime_data(normalized):
-            logger.info(f"[IntentRouter] Intent detected: web_search")
-            return Intent("web_search")
+        # Use ResearchDecision to determine if research is needed
+        needs_research, reason, search_mode = self.research_decision.analyze(user_input)
+        
+        logger.info(f"[IntentRouter] ResearchDecision - Needs research: {needs_research}, Reason: {reason}, Mode: {search_mode.value}")
+        
+        if needs_research:
+            intent_type = "web_search" if search_mode == SearchMode.QUICK else ("deep_research" if search_mode == SearchMode.DEEP else "web_search")
+            logger.info(f"[IntentRouter] Intent detected: {intent_type}")
+            return Intent(intent_type, {"mode": search_mode.value})
 
         logger.info(f"[IntentRouter] Intent detected: provider_chat")
         return Intent("provider_chat")

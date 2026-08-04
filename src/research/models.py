@@ -31,6 +31,25 @@ class SourceTrustLevel(Enum):
     UNKNOWN = "unknown"
 
 
+def normalize_trust_level(level: Any) -> str:
+    """Normalize a trust level to a lowercase string."""
+    if isinstance(level, SourceTrustLevel):
+        return level.value
+    if level is None:
+        return SourceTrustLevel.UNKNOWN.value
+    return str(level).lower()
+
+
+def parse_source_trust_level(level: Any) -> SourceTrustLevel:
+    """Parse a value into a SourceTrustLevel enum."""
+    if isinstance(level, SourceTrustLevel):
+        return level
+    try:
+        return SourceTrustLevel(str(level).lower())
+    except ValueError:
+        return SourceTrustLevel.UNKNOWN
+
+
 class ConflictResolution(Enum):
     """Conflict resolution strategies."""
     AUTO = "auto"
@@ -128,6 +147,9 @@ class Evidence:
     is_verified: bool = False
     evidence_type: str = "fact"
     raw_snippet: Optional[str] = None
+    # Freshness metadata (Milestone 14 requirement)
+    retrieved_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -685,6 +707,7 @@ class ResearchConfig:
         enable_auto_expansion: Automatically expand search with related topics
         enable_fact_checking: Enable fact extraction and validation
         citation_required: Require citations for all answers
+        debug: Enable detailed runtime diagnostics and logging
     """
     enabled: bool = True
     default_mode: SearchMode = SearchMode.STANDARD
@@ -694,7 +717,8 @@ class ResearchConfig:
     enable_auto_expansion: bool = True
     enable_fact_checking: bool = True
     citation_required: bool = False
-    
+    debug: bool = False
+
     # Provider configurations
     providers: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
         "tavily": {"enabled": True, "api_key": None},
@@ -726,15 +750,16 @@ class ResearchConfig:
             "enable_auto_expansion": self.enable_auto_expansion,
             "enable_fact_checking": self.enable_fact_checking,
             "citation_required": self.citation_required,
+            "debug": self.debug,
             "providers": self.providers
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ResearchConfig':
         """Create from dictionary."""
         default_mode = SearchMode(data.get("default_mode", "standard"))
         conflict_resolution = ConflictResolution(data.get("conflict_resolution", "auto"))
-        
+
         config = cls(
             enabled=data.get("enabled", True),
             default_mode=default_mode,
@@ -743,7 +768,8 @@ class ResearchConfig:
             conflict_resolution=conflict_resolution,
             enable_auto_expansion=data.get("enable_auto_expansion", True),
             enable_fact_checking=data.get("enable_fact_checking", True),
-            citation_required=data.get("citation_required", False)
+            citation_required=data.get("citation_required", False),
+            debug=data.get("debug", False)
         )
         
         if "providers" in data:

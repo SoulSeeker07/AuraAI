@@ -137,12 +137,14 @@ class SearchManager:
         try:
             logger.debug(f"Searching {provider.name} with query: {query}")
             results = provider.search(query, max_results=max_results)
-            
+
             # Apply provider-level scoring
             for result in results:
                 result.source = provider.name
-                result.trust_level = SourceTrustLevel(provider._get_trust_level())
-            
+                trust_level_str = provider._get_trust_level()
+                result.trust_level = SourceTrustLevel(trust_level_str)
+                logger.info(f"[SearchManager] {provider.name} trust_level set: {result.trust_level}, value: {result.trust_level.value}")
+
             return results
         except Exception as e:
             logger.error(f"Provider {provider.name} search failed: {e}")

@@ -24,6 +24,7 @@ from .cache_manager import CacheManager
 from .research_planner import ResearchPlanner, ResearchMode as PlannerMode
 from .reasoning_layer import ResearchReasoner
 from .research_context import ResearchContext, ResearchMode
+from .metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class ResearchEngine:
         self.content_fetcher = ContentFetcher()
         self.cache_manager = CacheManager(self.config.cache_ttl)
         self.planner = ResearchPlanner()
-        self.reasoner = ResearchReasoner()
+        self.reasoner = ResearchReasoner(debug=self.config.debug)
 
         # Load provider configurations from settings.json
         self._provider_configs = self._load_provider_configs(settings_path)
@@ -180,6 +181,9 @@ class ResearchEngine:
             logger.warning("Research Engine is disabled")
             return self._create_empty_report(query)
 
+        # Create metrics collector
+        metrics = MetricsCollector(query=query)
+
         # Create search query
         search_mode = mode or self.config.default_mode
         query_obj = SearchQuery(
@@ -192,30 +196,24 @@ class ResearchEngine:
         cache_key = self._get_cache_key(query_obj)
         if self.cache_manager.has_cache(cache_key):
             logger.info(f"Returning cached results for: {query}")
+            metrics.stop_timer('search')
+            metrics.finalize()
+            metrics.print_summary()
             return self.cache_manager.get(cache_key)
 
-        # Start research
-        start_time = time.time()
+        # Start research timing
+        metrics.start_timer('planning')
 
-        try:
-            # Execute research using the new planner + reasoning layer
-            context = self._execute_research(query_obj)
+        # Execute research using the new planner + reasoning layer
+        context = self._execute_research(query_obj, metrics_collector=metrics)
 
-        except Exception as e:
-            logger.error(f"Research failed: {e}")
-            # Return empty context on error
-            from .research_context import ResearchContext, ResearchMode
-            return ResearchContext(
-                query=query,
-                mode=ResearchMode.STANDARD,
-                summary=f"Research failed: {e}",
-                confidence=0.0,
-                metadata={"error": str(e)}
-            )
+        # Stop timing
+        metrics.stop_timer('planning')
+        metrics.finalize()
 
-         # Cache results (only cache if reasonably fast)
-        duration = time.time() - start_time
-        if duration < 60:
+        # Cache results (only cache if reasonably fast)
+        duration = metrics.total_ms
+        if duration < 60000:
             cache_key = self._get_cache_key(query_obj)
             self.cache_manager.set(
                 cache_key,
@@ -230,7 +228,8 @@ class ResearchEngine:
     def _execute_research(
         self,
         query_obj: SearchQuery,
-        max_iterations: int = 3
+        max_iterations: int = 3,
+        metrics_collector: Optional[MetricsCollector] = None
     ) -> ResearchContext:
         """
         Execute research using the planner, reasoning layer, and confidence loop.
@@ -244,86 +243,120 @@ class ResearchEngine:
         Args:
             query_obj: Search query object
             max_iterations: Maximum number of planning iterations
+            metrics_collector: Optional metrics collector for timing
 
         Returns:
             ResearchContext with all findings and reasoning
         """
         query = query_obj.query_text
         mode = query_obj.mode or self.config.default_mode
-        
+
+        if metrics_collector:
+            metrics_collector.start_timer('search')
+
         logger.info(f"Starting research for: {query}")
         logger.info(f"Research mode: {mode}")
-        
+
         # Convert search mode to planner mode
         planner_mode = PlannerMode.STANDARD
         if mode == SearchMode.QUICK:
             planner_mode = PlannerMode.QUICK
         elif mode == SearchMode.DEEP:
             planner_mode = PlannerMode.DEEP
-        
+
         # Create initial plan
         plan = self.planner.create_plan(query, mode=planner_mode)
         logger.info(f"Created plan with {len(plan.steps)} steps")
-        
+
         # Track all evidence across iterations
         all_evidence = []
         all_citations = []
-        
+
         # Confidence loop - continue until confidence threshold is met
         iteration = 0
         should_continue = True
-        
+
+        # Log iteration summary block
+        iteration_summaries = []
+
         while should_continue and iteration < max_iterations:
+            if metrics_collector:
+                metrics_collector.start_timer('extraction')
+
             iteration += 1
-            logger.info(f"Iteration {iteration}: Executing research plan")
-            
+
+            # Log iteration header
+            logger.info(f"\n{'='*50}")
+            logger.info(f"Iteration {iteration}")
+            logger.info(f"{'='*50}")
+
+            # Log current confidence before this iteration
+            if iteration > 1:
+                logger.info(f"Previous Confidence: {iteration_summaries[-1]['confidence']:.2f}")
+
+            logger.info(f"Executing research plan with {len(plan.steps)} steps")
+
             # Execute each step in the plan
             step_results = []
-            
+
             for step in plan.steps:
                 logger.info(f"  Executing step: {step.query[:50]}...")
-                
+
                 # Execute search for this step
                 try:
+                    metrics_collector.start_timer('search')
                     search_results = self.search_manager.search_all(
                         query=step.query,
                         query_obj=query_obj
                     )
-                    
+
                     # Fetch documents
+                    metrics_collector.start_timer('extraction')
                     documents = self._fetch_documents(search_results)
-                    
+
                     # Merge and rank
                     ranked_results = self._merge_results(search_results, documents)
-                    
+
                     # Create evidence from results
                     evidence = self._create_evidence_from_results(
                         ranked_results,
                         step.query
                     )
-                    
+
+                    metrics_collector.stop_timer('extraction')
+
                     step_results.extend(evidence)
-                    
+
                     # Extract citations
                     citations = self._create_citations(ranked_results)
                     all_citations.extend(citations)
-                    
+
                 except Exception as e:
                     logger.warning(f"Step failed: {e}")
-            
+
             # Add new evidence to collection
             all_evidence.extend(step_results)
-            
+
+            if metrics_collector:
+                metrics_collector.stop_timer('search')
+
             # Use reasoning layer to evaluate all evidence
+            if metrics_collector:
+                metrics_collector.start_timer('reasoning')
+
             reasoning_result = self.reasoner.reason(all_evidence, query)
-            
-            logger.info(
-                f"Iteration {iteration} complete: "
-                f"{len(reasoning_result.strong_evidence)} strong, "
-                f"{len(reasoning_result.weak_evidence)} weak, "
-                f"confidence: {reasoning_result.confidence:.2f}"
-            )
-            
+
+            if metrics_collector:
+                metrics_collector.stop_timer('reasoning')
+
+            # Capture iteration summary
+            iteration_summaries.append({
+                'iteration': iteration,
+                'strong_evidence': len(reasoning_result.strong_evidence),
+                'weak_evidence': len(reasoning_result.weak_evidence),
+                'confidence': reasoning_result.confidence
+            })
+
             # Check if we should continue to next iteration
             should_continue = self._should_continue_research(
                 reasoning_result.confidence,
@@ -331,7 +364,23 @@ class ResearchEngine:
                 max_iterations,
                 reasoning_result
             )
-            
+
+            # Log iteration results
+            logger.info(
+                f"\nIteration {iteration} complete: "
+                f"{len(reasoning_result.strong_evidence)} strong, "
+                f"{len(reasoning_result.weak_evidence)} weak, "
+                f"confidence: {reasoning_result.confidence:.2f}"
+            )
+
+            # Log confidence vs threshold
+            logger.info(f"Threshold: {self.planner.confidence_threshold:.2f}")
+            logger.info(f"Continue: {should_continue}")
+
+            if should_continue and reasoning_result.conflicts:
+                logger.info(f"Conflicts detected: {len(reasoning_result.conflicts)}")
+
+            # Refine the plan if we should continue
             if should_continue:
                 # Refine the plan based on missing information and recommendations
                 if reasoning_result.missing_information and iteration < max_iterations:
@@ -342,7 +391,15 @@ class ResearchEngine:
                     )
                     plan.steps = new_steps
                     logger.info(f"Refined plan: {len(plan.steps)} steps")
-        
+                else:
+                    logger.info("No refinement needed")
+
+        # Stop timing after all research steps complete
+        if metrics_collector:
+            metrics_collector.stop_timer('search')
+            metrics_collector.finalize()
+            metrics_collector.print_summary()
+
         # Create final ResearchContext
         final_context = ResearchContext(
             query=query,
@@ -363,9 +420,65 @@ class ResearchEngine:
                 }
             }
         )
-        
-        logger.info(f"Research complete: {len(final_context.evidence)} evidence, confidence={final_context.confidence:.2f}")
-        
+
+        # Log comprehensive research summary
+        logger.info(f"\n{'='*70}")
+        logger.info("=============== Research Summary ================")
+        logger.info(f"{'='*70}")
+
+        logger.info("\nGoal")
+        logger.info(f"----")
+        logger.info(f"{query}")
+
+        logger.info("\nIterations")
+        logger.info(f"----------")
+        logger.info(f"{iteration}")
+
+        # Log providers used (from search manager's available providers)
+        logger.info("\nProviders Used")
+        logger.info(f"--------------")
+        providers_used = list(self.search_manager.providers.keys()) if self.search_manager else ["None"]
+        for provider in providers_used:
+            logger.info(f"  - {provider}")
+
+        logger.info("\nEvidence")
+        logger.info(f"--------")
+        logger.info(f"Strong : {len(reasoning_result.strong_evidence)}")
+        logger.info(f"Weak   : {len(reasoning_result.weak_evidence)}")
+
+        logger.info("\nConflicts")
+        logger.info(f"---------")
+        logger.info(f"{len(reasoning_result.conflicts)}")
+
+        logger.info("\nConfidence")
+        logger.info(f"----------")
+        logger.info(f"{final_context.confidence:.2f}")
+
+        logger.info("\nDecision")
+        logger.info(f"--------")
+
+        # Determine stop reason
+        stop_reason = []
+        if reasoning_result.confidence >= self.planner.confidence_threshold:
+            stop_reason.append("✓ Confidence reached threshold")
+        if iteration >= max_iterations:
+            stop_reason.append("✓ Max iterations reached")
+        if not reasoning_result.missing_information:
+            stop_reason.append("✓ No additional information needed")
+        if not should_continue and reasoning_result.confidence < self.planner.confidence_threshold:
+            stop_reason.append("✓ Provider exhaustion or other stop condition")
+
+        logger.info("\nStopping because:")
+        for reason in stop_reason:
+            logger.info(f"  {reason}")
+
+        logger.info(f"\n{'='*70}")
+        logger.info(f"=============== Research Complete ================")
+        logger.info(f"{'='*70}\n")
+
+        # Add Research Trace block (final comprehensive summary)
+        self._log_research_trace(query, iteration, should_continue, reasoning_result, final_context, duration)
+
         return final_context
 
     def _fetch_documents(self, results: List[SearchResult]) -> Dict[str, Document]:
@@ -888,3 +1001,104 @@ class ResearchEngine:
         """
         # Implementation for persistent storage
         return None
+
+    def _log_research_trace(
+        self,
+        query: str,
+        iteration: int,
+        should_continue: bool,
+        reasoning_result,
+        final_context,
+        duration: float
+    ):
+        """
+        Log comprehensive Research Trace block.
+
+        Args:
+            query: Original research query
+            iteration: Number of iterations completed
+            should_continue: Whether research would continue
+            reasoning_result: Reasoning result from ResearchReasoner
+            final_context: Final ResearchContext
+            duration: Total execution time in seconds
+        """
+        logger.info(f"\n{'='*60}")
+        logger.info("Research Trace")
+        logger.info(f"{'='*60}\n")
+
+        # Check if research was needed
+        research_needed = (
+            len(final_context.evidence) > 0 or
+            final_context.confidence > 0
+        )
+        logger.info(f"Need Research")
+        logger.info(f"{'YES' if research_needed else 'NO'}\n")
+
+        # Reason
+        logger.info(f"Reason")
+        if reasoning_result.missing_information:
+            logger.info(f"Missing information:")
+            for info in reasoning_result.missing_information[:3]:
+                logger.info(f"  - {info}")
+        else:
+            logger.info(f"Current information is sufficient")
+        logger.info()
+
+        # Planner
+        logger.info(f"Planner")
+        logger.info(f"STANDARD")
+        logger.info()
+
+        # Providers
+        logger.info(f"Providers")
+        if self.search_manager and self.search_manager.providers:
+            for provider_name in self.search_manager.providers.keys():
+                logger.info(f"  ✓ {provider_name}")
+        else:
+            logger.info(f"  (No providers available)")
+        logger.info()
+
+        # Iterations
+        logger.info(f"Iterations")
+        logger.info(f"{iteration}")
+        logger.info()
+
+        # Confidence
+        logger.info(f"Confidence")
+        logger.info(f"{final_context.confidence:.2f}")
+        logger.info()
+
+        # Evidence distribution
+        logger.info(f"Strong Evidence")
+        logger.info(f"{len(reasoning_result.strong_evidence)}")
+        logger.info()
+
+        logger.info(f"Weak Evidence")
+        logger.info(f"{len(reasoning_result.weak_evidence)}")
+        logger.info()
+
+        # Conflicts
+        logger.info(f"Conflicts")
+        logger.info(f"{len(reasoning_result.conflicts)}")
+        logger.info()
+
+        # Stopped because
+        logger.info(f"Stopped Because")
+        stop_reason = []
+        if reasoning_result.confidence >= self.planner.confidence_threshold:
+            stop_reason.append("Confidence reached threshold")
+        if iteration >= 3:  # max_iterations
+            stop_reason.append("Max iterations reached")
+        if not reasoning_result.missing_information:
+            stop_reason.append("No additional information needed")
+        if not should_continue and reasoning_result.confidence < self.planner.confidence_threshold:
+            stop_reason.append("Provider exhaustion or other stop condition")
+
+        for reason in stop_reason:
+            logger.info(f"  - {reason}")
+        logger.info()
+
+        # Execution time
+        logger.info(f"Execution Time")
+        logger.info(f"{duration:.2f} sec")
+        logger.info(f"\n{'='*60}\n")

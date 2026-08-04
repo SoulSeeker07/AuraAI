@@ -45,10 +45,10 @@ class ResearchPlanner:
         "summary": ["tavily", "wikipedia", "docs"]
     }
 
-    def __init__(self, max_iterations: int = 3, max_steps: int = 10, confidence_threshold: float = 0.85):
+    def __init__(self, max_iterations: int = 3, max_steps: int = 10, confidence_threshold: float = 0.70):
         """
         Initialize the research planner.
-        
+
         Args:
             max_iterations: Maximum number of planning iterations
             max_steps: Maximum number of research steps
@@ -172,6 +172,14 @@ class ResearchPlanner:
             new_steps = []
             step_id = 0
 
+            # Log planner refinement if debug is enabled (or always for visibility)
+            logger.info(f"\n{'='*50}")
+            logger.info("Planner Refinement")
+            logger.info(f"{'='*50}")
+
+            # Log previous queries
+            logger.info(f"\nPrevious Query: {query}")
+
             # Create a targeted step for each piece of missing information
             for info in (missing_information or [])[:self.max_steps]:
                 step_id += 1
@@ -186,9 +194,13 @@ class ResearchPlanner:
                 )
                 new_steps.append(step)
 
+                # Log new query
+                logger.info(f"\nNew Query:")
+                logger.info(f"  {step.query}")
+
             # If there was no missing information but there are recommendations,
             # turn those into follow-up steps instead
-            if not new_steps:
+            if not new_steps and (recommendations or []):
                 for rec in (recommendations or [])[:self.max_steps]:
                     step_id += 1
                     step = ResearchStep(
@@ -201,6 +213,10 @@ class ResearchPlanner:
                         priority=0.6
                     )
                     new_steps.append(step)
+
+                    # Log new query
+                    logger.info(f"\nNew Query:")
+                    logger.info(f"  {step.query}")
 
             # Fallback: nothing to refine on, just re-run the original query
             if not new_steps:
@@ -215,6 +231,14 @@ class ResearchPlanner:
                         priority=0.5
                     )
                 )
+
+                # Log fallback
+                logger.info(f"\nNew Query (fallback):")
+                logger.info(f"  {query}")
+
+            logger.info(f"\n{'='*50}")
+            logger.info(f"Total new steps: {len(new_steps)}")
+            logger.info(f"{'='*50}\n")
 
             logger.info(f"Refined plan into {len(new_steps)} new steps for query: {query}")
             return new_steps

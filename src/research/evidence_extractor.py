@@ -9,7 +9,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
-from .models import SearchResult, Evidence
+from .models import SearchResult, Evidence, normalize_trust_level
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,8 @@ class EvidenceExtractor:
             return None
 
         # Create evidence object
+        trust_level_str = result.trust_level.value if hasattr(result.trust_level, 'value') else result.trust_level
+        logger.info(f"[EvidenceExtractor] Creating evidence from {result.url}: trust_level={trust_level_str}")
         evidence = Evidence(
             query=query,
             source=result.source,
@@ -104,6 +106,7 @@ class EvidenceExtractor:
             tags=self._extract_tags(result, query),
             timestamp=None
         )
+        logger.info(f"[EvidenceExtractor] Evidence created: source={evidence.source}, trust_level={evidence.trust_level}, num_facts={len(evidence.facts)}")
 
         return evidence
 
@@ -277,7 +280,8 @@ class EvidenceExtractor:
             'wikipedia': 0.03
         }
 
-        score += trust_scores.get(result.trust_level, 0)
+        trust_level = normalize_trust_level(result.trust_level)
+        score += trust_scores.get(trust_level, 0)
 
         # Maximum score is 1.0
         return min(score, 1.0)
@@ -400,11 +404,12 @@ class EvidenceExtractor:
         tags = []
 
         # Source-based tags
-        if result.trust_level == 'official':
+        trust_level = normalize_trust_level(result.trust_level)
+        if trust_level == 'official':
             tags.append('official')
-        elif result.trust_level == 'github':
+        elif trust_level == 'github':
             tags.append('github')
-        elif result.trust_level == 'stackoverflow':
+        elif trust_level == 'stackoverflow':
             tags.append('documentation')
 
         # Content-based tags

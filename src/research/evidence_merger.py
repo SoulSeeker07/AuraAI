@@ -8,7 +8,7 @@ import logging
 from typing import List, Dict, Any, Set, Tuple, Optional
 from dataclasses import dataclass
 
-from .models import Evidence
+from .models import Evidence, SourceTrustLevel, normalize_trust_level
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ class EvidenceMerger:
             all_facts.extend(evidence.facts)
             all_sources.extend([evidence.source] * len(evidence.facts))
             all_urls.extend([evidence.url] * len(evidence.facts))
-            all_trust_levels.extend([evidence.trust_level] * len(evidence.facts))
+            all_trust_levels.extend([normalize_trust_level(evidence.trust_level)] * len(evidence.facts))
 
         # Remove duplicates
         unique_facts = self._remove_duplicate_facts(all_facts)
@@ -305,7 +305,8 @@ class EvidenceMerger:
         # Boost for multiple trusted sources
         trusted_count = 0
         for trust_level, count in trust_counts.items():
-            if trust_level in ['official', 'government', 'github']:
+            trust_level_str = normalize_trust_level(trust_level)
+            if trust_level_str in ['official', 'government', 'github']:
                 trusted_count += count
 
         if trusted_count > 1:
@@ -332,7 +333,7 @@ class EvidenceMerger:
             return False
 
         # Get trust levels of all sources
-        trust_levels = [evidence.trust_level for evidence in group]
+        trust_levels = [normalize_trust_level(evidence.trust_level) for evidence in group]
 
         # If we have sources with very different trust levels
         trusted = [level for level in trust_levels if level in ['official', 'government']]
@@ -402,20 +403,21 @@ class EvidenceMerger:
             Merged trust level
         """
         if not trust_levels:
-            return 'unknown'
+            return SourceTrustLevel.UNKNOWN
 
         # Count by trust level
         counts = {}
         for level in trust_levels:
-            counts[level] = counts.get(level, 0) + 1
+            normalized = normalize_trust_level(level)
+            counts[normalized] = counts.get(normalized, 0) + 1
 
         # Return highest trust level
         for level in ['official', 'government', 'github', 'stackoverflow', 'wikipedia']:
             if level in counts:
-                return level
+                return SourceTrustLevel(level)
 
         # Fall back to most frequent
-        return max(counts, key=counts.get)
+        return SourceTrustLevel(max(counts, key=counts.get))
 
     def detect_conflicts(self, evidence_list: List[Evidence]) -> List[EvidenceConflict]:
         """
