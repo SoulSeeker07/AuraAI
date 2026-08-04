@@ -7,12 +7,15 @@ Provides commands for all Aura Core functionality.
 
 import asyncio
 import sys
+import re
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
 from core.aura_core import AuraCore, AuraCoreStatus
 from core import logger
+from core.tools.code_execution.code_execution_tool import CodeExecutionTool
+from core.agents.coding_agent.autonomous_coding_agent import AutonomousCodingAgent
 
 # Import component status types
 from core.aura_core import ComponentStatus, AuraCoreStatus
@@ -24,18 +27,27 @@ class CLIClient:
     """
 
     def __init__(self, aura_core: AuraCore, config: dict = None):
-        """
-        Initialize CLI client.
-
-        Args:
-            aura_core: AuraCore instance
-            config: Configuration dictionary
-        """
         self.aura_core = aura_core
         self.config = config or {}
         self.running = True
         self.command_history = []
         self.history_index = -1
+
+        # Initialize autonomous coding agent
+        try:
+            self.autonomous_coding_agent = AutonomousCodingAgent(
+                aura_core=aura_core,
+                max_attempts=3,
+                timeout=60
+            )
+            self.coding_agent_enabled = True
+            self.code_executor = self.autonomous_coding_agent.code_executor  # <-- added
+            logger.info("Autonomous coding agent initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize autonomous coding agent: {e}")
+            self.autonomous_coding_agent = None
+            self.coding_agent_enabled = False
+            self.code_executor = None  # <-- added
 
     def print_banner(self):
         """Print the AuraAI banner."""
@@ -74,6 +86,7 @@ class CLIClient:
             "history",       # Conversation history
             "workflow",      # Workflow engine
             "agents",        # Agent information
+            "code <requirement>",  # Autonomous coding agent - execute code from natural language
             "engineering",   # Engineering tools
             "doctor",        # Health check
             "graph",         # Architecture graph
@@ -641,6 +654,57 @@ class CLIClient:
                 else:
                     print(f"\n✓ Unknown agent subcommand: {subcmd}")
 
+            elif cmd == 'code':
+                """Autonomous coding agent - execute code from natural language requirement"""
+                if not self.coding_agent_enabled:
+                    print("\n✗ Autonomous coding agent not available")
+                    return
+
+                if not args:
+                    print("\n✗ Usage: code <requirement>")
+                    print("  Example: code 'Create a Python script that reads a file and prints its contents'")
+                    print("  Example: code 'Generate a script that calculates fibonacci numbers'")
+                    return
+
+                # Combine arguments into requirement
+                requirement = ' '.join(args)
+
+                print("\n" + "="*60)
+                print("    AUTONOMOUS CODING AGENT")
+                print("="*60)
+                print(f"\nExecuting: {requirement}\n")
+
+                # Run the autonomous coding agent using existing event loop
+                try:
+                    result = await self.autonomous_coding_agent.execute_task(requirement)
+
+                    # Print results
+                    print("\n" + "="*60)
+                    if result['success']:
+                        print("    ✓ TASK COMPLETED SUCCESSFULLY")
+                    else:
+                        print("    ✗ TASK COMPLETED WITH ERRORS")
+                    print("="*60)
+
+                    print(f"\nAttempts: {result['attempts']}")
+                    print(f"Execution Time: {result['execution_time']:.2f}s")
+                    print(f"Filename: {result['filename']}")
+                    print(f"\nMessage: {result['message']}")
+
+                    if result['error']:
+                        print(f"\nLast Error:")
+                        print(f"  {result['error']}")
+
+                    if result['output']:
+                        print(f"\nOutput:")
+                        print("-"*60)
+                        print(result['output'])
+                        print("-"*60)
+
+                except Exception as e:
+                    print(f"\n✗ Error executing autonomous coding agent: {e}")
+                    logger.error(f"Autonomous coding agent error: {e}", exc_info=True)
+
             elif cmd == 'engineering':
                 self.print_engineering_tools()
 
@@ -707,6 +771,126 @@ class CLIClient:
 
         self.aura_core.add_to_conversation('assistant', response)
         print(f"\nAura > {response}")
+
+        # Check if response contains Python code blocks
+        await self._handle_code_blocks(response)
+
+    async def _handle_code_blocks(self, response: str):
+        """
+        Detect and offer to save/execute Python code blocks in Aura's response.
+
+        Args:
+            response: The response from Aura
+        """
+        # Look for Python code blocks
+        # Pattern matches: ```python ... ``` or ``` ... ```
+        python_code_pattern = r'```(?:python)?\s*([\s\S]*?)```'
+
+        matches = list(re.finditer(python_code_pattern, response))
+
+        if matches:
+            print("\n" + "="*60)
+            print("    ⚠ PYTHON CODE DETECTED")
+            print("="*60)
+
+            for i, match in enumerate(matches, 1):
+                code = match.group(1).strip()
+
+                if not code:
+                    continue
+
+                print(f"\n[Code Block {i}]")
+                print("-" * 60)
+
+                # Show a preview of the code (first 10 lines)
+                lines = code.split('\n')
+                preview_lines = lines[:10]
+                for line in preview_lines:
+                    print(line)
+
+                if len(lines) > 10:
+                    print(f"\n... ({len(lines) - 10} more lines)")
+
+                print("\nOptions:")
+                print("  [1] Save and run this code")
+                print("  [2] Save code without running")
+                print("  [3] Ignore and continue")
+                print("  [4] Show full code")
+
+                choice = input("\nYour choice [1-4]: ").strip()
+
+                if choice == '1':
+                    # Save and execute
+                    await self._execute_code(code, show_full=True)
+                elif choice == '2':
+                    # Save only
+                    await self._execute_code(code, show_full=False, save_only=True)
+                elif choice == '4':
+                    # Show full code
+                    print("\nFull code:")
+                    print("-" * 60)
+                    for line in lines:
+                        print(line)
+                    print("-" * 60)
+                elif choice not in ['3', '']:
+                    print("Invalid choice. Ignoring code block.")
+
+            print("\n" + "="*60)
+            print("    END OF CODE BLOCKS")
+            print("="*60)
+
+    async def _execute_code(self, code: str, show_full: bool = True, save_only: bool = False):
+        """
+        Save and execute Python code.
+
+        Args:
+            code: Python code to execute
+            show_full: Whether to show full code before execution
+            save_only: Whether to save only without executing
+        """
+        if not self.code_executor:
+            print("\n✗ Code execution tool not available")
+            print("  Make sure the CodeExecutionTool is initialized.")
+            return
+
+        # Show full code if requested
+        if show_full:
+            print("\nCode to execute:")
+            print("-" * 60)
+            lines = code.split('\n')
+            for line in lines:
+                print(line)
+            print("-" * 60)
+
+        if save_only:
+            print("\n✓ Saving code...")
+        else:
+            print("\n⚡ Executing code...")
+            print("-" * 60)
+
+        # Save and execute the code
+        result = self.code_executor.save_and_execute(code)
+
+        print("\n" + "-" * 60)
+
+        if result['success']:
+            print("✓ Code executed successfully!")
+            print(f"  Execution time: {result['execution_time']:.2f}s")
+
+            if result['output']:
+                print("\nOutput:")
+                print(result['output'])
+
+            print(f"\n  Saved to: {result['filename']}")
+        else:
+            print("✗ Code execution failed!")
+            print(f"  Error: {result['error']}")
+
+            if result['output']:
+                print("\nOutput (before error):")
+                print(result['output'])
+
+            print(f"\n  Saved to: {result['filename']}")
 
     async def _interactive_chat(self):
         """Run interactive chat session."""

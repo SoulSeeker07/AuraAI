@@ -1,0 +1,1075 @@
+AURA AI LIVE MONITOR
+================================================================================
+Start Time: 2026-08-03 18:56:56
+
+[2026-08-03 18:56:56] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:56:56]   Memory: READY
+[2026-08-03 18:56:56]   Knowledge: READY
+[2026-08-03 18:56:56]   Workspace: READY
+[2026-08-03 18:56:56]   Plugins: READY - 14 loaded
+[2026-08-03 18:56:56]   Agent Runtime: READY
+[2026-08-03 18:56:56]   Workflow Engine: READY
+[2026-08-03 18:56:56]   Vision: ERROR
+[2026-08-03 18:56:56]   Voice: ERROR
+[2026-08-03 18:56:56] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:56:56]   total_memories: 0
+[2026-08-03 18:56:56]   session_memories: 0
+[2026-08-03 18:56:56]   working_memories: 0
+[2026-08-03 18:56:56]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:56]   indexed: YES
+[2026-08-03 18:56:56]   search_enabled: YES
+[2026-08-03 18:56:56]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:56]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:56]   exists: YES
+[2026-08-03 18:56:56]   files: 20256
+[2026-08-03 18:56:56]   folders: 2386
+[2026-08-03 18:56:56]   Conversation History: 0 turns
+[2026-08-03 18:56:56]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:56:56] 
+--- PLUGINS ---
+[2026-08-03 18:56:56] 14 loaded:
+[2026-08-03 18:56:56]   - desktop
+[2026-08-03 18:56:56]   - filesystem
+[2026-08-03 18:56:56]   - vision
+[2026-08-03 18:56:56]   - voice
+[2026-08-03 18:56:56]   - engineering
+[2026-08-03 18:56:56]   - git
+[2026-08-03 18:56:56]   - calendar
+[2026-08-03 18:56:56]   - email
+[2026-08-03 18:56:56]   - networking
+[2026-08-03 18:56:56]   - office
+[2026-08-03 18:56:56]   - terminal
+[2026-08-03 18:56:56]   - knowledge
+[2026-08-03 18:56:56]   - mcp
+[2026-08-03 18:56:56]   - browser
+[2026-08-03 18:56:56] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:56:56] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:56] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:56] Vision System: NO
+[2026-08-03 18:56:56] Voice System: NO
+[2026-08-03 18:56:56] Uptime: 0d 0h 0m 0s
+[2026-08-03 18:56:56] --------------------------------------------------------------------------------
+
+[2026-08-03 18:56:58] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:56:58]   Memory: READY
+[2026-08-03 18:56:58]   Knowledge: READY
+[2026-08-03 18:56:58]   Workspace: READY
+[2026-08-03 18:56:58]   Plugins: READY - 14 loaded
+[2026-08-03 18:56:58]   Agent Runtime: READY
+[2026-08-03 18:56:58]   Workflow Engine: READY
+[2026-08-03 18:56:58]   Vision: ERROR
+[2026-08-03 18:56:58]   Voice: ERROR
+[2026-08-03 18:56:58] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:56:58]   total_memories: 0
+[2026-08-03 18:56:58]   session_memories: 0
+[2026-08-03 18:56:58]   working_memories: 0
+[2026-08-03 18:56:58]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:58]   indexed: YES
+[2026-08-03 18:56:58]   search_enabled: YES
+[2026-08-03 18:56:58]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:58]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:58]   exists: YES
+[2026-08-03 18:56:58]   files: 20256
+[2026-08-03 18:56:58]   folders: 2386
+[2026-08-03 18:56:58]   Conversation History: 0 turns
+[2026-08-03 18:56:58]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:56:58] 
+--- PLUGINS ---
+[2026-08-03 18:56:58] 14 loaded:
+[2026-08-03 18:56:58]   - desktop
+[2026-08-03 18:56:58]   - filesystem
+[2026-08-03 18:56:58]   - vision
+[2026-08-03 18:56:58]   - voice
+[2026-08-03 18:56:58]   - engineering
+[2026-08-03 18:56:58]   - git
+[2026-08-03 18:56:58]   - calendar
+[2026-08-03 18:56:58]   - email
+[2026-08-03 18:56:58]   - networking
+[2026-08-03 18:56:58]   - office
+[2026-08-03 18:56:58]   - terminal
+[2026-08-03 18:56:58]   - knowledge
+[2026-08-03 18:56:58]   - mcp
+[2026-08-03 18:56:58]   - browser
+[2026-08-03 18:56:58] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:56:58] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:58] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:56:58] Vision System: NO
+[2026-08-03 18:56:58] Voice System: NO
+[2026-08-03 18:56:58] Uptime: 0d 0h 0m 2s
+[2026-08-03 18:56:58] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:00] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:00]   Memory: READY
+[2026-08-03 18:57:00]   Knowledge: READY
+[2026-08-03 18:57:00]   Workspace: READY
+[2026-08-03 18:57:00]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:00]   Agent Runtime: READY
+[2026-08-03 18:57:00]   Workflow Engine: READY
+[2026-08-03 18:57:00]   Vision: ERROR
+[2026-08-03 18:57:00]   Voice: ERROR
+[2026-08-03 18:57:00] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:00]   total_memories: 0
+[2026-08-03 18:57:00]   session_memories: 0
+[2026-08-03 18:57:00]   working_memories: 0
+[2026-08-03 18:57:00]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:00]   indexed: YES
+[2026-08-03 18:57:00]   search_enabled: YES
+[2026-08-03 18:57:00]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:00]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:00]   exists: YES
+[2026-08-03 18:57:00]   files: 20256
+[2026-08-03 18:57:00]   folders: 2386
+[2026-08-03 18:57:00]   Conversation History: 0 turns
+[2026-08-03 18:57:00]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:00] 
+--- PLUGINS ---
+[2026-08-03 18:57:00] 14 loaded:
+[2026-08-03 18:57:00]   - desktop
+[2026-08-03 18:57:00]   - filesystem
+[2026-08-03 18:57:00]   - vision
+[2026-08-03 18:57:00]   - voice
+[2026-08-03 18:57:00]   - engineering
+[2026-08-03 18:57:00]   - git
+[2026-08-03 18:57:00]   - calendar
+[2026-08-03 18:57:00]   - email
+[2026-08-03 18:57:00]   - networking
+[2026-08-03 18:57:00]   - office
+[2026-08-03 18:57:00]   - terminal
+[2026-08-03 18:57:00]   - knowledge
+[2026-08-03 18:57:00]   - mcp
+[2026-08-03 18:57:00]   - browser
+[2026-08-03 18:57:00] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:00] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:00] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:00] Vision System: NO
+[2026-08-03 18:57:00] Voice System: NO
+[2026-08-03 18:57:00] Uptime: 0d 0h 0m 4s
+[2026-08-03 18:57:00] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:02] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:02]   Memory: READY
+[2026-08-03 18:57:02]   Knowledge: READY
+[2026-08-03 18:57:02]   Workspace: READY
+[2026-08-03 18:57:02]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:02]   Agent Runtime: READY
+[2026-08-03 18:57:02]   Workflow Engine: READY
+[2026-08-03 18:57:02]   Vision: ERROR
+[2026-08-03 18:57:02]   Voice: ERROR
+[2026-08-03 18:57:02] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:02]   total_memories: 0
+[2026-08-03 18:57:02]   session_memories: 0
+[2026-08-03 18:57:02]   working_memories: 0
+[2026-08-03 18:57:02]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:02]   indexed: YES
+[2026-08-03 18:57:02]   search_enabled: YES
+[2026-08-03 18:57:02]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:02]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:02]   exists: YES
+[2026-08-03 18:57:02]   files: 20256
+[2026-08-03 18:57:02]   folders: 2386
+[2026-08-03 18:57:02]   Conversation History: 0 turns
+[2026-08-03 18:57:02]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:02] 
+--- PLUGINS ---
+[2026-08-03 18:57:02] 14 loaded:
+[2026-08-03 18:57:02]   - desktop
+[2026-08-03 18:57:02]   - filesystem
+[2026-08-03 18:57:02]   - vision
+[2026-08-03 18:57:02]   - voice
+[2026-08-03 18:57:02]   - engineering
+[2026-08-03 18:57:02]   - git
+[2026-08-03 18:57:02]   - calendar
+[2026-08-03 18:57:02]   - email
+[2026-08-03 18:57:02]   - networking
+[2026-08-03 18:57:02]   - office
+[2026-08-03 18:57:02]   - terminal
+[2026-08-03 18:57:02]   - knowledge
+[2026-08-03 18:57:02]   - mcp
+[2026-08-03 18:57:02]   - browser
+[2026-08-03 18:57:02] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:02] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:02] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:02] Vision System: NO
+[2026-08-03 18:57:02] Voice System: NO
+[2026-08-03 18:57:02] Uptime: 0d 0h 0m 6s
+[2026-08-03 18:57:02] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:04] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:04]   Memory: READY
+[2026-08-03 18:57:04]   Knowledge: READY
+[2026-08-03 18:57:04]   Workspace: READY
+[2026-08-03 18:57:04]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:04]   Agent Runtime: READY
+[2026-08-03 18:57:04]   Workflow Engine: READY
+[2026-08-03 18:57:04]   Vision: ERROR
+[2026-08-03 18:57:04]   Voice: ERROR
+[2026-08-03 18:57:04] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:04]   total_memories: 0
+[2026-08-03 18:57:04]   session_memories: 0
+[2026-08-03 18:57:04]   working_memories: 0
+[2026-08-03 18:57:04]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:04]   indexed: YES
+[2026-08-03 18:57:04]   search_enabled: YES
+[2026-08-03 18:57:04]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:04]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:04]   exists: YES
+[2026-08-03 18:57:04]   files: 20256
+[2026-08-03 18:57:04]   folders: 2386
+[2026-08-03 18:57:04]   Conversation History: 0 turns
+[2026-08-03 18:57:04]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:04] 
+--- PLUGINS ---
+[2026-08-03 18:57:04] 14 loaded:
+[2026-08-03 18:57:04]   - desktop
+[2026-08-03 18:57:04]   - filesystem
+[2026-08-03 18:57:04]   - vision
+[2026-08-03 18:57:04]   - voice
+[2026-08-03 18:57:04]   - engineering
+[2026-08-03 18:57:04]   - git
+[2026-08-03 18:57:04]   - calendar
+[2026-08-03 18:57:04]   - email
+[2026-08-03 18:57:04]   - networking
+[2026-08-03 18:57:04]   - office
+[2026-08-03 18:57:04]   - terminal
+[2026-08-03 18:57:04]   - knowledge
+[2026-08-03 18:57:04]   - mcp
+[2026-08-03 18:57:04]   - browser
+[2026-08-03 18:57:04] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:04] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:04] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:04] Vision System: NO
+[2026-08-03 18:57:04] Voice System: NO
+[2026-08-03 18:57:04] Uptime: 0d 0h 0m 8s
+[2026-08-03 18:57:04] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:06] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:06]   Memory: READY
+[2026-08-03 18:57:06]   Knowledge: READY
+[2026-08-03 18:57:06]   Workspace: READY
+[2026-08-03 18:57:06]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:06]   Agent Runtime: READY
+[2026-08-03 18:57:06]   Workflow Engine: READY
+[2026-08-03 18:57:06]   Vision: ERROR
+[2026-08-03 18:57:06]   Voice: ERROR
+[2026-08-03 18:57:06] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:06]   total_memories: 0
+[2026-08-03 18:57:06]   session_memories: 0
+[2026-08-03 18:57:06]   working_memories: 0
+[2026-08-03 18:57:06]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:06]   indexed: YES
+[2026-08-03 18:57:06]   search_enabled: YES
+[2026-08-03 18:57:06]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:06]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:06]   exists: YES
+[2026-08-03 18:57:06]   files: 20256
+[2026-08-03 18:57:06]   folders: 2386
+[2026-08-03 18:57:06]   Conversation History: 2 turns
+[2026-08-03 18:57:06]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:06] 
+--- PLUGINS ---
+[2026-08-03 18:57:06] 14 loaded:
+[2026-08-03 18:57:06]   - desktop
+[2026-08-03 18:57:06]   - filesystem
+[2026-08-03 18:57:06]   - vision
+[2026-08-03 18:57:06]   - voice
+[2026-08-03 18:57:06]   - engineering
+[2026-08-03 18:57:06]   - git
+[2026-08-03 18:57:06]   - calendar
+[2026-08-03 18:57:06]   - email
+[2026-08-03 18:57:06]   - networking
+[2026-08-03 18:57:06]   - office
+[2026-08-03 18:57:06]   - terminal
+[2026-08-03 18:57:06]   - knowledge
+[2026-08-03 18:57:06]   - mcp
+[2026-08-03 18:57:06]   - browser
+[2026-08-03 18:57:06] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:06] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:06] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:06] Vision System: NO
+[2026-08-03 18:57:06] Voice System: NO
+[2026-08-03 18:57:06] Uptime: 0d 0h 0m 10s
+[2026-08-03 18:57:06] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:08] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:08]   Memory: READY
+[2026-08-03 18:57:08]   Knowledge: READY
+[2026-08-03 18:57:08]   Workspace: READY
+[2026-08-03 18:57:08]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:08]   Agent Runtime: READY
+[2026-08-03 18:57:08]   Workflow Engine: READY
+[2026-08-03 18:57:08]   Vision: ERROR
+[2026-08-03 18:57:08]   Voice: ERROR
+[2026-08-03 18:57:08] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:08]   total_memories: 0
+[2026-08-03 18:57:08]   session_memories: 0
+[2026-08-03 18:57:08]   working_memories: 0
+[2026-08-03 18:57:08]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:08]   indexed: YES
+[2026-08-03 18:57:08]   search_enabled: YES
+[2026-08-03 18:57:08]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:08]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:08]   exists: YES
+[2026-08-03 18:57:08]   files: 20256
+[2026-08-03 18:57:08]   folders: 2386
+[2026-08-03 18:57:08]   Conversation History: 2 turns
+[2026-08-03 18:57:08]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:08] 
+--- PLUGINS ---
+[2026-08-03 18:57:08] 14 loaded:
+[2026-08-03 18:57:08]   - desktop
+[2026-08-03 18:57:08]   - filesystem
+[2026-08-03 18:57:08]   - vision
+[2026-08-03 18:57:08]   - voice
+[2026-08-03 18:57:08]   - engineering
+[2026-08-03 18:57:08]   - git
+[2026-08-03 18:57:08]   - calendar
+[2026-08-03 18:57:08]   - email
+[2026-08-03 18:57:08]   - networking
+[2026-08-03 18:57:08]   - office
+[2026-08-03 18:57:08]   - terminal
+[2026-08-03 18:57:08]   - knowledge
+[2026-08-03 18:57:08]   - mcp
+[2026-08-03 18:57:08]   - browser
+[2026-08-03 18:57:08] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:08] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:08] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:08] Vision System: NO
+[2026-08-03 18:57:08] Voice System: NO
+[2026-08-03 18:57:08] Uptime: 0d 0h 0m 12s
+[2026-08-03 18:57:08] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:10] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:10]   Memory: READY
+[2026-08-03 18:57:10]   Knowledge: READY
+[2026-08-03 18:57:10]   Workspace: READY
+[2026-08-03 18:57:10]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:10]   Agent Runtime: READY
+[2026-08-03 18:57:10]   Workflow Engine: READY
+[2026-08-03 18:57:10]   Vision: ERROR
+[2026-08-03 18:57:10]   Voice: ERROR
+[2026-08-03 18:57:10] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:10]   total_memories: 0
+[2026-08-03 18:57:10]   session_memories: 0
+[2026-08-03 18:57:10]   working_memories: 0
+[2026-08-03 18:57:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:10]   indexed: YES
+[2026-08-03 18:57:10]   search_enabled: YES
+[2026-08-03 18:57:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:10]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:10]   exists: YES
+[2026-08-03 18:57:10]   files: 20256
+[2026-08-03 18:57:10]   folders: 2386
+[2026-08-03 18:57:10]   Conversation History: 2 turns
+[2026-08-03 18:57:10]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:10] 
+--- PLUGINS ---
+[2026-08-03 18:57:10] 14 loaded:
+[2026-08-03 18:57:10]   - desktop
+[2026-08-03 18:57:10]   - filesystem
+[2026-08-03 18:57:10]   - vision
+[2026-08-03 18:57:10]   - voice
+[2026-08-03 18:57:10]   - engineering
+[2026-08-03 18:57:10]   - git
+[2026-08-03 18:57:10]   - calendar
+[2026-08-03 18:57:10]   - email
+[2026-08-03 18:57:10]   - networking
+[2026-08-03 18:57:10]   - office
+[2026-08-03 18:57:10]   - terminal
+[2026-08-03 18:57:10]   - knowledge
+[2026-08-03 18:57:10]   - mcp
+[2026-08-03 18:57:10]   - browser
+[2026-08-03 18:57:10] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:10] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:10] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:10] Vision System: NO
+[2026-08-03 18:57:10] Voice System: NO
+[2026-08-03 18:57:10] Uptime: 0d 0h 0m 14s
+[2026-08-03 18:57:10] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:12] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:12]   Memory: READY
+[2026-08-03 18:57:12]   Knowledge: READY
+[2026-08-03 18:57:12]   Workspace: READY
+[2026-08-03 18:57:12]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:12]   Agent Runtime: READY
+[2026-08-03 18:57:12]   Workflow Engine: READY
+[2026-08-03 18:57:12]   Vision: ERROR
+[2026-08-03 18:57:12]   Voice: ERROR
+[2026-08-03 18:57:12] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:12]   total_memories: 0
+[2026-08-03 18:57:12]   session_memories: 0
+[2026-08-03 18:57:12]   working_memories: 0
+[2026-08-03 18:57:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:12]   indexed: YES
+[2026-08-03 18:57:12]   search_enabled: YES
+[2026-08-03 18:57:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:12]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:12]   exists: YES
+[2026-08-03 18:57:12]   files: 20256
+[2026-08-03 18:57:12]   folders: 2386
+[2026-08-03 18:57:12]   Conversation History: 2 turns
+[2026-08-03 18:57:12]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:12] 
+--- PLUGINS ---
+[2026-08-03 18:57:12] 14 loaded:
+[2026-08-03 18:57:12]   - desktop
+[2026-08-03 18:57:12]   - filesystem
+[2026-08-03 18:57:12]   - vision
+[2026-08-03 18:57:12]   - voice
+[2026-08-03 18:57:12]   - engineering
+[2026-08-03 18:57:12]   - git
+[2026-08-03 18:57:12]   - calendar
+[2026-08-03 18:57:12]   - email
+[2026-08-03 18:57:12]   - networking
+[2026-08-03 18:57:12]   - office
+[2026-08-03 18:57:12]   - terminal
+[2026-08-03 18:57:12]   - knowledge
+[2026-08-03 18:57:12]   - mcp
+[2026-08-03 18:57:12]   - browser
+[2026-08-03 18:57:12] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:12] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:12] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:12] Vision System: NO
+[2026-08-03 18:57:12] Voice System: NO
+[2026-08-03 18:57:12] Uptime: 0d 0h 0m 16s
+[2026-08-03 18:57:12] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:14] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:14]   Memory: READY
+[2026-08-03 18:57:14]   Knowledge: READY
+[2026-08-03 18:57:14]   Workspace: READY
+[2026-08-03 18:57:14]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:14]   Agent Runtime: READY
+[2026-08-03 18:57:14]   Workflow Engine: READY
+[2026-08-03 18:57:14]   Vision: ERROR
+[2026-08-03 18:57:14]   Voice: ERROR
+[2026-08-03 18:57:14] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:14]   total_memories: 0
+[2026-08-03 18:57:14]   session_memories: 0
+[2026-08-03 18:57:14]   working_memories: 0
+[2026-08-03 18:57:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:14]   indexed: YES
+[2026-08-03 18:57:14]   search_enabled: YES
+[2026-08-03 18:57:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:14]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:14]   exists: YES
+[2026-08-03 18:57:14]   files: 20256
+[2026-08-03 18:57:14]   folders: 2386
+[2026-08-03 18:57:14]   Conversation History: 2 turns
+[2026-08-03 18:57:14]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:14] 
+--- PLUGINS ---
+[2026-08-03 18:57:14] 14 loaded:
+[2026-08-03 18:57:14]   - desktop
+[2026-08-03 18:57:14]   - filesystem
+[2026-08-03 18:57:14]   - vision
+[2026-08-03 18:57:14]   - voice
+[2026-08-03 18:57:14]   - engineering
+[2026-08-03 18:57:14]   - git
+[2026-08-03 18:57:14]   - calendar
+[2026-08-03 18:57:14]   - email
+[2026-08-03 18:57:14]   - networking
+[2026-08-03 18:57:14]   - office
+[2026-08-03 18:57:14]   - terminal
+[2026-08-03 18:57:14]   - knowledge
+[2026-08-03 18:57:14]   - mcp
+[2026-08-03 18:57:14]   - browser
+[2026-08-03 18:57:14] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:14] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:14] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:14] Vision System: NO
+[2026-08-03 18:57:14] Voice System: NO
+[2026-08-03 18:57:14] Uptime: 0d 0h 0m 18s
+[2026-08-03 18:57:14] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:16] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:16]   Memory: READY
+[2026-08-03 18:57:16]   Knowledge: READY
+[2026-08-03 18:57:16]   Workspace: READY
+[2026-08-03 18:57:16]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:16]   Agent Runtime: READY
+[2026-08-03 18:57:16]   Workflow Engine: READY
+[2026-08-03 18:57:16]   Vision: ERROR
+[2026-08-03 18:57:16]   Voice: ERROR
+[2026-08-03 18:57:16] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:16]   total_memories: 0
+[2026-08-03 18:57:16]   session_memories: 0
+[2026-08-03 18:57:16]   working_memories: 0
+[2026-08-03 18:57:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:16]   indexed: YES
+[2026-08-03 18:57:16]   search_enabled: YES
+[2026-08-03 18:57:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:16]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:16]   exists: YES
+[2026-08-03 18:57:16]   files: 20256
+[2026-08-03 18:57:16]   folders: 2386
+[2026-08-03 18:57:16]   Conversation History: 2 turns
+[2026-08-03 18:57:16]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:16] 
+--- PLUGINS ---
+[2026-08-03 18:57:16] 14 loaded:
+[2026-08-03 18:57:16]   - desktop
+[2026-08-03 18:57:16]   - filesystem
+[2026-08-03 18:57:16]   - vision
+[2026-08-03 18:57:16]   - voice
+[2026-08-03 18:57:16]   - engineering
+[2026-08-03 18:57:16]   - git
+[2026-08-03 18:57:16]   - calendar
+[2026-08-03 18:57:16]   - email
+[2026-08-03 18:57:16]   - networking
+[2026-08-03 18:57:16]   - office
+[2026-08-03 18:57:16]   - terminal
+[2026-08-03 18:57:16]   - knowledge
+[2026-08-03 18:57:16]   - mcp
+[2026-08-03 18:57:16]   - browser
+[2026-08-03 18:57:16] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:16] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:16] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:16] Vision System: NO
+[2026-08-03 18:57:16] Voice System: NO
+[2026-08-03 18:57:16] Uptime: 0d 0h 0m 20s
+[2026-08-03 18:57:16] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:18] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:18]   Memory: READY
+[2026-08-03 18:57:18]   Knowledge: READY
+[2026-08-03 18:57:18]   Workspace: READY
+[2026-08-03 18:57:18]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:18]   Agent Runtime: READY
+[2026-08-03 18:57:18]   Workflow Engine: READY
+[2026-08-03 18:57:18]   Vision: ERROR
+[2026-08-03 18:57:18]   Voice: ERROR
+[2026-08-03 18:57:18] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:18]   total_memories: 0
+[2026-08-03 18:57:18]   session_memories: 0
+[2026-08-03 18:57:18]   working_memories: 0
+[2026-08-03 18:57:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:18]   indexed: YES
+[2026-08-03 18:57:18]   search_enabled: YES
+[2026-08-03 18:57:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:18]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:18]   exists: YES
+[2026-08-03 18:57:18]   files: 20256
+[2026-08-03 18:57:18]   folders: 2386
+[2026-08-03 18:57:18]   Conversation History: 2 turns
+[2026-08-03 18:57:18]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:18] 
+--- PLUGINS ---
+[2026-08-03 18:57:18] 14 loaded:
+[2026-08-03 18:57:18]   - desktop
+[2026-08-03 18:57:18]   - filesystem
+[2026-08-03 18:57:18]   - vision
+[2026-08-03 18:57:18]   - voice
+[2026-08-03 18:57:18]   - engineering
+[2026-08-03 18:57:18]   - git
+[2026-08-03 18:57:18]   - calendar
+[2026-08-03 18:57:18]   - email
+[2026-08-03 18:57:18]   - networking
+[2026-08-03 18:57:18]   - office
+[2026-08-03 18:57:18]   - terminal
+[2026-08-03 18:57:18]   - knowledge
+[2026-08-03 18:57:18]   - mcp
+[2026-08-03 18:57:18]   - browser
+[2026-08-03 18:57:18] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:18] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:18] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:18] Vision System: NO
+[2026-08-03 18:57:18] Voice System: NO
+[2026-08-03 18:57:18] Uptime: 0d 0h 0m 22s
+[2026-08-03 18:57:18] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:20] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:20]   Memory: READY
+[2026-08-03 18:57:20]   Knowledge: READY
+[2026-08-03 18:57:20]   Workspace: READY
+[2026-08-03 18:57:20]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:20]   Agent Runtime: READY
+[2026-08-03 18:57:20]   Workflow Engine: READY
+[2026-08-03 18:57:20]   Vision: ERROR
+[2026-08-03 18:57:20]   Voice: ERROR
+[2026-08-03 18:57:20] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:20]   total_memories: 0
+[2026-08-03 18:57:20]   session_memories: 0
+[2026-08-03 18:57:20]   working_memories: 0
+[2026-08-03 18:57:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:20]   indexed: YES
+[2026-08-03 18:57:20]   search_enabled: YES
+[2026-08-03 18:57:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:20]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:20]   exists: YES
+[2026-08-03 18:57:20]   files: 20256
+[2026-08-03 18:57:20]   folders: 2386
+[2026-08-03 18:57:20]   Conversation History: 4 turns
+[2026-08-03 18:57:20]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:20] 
+--- PLUGINS ---
+[2026-08-03 18:57:20] 14 loaded:
+[2026-08-03 18:57:20]   - desktop
+[2026-08-03 18:57:20]   - filesystem
+[2026-08-03 18:57:20]   - vision
+[2026-08-03 18:57:20]   - voice
+[2026-08-03 18:57:20]   - engineering
+[2026-08-03 18:57:20]   - git
+[2026-08-03 18:57:20]   - calendar
+[2026-08-03 18:57:20]   - email
+[2026-08-03 18:57:20]   - networking
+[2026-08-03 18:57:20]   - office
+[2026-08-03 18:57:20]   - terminal
+[2026-08-03 18:57:20]   - knowledge
+[2026-08-03 18:57:20]   - mcp
+[2026-08-03 18:57:20]   - browser
+[2026-08-03 18:57:20] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:20] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:20] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:20] Vision System: NO
+[2026-08-03 18:57:20] Voice System: NO
+[2026-08-03 18:57:20] Uptime: 0d 0h 0m 24s
+[2026-08-03 18:57:20] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:22] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:22]   Memory: READY
+[2026-08-03 18:57:22]   Knowledge: READY
+[2026-08-03 18:57:22]   Workspace: READY
+[2026-08-03 18:57:22]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:22]   Agent Runtime: READY
+[2026-08-03 18:57:22]   Workflow Engine: READY
+[2026-08-03 18:57:22]   Vision: ERROR
+[2026-08-03 18:57:22]   Voice: ERROR
+[2026-08-03 18:57:22] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:22]   total_memories: 0
+[2026-08-03 18:57:22]   session_memories: 0
+[2026-08-03 18:57:22]   working_memories: 0
+[2026-08-03 18:57:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:22]   indexed: YES
+[2026-08-03 18:57:22]   search_enabled: YES
+[2026-08-03 18:57:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:22]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:22]   exists: YES
+[2026-08-03 18:57:22]   files: 20256
+[2026-08-03 18:57:22]   folders: 2386
+[2026-08-03 18:57:22]   Conversation History: 4 turns
+[2026-08-03 18:57:22]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:22] 
+--- PLUGINS ---
+[2026-08-03 18:57:22] 14 loaded:
+[2026-08-03 18:57:22]   - desktop
+[2026-08-03 18:57:22]   - filesystem
+[2026-08-03 18:57:22]   - vision
+[2026-08-03 18:57:22]   - voice
+[2026-08-03 18:57:22]   - engineering
+[2026-08-03 18:57:22]   - git
+[2026-08-03 18:57:22]   - calendar
+[2026-08-03 18:57:22]   - email
+[2026-08-03 18:57:22]   - networking
+[2026-08-03 18:57:22]   - office
+[2026-08-03 18:57:22]   - terminal
+[2026-08-03 18:57:22]   - knowledge
+[2026-08-03 18:57:22]   - mcp
+[2026-08-03 18:57:22]   - browser
+[2026-08-03 18:57:22] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:22] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:22] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:22] Vision System: NO
+[2026-08-03 18:57:22] Voice System: NO
+[2026-08-03 18:57:22] Uptime: 0d 0h 0m 26s
+[2026-08-03 18:57:22] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:24] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:24]   Memory: READY
+[2026-08-03 18:57:24]   Knowledge: READY
+[2026-08-03 18:57:24]   Workspace: READY
+[2026-08-03 18:57:24]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:24]   Agent Runtime: READY
+[2026-08-03 18:57:24]   Workflow Engine: READY
+[2026-08-03 18:57:24]   Vision: ERROR
+[2026-08-03 18:57:24]   Voice: ERROR
+[2026-08-03 18:57:24] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:24]   total_memories: 0
+[2026-08-03 18:57:24]   session_memories: 0
+[2026-08-03 18:57:24]   working_memories: 0
+[2026-08-03 18:57:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:24]   indexed: YES
+[2026-08-03 18:57:24]   search_enabled: YES
+[2026-08-03 18:57:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:24]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:24]   exists: YES
+[2026-08-03 18:57:24]   files: 20256
+[2026-08-03 18:57:24]   folders: 2386
+[2026-08-03 18:57:24]   Conversation History: 4 turns
+[2026-08-03 18:57:24]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:24] 
+--- PLUGINS ---
+[2026-08-03 18:57:24] 14 loaded:
+[2026-08-03 18:57:24]   - desktop
+[2026-08-03 18:57:24]   - filesystem
+[2026-08-03 18:57:24]   - vision
+[2026-08-03 18:57:24]   - voice
+[2026-08-03 18:57:24]   - engineering
+[2026-08-03 18:57:24]   - git
+[2026-08-03 18:57:24]   - calendar
+[2026-08-03 18:57:24]   - email
+[2026-08-03 18:57:24]   - networking
+[2026-08-03 18:57:24]   - office
+[2026-08-03 18:57:24]   - terminal
+[2026-08-03 18:57:24]   - knowledge
+[2026-08-03 18:57:24]   - mcp
+[2026-08-03 18:57:24]   - browser
+[2026-08-03 18:57:24] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:24] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:24] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:24] Vision System: NO
+[2026-08-03 18:57:24] Voice System: NO
+[2026-08-03 18:57:24] Uptime: 0d 0h 0m 28s
+[2026-08-03 18:57:24] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:26] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:26]   Memory: READY
+[2026-08-03 18:57:26]   Knowledge: READY
+[2026-08-03 18:57:26]   Workspace: READY
+[2026-08-03 18:57:26]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:26]   Agent Runtime: READY
+[2026-08-03 18:57:26]   Workflow Engine: READY
+[2026-08-03 18:57:26]   Vision: ERROR
+[2026-08-03 18:57:26]   Voice: ERROR
+[2026-08-03 18:57:26] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:26]   total_memories: 0
+[2026-08-03 18:57:26]   session_memories: 0
+[2026-08-03 18:57:26]   working_memories: 0
+[2026-08-03 18:57:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:26]   indexed: YES
+[2026-08-03 18:57:26]   search_enabled: YES
+[2026-08-03 18:57:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:26]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:26]   exists: YES
+[2026-08-03 18:57:26]   files: 20256
+[2026-08-03 18:57:26]   folders: 2386
+[2026-08-03 18:57:26]   Conversation History: 4 turns
+[2026-08-03 18:57:26]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:26] 
+--- PLUGINS ---
+[2026-08-03 18:57:26] 14 loaded:
+[2026-08-03 18:57:26]   - desktop
+[2026-08-03 18:57:26]   - filesystem
+[2026-08-03 18:57:26]   - vision
+[2026-08-03 18:57:26]   - voice
+[2026-08-03 18:57:26]   - engineering
+[2026-08-03 18:57:26]   - git
+[2026-08-03 18:57:26]   - calendar
+[2026-08-03 18:57:26]   - email
+[2026-08-03 18:57:26]   - networking
+[2026-08-03 18:57:26]   - office
+[2026-08-03 18:57:26]   - terminal
+[2026-08-03 18:57:26]   - knowledge
+[2026-08-03 18:57:26]   - mcp
+[2026-08-03 18:57:26]   - browser
+[2026-08-03 18:57:26] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:26] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:26] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:26] Vision System: NO
+[2026-08-03 18:57:26] Voice System: NO
+[2026-08-03 18:57:26] Uptime: 0d 0h 0m 30s
+[2026-08-03 18:57:26] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:28] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:28]   Memory: READY
+[2026-08-03 18:57:28]   Knowledge: READY
+[2026-08-03 18:57:28]   Workspace: READY
+[2026-08-03 18:57:28]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:28]   Agent Runtime: READY
+[2026-08-03 18:57:28]   Workflow Engine: READY
+[2026-08-03 18:57:28]   Vision: ERROR
+[2026-08-03 18:57:28]   Voice: ERROR
+[2026-08-03 18:57:28] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:28]   total_memories: 0
+[2026-08-03 18:57:28]   session_memories: 0
+[2026-08-03 18:57:28]   working_memories: 0
+[2026-08-03 18:57:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:28]   indexed: YES
+[2026-08-03 18:57:28]   search_enabled: YES
+[2026-08-03 18:57:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:28]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:28]   exists: YES
+[2026-08-03 18:57:28]   files: 20256
+[2026-08-03 18:57:28]   folders: 2386
+[2026-08-03 18:57:28]   Conversation History: 4 turns
+[2026-08-03 18:57:28]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:28] 
+--- PLUGINS ---
+[2026-08-03 18:57:28] 14 loaded:
+[2026-08-03 18:57:28]   - desktop
+[2026-08-03 18:57:28]   - filesystem
+[2026-08-03 18:57:28]   - vision
+[2026-08-03 18:57:28]   - voice
+[2026-08-03 18:57:28]   - engineering
+[2026-08-03 18:57:28]   - git
+[2026-08-03 18:57:28]   - calendar
+[2026-08-03 18:57:28]   - email
+[2026-08-03 18:57:28]   - networking
+[2026-08-03 18:57:28]   - office
+[2026-08-03 18:57:28]   - terminal
+[2026-08-03 18:57:28]   - knowledge
+[2026-08-03 18:57:28]   - mcp
+[2026-08-03 18:57:28]   - browser
+[2026-08-03 18:57:28] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:28] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:28] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:28] Vision System: NO
+[2026-08-03 18:57:28] Voice System: NO
+[2026-08-03 18:57:28] Uptime: 0d 0h 0m 32s
+[2026-08-03 18:57:28] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:30] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:30]   Memory: READY
+[2026-08-03 18:57:30]   Knowledge: READY
+[2026-08-03 18:57:30]   Workspace: READY
+[2026-08-03 18:57:30]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:30]   Agent Runtime: READY
+[2026-08-03 18:57:30]   Workflow Engine: READY
+[2026-08-03 18:57:30]   Vision: ERROR
+[2026-08-03 18:57:30]   Voice: ERROR
+[2026-08-03 18:57:30] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:30]   total_memories: 0
+[2026-08-03 18:57:30]   session_memories: 0
+[2026-08-03 18:57:30]   working_memories: 0
+[2026-08-03 18:57:30]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:30]   indexed: YES
+[2026-08-03 18:57:30]   search_enabled: YES
+[2026-08-03 18:57:30]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:30]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:30]   exists: YES
+[2026-08-03 18:57:30]   files: 20256
+[2026-08-03 18:57:30]   folders: 2386
+[2026-08-03 18:57:30]   Conversation History: 6 turns
+[2026-08-03 18:57:30]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:30] 
+--- PLUGINS ---
+[2026-08-03 18:57:30] 14 loaded:
+[2026-08-03 18:57:30]   - desktop
+[2026-08-03 18:57:30]   - filesystem
+[2026-08-03 18:57:30]   - vision
+[2026-08-03 18:57:30]   - voice
+[2026-08-03 18:57:30]   - engineering
+[2026-08-03 18:57:30]   - git
+[2026-08-03 18:57:30]   - calendar
+[2026-08-03 18:57:30]   - email
+[2026-08-03 18:57:30]   - networking
+[2026-08-03 18:57:30]   - office
+[2026-08-03 18:57:30]   - terminal
+[2026-08-03 18:57:30]   - knowledge
+[2026-08-03 18:57:30]   - mcp
+[2026-08-03 18:57:30]   - browser
+[2026-08-03 18:57:30] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:30] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:30] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:30] Vision System: NO
+[2026-08-03 18:57:30] Voice System: NO
+[2026-08-03 18:57:30] Uptime: 0d 0h 0m 34s
+[2026-08-03 18:57:30] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:32] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:32]   Memory: READY
+[2026-08-03 18:57:32]   Knowledge: READY
+[2026-08-03 18:57:32]   Workspace: READY
+[2026-08-03 18:57:32]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:32]   Agent Runtime: READY
+[2026-08-03 18:57:32]   Workflow Engine: READY
+[2026-08-03 18:57:32]   Vision: ERROR
+[2026-08-03 18:57:32]   Voice: ERROR
+[2026-08-03 18:57:32] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:32]   total_memories: 0
+[2026-08-03 18:57:32]   session_memories: 0
+[2026-08-03 18:57:32]   working_memories: 0
+[2026-08-03 18:57:32]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:32]   indexed: YES
+[2026-08-03 18:57:32]   search_enabled: YES
+[2026-08-03 18:57:32]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:32]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:32]   exists: YES
+[2026-08-03 18:57:32]   files: 20256
+[2026-08-03 18:57:32]   folders: 2386
+[2026-08-03 18:57:32]   Conversation History: 6 turns
+[2026-08-03 18:57:32]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:32] 
+--- PLUGINS ---
+[2026-08-03 18:57:32] 14 loaded:
+[2026-08-03 18:57:32]   - desktop
+[2026-08-03 18:57:32]   - filesystem
+[2026-08-03 18:57:32]   - vision
+[2026-08-03 18:57:32]   - voice
+[2026-08-03 18:57:32]   - engineering
+[2026-08-03 18:57:32]   - git
+[2026-08-03 18:57:32]   - calendar
+[2026-08-03 18:57:32]   - email
+[2026-08-03 18:57:32]   - networking
+[2026-08-03 18:57:32]   - office
+[2026-08-03 18:57:32]   - terminal
+[2026-08-03 18:57:32]   - knowledge
+[2026-08-03 18:57:32]   - mcp
+[2026-08-03 18:57:32]   - browser
+[2026-08-03 18:57:32] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:32] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:32] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:32] Vision System: NO
+[2026-08-03 18:57:32] Voice System: NO
+[2026-08-03 18:57:32] Uptime: 0d 0h 0m 36s
+[2026-08-03 18:57:32] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:34] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:34]   Memory: READY
+[2026-08-03 18:57:34]   Knowledge: READY
+[2026-08-03 18:57:34]   Workspace: READY
+[2026-08-03 18:57:34]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:34]   Agent Runtime: READY
+[2026-08-03 18:57:34]   Workflow Engine: READY
+[2026-08-03 18:57:34]   Vision: ERROR
+[2026-08-03 18:57:34]   Voice: ERROR
+[2026-08-03 18:57:34] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:34]   total_memories: 0
+[2026-08-03 18:57:34]   session_memories: 0
+[2026-08-03 18:57:34]   working_memories: 0
+[2026-08-03 18:57:34]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:34]   indexed: YES
+[2026-08-03 18:57:34]   search_enabled: YES
+[2026-08-03 18:57:34]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:34]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:34]   exists: YES
+[2026-08-03 18:57:34]   files: 20256
+[2026-08-03 18:57:34]   folders: 2386
+[2026-08-03 18:57:34]   Conversation History: 6 turns
+[2026-08-03 18:57:34]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:34] 
+--- PLUGINS ---
+[2026-08-03 18:57:34] 14 loaded:
+[2026-08-03 18:57:34]   - desktop
+[2026-08-03 18:57:34]   - filesystem
+[2026-08-03 18:57:34]   - vision
+[2026-08-03 18:57:34]   - voice
+[2026-08-03 18:57:34]   - engineering
+[2026-08-03 18:57:34]   - git
+[2026-08-03 18:57:34]   - calendar
+[2026-08-03 18:57:34]   - email
+[2026-08-03 18:57:34]   - networking
+[2026-08-03 18:57:34]   - office
+[2026-08-03 18:57:34]   - terminal
+[2026-08-03 18:57:34]   - knowledge
+[2026-08-03 18:57:34]   - mcp
+[2026-08-03 18:57:34]   - browser
+[2026-08-03 18:57:34] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:34] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:34] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:34] Vision System: NO
+[2026-08-03 18:57:34] Voice System: NO
+[2026-08-03 18:57:34] Uptime: 0d 0h 0m 38s
+[2026-08-03 18:57:34] --------------------------------------------------------------------------------
+
+[2026-08-03 18:57:36] 
+--- COMPONENT STATUS ---
+[2026-08-03 18:57:36]   Memory: READY
+[2026-08-03 18:57:36]   Knowledge: READY
+[2026-08-03 18:57:36]   Workspace: READY
+[2026-08-03 18:57:36]   Plugins: READY - 14 loaded
+[2026-08-03 18:57:36]   Agent Runtime: READY
+[2026-08-03 18:57:36]   Workflow Engine: READY
+[2026-08-03 18:57:36]   Vision: ERROR
+[2026-08-03 18:57:36]   Voice: ERROR
+[2026-08-03 18:57:36] 
+--- SYSTEM STATISTICS ---
+[2026-08-03 18:57:36]   total_memories: 0
+[2026-08-03 18:57:36]   session_memories: 0
+[2026-08-03 18:57:36]   working_memories: 0
+[2026-08-03 18:57:36]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:36]   indexed: YES
+[2026-08-03 18:57:36]   search_enabled: YES
+[2026-08-03 18:57:36]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:36]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:36]   exists: YES
+[2026-08-03 18:57:36]   files: 20256
+[2026-08-03 18:57:36]   folders: 2386
+[2026-08-03 18:57:36]   Conversation History: 6 turns
+[2026-08-03 18:57:36]   LLM: Ready - llama-3.3-70b-versatile
+[2026-08-03 18:57:36] 
+--- PLUGINS ---
+[2026-08-03 18:57:36] 14 loaded:
+[2026-08-03 18:57:36]   - desktop
+[2026-08-03 18:57:36]   - filesystem
+[2026-08-03 18:57:36]   - vision
+[2026-08-03 18:57:36]   - voice
+[2026-08-03 18:57:36]   - engineering
+[2026-08-03 18:57:36]   - git
+[2026-08-03 18:57:36]   - calendar
+[2026-08-03 18:57:36]   - email
+[2026-08-03 18:57:36]   - networking
+[2026-08-03 18:57:36]   - office
+[2026-08-03 18:57:36]   - terminal
+[2026-08-03 18:57:36]   - knowledge
+[2026-08-03 18:57:36]   - mcp
+[2026-08-03 18:57:36]   - browser
+[2026-08-03 18:57:36] 
+--- MONITORING SUMMARY ---
+[2026-08-03 18:57:36] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:36] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-03 18:57:36] Vision System: NO
+[2026-08-03 18:57:36] Voice System: NO
+[2026-08-03 18:57:36] Uptime: 0d 0h 0m 40s
+[2026-08-03 18:57:36] --------------------------------------------------------------------------------
+

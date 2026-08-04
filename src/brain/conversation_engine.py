@@ -50,7 +50,7 @@ class ConversationEngine:
         )
         self._use_deep_research = deep_research_enabled
 
-    def process(
+    async def process(
         self,
         user_input: str,
         attachments: list[ConversationAttachment] | None = None,
@@ -63,7 +63,7 @@ class ConversationEngine:
         
         # Check if deep research should be used
         if intent.name == "deep_research" and self._use_deep_research and self.deep_research_manager:
-            deep_research_results = self._perform_deep_research(user_input, intent)
+            deep_research_results = await self._perform_deep_research(user_input, intent)
             web_results = self._format_deep_research_results(deep_research_results)
         else:
             web_results = self._lookup_web(user_input, intent)
@@ -160,7 +160,7 @@ class ConversationEngine:
             for result in results
         ]
     
-    def _perform_deep_research(
+    async def _perform_deep_research(
         self,
         query: str,
         intent: Intent,
@@ -175,22 +175,11 @@ class ConversationEngine:
         Returns:
             DeepResearchResult with findings
         """
-        import asyncio
-        
-        # Use asyncio to run the async perform_research method
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            result = loop.run_until_complete(
-                self.deep_research_manager.perform_research(
-                    query=query,
-                    context=None,
-                )
-            )
-            return result
-        finally:
-            loop.close()
+        result = await self.deep_research_manager.perform_research(
+            query=query,
+            context=None,
+        )
+        return result
     
     def _format_deep_research_results(
         self,

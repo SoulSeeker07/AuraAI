@@ -39,7 +39,6 @@ class Goal:
         retry_policy: RetryPolicy = RetryPolicy.DEFAULT,
         max_retries: int = 1,
         context: Optional[Dict[str, Any]] = None,
-        goal_id: Optional[str] = None,
         parent_goal_id: Optional[str] = None,
         tags: Optional[List[str]] = None,
         estimated_steps: int = 1,

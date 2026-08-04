@@ -137,7 +137,8 @@ class AuraBrain:
             self.tool_router = ToolRouter(
                 plugin_registry=plugin_registry,
                 desktop_agent=workspace_manager.desktop_agent,
-                filesystem=workspace_manager.filesystem
+                filesystem=workspace_manager.filesystem,
+                workspace_root=workspace_manager.root_path
             )
 
         # Initialize decision engine
@@ -693,25 +694,13 @@ class AuraBrain:
             result.text = response.text
             result.metadata['provider'] = response.provider
             result.metadata['model'] = response.model
-            
+
             # Update execution state
             self.execution_state.update_provider(response.provider)
-        
+
         except Exception as e:
             result.errors.append(f"Provider error: {type(e).__name__}: {e}")
-        
-        return result
-            
-            result.text = response.text
-            result.metadata['provider'] = response.provider
-            result.metadata['model'] = response.model
-            
-            # Update execution state
-            self.execution_state.update_provider(response.provider)
-            
-        except Exception as e:
-            result.errors.append(f"Provider error: {type(e).__name__}: {e}")
-        
+
         return result
     
     async def handle_vision_decision(self, request: AuraRequest, context: Any) -> ExecutionResult:

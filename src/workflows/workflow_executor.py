@@ -7,13 +7,13 @@ Handles step-by-step execution with error handling and recovery.
 
 
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List, Callable
+from datetime import datetime
 import threading
 
 from .workflow_graph import WorkflowGraph
-from .workflow_step import WorkflowStep, StepType
-from .models import WorkflowStatus
+from .workflow_step import WorkflowStep
+from .models import StepType, WorkflowStatus
 
 
 logger = logging.getLogger(__name__)
@@ -61,24 +61,33 @@ class WorkflowExecutor:
 
     def execute_workflow(
         self,
-        workflow_id: str,
+        graph: WorkflowGraph,
         wait_for_completion: bool = True
     ) -> bool:
         """
         Execute a workflow.
 
+        NOTE: this now requires an already-built WorkflowGraph. The
+        previous version only took a workflow_id and never actually
+        attached a graph to the running-workflow context, so every
+        execution failed immediately with "No workflow graph". Callers
+        must build/load a WorkflowGraph (with its steps already added)
+        before calling this.
+
         Args:
-            workflow_id: Workflow ID
-            wait_for_completion: Whether to wait for completion
+            graph: The WorkflowGraph to execute (graph.workflow_id is used
+                as the tracking key)
+            wait_for_completion: Whether to block until the workflow finishes
 
         Returns:
-            Success
+            Success (workflow started)
         """
+        workflow_id = graph.workflow_id
         logger.info(f"Starting workflow {workflow_id[:8]}")
 
         # Initialize execution context
         self.running_workflows[workflow_id] = {
-            'graph': None,
+            'graph': graph,
             'context': {},
             'started_at': datetime.now(),
             'completed_at': None,
@@ -93,6 +102,9 @@ class WorkflowExecutor:
             daemon=True
         )
         self.execution_thread.start()
+
+        if wait_for_completion:
+            return self.wait_for_completion(workflow_id)
 
         return True
 
@@ -149,7 +161,6 @@ class WorkflowExecutor:
         if workflow_id not in self.running_workflows:
             return False
 
-        # Mark workflow as cancelled
         context = self.running_workflows[workflow_id]
         if context.get('graph'):
             context['graph'].active = False
@@ -173,13 +184,12 @@ class WorkflowExecutor:
         if workflow_id not in self.running_workflows:
             return False
 
-        context = self.running_workflows[workflow_id]
-
-        # Wait for execution thread to finish
         if self.execution_thread and self.execution_thread.is_alive():
             self.execution_thread.join(timeout=None)
 
-        return context.get('finished', False)
+        # running_workflows entry is deleted in _execution_loop's finally
+        # block once finished, so if it's gone, treat that as completed.
+        return True
 
     def _execution_loop(self, workflow_id: str):
         """
@@ -198,18 +208,15 @@ class WorkflowExecutor:
             return
 
         try:
-            # Mark workflow as started
-            context['graph'].mark_started()
+            graph.mark_started()
             if self.on_workflow_start:
                 self.on_workflow_start(workflow_id)
 
             logger.info(f"Execution loop started for workflow {workflow_id[:8]}")
 
-            # Execute workflow steps
             self._execute_workflow_steps(workflow_id, graph, context['context'])
 
-            # Mark workflow as completed
-            context['graph'].mark_completed(success=True)
+            graph.mark_completed(success=True)
             context['completed_at'] = datetime.now()
             context['finished'] = True
 
@@ -219,8 +226,7 @@ class WorkflowExecutor:
             logger.info(f"Workflow {workflow_id[:8]} completed successfully")
 
         except Exception as e:
-            # Mark workflow as failed
-            context['graph'].mark_failed(str(e))
+            graph.mark_failed(str(e))
             context['completed_at'] = datetime.now()
             context['error'] = str(e)
             context['finished'] = True
@@ -231,7 +237,6 @@ class WorkflowExecutor:
             logger.error(f"Workflow {workflow_id[:8]} failed: {e}", exc_info=True)
 
         finally:
-            # Clean up
             if workflow_id in self.running_workflows:
                 del self.running_workflows[workflow_id]
 
@@ -244,14 +249,11 @@ class WorkflowExecutor:
             graph: Workflow graph
             context: Execution context
         """
-        # Get initial parallel groups
         parallel_groups = graph.get_parallel_groups()
 
         logger.info(f"Workflow {workflow_id[:8]} has {len(parallel_groups)} parallel groups")
 
-        # Execute each parallel group
         for group in parallel_groups:
-            # Execute all steps in this group in sequence
             for step_id in group:
                 if not graph.active:
                     logger.info(f"Workflow {workflow_id[:8]} was paused/cancelled")
@@ -259,7 +261,6 @@ class WorkflowExecutor:
 
                 self._execute_single_step(workflow_id, graph, step_id, context)
 
-            # Wait for all steps in group to complete
             self._wait_for_group_completion(graph, group)
 
     def _execute_single_step(self, workflow_id: str, graph: WorkflowGraph, step_id: str, context: Dict[str, Any]):
@@ -272,26 +273,21 @@ class WorkflowExecutor:
             step_id: Step ID
             context: Execution context
         """
-        # Check if step is ready
-        if not graph.get_step(step_id):
+        step = graph.get_step(step_id)
+        if not step:
             logger.error(f"Step {step_id[:8]} not found in workflow {workflow_id[:8]}")
             return
 
-        step = graph.get_step(step_id)
-
-        # Skip already completed/skipped steps
         if step.status.value in ['completed', 'skipped']:
             logger.debug(f"Skipping already completed step {step_id[:8]}")
             return
 
-        # Check if all dependencies are met
         for dep_id in step.dependencies:
             dep_step = graph.get_step(dep_id)
             if not dep_step or dep_step.status.value not in ['completed', 'skipped']:
                 logger.debug(f"Step {step_id[:8]} waiting for dependency {dep_id[:8]}")
                 return
 
-        # Execute step
         self._execute_step(workflow_id, graph, step, context)
 
     def _execute_step(self, workflow_id: str, graph: WorkflowGraph, step: WorkflowStep, context: Dict[str, Any]):
@@ -304,39 +300,38 @@ class WorkflowExecutor:
             step: Step to execute
             context: Execution context
         """
-        # Mark step as started
         graph.mark_step_started(step.step_id)
         if self.on_step_start:
             self.on_step_start(workflow_id, step.step_id)
 
         logger.info(f"Executing step {step.step_id[:8]} in workflow {workflow_id[:8]}")
 
+        result = None
+
         try:
-            # Execute step based on type
+            action_config = step.action_config or {}
+
             if step.step_type == StepType.LOOP:
-                # Execute loop
-                collection = context.get(step.loop_config.get('collection', 'items'), [])
+                loop_config = step.loop or {}
+                collection = context.get(loop_config.get('collection', 'items'), loop_config.get('items', []))
                 results = graph.apply_loop(step, collection, context)
 
-                # Store loop results
                 context[f"{step.step_id}_results"] = results
                 context[f"{step.step_id}_count"] = len(results)
+                result = results
 
             elif step.step_type == StepType.DECISION:
-                # Execute decision
-                self._execute_decision(workflow_id, graph, step, context)
+                result = self._execute_decision(workflow_id, graph, step, context)
 
             elif step.step_type == StepType.PROMPT_USER:
-                # Prompt user
-                user_input = step.action.get('prompt', 'Enter value: ')
-                context[f"{step.step_id}_result"] = input(user_input)
+                prompt_text = action_config.get('prompt', 'Enter value: ')
+                result = input(prompt_text)
+                context[f"{step.step_id}_result"] = result
 
             else:
-                # Execute action
                 result = graph._execute_step(step, context)
                 context[f"{step.step_id}_result"] = result
 
-            # Mark step as completed
             graph.mark_step_completed(step.step_id, success=True, output=result)
             if self.on_step_complete:
                 self.on_step_complete(workflow_id, step.step_id, True, result)
@@ -344,35 +339,43 @@ class WorkflowExecutor:
             logger.debug(f"Step {step.step_id[:8]} completed successfully")
 
         except Exception as e:
-            # Mark step as failed
             graph.mark_step_failed(step.step_id, str(e))
             if self.on_step_fail:
                 self.on_step_fail(workflow_id, step.step_id, str(e))
 
             logger.error(f"Step {step.step_id[:8]} failed: {e}", exc_info=True)
 
-            # Check error handling strategy
-            error_handling = step.error_handling or 'continue'
+            on_error = step.on_error or 'continue'
 
-            if error_handling == 'stop':
+            if on_error == 'stop':
                 logger.error(f"Step {step.step_id[:8]} failed and stopping workflow")
                 raise
-            elif error_handling == 'continue':
+            elif on_error == 'continue':
                 logger.info(f"Step {step.step_id[:8]} failed but continuing")
                 return
-            elif error_handling == 'ask_user':
-                # Ask user what to do
-                choice = input(f"Step {step.step_id[:8]} failed: {e}\nContinue (c), Skip (s), or Stop (s)? ").lower()
+            elif on_error == 'ask_user':
+                choice = input(
+                    f"Step {step.step_id[:8]} failed: {e}\nContinue (c), Skip (s), or Stop (x)? "
+                ).lower()
 
-                if choice == 'skip':
+                if choice == 's':
                     graph.mark_step_skipped(step.step_id, f"User skipped due to: {e}")
-                elif choice == 'stop':
+                elif choice == 'x':
                     raise
                 else:
-                    # Retry or continue
-                    pass
+                    # 'c' or anything else: treat as continue
+                    return
+            elif on_error == 'skip':
+                graph.mark_step_skipped(step.step_id, f"Skipped due to: {e}")
+            elif on_error == 'retry':
+                if step.should_retry():
+                    step.retry_count += 1
+                    self._execute_step(workflow_id, graph, step, context)
+                else:
+                    logger.error(f"Step {step.step_id[:8]} failed after exhausting retries: {e}")
+                    raise
 
-    def _execute_decision(self, workflow_id: str, graph: WorkflowGraph, step: WorkflowStep, context: Dict[str, Any]):
+    def _execute_decision(self, workflow_id: str, graph: WorkflowGraph, step: WorkflowStep, context: Dict[str, Any]) -> Any:
         """
         Execute a decision step.
 
@@ -381,20 +384,20 @@ class WorkflowExecutor:
             graph: Workflow graph
             step: Decision step
             context: Execution context
-        """
-        # Evaluate condition
-        condition_met = graph.evaluate_condition(step.condition, context)
 
-        if condition_met:
-            # Execute true branch
-            for branch_step_id in step.true_branch:
-                if branch_step_id in graph.steps:
-                    self._execute_single_step(workflow_id, graph, branch_step_id, context)
-        else:
-            # Execute false branch
-            for branch_step_id in step.false_branch:
-                if branch_step_id in graph.steps:
-                    self._execute_single_step(workflow_id, graph, branch_step_id, context)
+        Returns:
+            "Condition checked" marker, matching WorkflowGraph's own
+            CONDITION handling, for consistency.
+        """
+        condition_met = graph.evaluate_condition(step.condition, context)
+        decision = step.decision or {}
+
+        branch_ids = decision.get('on_true', []) if condition_met else decision.get('on_false', [])
+        for branch_step_id in branch_ids:
+            if branch_step_id in graph.steps:
+                self._execute_single_step(workflow_id, graph, branch_step_id, context)
+
+        return "Condition checked"
 
     def _wait_for_group_completion(self, graph: WorkflowGraph, group: List[str]):
         """
@@ -407,18 +410,16 @@ class WorkflowExecutor:
         import time
 
         while True:
-            # Check if all steps are completed
             all_completed = True
             for step_id in group:
                 step = graph.get_step(step_id)
-                if step and step.status.value not in ['completed', 'skipped']:
+                if step and step.status.value not in ['completed', 'skipped', 'failed', 'aborted']:
                     all_completed = False
                     break
 
             if all_completed:
                 break
 
-            # Sleep for a short time
             time.sleep(0.1)
 
     def cancel_all(self):
@@ -449,7 +450,8 @@ class WorkflowExecutor:
             return None
 
         context = self.running_workflows[workflow_id]
-        return context['graph'].status.value
+        graph = context.get('graph')
+        return graph.status.value if graph else None
 
     def get_execution_stats(self) -> Dict[str, Any]:
         """
@@ -458,7 +460,8 @@ class WorkflowExecutor:
         Returns:
             Statistics dictionary
         """
+        running_ids = list(self.running_workflows.keys())
         return {
-            'running_workflows': len(self.running_workflows),
-            'running_workflows': [workflow_id for workflow_id in self.running_workflows.keys()]
+            'running_workflow_count': len(running_ids),
+            'running_workflows': running_ids
         }

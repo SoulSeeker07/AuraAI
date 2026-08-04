@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 import threading
-import PyPDF2
+import pypdf
 import asyncio
 import concurrent.futures
 from typing import Callable
@@ -629,9 +629,9 @@ class PageReader:
             Extracted text
         """
         try:
-            import PyPDF2
-            
-            pdf_reader = PyPDF2.PdfReader(content)
+            import pypdf
+
+            pdf_reader = pypdf.PdfReader(content)
             text = ""
             
             for page in pdf_reader.pages:

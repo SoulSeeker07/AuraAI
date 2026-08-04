@@ -8,6 +8,7 @@ Defines the structure of a workflow, including steps, triggers, variables, and c
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
+from enum import Enum, auto
 import logging
 
 logger = logging.getLogger(__name__)

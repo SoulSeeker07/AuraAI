@@ -32,7 +32,7 @@ class Task:
         self,
         goal: str,
         task_type: str = "general",
-        priority: TaskPriority = TaskPriority.NORMAL,
+        priority: TaskPriority = TaskPriority.MEDIUM,
         dependencies: Optional[List[str]] = None,
         required_tools: Optional[List[str]] = None,
         estimated_duration: timedelta = timedelta(minutes=5),
@@ -44,7 +44,7 @@ class Task:
         max_retries: int = 3,
         timeout: Optional[timedelta] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        status: TaskStatus = TaskStatus.CREATED,
+        status: TaskStatus = TaskStatus.PENDING,
         task_id: Optional[str] = None,
         parent_goal_id: Optional[str] = None
     ):
@@ -54,7 +54,7 @@ class Task:
         Args:
             goal: The description of what this task accomplishes
             task_type: Category of task (e.g., "file", "git", "network")
-            priority: Priority level (HIGH, NORMAL, LOW)
+            priority: Priority level (LOW, MEDIUM, HIGH, URGENT)
             dependencies: List of task IDs this depends on
             required_tools: List of tool names required to execute this task
             estimated_duration: Expected execution time
@@ -107,7 +107,7 @@ class Task:
     @property
     def is_ready(self) -> bool:
         """Check if task is ready to execute (all dependencies complete)."""
-        return self.status in [TaskStatus.QUEUED, TaskStatus.CREATED] and self._are_dependencies_complete()
+        return self.status == TaskStatus.PENDING and self._are_dependencies_complete()
 
     @property
     def is_running(self) -> bool:
@@ -125,13 +125,13 @@ class Task:
         return (
             self.status == TaskStatus.FAILED and
             self.retry_count < self.max_retries and
-            self.retry_policy != RetryPolicy.NO_RETRY
+            self.retry_policy != RetryPolicy.OFF
         )
 
     @property
     def requires_approval(self) -> bool:
         """Check if task requires user approval."""
-        return self.approval_required != ApprovalRequired.NO
+        return self.approval_required != ApprovalRequired.NONE
 
     def _are_dependencies_complete(self) -> bool:
         """Check if all dependencies are complete."""
@@ -152,14 +152,14 @@ class Task:
         Returns:
             Progress as float between 0 and 1
         """
-        if self.status == TaskStatus.CREATED or self.status == TaskStatus.QUEUED:
+        if self.status == TaskStatus.PENDING:
             return 0.0
         elif self.status == TaskStatus.RUNNING:
             return self.metadata.get('progress', 0.5)
         elif self.status == TaskStatus.COMPLETED:
             return 1.0
         elif self.status == TaskStatus.FAILED:
-            return self.retry_count / self.max_retries
+            return self.retry_count / self.max_retries if self.max_retries else 0.0
         else:
             return 0.0
 
@@ -196,7 +196,7 @@ class Task:
         """
         self.status = TaskStatus.COMPLETED
         self.completed_at = datetime.now()
-        self.duration = self.completed_at - self.started_at
+        self.duration = self.completed_at - self.started_at if self.started_at else timedelta(0)
         self.output = output
 
         logger.info(f"Task {self.task_id[:8]} completed in {self.duration}")
@@ -213,7 +213,7 @@ class Task:
         """
         self.status = TaskStatus.FAILED
         self.completed_at = datetime.now()
-        self.duration = self.completed_at - self.started_at
+        self.duration = self.completed_at - self.started_at if self.started_at else timedelta(0)
         self.error = error
 
         logger.warning(f"Task {self.task_id[:8]} failed: {error}")
@@ -225,7 +225,7 @@ class Task:
         """Mark task as cancelled."""
         self.status = TaskStatus.CANCELLED
         self.completed_at = datetime.now()
-        self.duration = self.completed_at - self.started_at
+        self.duration = self.completed_at - self.started_at if self.started_at else timedelta(0)
         self.error = "Task cancelled by user"
 
         logger.info(f"Task {self.task_id[:8]} cancelled")
@@ -292,18 +292,18 @@ class Task:
             task_id=data.get('task_id'),
             goal=data['goal'],
             task_type=data.get('task_type', 'general'),
-            priority=TaskPriority(data.get('priority', 'NORMAL')),
+            priority=TaskPriority(data.get('priority', 'medium')),
             dependencies=data.get('dependencies'),
             required_tools=data.get('required_tools'),
             estimated_duration=timedelta(seconds=data.get('estimated_duration', 300)),
-            risk_level=TaskRiskLevel(data.get('risk_level', 'MEDIUM')),
-            retry_policy=RetryPolicy(data.get('retry_policy', 'DEFAULT')),
-            approval_required=ApprovalRequired(data.get('approval_required', 'AUTO')),
-            description=data.get('description'),
+            risk_level=TaskRiskLevel(data.get('risk_level', 'medium')),
+            retry_policy=RetryPolicy(data.get('retry_policy', 'default')),
+            approval_required=ApprovalRequired(data.get('approval_required', 'auto')),
+            description=data.get('description', ''),
             retry_count=data.get('retry_count', 0),
             max_retries=data.get('max_retries', 3),
             timeout=timedelta(seconds=data.get('timeout')) if data.get('timeout') else None,
-            status=TaskStatus(data.get('status', 'CREATED')),
+            status=TaskStatus(data.get('status', 'pending')),
             parent_goal_id=data.get('parent_goal_id')
         )
 

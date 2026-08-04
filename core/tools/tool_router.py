@@ -8,6 +8,7 @@ This replaces direct tool calls with a centralized routing system.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -76,19 +77,32 @@ class ToolRouter:
         self,
         plugin_registry=None,
         desktop_agent=None,
-        filesystem=None
+        filesystem=None,
+        workspace_root: Path = None
     ):
         """
         Initialize Tool Router.
-        
+
         Args:
             plugin_registry: Plugin registry for plugin tools
             desktop_agent: Desktop agent for desktop automation
             filesystem: Filesystem handler
+            workspace_root: Root directory of the project/workspace
         """
         self.plugins = plugin_registry
         self.desktop = desktop_agent
         self.filesystem = filesystem
+        self.workspace_root = workspace_root or Path.cwd()
+        
+        # Initialize code executor if available
+        self.code_executor = None
+        if workspace_root:
+            try:
+                from core.tools.code_execution.code_execution_tool import CodeExecutionTool
+                self.code_executor = CodeExecutionTool(workspace_root=workspace_root)
+                logger.info("Code execution tool initialized")
+            except ImportError:
+                logger.warning("Code execution tool not available")
         
         # Register known tools
         self.registered_tools = self._discover_tools()
@@ -104,6 +118,21 @@ class ToolRouter:
         """
         tools = {}
         
+        # Register code execution tool if available
+        if hasattr(self, 'code_executor') and self.code_executor is not None:
+            tools['execute_python'] = {
+                'name': 'execute_python',
+                'description': 'Save and execute Python code',
+                'async': False,
+                'handler': lambda params: self.code_executor.save_and_execute(
+                    code=params.get('code', ''),
+                    filename=params.get('filename'),
+                    timeout=params.get('timeout', 30)
+                )
+            }
+        else:
+            logger.warning("Code executor not available, skipping 'execute_python' tool registration")
+
         # Register core tools
         tools['read_file'] = {
             'name': 'read_file',

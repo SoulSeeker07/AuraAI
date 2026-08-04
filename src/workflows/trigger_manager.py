@@ -6,14 +6,17 @@ Manages workflow triggers: manual, scheduled, event, workspace, voice, plugin.
 
 
 import logging
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List, Callable, TYPE_CHECKING
 from datetime import datetime, timedelta
 import threading
 import json
 import os
 
 from .models import WorkflowTriggerType
-from .workflow_engine import WorkflowEngine
+
+# Avoid circular import - use TYPE_CHECKING for type hints only
+if TYPE_CHECKING:
+    from .workflow_engine import WorkflowEngine
 
 
 logger = logging.getLogger(__name__)

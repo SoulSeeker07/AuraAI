@@ -18,6 +18,7 @@ dependencies = [
   "python-dotenv>=1.0",
   "groq>=0.9",
   "pywin32>=305; platform_system == 'Windows'",
+  "beautifulsoup4>=4.12",
 ]
 
 [project.optional-dependencies]

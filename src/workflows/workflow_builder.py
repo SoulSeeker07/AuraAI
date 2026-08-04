@@ -8,6 +8,7 @@ Provides methods for constructing workflows, defining triggers, setting up varia
 
 import json
 from typing import Dict, Any, Optional, List, Callable, Union
+from enum import Enum, auto
 from datetime import datetime, timedelta
 import uuid
 

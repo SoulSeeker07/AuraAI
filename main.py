@@ -1,7 +1,15 @@
 import sys
 import argparse
 import asyncio
+import io
 from pathlib import Path
+
+# Configure stdout to UTF-8 BEFORE any other imports
+# This fixes Unicode encoding issues on Windows (cp1252 vs UTF-8)
+try:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+except Exception:
+    pass  # If reconfiguration fails, keep the default
 
 # Import logger from core module
 from core import logger
@@ -16,52 +24,75 @@ sys.path.insert(1, str(SRC_DIR))  # src second to find logger
 from core.aura_core import AuraCore
 from clients.cli_client import CLIClient
 from clients.gui_client import GUIClient
+from aura_monitor import AuraMonitor
 
 
-def create_aura_core(config: dict = None) -> AuraCore:
+# Singleton instance of AuraCore
+_aura_core_instance = None
+
+def get_aura_core(config: dict = None) -> AuraCore:
     """
-    Create and initialize Aura Core.
+    Get or create Aura Core instance (Singleton pattern).
 
     Args:
         config: Configuration dictionary
 
     Returns:
-        AuraCore instance
+        AuraCore instance (singleton)
     """
-    # Ensure data_path is set for conversation history persistence
-    if config is None:
-        config = {}
+    global _aura_core_instance
 
-    if 'data_path' not in config:
-        from pathlib import Path
-        config['data_path'] = str(Path(__file__).resolve().parent / "Data" / "ChatLog.json")
+    if _aura_core_instance is None:
+        # Ensure data_path is set for conversation history persistence
+        if config is None:
+            config = {}
 
-    return AuraCore(config=config)
+        if 'data_path' not in config:
+            from pathlib import Path
+            config['data_path'] = str(Path(__file__).resolve().parent / "Data" / "ChatLog.json")
+
+        _aura_core_instance = AuraCore(config=config)
+
+    return _aura_core_instance
 
 
-def main_cli():
+async def main_cli():
     """Run AuraAI in CLI mode."""
     print("Starting AuraAI in CLI mode...")
     print("-" * 60)
 
-    # Create Aura Core
-    aura_core = create_aura_core()
+    # Get Aura Core (singleton pattern)
+    aura_core = get_aura_core()
+
+    # Create Aura Monitor
+    monitor = AuraMonitor(aura_core, refresh_interval=2)
 
     # Create CLI client
     cli_client = CLIClient(aura_core)
 
-    # Run CLI
+    # Start monitor in a separate thread
+    import threading
+    monitor_thread = threading.Thread(
+        target=monitor.monitor,
+        daemon=True
+    )
+    monitor_thread.start()
+
+    # Run CLI (now properly awaited)
     try:
-        asyncio.run(cli_client.run())
+        await cli_client.run()
     except KeyboardInterrupt:
         print("\n\n✓ Shutting down...")
-        aura_core.shutdown()
-        sys.exit(0)
     except Exception as e:
         print(f"\n✗ Error: {e}")
         logger.error(f"CLI error: {e}", exc_info=True)
-        aura_core.shutdown()
-        sys.exit(1)
+    finally:
+        # Stop monitor
+        monitor.running = False
+        monitor_thread.join(timeout=2)
+        # Note: aura_core.shutdown() is called by cli_client.py
+        # We don't call it here to avoid double shutdown
+        sys.exit(0)
 
 
 def main_gui():
@@ -69,8 +100,8 @@ def main_gui():
     print("Starting AuraAI in GUI mode...")
     print("-" * 60)
 
-    # Create Aura Core
-    aura_core = create_aura_core()
+    # Get Aura Core (singleton pattern)
+    aura_core = get_aura_core()
 
     # Create GUI client
     gui_client = GUIClient(aura_core)
@@ -137,7 +168,7 @@ Modes:
         return gui_client
     else:
         # CLI mode (default)
-        main_cli()
+        asyncio.run(main_cli())
         return None
 
 

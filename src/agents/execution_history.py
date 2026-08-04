@@ -278,7 +278,7 @@ class ExecutionHistory:
             metadata={'progress': progress, 'detail': detail}
         )
 
-    def log_error(self, goal_id: Optional[str] = None, task_id: Optional[str] = None, error: str, context: str = ""):
+    def log_error(self, error: str, goal_id: Optional[str] = None, task_id: Optional[str] = None, context: str = ""):
         """Log error event."""
         self.log_event(
             EventType.ERROR,

@@ -21,6 +21,20 @@ from enum import Enum
 import sys
 from pathlib import Path
 
+# Import Memory module for brain integration
+try:
+    from Memory import Memory
+except ImportError:
+    Memory = None
+
+# Import research module types
+try:
+    from src.research import SearchMode, ConflictResolution, ResearchConfig
+except ImportError:
+    SearchMode = None
+    ConflictResolution = None
+    ResearchConfig = None
+
 # Load environment variables from .env if present
 try:
     from dotenv import load_dotenv
@@ -73,6 +87,23 @@ class AuraCore:
     interface for all clients (CLI, GUI, Voice, API).
     """
 
+    # Singleton pattern
+    _instance: Optional['AuraCore'] = None
+    _initialized: bool = False
+
+    def __new__(cls, config: Optional[Dict[str, Any]] = None):
+        """Ensure only one instance is created."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls, config: Optional[Dict[str, Any]] = None) -> 'AuraCore':
+        """Get or create the singleton AuraCore instance."""
+        if cls._instance is None:
+            cls._instance = cls(config)
+        return cls._instance
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
         Initialize Aura Core.
@@ -81,12 +112,20 @@ class AuraCore:
             config: Configuration dictionary
         """
         self.config = config or {}
-        self.project_root = self.config.get('project_root', Path(__file__).resolve().parent.parent)
+        # Ensure project_root is a Path object
+        project_root_input = self.config.get('project_root')
+        if project_root_input is not None:
+            if isinstance(project_root_input, str):
+                self.project_root = Path(project_root_input)
+            else:
+                self.project_root = project_root_input
+        else:
+            self.project_root = Path(__file__).resolve().parent.parent
         self.workspace = self.config.get('workspace', str(self.project_root))
 
         # Conversation history data path
-        self.data_path = self.config.get('data_path', self.project_root / "Data" / "ChatLog.json")
-        self.chat_log_path = Path(self.data_path)
+        self.chat_log_path = Path(self.config.get('data_path', self.project_root / "Data" / "ChatLog.json"))
+        self.memory_db_path = Path(self.config.get('memory_db_path', self.project_root / "Memory.db"))
 
         # Core components
         self.components: Dict[str, ComponentStatus] = {}
@@ -107,11 +146,22 @@ class AuraCore:
         self.workspace_aware = False
         self.workspace_info = {}
 
+        # Multi-Agent Intelligence
+        self.multi_agent_status = AuraCoreStatus.READY
+        self.multi_agent_orchestrator = None
+        self.multi_agent_registry = None
+
         # Agent Runtime
         self.agent_runtime_status = AuraCoreStatus.READY
+        self.agent_runtime = None
+
+        # Research Engine
+        self.research_enabled = False
+        self.research_integration = None
 
         # Workflow Engine
         self.workflow_engine_status = AuraCoreStatus.READY
+        self.workflow_engine = None
 
         # Vision
         self.vision_enabled = False
@@ -127,17 +177,20 @@ class AuraCore:
         self.conversation_history: List[Dict[str, str]] = []
         self.max_history = 100
 
-        # Load conversation history from disk
-        self._load_conversation_history()
+        # Only initialize components once
+        if not self._initialized:
+            AuraCore._initialized = True
+            # Initialize LLM first (groq_model is used by _init_brain)
+            self.groq_model = self.config.get('groq_model', 'llama-3.3-70b-versatile')
+            self.groq_client = None
+            self.llm_enabled = False
+            self._init_llm()
 
-        # LLM (Groq) setup
-        self.groq_model = self.config.get('groq_model', 'llama-3.3-70b-versatile')
-        self.groq_client = None
-        self.llm_enabled = False
-        self._init_llm()
-
-        # Initialize core
-        self._initialize_components()
+            # Initialize core components
+            self._initialize_components()
+        else:
+            # Load conversation history from disk
+            self._load_conversation_history()
 
     def _init_llm(self):
         """Initialize the Groq LLM client."""
@@ -162,8 +215,8 @@ class AuraCore:
 
     async def get_ai_response(self, user_message: str) -> str:
         """
-        Send the user's message (plus recent conversation history) to Groq
-        and return the model's reply.
+        Send the user's message through the ConversationEngine,
+        which handles intent detection, memory integration, and LLM response generation.
 
         Args:
             user_message: The latest message from the user
@@ -178,37 +231,15 @@ class AuraCore:
             )
 
         try:
-            messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are Aura, a helpful, concise AI assistant integrated "
-                        "into a developer's desktop environment called AuraAI."
-                    ),
-                }
-            ]
+            # Use ConversationEngine to process the message with memory integration
+            conversation_result = self.conversation_engine.process(user_message)
 
-            # Include recent conversation history for context
-            for entry in self.conversation_history[-10:]:
-                role = entry.get('role')
-                content = entry.get('content')
-                if role in ('user', 'assistant') and content:
-                    messages.append({"role": role, "content": content})
-
-            messages.append({"role": "user", "content": user_message})
-
-            # Run the blocking Groq SDK call in a thread so we don't block the event loop
-            response = await asyncio.to_thread(
-                self.groq_client.chat.completions.create,
-                model=self.groq_model,
-                messages=messages,
-            )
-
-            return response.choices[0].message.content
+            # Extract the AI's response text from the conversation result
+            return conversation_result.text
 
         except Exception as e:
-            logger.error(f"Groq API call failed: {e}", exc_info=True)
-            return f"✗ Error contacting Groq: {e}"
+            logger.error(f"ConversationEngine processing failed: {e}", exc_info=True)
+            return f"✗ Error processing message: {e}"
 
     def _initialize_components(self):
         """Initialize all core components."""
@@ -216,6 +247,12 @@ class AuraCore:
 
         # Memory
         self._init_memory()
+
+        # Brain (Memory + ConversationEngine)
+        self._init_brain()
+
+        # Research Engine
+        self._init_research()
 
         # Knowledge
         self._init_knowledge()
@@ -226,22 +263,36 @@ class AuraCore:
         # Workspace
         self._init_workspace()
 
+        # Multi-Agent Intelligence
+        self._init_multi_agent()
+
+        # Agent Runtime
+        self._init_agent_runtime()
+
+        # Workflow Engine
+        self._init_workflow()
+
         logger.info("Aura Core initialized successfully")
 
     def _init_memory(self):
         """Initialize memory system."""
         try:
             self.memory_enabled = True
+
+            # Query actual memory statistics
+            total_memories = self.memory.count_memories() if self.memory else 0
+            num_categories = self.memory.count_categories() if self.memory else 0
+
             self.memory_stats = {
-                'total_memories': 0,
-                'session_memories': 0,
-                'working_memories': 0,
+                'total_memories': total_memories,
+                'num_categories': num_categories,
                 'project': self.workspace
             }
+
             self.components['memory'] = ComponentStatus(
                 name='Memory',
                 status= AuraCoreStatus.READY,
-                message='Memory system loaded'
+                message=f'{total_memories} memories, {num_categories} categories'
             )
         except Exception as e:
             logger.error(f"Failed to initialize memory: {e}")
@@ -362,6 +413,284 @@ class AuraCore:
                 loaded=False
             )
 
+    def _init_brain(self):
+        """Initialize brain with Memory and ConversationEngine."""
+        try:
+            if Memory is None:
+                raise ImportError("Memory module not available")
+
+            # Create Memory instance
+            self.memory = Memory(db_path=self.memory_db_path, chat_log_path=self.chat_log_path)
+
+            # Create ConversationEngine
+            from src.brain.conversation_engine import ConversationEngine
+            from ai.provider_manager import ProviderManager
+
+            # Build provider manager
+            from src.ai.groq_provider import GroqProvider  # adjust path if it lives elsewhere
+
+            # Build provider manager
+            provider_manager = ProviderManager(default_provider='groq')
+            provider_manager.register('groq', GroqProvider(api_key=os.environ.get("GROQ_API_KEY", "")))
+
+            # Create ConversationEngine
+            self.conversation_engine = ConversationEngine(
+                memory=self.memory,
+                provider_manager=provider_manager,
+                settings={
+                    'provider': 'groq',
+                    'model': self.groq_model,
+                },
+                model=self.groq_model
+            )
+
+            self.brain_enabled = True
+            self.components['brain'] = ComponentStatus(
+                name='Brain',
+                status= AuraCoreStatus.READY,
+                message='Brain initialized with memory'
+            )
+
+            logger.info("Brain initialized successfully")
+        except Exception as e:
+            logger.exception("Failed to initialize brain")
+            self.brain_enabled = False
+            self.components['brain'] = ComponentStatus(
+                name='Brain',
+                status= AuraCoreStatus.ERROR,
+                message=str(e),
+                loaded=False
+            )
+
+    def _init_research(self):
+        """Initialize research engine for live data research."""
+        try:
+            # Check if research is enabled in config
+            research_config = self.config.get('research', {})
+            if not research_config.get('enabled', True):
+                logger.info("Research engine is disabled in configuration")
+                self.research_enabled = False
+                self.components['research'] = ComponentStatus(
+                    name='Research Engine',
+                    status= AuraCoreStatus.READY,
+                    message='Research disabled'
+                )
+                return
+
+            # Import research engine
+            from src.research import ResearchEngine, ResearchConfig
+
+            # Build research config
+            research_settings = research_config.get('settings', {})
+
+            # Create ResearchEngine
+            research_engine = ResearchEngine(config=ResearchConfig(
+                enabled=True,
+                default_mode=SearchMode.STANDARD,
+                default_max_results=research_settings.get('max_results', 10),
+                cache_ttl=research_settings.get('cache_ttl', 1800),
+                conflict_resolution=ConflictResolution.AUTO
+            ))
+
+            # Create research integration
+            from src.brain.research_integration import ResearchIntegration
+            self.research_integration = ResearchIntegration(research_engine)
+
+            self.research_enabled = True
+            self.components['research'] = ComponentStatus(
+                name='Research Engine',
+                status= AuraCoreStatus.READY,
+                message='Research engine initialized'
+            )
+
+            logger.info("Research engine initialized successfully")
+        except ImportError as e:
+            logger.error(f"Research module not available: {e}")
+            self.research_enabled = False
+            self.components['research'] = ComponentStatus(
+                name='Research Engine',
+                status= AuraCoreStatus.ERROR,
+                message=f"Research module: {e}",
+                loaded=False
+            )
+        except Exception as e:
+            logger.exception("Failed to initialize research engine")
+            self.research_enabled = False
+            self.components['research'] = ComponentStatus(
+                name='Research Engine',
+                status= AuraCoreStatus.ERROR,
+                message=str(e),
+                loaded=False
+            )
+
+    def is_research_needed(self, query: str) -> bool:
+        """
+        Check if research is needed for a query.
+
+        Args:
+            query: User query
+
+        Returns:
+            True if research is needed
+        """
+        if not self.research_enabled or self.research_integration is None:
+            return False
+
+        return self.research_integration.is_research_needed(query)
+
+    def perform_research(self, query: str, mode: str = 'standard') -> Optional[Dict[str, Any]]:
+        """
+        Perform research and return results.
+
+        Args:
+            query: Research query
+            mode: Search mode ('quick', 'standard', 'deep')
+
+        Returns:
+            Research results dictionary or None if failed
+        """
+        if not self.research_enabled or self.research_integration is None:
+            return None
+
+        from research import SearchMode
+        search_mode = SearchMode.STANDARD
+        if mode == 'quick':
+            search_mode = SearchMode.QUICK
+        elif mode == 'deep':
+            search_mode = SearchMode.DEEP
+
+        return self.research_integration.perform_research(query, mode=search_mode)
+
+    def enhance_response_with_research(
+        self,
+        query: str,
+        user_message: str,
+        max_results: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Enhance a response with research findings.
+
+        This method checks if research is needed, performs it, and
+        returns a dict with the research findings and a flag indicating
+        whether research was used.
+
+        Args:
+            query: Original query
+            user_message: Full user message
+            max_results: Maximum results to include
+
+        Returns:
+            Dict with research findings and status
+        """
+        if not self.research_enabled or self.research_integration is None:
+            return {
+                "research_used": False,
+                "message": "Research not available"
+            }
+
+        return self.research_integration.enhance_response_with_research(
+            query, user_message, max_results
+        )
+
+    def get_research_stats(self) -> Dict[str, Any]:
+        """
+        Get research engine statistics.
+
+        Returns:
+            Statistics dictionary
+        """
+        if not self.research_enabled or self.research_integration is None:
+            return {
+                "research_engine_initialized": False,
+                "message": "Research not available"
+            }
+
+        return self.research_integration.get_research_stats()
+
+    def _init_multi_agent(self):
+        """Initialize multi-agent intelligence system."""
+        try:
+            from src.agents.agent_registry import AgentRegistry
+            from src.agents.orchestrator import AgentOrchestrator
+            from src.agents.agent_context import ContextManager
+            
+            # Create agent registry
+            agent_registry = AgentRegistry()
+            
+            # Create orchestrator
+            orchestrator = AgentOrchestrator(
+                agent_registry=agent_registry,
+                context_manager=ContextManager()
+            )
+            
+            # Store orchestrator and registry
+            self.multi_agent_orchestrator = orchestrator
+            self.multi_agent_registry = agent_registry
+            
+            self.components['multi_agent'] = ComponentStatus(
+                name='Multi-Agent Intelligence',
+                status= AuraCoreStatus.READY,
+                message='Multi-agent orchestrator initialized'
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize multi-agent system: {e}")
+            self.components['multi_agent'] = ComponentStatus(
+                name='Multi-Agent Intelligence',
+                status= AuraCoreStatus.ERROR,
+                message=str(e),
+                loaded=False
+            )
+
+    def _init_agent_runtime(self):
+        """Initialize agent runtime system."""
+        try:
+            from src.agents.agent_runtime import AgentRuntime
+
+            # Create agent runtime
+            agent_runtime = AgentRuntime()
+
+            # Store agent runtime
+            self.agent_runtime = agent_runtime
+
+            self.components['agent_runtime'] = ComponentStatus(
+                name='Agent Runtime',
+                status= AuraCoreStatus.READY,
+                message='Agent runtime initialized'
+            )
+        except Exception as e:
+            logger.exception("Failed to initialize agent runtime")
+            self.components['agent_runtime'] = ComponentStatus(
+                name='Agent Runtime',
+                status= AuraCoreStatus.ERROR,
+                message=str(e),
+                loaded=False
+            )
+
+    def _init_workflow(self):
+        """Initialize workflow engine system."""
+        try:
+            from src.workflows.workflow_engine import WorkflowEngine
+            
+            # Create workflow engine (agent_runtime will be None initially)
+            workflow_engine = WorkflowEngine(agent_runtime=None)
+            
+            # Store workflow engine
+            self.workflow_engine = workflow_engine
+            
+            self.components['workflow_engine'] = ComponentStatus(
+                name='Workflow Engine',
+                status= AuraCoreStatus.READY,
+                message='Workflow engine initialized'
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize workflow engine: {e}")
+            self.components['workflow_engine'] = ComponentStatus(
+                name='Workflow Engine',
+                status= AuraCoreStatus.ERROR,
+                message=str(e),
+                loaded=False
+            )
+
     def get_status(self) -> Dict[str, Any]:
         """
         Get status of all Aura Core components.
@@ -386,6 +715,7 @@ class AuraCore:
                 'loaded': self.plugins
             },
             'workspace': self.workspace_info,
+            'multi_agent': self.multi_agent_status.value,
             'agent_runtime': self.agent_runtime_status.value,
             'workflow_engine': self.workflow_engine_status.value,
             'vision': 'Enabled' if self.vision_enabled else 'Disabled',
@@ -435,6 +765,8 @@ class AuraCore:
             'content': content,
             'timestamp': None  # Could add timestamp if needed
         })
+
+        logger.info(f"Added {role} conversation: {content[:50]}... (Total: {len(self.conversation_history)})")
 
         # Keep history within limit
         if len(self.conversation_history) > self.max_history:
@@ -816,12 +1148,18 @@ Engineering"""
             # Save last 1000 conversation turns to prevent file growth
             history_to_save = self.conversation_history[-1000:]
 
+            logger.info(f"Attempting to save {len(history_to_save)} conversation turns to {self.chat_log_path}")
+
             with open(self.chat_log_path, 'w', encoding='utf-8') as f:
                 json.dump(history_to_save, f, indent=2, ensure_ascii=False)
+                f.flush()  # Force write to disk
+                os.fsync(f.fileno())  # Force sync to disk
 
-            logger.info(f"Saved {len(history_to_save)} conversation turns to disk")
+            logger.info(f"Successfully saved {len(history_to_save)} conversation turns to disk")
         except Exception as e:
             logger.error(f"Error saving conversation history: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def shutdown(self):
         """Shutdown Aura Core."""

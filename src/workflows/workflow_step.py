@@ -11,6 +11,8 @@ from datetime import datetime
 from enum import Enum
 import logging
 
+from .models import StepType
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,6 +71,29 @@ class WorkflowStep:
     - Support loops and iterations
     - Define error handling strategies
     - Use and set variables
+
+    NOTE ON MODEL SHAPE (read this before touching workflow_graph.py /
+    workflow_executor.py again):
+      - step_type (StepType, from models.py) controls CONTROL FLOW:
+        ACTION, WAIT, CONDITION, LOOP, SET_VARIABLE, GET_VARIABLE,
+        PROMPT_USER, DECISION, ECHO, MERGE, MERGE_CONFIG.
+      - action_type (ActionType, local to this file) only matters when
+        step_type == StepType.ACTION, and controls WHAT KIND of action
+        runs: GOAL, TOOL, SCRIPT, PROMPT_USER.
+      - action_config is a plain dict holding whatever the action/wait/
+        echo/set_variable step needs (e.g. {'action_type': 'tool',
+        'tool': 'x', 'parameters': {...}}).
+      - condition is a plain dict: {'condition_type': 'attribute_check'
+        | 'value_check' | 'custom', 'attribute_name', 'expected_value',
+        'operator', 'custom_function'}.
+      - decision is a plain dict used for branching:
+        {'on_true': [step_id, ...], 'on_false': [step_id, ...]}.
+      - loop is a plain dict: {'type': 'for_each' | 'while' | 'for_range',
+        'collection'/'items', 'item_variable', 'condition',
+        'max_iterations', 'start', 'end', 'step'}.
+      - on_error is a plain string: 'stop' | 'continue' | 'skip' |
+        'ask_user' | 'retry'. There is no ErrorHandling enum in this
+        model — do not import one.
     """
 
     # Core identification
@@ -76,7 +101,10 @@ class WorkflowStep:
     name: str
     description: Optional[str] = None
 
-    # Execution type
+    # Control-flow type (what kind of step this is)
+    step_type: StepType = StepType.ACTION
+
+    # Execution type (only relevant when step_type == StepType.ACTION)
     action_type: ActionType = ActionType.GOAL
 
     # Action configuration
@@ -86,13 +114,13 @@ class WorkflowStep:
     dependencies: List[str] = field(default_factory=list)
 
     # Conditions
-    condition: Optional[Dict[str, Any]] = None  # {expression, variable_name, value}
+    condition: Optional[Dict[str, Any]] = None  # {condition_type, attribute_name, expected_value, operator, custom_function}
 
     # Decision (branching)
-    decision: Optional[Dict[str, Any]] = None  # {on_success, on_failure, on_error}
+    decision: Optional[Dict[str, Any]] = None  # {on_true: [step_id,...], on_false: [step_id,...]}
 
     # Loops
-    loop: Optional[Dict[str, Any]] = None  # {type, items, condition}
+    loop: Optional[Dict[str, Any]] = None  # {type, items/collection, item_variable, condition, max_iterations, start, end, step}
 
     # Error handling
     on_error: str = "stop"  # stop, continue, retry, skip, ask_user
@@ -124,6 +152,7 @@ class WorkflowStep:
             'step_id': self.step_id,
             'name': self.name,
             'description': self.description,
+            'step_type': self.step_type.value,
             'action_type': self.action_type.value,
             'action_config': self.action_config,
             'dependencies': self.dependencies,
@@ -148,16 +177,18 @@ class WorkflowStep:
     def import_from_dict(cls, data: Dict[str, Any]) -> 'WorkflowStep':
         """Import step from dictionary."""
         # Parse datetime
-        started_at = datetime.fromisoformat(data['started_at']) if 'started_at' in data else None
-        completed_at = datetime.fromisoformat(data['completed_at']) if 'completed_at' in data else None
+        started_at = datetime.fromisoformat(data['started_at']) if data.get('started_at') else None
+        completed_at = datetime.fromisoformat(data['completed_at']) if data.get('completed_at') else None
 
-        # Import ActionType
-        from .workflow import ActionType
+        # NOTE: ActionType is defined locally in this module — no import needed.
+        # (Previously this incorrectly imported ActionType from .workflow, which
+        # does not define it and would fail or shadow the wrong class.)
 
         return cls(
             step_id=data['step_id'],
             name=data['name'],
             description=data.get('description'),
+            step_type=StepType(data.get('step_type', 'action')),
             action_type=ActionType(data.get('action_type', 'goal')),
             action_config=data.get('action_config'),
             dependencies=data.get('dependencies', []),
@@ -188,7 +219,10 @@ class WorkflowStep:
         """Mark step as completed."""
         self.status = StepStatus.COMPLETED
         self.completed_at = datetime.now()
-        self.execution_time = (self.completed_at - self.started_at).total_seconds()
+        if self.started_at:
+            self.execution_time = (self.completed_at - self.started_at).total_seconds()
+        else:
+            self.execution_time = 0.0
         logger.info(f"Completed step {self.step_id[:8]} in {self.execution_time:.2f}s")
 
     def mark_failed(self, error: str):
@@ -199,11 +233,13 @@ class WorkflowStep:
         self.completed_at = datetime.now()
         logger.error(f"Step {self.step_id[:8]} failed: {error}")
 
-    def mark_skipped(self):
+    def mark_skipped(self, reason: str = ""):
         """Mark step as skipped."""
         self.status = StepStatus.SKIPPED
         self.completed_at = datetime.now()
-        logger.info(f"Skipped step {self.step_id[:8]}")
+        if reason:
+            self.notes = f"{self.notes + ' | ' if self.notes else ''}Skipped: {reason}"
+        logger.info(f"Skipped step {self.step_id[:8]}" + (f": {reason}" if reason else ""))
 
     def mark_aborted(self):
         """Mark step as aborted."""
@@ -271,8 +307,10 @@ def create_goal_step(
         step_id="",
         name=name,
         description=f"Execute goal: {goal_description[:50]}...",
+        step_type=StepType.ACTION,
         action_type=ActionType.GOAL,
         action_config={
+            'action_type': 'goal',
             'goal': goal_description,
             **kwargs
         },
@@ -295,8 +333,10 @@ def create_tool_step(
         step_id="",
         name=name,
         description=f"Execute tool: {tool_name} ({operation})",
+        step_type=StepType.ACTION,
         action_type=ActionType.TOOL,
         action_config={
+            'action_type': 'tool',
             'tool': tool_name,
             'operation': operation,
             'parameters': parameters or {},
@@ -317,8 +357,9 @@ def create_wait_step(
         step_id="",
         name=name,
         description=description or f"Wait for {duration} seconds",
+        step_type=StepType.WAIT,
         action_type=ActionType.WAIT,
-        action_config={'duration': duration},
+        action_config={'wait_seconds': duration, 'duration': duration},
         **kwargs
     )
 
@@ -332,11 +373,13 @@ def create_variable_step(
     **kwargs
 ) -> WorkflowStep:
     """Create a variable manipulation step."""
+    control_step_type = StepType.SET_VARIABLE if step_type == "set" else StepType.GET_VARIABLE
     action_type = ActionType.SET_VARIABLE if step_type == "set" else ActionType.GET_VARIABLE
     return WorkflowStep(
         step_id="",
         name=name,
         description=f"{'Set' if step_type == 'set' else 'Get'} variable: {variable_name}",
+        step_type=control_step_type,
         action_type=action_type,
         action_config={
             'variable_name': variable_name,
@@ -350,8 +393,8 @@ def create_variable_step(
 def create_condition_step(
     name: str,
     condition: str,
-    on_true: str = "continue",
-    on_false: str = "skip",
+    on_true: Optional[List[str]] = None,
+    on_false: Optional[List[str]] = None,
     **kwargs
 ) -> WorkflowStep:
     """Create a conditional check step."""
@@ -359,11 +402,15 @@ def create_condition_step(
         step_id="",
         name=name,
         description=f"Check condition: {condition[:50]}...",
+        step_type=StepType.CONDITION,
         action_type=ActionType.CONDITION,
-        action_config={
-            'condition': condition,
-            'on_true': on_true,
-            'on_false': on_false
+        condition={
+            'condition_type': 'custom',
+            'expression': condition,
+        },
+        decision={
+            'on_true': on_true or [],
+            'on_false': on_false or []
         },
         **kwargs
     )
@@ -371,8 +418,8 @@ def create_condition_step(
 
 def create_decision_step(
     name: str,
-    decisions: Dict[str, str],
-    on_default: str = "continue",
+    on_true: List[str],
+    on_false: List[str],
     **kwargs
 ) -> WorkflowStep:
     """
@@ -380,17 +427,18 @@ def create_decision_step(
 
     Args:
         name: Step name
-        decisions: Dict of {decision_path: outcome}
-        on_default: Outcome when no decision matches
+        on_true: Step IDs to run if the condition evaluates true
+        on_false: Step IDs to run if the condition evaluates false
     """
     return WorkflowStep(
         step_id="",
         name=name,
-        description=f"Decision: {len(decisions)} branches",
+        description=f"Decision: {len(on_true)} true branch, {len(on_false)} false branch",
+        step_type=StepType.DECISION,
         action_type=ActionType.DECISION,
-        action_config={
-            'decisions': decisions,
-            'on_default': on_default
+        decision={
+            'on_true': on_true,
+            'on_false': on_false
         },
         **kwargs
     )
@@ -409,8 +457,9 @@ def create_loop_step(
         step_id="",
         name=name,
         description=f"{loop_type.value} loop over {len(items)} items",
+        step_type=StepType.LOOP,
         action_type=ActionType.LOOP,
-        action_config={
+        loop={
             'type': loop_type.value,
             'items': items,
             'condition': condition
@@ -432,6 +481,7 @@ def create_prompt_step(
         step_id="",
         name=name,
         description=f"Prompt user: {prompt[:50]}...",
+        step_type=StepType.PROMPT_USER,
         action_type=ActionType.PROMPT_USER,
         action_config={
             'prompt': prompt,
