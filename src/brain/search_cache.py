@@ -3,8 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timedelta
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 
 class SearchCache:
@@ -27,7 +27,7 @@ class SearchCache:
     def __init__(self, cache_dir: Path | None = None):
         """
         Initialize the search cache.
-        
+
         Args:
             cache_dir: Directory to store cache files
         """
@@ -38,17 +38,17 @@ class SearchCache:
     def _get_cache_key(self, query: str, category: str = "default") -> str:
         """
         Generate a cache key for a query.
-        
+
         Args:
             query: Search query
             category: Query category
-            
+
         Returns:
             Cache key string
         """
         # Normalize query: lower case, strip whitespace
         normalized_query = query.strip().lower()
-        
+
         # Create unique hash
         hash_input = f"{category}:{normalized_query}"
         return hashlib.md5(hash_input.encode()).hexdigest()
@@ -56,10 +56,10 @@ class SearchCache:
     def _get_cache_file(self, cache_key: str) -> Path:
         """
         Get the file path for a cache entry.
-        
+
         Args:
             cache_key: Cache key
-            
+
         Returns:
             Path to cache file
         """
@@ -68,57 +68,54 @@ class SearchCache:
     def _get_ttl(self, category: str) -> int:
         """
         Get TTL for a category in minutes.
-        
+
         Args:
             category: Query category
-            
+
         Returns:
             TTL in minutes
         """
         return self.CACHE_TTL.get(category, self.CACHE_TTL["default"])
 
     def get(
-        self,
-        query: str,
-        category: str = "default",
-        ttl_override: int | None = None
+        self, query: str, category: str = "default", ttl_override: int | None = None
     ) -> dict[str, Any] | None:
         """
         Get cached search results if available and not expired.
-        
+
         Args:
             query: Search query
             category: Query category
             ttl_override: Override TTL (minutes)
-            
+
         Returns:
             Cached results dict or None if not found/expired
         """
         cache_key = self._get_cache_key(query, category)
         cache_file = self._get_cache_file(cache_key)
-        
+
         if not cache_file.exists():
             self._cache_stats["misses"] += 1
             return None
-        
+
         try:
-            with open(cache_file, "r", encoding="utf-8") as f:
+            with open(cache_file, encoding="utf-8") as f:
                 cached_data = json.load(f)
-            
+
             # Check if expired
             expires_at = datetime.fromisoformat(cached_data.get("expires_at"))
             current_time = datetime.now()
-            
+
             if current_time > expires_at:
                 cache_file.unlink()  # Remove expired cache
                 self._cache_stats["misses"] += 1
                 return None
-            
+
             # Cache hit
             self._cache_stats["hits"] += 1
             return cached_data["results"]
-        
-        except (json.JSONDecodeError, IOError) as exc:
+
+        except (OSError, json.JSONDecodeError):
             self._cache_stats["errors"] += 1
             return None
 
@@ -127,11 +124,11 @@ class SearchCache:
         query: str,
         results: list[dict[str, Any]],
         category: str = "default",
-        ttl_override: int | None = None
+        ttl_override: int | None = None,
     ) -> None:
         """
         Cache search results.
-        
+
         Args:
             query: Search query
             results: Search results to cache
@@ -140,11 +137,11 @@ class SearchCache:
         """
         cache_key = self._get_cache_key(query, category)
         cache_file = self._get_cache_file(cache_key)
-        
+
         # Calculate expiration time
         ttl = ttl_override or self._get_ttl(category)
         expires_at = datetime.now() + timedelta(minutes=ttl)
-        
+
         cache_data = {
             "query": query,
             "results": results,
@@ -152,57 +149,57 @@ class SearchCache:
             "expires_at": expires_at.isoformat(),
             "cached_at": datetime.now().isoformat(),
         }
-        
+
         try:
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(cache_data, f, indent=2, ensure_ascii=False)
-        except IOError as exc:
+        except OSError as exc:
             print(f"Warning: Could not save cache: {exc}")
 
     def invalidate(self, query: str, category: str = "default") -> None:
         """
         Invalidate a cache entry.
-        
+
         Args:
             query: Search query
             category: Query category
         """
         cache_key = self._get_cache_key(query, category)
         cache_file = self._get_cache_file(cache_key)
-        
+
         if cache_file.exists():
             cache_file.unlink()
 
     def invalidate_category(self, category: str) -> None:
         """
         Invalidate all cache entries for a category.
-        
+
         Args:
             category: Query category
         """
         pattern = f"*{self._get_cache_key('', category)}.json"
         import glob
-        
+
         for cache_file in glob.glob(str(self.cache_dir / pattern)):
             try:
                 Path(cache_file).unlink()
-            except IOError:
+            except OSError:
                 pass
 
     def clear_all(self) -> None:
         """Clear all cached entries."""
         import glob
-        
+
         for cache_file in glob.glob(str(self.cache_dir / "*.json")):
             try:
                 Path(cache_file).unlink()
-            except IOError:
+            except OSError:
                 pass
 
     def get_stats(self) -> dict[str, Any]:
         """
         Get cache statistics.
-        
+
         Returns:
             Dictionary with cache statistics
         """
@@ -212,7 +209,7 @@ class SearchCache:
             if total_requests > 0
             else 0
         )
-        
+
         return {
             **self._cache_stats,
             "total_requests": total_requests,
@@ -223,28 +220,28 @@ class SearchCache:
     def cleanup_expired(self) -> int:
         """
         Remove all expired cache entries.
-        
+
         Returns:
             Number of entries removed
         """
         import glob
-        
+
         removed = 0
         current_time = datetime.now()
-        
+
         pattern = "*.json"
         for cache_file in glob.glob(str(self.cache_dir / pattern)):
             try:
-                with open(cache_file, "r", encoding="utf-8") as f:
+                with open(cache_file, encoding="utf-8") as f:
                     cached_data = json.load(f)
-                
+
                 expires_at = datetime.fromisoformat(cached_data.get("expires_at"))
-                
+
                 if current_time > expires_at:
                     Path(cache_file).unlink()
                     removed += 1
-            
-            except (json.JSONDecodeError, IOError):
+
+            except (OSError, json.JSONDecodeError):
                 continue
-        
+
         return removed

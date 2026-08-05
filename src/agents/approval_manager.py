@@ -4,13 +4,12 @@ Approval Manager
 Manages approval requirements for risky operations.
 """
 
-
 import logging
-from typing import Optional, Callable, Dict, Any, List
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
 
-from .models import ApprovalRequired, TaskRiskLevel
-
+from .models import TaskRiskLevel
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +24,14 @@ class ApprovalManager:
 
     def __init__(
         self,
-        on_approval_request: Optional[Callable[['ApprovalManager', str, str, str, str], bool]] = None,
-        on_approval_granted: Optional[Callable[['ApprovalManager', str, str], None]] = None,
-        on_approval_denied: Optional[Callable[['ApprovalManager', str, str], None]] = None,
-        approval_timeout: int = 300  # 5 minutes
+        on_approval_request: (
+            Callable[["ApprovalManager", str, str, str, str], bool] | None
+        ) = None,
+        on_approval_granted: (
+            Callable[["ApprovalManager", str, str], None] | None
+        ) = None,
+        on_approval_denied: Callable[["ApprovalManager", str, str], None] | None = None,
+        approval_timeout: int = 300,  # 5 minutes
     ):
         """
         Initialize approval manager.
@@ -45,7 +48,7 @@ class ApprovalManager:
         self.approval_timeout = approval_timeout
 
         # Approval state
-        self.active_approvals: Dict[str, dict] = {}
+        self.active_approvals: dict[str, dict] = {}
         self.total_approvals_requested = 0
         self.total_approvals_granted = 0
         self.total_approvals_denied = 0
@@ -68,8 +71,17 @@ class ApprovalManager:
             return True
 
         # High risk tasks for certain types require approval
-        critical_types = ["delete", "remove", "overwrite", "shutdown", "format", "reset"]
-        if task_risk_level == TaskRiskLevel.HIGH and any(t in task_type.lower() for t in critical_types):
+        critical_types = [
+            "delete",
+            "remove",
+            "overwrite",
+            "shutdown",
+            "format",
+            "reset",
+        ]
+        if task_risk_level == TaskRiskLevel.HIGH and any(
+            t in task_type.lower() for t in critical_types
+        ):
             return True
 
         return False
@@ -80,7 +92,7 @@ class ApprovalManager:
         task_id: str,
         task_description: str,
         risk_level: str,
-        required_by: str
+        required_by: str,
     ) -> bool:
         """
         Request user approval for a task.
@@ -98,16 +110,16 @@ class ApprovalManager:
         self.total_approvals_requested += 1
 
         approval = {
-            'approval_id': approval_id,
-            'task_id': task_id,
-            'description': task_description,
-            'risk_level': risk_level,
-            'required_by': required_by,
-            'requested_at': datetime.now(),
-            'timeout_at': datetime.now() + self.approval_timeout,
-            'granted': False,
-            'denied': False,
-            'denied_reason': None
+            "approval_id": approval_id,
+            "task_id": task_id,
+            "description": task_description,
+            "risk_level": risk_level,
+            "required_by": required_by,
+            "requested_at": datetime.now(),
+            "timeout_at": datetime.now() + self.approval_timeout,
+            "granted": False,
+            "denied": False,
+            "denied_reason": None,
         }
 
         self.active_approvals[approval_id] = approval
@@ -118,7 +130,9 @@ class ApprovalManager:
         )
 
         if self.on_approval_request:
-            approved = self.on_approval_request(self, task_description, risk_level, required_by, approval_id)
+            approved = self.on_approval_request(
+                self, task_description, risk_level, required_by, approval_id
+            )
         else:
             # Default behavior: auto-approve unless CRITICAL
             approved = risk_level != "CRITICAL"
@@ -145,8 +159,8 @@ class ApprovalManager:
             return False
 
         approval = self.active_approvals[approval_id]
-        approval['granted'] = True
-        approval['granted_at'] = datetime.now()
+        approval["granted"] = True
+        approval["granted_at"] = datetime.now()
         self.total_approvals_granted += 1
 
         logger.info(f"Approval granted: {approval_id[:8]}")
@@ -155,14 +169,14 @@ class ApprovalManager:
         logger.info(f"  Requested by: {approval['required_by']}")
 
         if self.on_approval_granted:
-            self.on_approval_granted(self, approval_id, approval['description'])
+            self.on_approval_granted(self, approval_id, approval["description"])
 
         # Clean up approval after granting
         del self.active_approvals[approval_id]
 
         return True
 
-    def deny_approval(self, approval_id: str, reason: Optional[str] = None) -> bool:
+    def deny_approval(self, approval_id: str, reason: str | None = None) -> bool:
         """
         Deny approval for a request.
 
@@ -178,8 +192,8 @@ class ApprovalManager:
             return False
 
         approval = self.active_approvals[approval_id]
-        approval['denied'] = True
-        approval['denied_reason'] = reason
+        approval["denied"] = True
+        approval["denied_reason"] = reason
         self.total_approvals_denied += 1
 
         logger.warning(f"Approval denied: {approval_id[:8]}")
@@ -187,14 +201,14 @@ class ApprovalManager:
             logger.warning(f"  Reason: {reason}")
 
         if self.on_approval_denied:
-            self.on_approval_denied(self, approval_id, approval['description'])
+            self.on_approval_denied(self, approval_id, approval["description"])
 
         # Clean up approval after denial
         del self.active_approvals[approval_id]
 
         return True
 
-    def get_approval_status(self, approval_id: str) -> Optional[dict]:
+    def get_approval_status(self, approval_id: str) -> dict | None:
         """
         Get the status of an approval request.
 
@@ -208,36 +222,36 @@ class ApprovalManager:
         if approval:
             # Add current status
             status = {
-                'approval_id': approval['approval_id'],
-                'task_id': approval['task_id'],
-                'description': approval['description'],
-                'risk_level': approval['risk_level'],
-                'required_by': approval['required_by'],
-                'status': 'PENDING',
-                'requested_at': approval['requested_at'].isoformat(),
-                'granted_at': None,
-                'denied_at': None,
-                'granted': False,
-                'denied': False,
-                'denied_reason': None
+                "approval_id": approval["approval_id"],
+                "task_id": approval["task_id"],
+                "description": approval["description"],
+                "risk_level": approval["risk_level"],
+                "required_by": approval["required_by"],
+                "status": "PENDING",
+                "requested_at": approval["requested_at"].isoformat(),
+                "granted_at": None,
+                "denied_at": None,
+                "granted": False,
+                "denied": False,
+                "denied_reason": None,
             }
 
-            if approval['granted']:
-                status['status'] = 'GRANTED'
-                status['granted_at'] = approval['granted_at'].isoformat()
-                status['granted'] = True
+            if approval["granted"]:
+                status["status"] = "GRANTED"
+                status["granted_at"] = approval["granted_at"].isoformat()
+                status["granted"] = True
 
-            if approval['denied']:
-                status['status'] = 'DENIED'
-                status['denied_at'] = approval['granted_at'].isoformat()
-                status['denied'] = True
-                status['denied_reason'] = approval['denied_reason']
+            if approval["denied"]:
+                status["status"] = "DENIED"
+                status["denied_at"] = approval["granted_at"].isoformat()
+                status["denied"] = True
+                status["denied_reason"] = approval["denied_reason"]
 
             return status
 
         return None
 
-    def check_pending_approvals(self) -> List[dict]:
+    def check_pending_approvals(self) -> list[dict]:
         """
         Get all pending approvals.
 
@@ -248,19 +262,19 @@ class ApprovalManager:
 
         for approval_id, approval in self.active_approvals.items():
             status = {
-                'approval_id': approval['approval_id'],
-                'task_id': approval['task_id'],
-                'description': approval['description'],
-                'risk_level': approval['risk_level'],
-                'required_by': approval['required_by'],
-                'status': 'PENDING',
-                'requested_at': approval['requested_at'].isoformat()
+                "approval_id": approval["approval_id"],
+                "task_id": approval["task_id"],
+                "description": approval["description"],
+                "risk_level": approval["risk_level"],
+                "required_by": approval["required_by"],
+                "status": "PENDING",
+                "requested_at": approval["requested_at"].isoformat(),
             }
             pending.append(status)
 
         return pending
 
-    def get_expired_approvals(self) -> List[str]:
+    def get_expired_approvals(self) -> list[str]:
         """
         Get IDs of expired approvals.
 
@@ -271,10 +285,10 @@ class ApprovalManager:
         current_time = datetime.now()
 
         for approval_id, approval in self.active_approvals.items():
-            if approval['granted']:
+            if approval["granted"]:
                 continue  # Don't expire granted approvals
 
-            if current_time > approval['timeout_at']:
+            if current_time > approval["timeout_at"]:
                 expired.append(approval_id)
 
         return expired
@@ -288,7 +302,7 @@ class ApprovalManager:
 
         logger.info(f"Rejected {len(expired)} expired approvals")
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get approval manager statistics.
 
@@ -296,18 +310,18 @@ class ApprovalManager:
             Statistics dictionary
         """
         return {
-            'total_approvals_requested': self.total_approvals_requested,
-            'total_approvals_granted': self.total_approvals_granted,
-            'total_approvals_denied': self.total_approvals_denied,
-            'pending_approvals': len(self.active_approvals),
-            'active_approvals': [
+            "total_approvals_requested": self.total_approvals_requested,
+            "total_approvals_granted": self.total_approvals_granted,
+            "total_approvals_denied": self.total_approvals_denied,
+            "pending_approvals": len(self.active_approvals),
+            "active_approvals": [
                 self.get_approval_status(aid) for aid in self.active_approvals.keys()
             ],
-            'approval_rate': (
+            "approval_rate": (
                 (self.total_approvals_granted / self.total_approvals_requested * 100)
                 if self.total_approvals_requested > 0
                 else 0.0
-            )
+            ),
         }
 
     def cleanup(self):

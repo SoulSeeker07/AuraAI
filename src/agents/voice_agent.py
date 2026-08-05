@@ -11,17 +11,9 @@ The Voice Agent can:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
-import asyncio
+from typing import Any
 
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskType,
-    TaskInput,
-    TaskOutput,
-    TaskPriority
-)
+from .task_model import Task, TaskOutput
 
 
 class VoiceAgent:
@@ -71,16 +63,14 @@ class VoiceAgent:
                 return TaskOutput(
                     success=False,
                     message=f"No handler for task type: {task.type.value}",
-                    error=f"Task type {task.type.value} not supported"
+                    error=f"Task type {task.type.value} not supported",
                 )
 
             return method(task)
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Error executing task",
-                error=str(e)
+                success=False, message="Error executing task", error=str(e)
             )
 
     # ========================================
@@ -96,7 +86,7 @@ class VoiceAgent:
             return TaskOutput(
                 success=False,
                 message="Speech-to-text failed",
-                error="Audio path required"
+                error="Audio path required",
             )
 
         try:
@@ -111,15 +101,13 @@ class VoiceAgent:
                     "text": text,
                     "language": language,
                     "duration": 5.2,  # Simulated
-                    "confidence": 0.92
-                }
+                    "confidence": 0.92,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Speech-to-text failed",
-                error=str(e)
+                success=False, message="Speech-to-text failed", error=str(e)
             )
 
     def _simulate_stt(self, audio_path: str) -> str:
@@ -149,9 +137,7 @@ class VoiceAgent:
 
         if not text:
             return TaskOutput(
-                success=False,
-                message="Text-to-speech failed",
-                error="Text required"
+                success=False, message="Text-to-speech failed", error="Text required"
             )
 
         try:
@@ -170,15 +156,13 @@ class VoiceAgent:
                     "voice_profile": voice_profile,
                     "output_path": output_path,
                     "duration": len(text) * 0.1,  # Approximate
-                    "sample_rate": 22050
-                }
+                    "sample_rate": 22050,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Text-to-speech failed",
-                error=str(e)
+                success=False, message="Text-to-speech failed", error=str(e)
             )
 
     # ========================================
@@ -194,7 +178,7 @@ class VoiceAgent:
             return TaskOutput(
                 success=False,
                 message="Wake word detection failed",
-                error="Audio path required"
+                error="Audio path required",
             )
 
         try:
@@ -208,15 +192,13 @@ class VoiceAgent:
                 data={
                     "wake_word": wake_word,
                     "detected": self._wake_word_detected,
-                    "confidence": 0.95
-                }
+                    "confidence": 0.95,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Wake word detection failed",
-                error=str(e)
+                success=False, message="Wake word detection failed", error=str(e)
             )
 
     def _detect_wake_word(self, audio_path: str, wake_word: str) -> bool:
@@ -239,7 +221,7 @@ class VoiceAgent:
             return TaskOutput(
                 success=False,
                 message="Voice command recognition failed",
-                error="Command text required"
+                error="Command text required",
             )
 
         try:
@@ -253,18 +235,18 @@ class VoiceAgent:
                     "command": command_text,
                     "intent": intent,
                     "entities": entities,
-                    "confidence": 0.88
-                }
+                    "confidence": 0.88,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Voice command recognition failed",
-                error=str(e)
+                success=False, message="Voice command recognition failed", error=str(e)
             )
 
-    def _analyze_command(self, command: str, intent_types: List[str]) -> tuple[str, dict]:
+    def _analyze_command(
+        self, command: str, intent_types: list[str]
+    ) -> tuple[str, dict]:
         """Analyze voice command to determine intent and extract entities."""
         # Simple keyword-based intent detection
         command_lower = command.lower()
@@ -274,7 +256,11 @@ class VoiceAgent:
             entities = {"user": "anyone"}
         elif "open" in command_lower or "start" in command_lower:
             intent = "open_app"
-            app = command.split("open", 1)[1].strip().split()[0] if "open" in command else "unknown"
+            app = (
+                command.split("open", 1)[1].strip().split()[0]
+                if "open" in command
+                else "unknown"
+            )
             entities = {"application": app}
         elif "search" in command_lower:
             intent = "search"
@@ -305,12 +291,14 @@ class VoiceAgent:
             # In production, train profile using voice samples
             # For demo, just simulate
             profiles = self._get_profiles()
-            profiles.append({
-                "id": profile_id,
-                "name": profile_name,
-                "created_at": "2025-06-18",
-                "voice_samples": len(voice_samples)
-            })
+            profiles.append(
+                {
+                    "id": profile_id,
+                    "name": profile_name,
+                    "created_at": "2025-06-18",
+                    "voice_samples": len(voice_samples),
+                }
+            )
 
             return TaskOutput(
                 success=True,
@@ -318,15 +306,13 @@ class VoiceAgent:
                 data={
                     "profile_id": profile_id,
                     "name": profile_name,
-                    "profiles_count": len(profiles)
-                }
+                    "profiles_count": len(profiles),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Profile creation failed",
-                error=str(e)
+                success=False, message="Profile creation failed", error=str(e)
             )
 
     def _execute_profile_list(self, task: Task) -> TaskOutput:
@@ -337,34 +323,29 @@ class VoiceAgent:
             return TaskOutput(
                 success=True,
                 message=f"Found {len(profiles)} voice profiles",
-                data={
-                    "profiles": profiles,
-                    "count": len(profiles)
-                }
+                data={"profiles": profiles, "count": len(profiles)},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Profile listing failed",
-                error=str(e)
+                success=False, message="Profile listing failed", error=str(e)
             )
 
-    def _get_profiles(self) -> List[dict[str, Any]]:
+    def _get_profiles(self) -> list[dict[str, Any]]:
         """Get list of profiles."""
         return [
             {
                 "id": "profile_1",
                 "name": "Default Voice",
                 "created_at": "2025-01-01",
-                "voice_samples": 10
+                "voice_samples": 10,
             },
             {
                 "id": "profile_2",
                 "name": "Professional Voice",
                 "created_at": "2025-03-15",
-                "voice_samples": 25
-            }
+                "voice_samples": 25,
+            },
         ]
 
     # ========================================
@@ -382,15 +363,13 @@ class VoiceAgent:
                 data={
                     "listening": True,
                     "wake_word_enabled": task.input.get("wake_word", True),
-                    "timeout_seconds": task.input.get("timeout", 30)
-                }
+                    "timeout_seconds": task.input.get("timeout", 30),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to start listening",
-                error=str(e)
+                success=False, message="Failed to start listening", error=str(e)
             )
 
     def _execute_stop_listening(self, task: Task) -> TaskOutput:
@@ -402,17 +381,12 @@ class VoiceAgent:
             return TaskOutput(
                 success=True,
                 message="Stopped listening for voice commands",
-                data={
-                    "listening": False,
-                    "state_cleared": True
-                }
+                data={"listening": False, "state_cleared": True},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to stop listening",
-                error=str(e)
+                success=False, message="Failed to stop listening", error=str(e)
             )
 
     def _execute_get_voice_status(self, task: Task) -> TaskOutput:
@@ -425,6 +399,6 @@ class VoiceAgent:
                 "wake_word_detected": self._wake_word_detected,
                 "current_profile": self._current_voice_profile,
                 "stt_available": self._stt is not None,
-                "tts_available": self._tts is not None
-            }
+                "tts_available": self._tts is not None,
+            },
         )

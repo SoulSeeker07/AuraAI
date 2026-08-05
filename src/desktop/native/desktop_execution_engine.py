@@ -20,29 +20,32 @@ is exactly like:
     research_engine.research(query="What is quantum computing?")
 """
 
-from typing import Any, Dict, List, Optional
+import logging
+import time
 from dataclasses import dataclass
 from enum import Enum
-import time
-import logging
+from typing import Any
 
-from .desktop_result import DesktopResult, DesktopStatus
-from .mock_manager import MockManager
 from .capability_registry import (
-    CapabilityRegistry, CapabilityDescriptor,
-    PermissionRequired, RiskLevel,
+    CapabilityDescriptor,
+    CapabilityRegistry,
+    PermissionRequired,
+    RiskLevel,
 )
+from .desktop_context import get_desktop_context
+from .desktop_result import DesktopResult
 from .managers.native_manager_registry import NativeManagerRegistry
-from .native_events import EventType, NativeEvent, NativeEventBus, get_event_bus
-from .desktop_context import DesktopContext, get_desktop_context
-from .metrics import MetricsRecorder, MetricsLevel, get_metrics_recorder
-from .native_diagnostics import NativeDiagnostics, DiagnosticsStage
+from .metrics import MetricsLevel, get_metrics_recorder
+from .mock_manager import MockManager
+from .native_diagnostics import DiagnosticsStage, NativeDiagnostics
+from .native_events import EventType, NativeEvent, get_event_bus
 
 logger = logging.getLogger(__name__)
 
 
 class ExecutionStage(Enum):
     """Stages of the desktop execution pipeline."""
+
     GOAL_RECEIVED = "goal_received"
     CAPABILITY_DISCOVERY = "capability_discovery"
     REGISTRY_LOOKUP = "registry_lookup"
@@ -57,6 +60,7 @@ class ExecutionStage(Enum):
 @dataclass
 class ExecutionConfig:
     """Configuration for the DesktopExecutionEngine."""
+
     enabled: bool = True
     default_timeout: float = 30.0
     require_confirmation_for_high_risk: bool = True
@@ -66,7 +70,6 @@ class ExecutionConfig:
     enable_verification: bool = True
     enable_context_updates: bool = True
     simulation_mode: bool = False
-
 
 
 class DesktopExecutionEngine:
@@ -83,10 +86,10 @@ class DesktopExecutionEngine:
 
     def __init__(
         self,
-        manager: Optional[Any] = None,
-        manager_registry: Optional[NativeManagerRegistry] = None,
-        registry: Optional[CapabilityRegistry] = None,
-        config: Optional[ExecutionConfig] = None,
+        manager: Any | None = None,
+        manager_registry: NativeManagerRegistry | None = None,
+        registry: CapabilityRegistry | None = None,
+        config: ExecutionConfig | None = None,
     ):
         self.manager_registry = manager_registry or NativeManagerRegistry.get_instance()
         if not self.manager_registry.list():
@@ -101,7 +104,7 @@ class DesktopExecutionEngine:
         self.desktop_context = get_desktop_context()
         self.metrics_recorder = get_metrics_recorder()
         self.diagnostics = NativeDiagnostics()
-        self._execution_history: List[DesktopResult] = []
+        self._execution_history: list[DesktopResult] = []
 
         logger.info(
             f"DesktopExecutionEngine initialized "
@@ -112,8 +115,8 @@ class DesktopExecutionEngine:
     def execute(
         self,
         goal: str,
-        capability: Optional[str] = None,
-        arguments: Optional[Dict[str, Any]] = None,
+        capability: str | None = None,
+        arguments: dict[str, Any] | None = None,
         **kwargs,
     ) -> DesktopResult:
         """
@@ -134,8 +137,10 @@ class DesktopExecutionEngine:
         if not self.config.enabled:
             fallback_name = self.manager.name if self.manager else "unknown"
             return DesktopResult.create_failure(
-                goal=goal, capability=capability or "unknown",
-                manager=fallback_name, error="Engine is disabled",
+                goal=goal,
+                capability=capability or "unknown",
+                manager=fallback_name,
+                error="Engine is disabled",
             )
 
         arguments = arguments or {}
@@ -143,7 +148,7 @@ class DesktopExecutionEngine:
         start_time = time.perf_counter()
 
         logger.info(f"\n{'='*60}")
-        logger.info(f"Desktop Execution Engine")
+        logger.info("Desktop Execution Engine")
         logger.info(f"{'='*60}")
         logger.info(f"Goal: {goal}")
 
@@ -152,19 +157,27 @@ class DesktopExecutionEngine:
         try:
             # Stage 1: Capability Discovery
             if capability is None:
-                logger.info(f"\n--- Stage: Capability Discovery ---")
+                logger.info("\n--- Stage: Capability Discovery ---")
                 capability = self._discover_capability(goal)
                 if capability is None:
-                    return self._fail(goal, "unknown", start_time,
-                                      f"No capability found for goal: {goal}")
+                    return self._fail(
+                        goal,
+                        "unknown",
+                        start_time,
+                        f"No capability found for goal: {goal}",
+                    )
                 logger.info(f"Discovered: {capability}")
 
             # Stage 2: Registry Lookup
-            logger.info(f"\n--- Stage: Registry Lookup ---")
+            logger.info("\n--- Stage: Registry Lookup ---")
             descriptor = self.registry.get(capability)
             if descriptor is None:
-                return self._fail(goal, capability, start_time,
-                                   f"Capability not in registry: {capability}")
+                return self._fail(
+                    goal,
+                    capability,
+                    start_time,
+                    f"Capability not in registry: {capability}",
+                )
 
             logger.info(f"  Manager: {descriptor.manager}")
             logger.info(f"  Permission: {descriptor.permission.value}")
@@ -174,57 +187,77 @@ class DesktopExecutionEngine:
             self.diagnostics.complete_stage(DiagnosticsStage.PERMISSION)
 
             # Stage 3: Permission Check
-            logger.info(f"\n--- Stage: Permission Check ---")
+            logger.info("\n--- Stage: Permission Check ---")
             if not self._check_permission(descriptor):
-                return self._fail(goal, capability, start_time,
-                                   f"Permission denied: {descriptor.permission.value}")
-            logger.info(f"  Permission: GRANTED")
+                return self._fail(
+                    goal,
+                    capability,
+                    start_time,
+                    f"Permission denied: {descriptor.permission.value}",
+                )
+            logger.info("  Permission: GRANTED")
 
             # Stage 4: Pipeline Execute
-            logger.info(f"\n--- Stage: Pipeline Execute ---")
+            logger.info("\n--- Stage: Pipeline Execute ---")
             self.diagnostics.start_stage(DiagnosticsStage.EXECUTION)
 
-            target_manager = self.manager_registry.resolve(capability) or self.manager or MockManager()
+            target_manager = (
+                self.manager_registry.resolve(capability)
+                or self.manager
+                or MockManager()
+            )
 
             if self.config.simulation_mode and (
                 descriptor.is_destructive
                 or descriptor.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+                or descriptor.permission
+                in (PermissionRequired.CONTROL, PermissionRequired.WRITE)
             ):
-                logger.info(f"SIMULATION MODE ACTIVE: Bypassing physical execution of '{capability}'")
+
+                logger.info(
+                    f"SIMULATION MODE ACTIVE: Bypassing physical execution of '{capability}'"
+                )
                 result = DesktopResult.create_success(
                     goal=goal,
                     capability=capability,
                     manager=descriptor.manager,
-                    data={"simulated": True, "status": "simulated_execution", "capability": capability},
+                    data={
+                        "simulated": True,
+                        "status": "simulated_execution",
+                        "capability": capability,
+                    },
                     events=descriptor.events_triggered,
                 )
             else:
                 result = target_manager.execute(
-                    capability=capability, goal=goal, arguments=arguments,
+                    capability=capability,
+                    goal=goal,
+                    arguments=arguments,
                 )
 
             self.diagnostics.complete_stage(DiagnosticsStage.EXECUTION)
-
 
             result.goal = goal
             result.capability = capability
             result.manager = descriptor.manager
 
             # Stage 5: Verification
-            logger.info(f"\n--- Stage: Verification ---")
+            logger.info("\n--- Stage: Verification ---")
             self.diagnostics.start_stage(DiagnosticsStage.VERIFICATION)
 
             if self.config.enable_verification and result.success:
                 result.verification = self._verify_result(result, descriptor)
             else:
-                result.verification = {"passed": result.success,
-                                        "skipped": not self.config.enable_verification}
+                result.verification = {
+                    "passed": result.success,
+                    "skipped": not self.config.enable_verification,
+                }
 
             logger.info(f"  Passed: {result.verification.get('passed', False)}")
             self.diagnostics.complete_stage(DiagnosticsStage.VERIFICATION)
 
             # Stage 6: Context Update
-            logger.info(f"\n--- Stage: Context Update ---")
+            logger.info("\n--- Stage: Context Update ---")
             self.diagnostics.start_stage(DiagnosticsStage.CONTEXT)
 
             if self.config.enable_context_updates and result.success:
@@ -234,7 +267,7 @@ class DesktopExecutionEngine:
             self.diagnostics.complete_stage(DiagnosticsStage.CONTEXT)
 
             # Stage 7: Events
-            logger.info(f"\n--- Stage: Events ---")
+            logger.info("\n--- Stage: Events ---")
             self.diagnostics.start_stage(DiagnosticsStage.EVENTS)
 
             for event_type in result.events:
@@ -249,13 +282,18 @@ class DesktopExecutionEngine:
             self.diagnostics.complete_operation()
 
             result.metrics["diagnostics"] = self.diagnostics.to_dict()
-            result.metrics["total_duration_ms"] = (time.perf_counter() - start_time) * 1000
+            result.metrics["total_duration_ms"] = (
+                time.perf_counter() - start_time
+            ) * 1000
 
             self.metrics_recorder.record(
-                capability=capability, manager=descriptor.manager,
-                action=capability, category=descriptor.category,
+                capability=capability,
+                manager=descriptor.manager,
+                action=capability,
+                category=descriptor.category,
                 permission=descriptor.permission,
-                events_triggered=result.events, success=result.success,
+                events_triggered=result.events,
+                success=result.success,
             )
 
             result.completed_at = time.time()
@@ -269,43 +307,138 @@ class DesktopExecutionEngine:
 
     # ==================== Pipeline Stages ====================
 
-    def _discover_capability(self, goal: str) -> Optional[str]:
+    def _discover_capability(self, goal: str) -> str | None:
         """Discover the best capability for a goal using keyword matching."""
         goal_lower = goal.lower()
 
         capability_keywords = {
-            "activate_window": ["activate", "focus", "bring to front", "switch to", "open"],
+            "activate_window": [
+                "activate",
+                "focus",
+                "bring to front",
+                "switch to",
+                "open window",
+                "focus window",
+            ],
             "close_window": ["close", "exit", "quit", "end"],
-            "list_windows": ["list windows", "show windows", "what windows", "open windows"],
-            "minimize_window": ["minimize", "hide window"],
-            "maximize_window": ["maximize", "fullscreen", "full screen"],
-            "restore_window": ["restore", "unminimize"],
-            "clipboard.read_text": ["read clipboard", "get clipboard", "paste clipboard", "read copied text", "read text"],
-
-            "clipboard.write_text": ["write clipboard", "set clipboard", "copy to clipboard", "copy text"],
-            "clipboard.clear": ["clear clipboard", "empty clipboard"],
-            "clipboard.read_image": ["read clipboard image", "get clipboard image", "read screenshot"],
-            "clipboard.write_image": ["write clipboard image", "copy image to clipboard"],
+            "list_windows": [
+                "list windows",
+                "show windows",
+                "what windows",
+                "open windows",
+                "show all open windows",
+            ],
+            "minimize_window": ["minimize", "hide window", "minimize window"],
+            "maximize_window": [
+                "maximize",
+                "fullscreen",
+                "full screen",
+                "maximize window",
+            ],
+            "restore_window": [
+                "restore",
+                "unminimize",
+                "restore window",
+                "restore active window",
+            ],
+            "clipboard.read_text": [
+                "read clipboard",
+                "get clipboard",
+                "paste clipboard",
+                "read copied text",
+                "read text",
+            ],
+            "clipboard.write_text": [
+                "write clipboard",
+                "set clipboard",
+                "copy to clipboard",
+                "copy text",
+            ],
+            "clipboard.clear": [
+                "clear clipboard",
+                "empty clipboard",
+                "clear desktop clipboard",
+            ],
+            "clipboard.read_image": [
+                "read clipboard image",
+                "get clipboard image",
+                "read screenshot",
+            ],
+            "clipboard.write_image": [
+                "write clipboard image",
+                "copy image to clipboard",
+            ],
             "clipboard.read_files": ["read clipboard files", "get copied files"],
-            "clipboard.write_files": ["write clipboard files", "copy files to clipboard"],
+            "clipboard.write_files": [
+                "write clipboard files",
+                "copy files to clipboard",
+            ],
             "clipboard.read_html": ["read clipboard html", "get clipboard html"],
             "clipboard.write_html": ["write clipboard html", "copy html to clipboard"],
-            "clipboard.get_formats": ["clipboard formats", "what is in clipboard", "list clipboard formats"],
+            "clipboard.get_formats": [
+                "clipboard formats",
+                "what is in clipboard",
+                "list clipboard formats",
+            ],
             "clipboard.has_text": ["clipboard has text", "does clipboard have text"],
             "clipboard.has_image": ["clipboard has image", "does clipboard have image"],
             "clipboard.has_files": ["clipboard has files", "does clipboard have files"],
-            "list_displays": ["list displays", "show displays", "monitors"],
+            "list_displays": [
+                "list displays",
+                "show displays",
+                "monitors",
+                "connected monitors",
+            ],
             "get_primary_display": ["primary display", "main monitor", "main display"],
-            "get_volume": ["get volume", "read volume", "master volume", "current volume", "check volume"],
-            "set_volume": ["set volume", "change volume", "turn up", "turn down", "adjust volume"],
-            "toggle_mute": ["mute", "unmute", "toggle mute"],
-
+            "get_volume": [
+                "get volume",
+                "read volume",
+                "master volume",
+                "current volume",
+                "check volume",
+            ],
+            "set_volume": [
+                "set volume",
+                "change volume",
+                "turn up",
+                "turn down",
+                "adjust volume",
+                "lower volume",
+                "increase volume",
+            ],
+            "toggle_mute": ["mute", "unmute", "toggle mute", "mute system sound"],
+            "is_muted": ["is muted", "are speakers muted", "check if muted", "muted"],
+            "list_microphones": [
+                "microphones",
+                "list microphones",
+                "connected microphones",
+            ],
             "list_audio_devices": ["list audio", "audio devices", "sound devices"],
-            "list_network_interfaces": ["list network", "network interfaces", "show network adapters"],
+            "list_network_interfaces": [
+                "list network",
+                "network interfaces",
+                "show network adapters",
+            ],
             "network.interfaces": ["get network interfaces", "all network adapters"],
-            "network.default_interface": ["default interface", "active adapter", "main network"],
-            "network.public_ip": ["public ip", "external ip", "my public ip", "what is my ip"],
-            "network.local_ip": ["local ip", "internal ip", "ip address", "my ip"],
+            "network.default_interface": [
+                "default interface",
+                "active adapter",
+                "main network",
+            ],
+            "network.public_ip": [
+                "public ip",
+                "external ip",
+                "my public ip",
+                "what is my ip",
+                "public ip address",
+            ],
+            "network.local_ip": [
+                "local ip",
+                "internal ip",
+                "ip address",
+                "my ip",
+                "internal ip address",
+            ],
             "network.gateway": ["default gateway", "gateway address", "router ip"],
             "network.dns": ["dns servers", "dns configuration", "what is my dns"],
             "network.mac": ["mac address", "physical address", "hardware address"],
@@ -317,7 +450,12 @@ class DesktopExecutionEngine:
             "network.traceroute": ["traceroute", "tracert", "trace route"],
             "network.lookup": ["dns lookup", "nslookup", "domain lookup"],
             "network.port_check": ["port check", "check port", "is port open"],
-            "network.internet": ["internet connection", "check internet", "is internet working", "internet is slow"],
+            "network.internet": [
+                "internet connection",
+                "check internet",
+                "is internet working",
+                "internet is slow",
+            ],
             "network.speed": ["speed test", "test speed", "internet speed"],
             "network.latency": ["measure latency", "check latency", "ping latency"],
             "network.packet_loss": ["packet loss", "check loss"],
@@ -328,16 +466,24 @@ class DesktopExecutionEngine:
             "network.flush_dns": ["flush dns", "clear dns cache"],
             "network.disconnect_wifi": ["disconnect wifi", "disconnect wireless"],
             "network.connect_wifi": ["connect wifi", "connect to wifi"],
-
-            "power.battery": ["battery", "battery level", "battery status", "get battery", "charge level"],
-            "power.ac_status": ["ac status", "ac power", "plugged in", "charger status"],
+            "power.battery": [
+                "battery",
+                "battery level",
+                "battery status",
+                "get battery",
+                "charge level",
+            ],
+            "power.ac_status": [
+                "ac status",
+                "ac power",
+                "plugged in",
+                "charger status",
+            ],
             "power.power_plan": ["power plan", "power scheme", "active power plan"],
-
             "shutdown": ["shutdown", "turn off", "power off"],
             "restart": ["restart", "reboot"],
             "sleep": ["sleep", "hibernate", "standby"],
             "lock": ["lock", "lock screen", "lock computer"],
-
             "list_services": ["list services", "show services", "windows services"],
             "start_service": ["start service"],
             "stop_service": ["stop service", "kill service"],
@@ -369,8 +515,10 @@ class DesktopExecutionEngine:
         return True
 
     def _verify_result(
-        self, result: DesktopResult, descriptor: CapabilityDescriptor,
-    ) -> Dict[str, Any]:
+        self,
+        result: DesktopResult,
+        descriptor: CapabilityDescriptor,
+    ) -> dict[str, Any]:
         """Verify that the execution result is valid."""
         verification = {"passed": True, "method": "generic", "checks": []}
 
@@ -382,12 +530,17 @@ class DesktopExecutionEngine:
 
         if descriptor.supports_undo:
             if result.rollback_available:
-                verification["checks"].append({"name": "rollback_available", "passed": True})
+                verification["checks"].append(
+                    {"name": "rollback_available", "passed": True}
+                )
             else:
-                verification["checks"].append({
-                    "name": "rollback_available", "passed": False,
-                    "message": "Capability supports undo but no rollback provided"
-                })
+                verification["checks"].append(
+                    {
+                        "name": "rollback_available",
+                        "passed": False,
+                        "message": "Capability supports undo but no rollback provided",
+                    }
+                )
                 verification["passed"] = False
 
         return verification
@@ -411,8 +564,11 @@ class DesktopExecutionEngine:
                 event = NativeEvent(
                     event_type=event_enum,
                     source="desktop_execution_engine",
-                    data={"capability": result.capability, "goal": result.goal,
-                          "success": result.success},
+                    data={
+                        "capability": result.capability,
+                        "goal": result.goal,
+                        "success": result.success,
+                    },
                 )
                 self.event_bus.publish(event)
         except Exception as e:
@@ -420,11 +576,16 @@ class DesktopExecutionEngine:
 
     # ==================== Helpers ====================
 
-    def _fail(self, goal: str, capability: str, start_time: float, error: str) -> DesktopResult:
+    def _fail(
+        self, goal: str, capability: str, start_time: float, error: str
+    ) -> DesktopResult:
         """Create a failure result."""
         result = DesktopResult.create_failure(
-            goal=goal, capability=capability, manager=self.manager.name,
-            error=error, metrics={"total_duration_ms": (time.perf_counter() - start_time) * 1000},
+            goal=goal,
+            capability=capability,
+            manager=self.manager.name,
+            error=error,
+            metrics={"total_duration_ms": (time.perf_counter() - start_time) * 1000},
         )
         result.completed_at = time.time()
         self._execution_history.append(result)
@@ -436,7 +597,7 @@ class DesktopExecutionEngine:
         status = "✓ SUCCESS" if result.success else "✗ FAILURE"
 
         logger.info(f"\n{'='*60}")
-        logger.info(f"Desktop Execution Complete")
+        logger.info("Desktop Execution Complete")
         logger.info(f"{'='*60}")
         logger.info(f"Status: {status}")
         logger.info(f"Goal: {result.goal}")
@@ -455,10 +616,10 @@ class DesktopExecutionEngine:
 
     # ==================== Introspection ====================
 
-    def get_execution_history(self) -> List[DesktopResult]:
+    def get_execution_history(self) -> list[DesktopResult]:
         return self._execution_history.copy()
 
-    def get_last_result(self) -> Optional[DesktopResult]:
+    def get_last_result(self) -> DesktopResult | None:
         if not self._execution_history:
             return None
         return self._execution_history[-1]
@@ -477,30 +638,34 @@ class DesktopExecutionEngine:
 
     def get_boot_report(self) -> str:
         """Get human-readable boot report for Aura Desktop."""
-        return self.manager_registry.get_boot_report(simulation_mode=self.config.simulation_mode)
+        return self.manager_registry.get_boot_report(
+            simulation_mode=self.config.simulation_mode
+        )
 
     def reset(self) -> None:
 
         self._execution_history.clear()
         self.diagnostics = NativeDiagnostics()
-        if hasattr(self.manager, 'reset'):
+        if hasattr(self.manager, "reset"):
             self.manager.reset()
 
 
 # ==================== Singleton ====================
 
-_engine: Optional[DesktopExecutionEngine] = None
+_engine: DesktopExecutionEngine | None = None
 
 
 def get_desktop_execution_engine(
-    manager: Optional[Any] = None,
-    registry: Optional[CapabilityRegistry] = None,
-    config: Optional[ExecutionConfig] = None,
+    manager: Any | None = None,
+    registry: CapabilityRegistry | None = None,
+    config: ExecutionConfig | None = None,
 ) -> DesktopExecutionEngine:
     """Get or create the global DesktopExecutionEngine singleton."""
     global _engine
     if _engine is None:
-        _engine = DesktopExecutionEngine(manager=manager, registry=registry, config=config)
+        _engine = DesktopExecutionEngine(
+            manager=manager, registry=registry, config=config
+        )
     return _engine
 
 

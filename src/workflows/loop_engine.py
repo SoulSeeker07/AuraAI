@@ -4,13 +4,11 @@ Workflow Loop Engine
 Handles workflow loop iterations (for_each, while, for_range).
 """
 
-
 import logging
-from typing import Any, Dict, Optional, List, Callable
-from enum import Enum
+from collections.abc import Callable
+from typing import Any
 
 from .models import LoopType
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +25,10 @@ class LoopEngine:
     def execute_loop(
         self,
         loop_type: LoopType,
-        loop_config: Dict[str, Any],
-        context: Dict[str, Any],
-        step_runner: Optional[Callable] = None
-    ) -> List[Any]:
+        loop_config: dict[str, Any],
+        context: dict[str, Any],
+        step_runner: Callable | None = None,
+    ) -> list[Any]:
         """
         Execute a loop.
 
@@ -55,10 +53,10 @@ class LoopEngine:
 
     def _execute_for_each(
         self,
-        loop_config: Dict[str, Any],
-        context: Dict[str, Any],
-        step_runner: Optional[Callable] = None
-    ) -> List[Any]:
+        loop_config: dict[str, Any],
+        context: dict[str, Any],
+        step_runner: Callable | None = None,
+    ) -> list[Any]:
         """
         Execute FOR_EACH loop.
 
@@ -70,9 +68,9 @@ class LoopEngine:
         Returns:
             List of results from each iteration
         """
-        items = loop_config.get('items', [])
-        item_variable = loop_config.get('item_variable', 'item')
-        loop_index_variable = loop_config.get('loop_index_variable', 'loop_index')
+        items = loop_config.get("items", [])
+        item_variable = loop_config.get("item_variable", "item")
+        loop_index_variable = loop_config.get("loop_index_variable", "loop_index")
 
         results = []
 
@@ -94,10 +92,10 @@ class LoopEngine:
 
     def _execute_while(
         self,
-        loop_config: Dict[str, Any],
-        context: Dict[str, Any],
-        step_runner: Optional[Callable] = None
-    ) -> List[Any]:
+        loop_config: dict[str, Any],
+        context: dict[str, Any],
+        step_runner: Callable | None = None,
+    ) -> list[Any]:
         """
         Execute WHILE loop.
 
@@ -109,8 +107,8 @@ class LoopEngine:
         Returns:
             List of results from each iteration
         """
-        condition = loop_config.get('condition', {})
-        max_iterations = loop_config.get('max_iterations', 100)
+        condition = loop_config.get("condition", {})
+        max_iterations = loop_config.get("max_iterations", 100)
         iteration_count = 0
 
         results = []
@@ -135,10 +133,10 @@ class LoopEngine:
 
     def _execute_for_range(
         self,
-        loop_config: Dict[str, Any],
-        context: Dict[str, Any],
-        step_runner: Optional[Callable] = None
-    ) -> List[Any]:
+        loop_config: dict[str, Any],
+        context: dict[str, Any],
+        step_runner: Callable | None = None,
+    ) -> list[Any]:
         """
         Execute FOR_RANGE loop.
 
@@ -150,10 +148,10 @@ class LoopEngine:
         Returns:
             List of results from each iteration
         """
-        start = loop_config.get('start', 0)
-        end = loop_config.get('end', 10)
-        step = loop_config.get('step', 1)
-        index_variable = loop_config.get('index_variable', 'index')
+        start = loop_config.get("start", 0)
+        end = loop_config.get("end", 10)
+        step = loop_config.get("step", 1)
+        index_variable = loop_config.get("index_variable", "index")
 
         results = []
 
@@ -176,9 +174,7 @@ class LoopEngine:
         return results
 
     def _evaluate_condition(
-        self,
-        condition: Dict[str, Any],
-        context: Dict[str, Any]
+        self, condition: dict[str, Any], context: dict[str, Any]
     ) -> bool:
         """
         Evaluate loop condition.
@@ -193,9 +189,9 @@ class LoopEngine:
         if not isinstance(condition, dict):
             return False
 
-        variable = condition.get('variable', '')
-        operator = condition.get('operator', '==')
-        expected_value = condition.get('expected_value')
+        variable = condition.get("variable", "")
+        operator = condition.get("operator", "==")
+        expected_value = condition.get("expected_value")
 
         if not variable or expected_value is None:
             return False
@@ -209,10 +205,7 @@ class LoopEngine:
         return self._apply_operator(operator, actual_value, expected_value)
 
     def _apply_operator(
-        self,
-        operator: str,
-        actual_value: Any,
-        expected_value: Any
+        self, operator: str, actual_value: Any, expected_value: Any
     ) -> bool:
         """
         Apply comparison operator.
@@ -225,31 +218,31 @@ class LoopEngine:
         Returns:
             Result of comparison
         """
-        if operator == '==':
+        if operator == "==":
             return actual_value == expected_value
-        elif operator == '!=':
+        elif operator == "!=":
             return actual_value != expected_value
-        elif operator == '>':
+        elif operator == ">":
             return actual_value > expected_value
-        elif operator == '<':
+        elif operator == "<":
             return actual_value < expected_value
-        elif operator == '>=':
+        elif operator == ">=":
             return actual_value >= expected_value
-        elif operator == '<=':
+        elif operator == "<=":
             return actual_value <= expected_value
-        elif operator == 'is_empty':
-            return actual_value is None or actual_value == ''
-        elif operator == 'is_not_empty':
-            return actual_value is not None and actual_value != ''
-        elif operator == 'is_true':
+        elif operator == "is_empty":
+            return actual_value is None or actual_value == ""
+        elif operator == "is_not_empty":
+            return actual_value is not None and actual_value != ""
+        elif operator == "is_true":
             return bool(actual_value) is True
-        elif operator == 'is_false':
+        elif operator == "is_false":
             return bool(actual_value) is False
         else:
             logger.warning(f"Unknown operator: {operator}")
             return False
 
-    def get_supported_loops(self) -> List[str]:
+    def get_supported_loops(self) -> list[str]:
         """
         Get list of supported loop types.
 

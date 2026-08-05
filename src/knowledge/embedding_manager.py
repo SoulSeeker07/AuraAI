@@ -5,8 +5,8 @@ Manages embeddings with swappable providers.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from abc import ABC, abstractmethod
+from typing import Any
 
 from .models import DocumentChunk, EmbeddingProvider
 
@@ -18,7 +18,7 @@ class BaseEmbeddingProvider(ABC):
     Base class for embedding providers.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         """
         Initialize embedding provider.
 
@@ -36,7 +36,7 @@ class BaseEmbeddingProvider(ABC):
         pass
 
     @abstractmethod
-    def get_embedding(self, text: str) -> List[float]:
+    def get_embedding(self, text: str) -> list[float]:
         """
         Get embedding for text.
 
@@ -49,7 +49,7 @@ class BaseEmbeddingProvider(ABC):
         pass
 
     @abstractmethod
-    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Get embeddings for multiple texts.
 
@@ -78,10 +78,15 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         super().__init__(api_key, model)
         try:
             import openai
+
             self.client = openai.OpenAI(api_key=self.api_key)
-            self.logger.info(f"OpenAI embedding provider initialized with model: {self.model}")
+            self.logger.info(
+                f"OpenAI embedding provider initialized with model: {self.model}"
+            )
         except ImportError:
-            raise ImportError("openai package not installed. Install with: pip install openai")
+            raise ImportError(
+                "openai package not installed. Install with: pip install openai"
+            )
         except Exception as e:
             self.logger.error(f"Failed to initialize OpenAI: {e}")
 
@@ -89,7 +94,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         """Get default model."""
         return "text-embedding-3-small"
 
-    def get_embedding(self, text: str) -> List[float]:
+    def get_embedding(self, text: str) -> list[float]:
         """
         Get embedding for text.
 
@@ -103,16 +108,13 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
             return []
 
         try:
-            response = self.client.embeddings.create(
-                input=text,
-                model=self.model
-            )
+            response = self.client.embeddings.create(input=text, model=self.model)
             return response.data[0].embedding
         except Exception as e:
             self.logger.error(f"OpenAI embedding error: {e}")
             return []
 
-    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Get embeddings for multiple texts.
 
@@ -133,8 +135,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
 
         try:
             response = self.client.embeddings.create(
-                input=valid_texts,
-                model=self.model
+                input=valid_texts, model=self.model
             )
             embeddings = [item.embedding for item in response.data]
             return embeddings
@@ -160,17 +161,22 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
         self.device = device
         try:
             from sentence_transformers import SentenceTransformer
+
             self.model = SentenceTransformer(model_name, device=device)
-            self.logger.info(f"Local embedding provider initialized with model: {model_name}")
+            self.logger.info(
+                f"Local embedding provider initialized with model: {model_name}"
+            )
         except ImportError:
-            raise ImportError("sentence-transformers package not installed. "
-                            "Install with: pip install sentence-transformers")
+            raise ImportError(
+                "sentence-transformers package not installed. "
+                "Install with: pip install sentence-transformers"
+            )
 
     def get_default_model(self) -> str:
         """Get default model."""
         return "all-MiniLM-L6-v2"
 
-    def get_embedding(self, text: str) -> List[float]:
+    def get_embedding(self, text: str) -> list[float]:
         """
         Get embedding for text.
 
@@ -190,7 +196,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
             self.logger.error(f"Local embedding error: {e}")
             return []
 
-    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Get embeddings for multiple texts.
 
@@ -225,9 +231,9 @@ class EmbeddingManager:
     def __init__(
         self,
         provider: str = EmbeddingProvider.OPENAI,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
-        default_chunk_size: int = 500
+        api_key: str | None = None,
+        model: str | None = None,
+        default_chunk_size: int = 500,
     ):
         """
         Initialize embedding manager.
@@ -240,15 +246,21 @@ class EmbeddingManager:
         """
         self.provider = provider
         self.default_chunk_size = default_chunk_size
-        self._embedding_provider: Optional[BaseEmbeddingProvider] = None
+        self._embedding_provider: BaseEmbeddingProvider | None = None
         self._initialize_provider()
 
     def _initialize_provider(self):
         """Initialize the embedding provider."""
         if self.provider == EmbeddingProvider.OPENAI:
             self._embedding_provider = OpenAIEmbeddingProvider(
-                api_key=self._embedding_provider.api_key if self._embedding_provider else None,
-                model=self._embedding_provider.model if self._embedding_provider else None
+                api_key=(
+                    self._embedding_provider.api_key
+                    if self._embedding_provider
+                    else None
+                ),
+                model=(
+                    self._embedding_provider.model if self._embedding_provider else None
+                ),
             )
         elif self.provider == EmbeddingProvider.LOCAL:
             self._embedding_provider = LocalEmbeddingProvider()
@@ -275,13 +287,13 @@ class EmbeddingManager:
         self.provider = provider
 
         # Preserve model if available
-        if self._embedding_provider and hasattr(self._embedding_provider, 'model'):
-            kwargs['model'] = self._embedding_provider.model
+        if self._embedding_provider and hasattr(self._embedding_provider, "model"):
+            kwargs["model"] = self._embedding_provider.model
 
         self._embedding_provider = None
         self._initialize_provider()
 
-    def get_embedding(self, text: str) -> List[float]:
+    def get_embedding(self, text: str) -> list[float]:
         """
         Get embedding for text.
 
@@ -293,7 +305,7 @@ class EmbeddingManager:
         """
         return self._embedding_provider.get_embedding(text)
 
-    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Get embeddings for multiple texts.
 
@@ -305,7 +317,7 @@ class EmbeddingManager:
         """
         return self._embedding_provider.get_embeddings(texts)
 
-    def get_embedding_for_chunk(self, chunk: DocumentChunk) -> List[float]:
+    def get_embedding_for_chunk(self, chunk: DocumentChunk) -> list[float]:
         """
         Get embedding for a document chunk.
 
@@ -317,7 +329,9 @@ class EmbeddingManager:
         """
         return self.get_embedding(chunk.content)
 
-    def get_embeddings_for_chunks(self, chunks: List[DocumentChunk]) -> List[List[float]]:
+    def get_embeddings_for_chunks(
+        self, chunks: list[DocumentChunk]
+    ) -> list[list[float]]:
         """
         Get embeddings for multiple chunks.
 
@@ -329,7 +343,7 @@ class EmbeddingManager:
         """
         return self.get_embeddings([chunk.content for chunk in chunks])
 
-    def split_text(self, text: str, max_length: Optional[int] = None) -> List[str]:
+    def split_text(self, text: str, max_length: int | None = None) -> list[str]:
         """
         Split text into chunks.
 
@@ -345,11 +359,11 @@ class EmbeddingManager:
 
         # Simple approach: split by max_length
         for i in range(0, len(text), max_length):
-            chunks.append(text[i:i + max_length])
+            chunks.append(text[i : i + max_length])
 
         return chunks
 
-    def get_provider_stats(self) -> Dict[str, Any]:
+    def get_provider_stats(self) -> dict[str, Any]:
         """
         Get provider statistics.
 
@@ -357,10 +371,10 @@ class EmbeddingManager:
             Dictionary of statistics
         """
         if not self._embedding_provider:
-            return {'provider': 'none'}
+            return {"provider": "none"}
 
         return {
-            'provider': self.provider,
-            'model': self._embedding_provider.model,
-            'default_chunk_size': self.default_chunk_size
+            "provider": self.provider,
+            "model": self._embedding_provider.model,
+            "default_chunk_size": self.default_chunk_size,
         }

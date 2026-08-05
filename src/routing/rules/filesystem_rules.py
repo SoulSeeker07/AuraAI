@@ -4,8 +4,7 @@ Filesystem Rules
 Rules for routing filesystem-related requests.
 """
 
-from typing import List, Dict, Any, Optional
-from ..capability_types import CapabilityType, CapabilityPriority
+from ..capability_types import CapabilityPriority, CapabilityType
 from ..routing_result import RoutingResult
 
 
@@ -23,13 +22,26 @@ class FilesystemRules:
                 "requires_permission": False,
             },
             {
-                "keywords": ["delete", "remove", "trash", "recycle", "destroy", "erase"],
+                "keywords": [
+                    "delete",
+                    "remove",
+                    "trash",
+                    "recycle",
+                    "destroy",
+                    "erase",
+                ],
                 "confidence": 0.95,
                 "priority": CapabilityPriority.HIGH,
                 "requires_permission": True,
             },
             {
-                "keywords": ["move", "rename", "rename file", "rename folder", "change name"],
+                "keywords": [
+                    "move",
+                    "rename",
+                    "rename file",
+                    "rename folder",
+                    "change name",
+                ],
                 "confidence": 0.90,
                 "priority": CapabilityPriority.HIGH,
                 "requires_permission": False,
@@ -60,7 +72,7 @@ class FilesystemRules:
             },
         ]
 
-    def route(self, text: str) -> Optional[RoutingResult]:
+    def route(self, text: str) -> RoutingResult | None:
         """
         Route filesystem-related request.
 

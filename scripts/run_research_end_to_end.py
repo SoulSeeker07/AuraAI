@@ -9,18 +9,14 @@ to show runtime evidence of:
 4. Timing measurements
 """
 
-import sys
 import logging
 from datetime import datetime
 
 # Configure logging to show all debug info
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(levelname)s - %(name)s - %(message)s',
-    handlers=[
-        logging.FileHandler('research_test_output.log'),
-        logging.StreamHandler()
-    ]
+    format="%(levelname)s - %(name)s - %(message)s",
+    handlers=[logging.FileHandler("research_test_output.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -38,14 +34,11 @@ def run_test_query(query: str, mode: str = "standard"):
         from research.research_engine import ResearchEngine
 
         # Create research engine with debug enabled
-        config = ResearchConfig(
-            debug=True,
-            default_mode=SearchMode.STANDARD
-        )
+        config = ResearchConfig(debug=True, default_mode=SearchMode.STANDARD)
         engine = ResearchEngine(config=config)
 
         # Run research
-        print(f"\n[EXECUTING RESEARCH...]")
+        print("\n[EXECUTING RESEARCH...]")
         start_time = datetime.now()
 
         result = engine.research(query=query, mode=SearchMode.STANDARD)
@@ -57,7 +50,7 @@ def run_test_query(query: str, mode: str = "standard"):
         print("=" * 80)
 
         # Show results
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  Confidence: {result.confidence:.2f}")
         print(f"  Evidence: {len(result.evidence)} items")
         print(f"  Strong: {len(result.evidence)}")
@@ -65,24 +58,25 @@ def run_test_query(query: str, mode: str = "standard"):
         print(f"  Conflicts: {len(result.conflicts)}")
         print(f"  Unanswered: {len(result.unanswered_questions)}")
 
-        print(f"\nConfidence Progression (from logs):")
-        print(f"  Check the logs above for iteration-by-iteration confidence")
+        print("\nConfidence Progression (from logs):")
+        print("  Check the logs above for iteration-by-iteration confidence")
 
-        print(f"\nPlanner Refinement (from logs):")
-        print(f"  Check the logs above for Previous Query → New Query flow")
+        print("\nPlanner Refinement (from logs):")
+        print("  Check the logs above for Previous Query → New Query flow")
 
-        print(f"\nProviders Used:")
-        print(f"  Check the 'search_manager.search_all' logs above")
+        print("\nProviders Used:")
+        print("  Check the 'search_manager.search_all' logs above")
 
-        print(f"\nTiming:")
+        print("\nTiming:")
         print(f"  Total time: {duration:.2f}s")
-        print(f"  Check detailed timing in research_test_output.log")
+        print("  Check detailed timing in research_test_output.log")
 
         return result
 
     except Exception as e:
         print(f"\n[ERROR] Research failed: {e}")
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -93,11 +87,7 @@ def main():
     print("REAL END-TO-END RESEARCH TEST")
     print("=" * 80)
 
-    queries = [
-        "Latest Python release",
-        "Explain OSPF routing protocol",
-        "Who am I?"
-    ]
+    queries = ["Latest Python release", "Explain OSPF routing protocol", "Who am I?"]
 
     results = {}
 
@@ -109,8 +99,8 @@ def main():
         result = run_test_query(query)
         if result:
             results[query] = {
-                'confidence': result.confidence,
-                'duration': (result.metadata.get('execution_time') or 0) / 1000
+                "confidence": result.confidence,
+                "duration": (result.metadata.get("execution_time") or 0) / 1000,
             }
 
         print("\n")
@@ -126,7 +116,9 @@ def main():
         print(f"  Duration: {metrics['duration']:.2f}s")
 
     print("\n" + "=" * 80)
-    print("For detailed logs with confidence progression, timing, and provider routing,")
+    print(
+        "For detailed logs with confidence progression, timing, and provider routing,"
+    )
     print("check: research_test_output.log")
     print("=" * 80)
 

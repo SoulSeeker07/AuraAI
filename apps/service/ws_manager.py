@@ -1,10 +1,9 @@
-from typing import List
 from fastapi import WebSocket
 
 
 class WebSocketManager:
     def __init__(self):
-        self.active: List[WebSocket] = []
+        self.active: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()

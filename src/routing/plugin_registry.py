@@ -10,7 +10,8 @@ This ensures new capabilities appear automatically when plugins are installed.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from .capability_types import CapabilityType
 
 logger = logging.getLogger(__name__)
@@ -24,8 +25,8 @@ class PluginCapability:
         name: str,
         capability_type: CapabilityType,
         description: str,
-        supported_operations: List[str] = None,
-        priority: str = "medium"
+        supported_operations: list[str] = None,
+        priority: str = "medium",
     ):
         """
         Initialize a plugin capability.
@@ -42,7 +43,7 @@ class PluginCapability:
         self.description = description
         self.supported_operations = supported_operations or []
         self.priority = priority
-        self.metadata: Dict[str, Any] = {}
+        self.metadata: dict[str, Any] = {}
 
     def can_handle(self, operation: str) -> bool:
         """
@@ -70,8 +71,8 @@ class PluginRegistry:
 
     def __init__(self):
         """Initialize plugin registry."""
-        self.capabilities: List[PluginCapability] = []
-        self.plugins: Dict[str, Any] = {}  # Plugin name -> plugin instance
+        self.capabilities: list[PluginCapability] = []
+        self.plugins: dict[str, Any] = {}  # Plugin name -> plugin instance
         logger.info("Plugin Registry initialized")
 
     def register_plugin(self, plugin_name: str, plugin_instance: Any) -> None:
@@ -96,7 +97,7 @@ class PluginRegistry:
             del self.plugins[plugin_name]
         logger.info(f"Unregistered plugin: {plugin_name}")
 
-    def discover_capabilities(self, plugin_instance: Any) -> List[PluginCapability]:
+    def discover_capabilities(self, plugin_instance: Any) -> list[PluginCapability]:
         """
         Discover capabilities from a plugin instance.
 
@@ -120,14 +121,16 @@ class PluginRegistry:
                         capability_type=capability.get("capability_type", "unknown"),
                         description=capability.get("description", ""),
                         supported_operations=capability.get("supported_operations", []),
-                        priority=capability.get("priority", "medium")
+                        priority=capability.get("priority", "medium"),
                     )
 
                 logger.info(f"Discovered {len(capabilities)} capabilities from plugin")
 
                 return capabilities
         except Exception as e:
-            logger.error(f"Error discovering capabilities from plugin: {e}", exc_info=True)
+            logger.error(
+                f"Error discovering capabilities from plugin: {e}", exc_info=True
+            )
 
         return []
 
@@ -136,8 +139,8 @@ class PluginRegistry:
         name: str,
         capability_type: str,
         description: str,
-        supported_operations: List[str] = None,
-        priority: str = "medium"
+        supported_operations: list[str] = None,
+        priority: str = "medium",
     ) -> None:
         """
         Register a capability manually.
@@ -166,7 +169,7 @@ class PluginRegistry:
                 capability_type=capability_enum,
                 description=description,
                 supported_operations=supported_operations,
-                priority=priority
+                priority=priority,
             )
 
             self.capabilities.append(capability)
@@ -175,7 +178,9 @@ class PluginRegistry:
         except Exception as e:
             logger.error(f"Error registering capability: {e}", exc_info=True)
 
-    def get_capability(self, capability_type: CapabilityType) -> Optional[PluginCapability]:
+    def get_capability(
+        self, capability_type: CapabilityType
+    ) -> PluginCapability | None:
         """
         Get a specific capability.
 
@@ -190,7 +195,7 @@ class PluginRegistry:
                 return capability
         return None
 
-    def get_capabilities_for_operation(self, operation: str) -> List[PluginCapability]:
+    def get_capabilities_for_operation(self, operation: str) -> list[PluginCapability]:
         """
         Get all capabilities that can handle a specific operation.
 
@@ -206,7 +211,7 @@ class PluginRegistry:
                 matching.append(capability)
         return matching
 
-    def get_all_capabilities(self) -> List[PluginCapability]:
+    def get_all_capabilities(self) -> list[PluginCapability]:
         """
         Get all registered capabilities.
 
@@ -215,7 +220,9 @@ class PluginRegistry:
         """
         return self.capabilities
 
-    def get_capabilities_by_type(self, capability_type: CapabilityType) -> List[PluginCapability]:
+    def get_capabilities_by_type(
+        self, capability_type: CapabilityType
+    ) -> list[PluginCapability]:
         """
         Get all capabilities of a specific type.
 
@@ -226,11 +233,10 @@ class PluginRegistry:
             List of capabilities of that type
         """
         return [
-            cap for cap in self.capabilities
-            if cap.capability_type == capability_type
+            cap for cap in self.capabilities if cap.capability_type == capability_type
         ]
 
-    def get_plugin_by_capability(self, capability_type: CapabilityType) -> Optional[Any]:
+    def get_plugin_by_capability(self, capability_type: CapabilityType) -> Any | None:
         """
         Get the plugin that provides a specific capability.
 
@@ -247,7 +253,7 @@ class PluginRegistry:
                     return plugin_instance
         return None
 
-    def get_capabilities_by_plugin(self, plugin_name: str) -> List[PluginCapability]:
+    def get_capabilities_by_plugin(self, plugin_name: str) -> list[PluginCapability]:
         """
         Get all capabilities provided by a specific plugin.
 
@@ -258,6 +264,7 @@ class PluginRegistry:
             List of capabilities from that plugin
         """
         return [
-            cap for cap in self.capabilities
+            cap
+            for cap in self.capabilities
             if hasattr(cap, "name") and cap.name.lower() == plugin_name.lower()
         ]

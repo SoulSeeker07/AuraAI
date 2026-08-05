@@ -5,8 +5,8 @@ Generic factory base class providing automatic priority sorting, availability ch
 and fallback selection across all native hardware/API adapter factories.
 """
 
-from typing import List, TypeVar, Generic, Type, Optional
 import logging
+from typing import Generic, TypeVar
 
 from .base_adapter import BaseNativeAdapter
 
@@ -22,7 +22,7 @@ class BaseAdapterFactory(Generic[T]):
     Subclasses define `_adapter_classes` containing concrete adapter types.
     """
 
-    _adapter_classes: List[Type[T]] = []
+    _adapter_classes: list[type[T]] = []
 
     @classmethod
     def get_adapter(cls) -> T:
@@ -33,28 +33,33 @@ class BaseAdapterFactory(Generic[T]):
             An instance of an available adapter subclass.
         """
         sorted_classes = sorted(
-            cls._adapter_classes,
-            key=lambda c: getattr(c, "PRIORITY", 100)
+            cls._adapter_classes, key=lambda c: getattr(c, "PRIORITY", 100)
         )
 
         for adapter_cls in sorted_classes:
             try:
                 instance = adapter_cls()
                 if instance.is_available():
-                    logger.info(f"Selected '{cls.__name__}' active adapter: '{instance.name}'")
+                    logger.info(
+                        f"Selected '{cls.__name__}' active adapter: '{instance.name}'"
+                    )
                     return instance
             except Exception as e:
-                logger.debug(f"Adapter '{adapter_cls.__name__}' availability check failed: {e}")
+                logger.debug(
+                    f"Adapter '{adapter_cls.__name__}' availability check failed: {e}"
+                )
 
         # Fallback to last class if defined
         if cls._adapter_classes:
             fallback_cls = cls._adapter_classes[-1]
             return fallback_cls()
 
-        raise RuntimeError(f"No adapter classes configured for factory '{cls.__name__}'")
+        raise RuntimeError(
+            f"No adapter classes configured for factory '{cls.__name__}'"
+        )
 
     @classmethod
-    def get_all_adapters(cls) -> List[T]:
+    def get_all_adapters(cls) -> list[T]:
         """
         Instantiate all registered adapter classes for diagnostic inspection.
 
@@ -66,5 +71,7 @@ class BaseAdapterFactory(Generic[T]):
             try:
                 instances.append(adapter_cls())
             except Exception as e:
-                logger.warning(f"Could not instantiate adapter class '{adapter_cls.__name__}': {e}")
+                logger.warning(
+                    f"Could not instantiate adapter class '{adapter_cls.__name__}': {e}"
+                )
         return instances

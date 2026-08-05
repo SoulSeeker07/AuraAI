@@ -4,18 +4,19 @@ Task Model
 Represents a single executable task in the Agent Runtime.
 """
 
-
 import logging
-from typing import List, Dict, Any, Optional, Callable
-from datetime import datetime, timedelta
-from enum import Enum
 import uuid
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from typing import Any
 
 from .models import (
-    TaskStatus, TaskPriority, TaskRiskLevel,
-    RetryPolicy, ApprovalRequired
+    ApprovalRequired,
+    RetryPolicy,
+    TaskPriority,
+    TaskRiskLevel,
+    TaskStatus,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,8 @@ class Task:
         goal: str,
         task_type: str = "general",
         priority: TaskPriority = TaskPriority.MEDIUM,
-        dependencies: Optional[List[str]] = None,
-        required_tools: Optional[List[str]] = None,
+        dependencies: list[str] | None = None,
+        required_tools: list[str] | None = None,
         estimated_duration: timedelta = timedelta(minutes=5),
         risk_level: TaskRiskLevel = TaskRiskLevel.MEDIUM,
         retry_policy: RetryPolicy = RetryPolicy.DEFAULT,
@@ -42,11 +43,11 @@ class Task:
         description: str = "",
         retry_count: int = 0,
         max_retries: int = 3,
-        timeout: Optional[timedelta] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        timeout: timedelta | None = None,
+        metadata: dict[str, Any] | None = None,
         status: TaskStatus = TaskStatus.PENDING,
-        task_id: Optional[str] = None,
-        parent_goal_id: Optional[str] = None
+        task_id: str | None = None,
+        parent_goal_id: str | None = None,
     ):
         """
         Initialize a task.
@@ -89,18 +90,18 @@ class Task:
         self.parent_goal_id = parent_goal_id
 
         # Execution tracking
-        self.started_at: Optional[datetime] = None
-        self.completed_at: Optional[datetime] = None
-        self.duration: Optional[timedelta] = None
+        self.started_at: datetime | None = None
+        self.completed_at: datetime | None = None
+        self.duration: timedelta | None = None
         self.output: Any = None
-        self.error: Optional[str] = None
-        self.retry_queue: List[dict] = []
+        self.error: str | None = None
+        self.retry_queue: list[dict] = []
 
         # Callbacks
-        self.on_complete: Optional[Callable[[Task], None]] = None
-        self.on_fail: Optional[Callable[[Task], None]] = None
-        self.on_progress: Optional[Callable[[Task, float], None]] = None
-        self.on_approval_required: Optional[Callable[[Task], bool]] = None
+        self.on_complete: Callable[[Task], None] | None = None
+        self.on_fail: Callable[[Task], None] | None = None
+        self.on_progress: Callable[[Task, float], None] | None = None
+        self.on_approval_required: Callable[[Task], bool] | None = None
 
         logger.debug(f"Created task: {self.task_id[:8]} - {goal[:50]}")
 
@@ -117,15 +118,19 @@ class Task:
     @property
     def is_complete(self) -> bool:
         """Check if task is complete."""
-        return self.status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]
+        return self.status in [
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+        ]
 
     @property
     def should_retry(self) -> bool:
         """Check if task should be retried."""
         return (
-            self.status == TaskStatus.FAILED and
-            self.retry_count < self.max_retries and
-            self.retry_policy != RetryPolicy.OFF
+            self.status == TaskStatus.FAILED
+            and self.retry_count < self.max_retries
+            and self.retry_policy != RetryPolicy.OFF
         )
 
     @property
@@ -155,7 +160,7 @@ class Task:
         if self.status == TaskStatus.PENDING:
             return 0.0
         elif self.status == TaskStatus.RUNNING:
-            return self.metadata.get('progress', 0.5)
+            return self.metadata.get("progress", 0.5)
         elif self.status == TaskStatus.COMPLETED:
             return 1.0
         elif self.status == TaskStatus.FAILED:
@@ -171,12 +176,14 @@ class Task:
             progress: Progress value (0.0 - 1.0)
             detail: Progress description
         """
-        self.metadata['progress'] = max(0.0, min(1.0, progress))
-        self.metadata['last_progress_update'] = datetime.now().isoformat()
+        self.metadata["progress"] = max(0.0, min(1.0, progress))
+        self.metadata["last_progress_update"] = datetime.now().isoformat()
         if detail:
-            self.metadata['last_progress_detail'] = detail
+            self.metadata["last_progress_detail"] = detail
 
-        logger.debug(f"Task {self.task_id[:8]} progress: {progress*100:.1f}% - {detail}")
+        logger.debug(
+            f"Task {self.task_id[:8]} progress: {progress*100:.1f}% - {detail}"
+        )
 
         if self.on_progress:
             self.on_progress(self, progress)
@@ -196,7 +203,9 @@ class Task:
         """
         self.status = TaskStatus.COMPLETED
         self.completed_at = datetime.now()
-        self.duration = self.completed_at - self.started_at if self.started_at else timedelta(0)
+        self.duration = (
+            self.completed_at - self.started_at if self.started_at else timedelta(0)
+        )
         self.output = output
 
         logger.info(f"Task {self.task_id[:8]} completed in {self.duration}")
@@ -213,7 +222,9 @@ class Task:
         """
         self.status = TaskStatus.FAILED
         self.completed_at = datetime.now()
-        self.duration = self.completed_at - self.started_at if self.started_at else timedelta(0)
+        self.duration = (
+            self.completed_at - self.started_at if self.started_at else timedelta(0)
+        )
         self.error = error
 
         logger.warning(f"Task {self.task_id[:8]} failed: {error}")
@@ -225,7 +236,9 @@ class Task:
         """Mark task as cancelled."""
         self.status = TaskStatus.CANCELLED
         self.completed_at = datetime.now()
-        self.duration = self.completed_at - self.started_at if self.started_at else timedelta(0)
+        self.duration = (
+            self.completed_at - self.started_at if self.started_at else timedelta(0)
+        )
         self.error = "Task cancelled by user"
 
         logger.info(f"Task {self.task_id[:8]} cancelled")
@@ -245,7 +258,7 @@ class Task:
 
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert task to dictionary.
 
@@ -253,32 +266,34 @@ class Task:
             Task as dictionary
         """
         return {
-            'task_id': self.task_id,
-            'goal': self.goal,
-            'task_type': self.task_type,
-            'priority': self.priority.value,
-            'dependencies': self.dependencies,
-            'required_tools': self.required_tools,
-            'estimated_duration': self.estimated_duration.total_seconds(),
-            'risk_level': self.risk_level.value,
-            'retry_policy': self.retry_policy.value,
-            'approval_required': self.approval_required.value,
-            'description': self.description,
-            'retry_count': self.retry_count,
-            'max_retries': self.max_retries,
-            'timeout': self.timeout.total_seconds() if self.timeout else None,
-            'metadata': self.metadata,
-            'status': self.status.value,
-            'parent_goal_id': self.parent_goal_id,
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'duration': self.duration.total_seconds() if self.duration else None,
-            'has_output': self.output is not None,
-            'has_error': self.error is not None
+            "task_id": self.task_id,
+            "goal": self.goal,
+            "task_type": self.task_type,
+            "priority": self.priority.value,
+            "dependencies": self.dependencies,
+            "required_tools": self.required_tools,
+            "estimated_duration": self.estimated_duration.total_seconds(),
+            "risk_level": self.risk_level.value,
+            "retry_policy": self.retry_policy.value,
+            "approval_required": self.approval_required.value,
+            "description": self.description,
+            "retry_count": self.retry_count,
+            "max_retries": self.max_retries,
+            "timeout": self.timeout.total_seconds() if self.timeout else None,
+            "metadata": self.metadata,
+            "status": self.status.value,
+            "parent_goal_id": self.parent_goal_id,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+            "duration": self.duration.total_seconds() if self.duration else None,
+            "has_output": self.output is not None,
+            "has_error": self.error is not None,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Task':
+    def from_dict(cls, data: dict[str, Any]) -> "Task":
         """
         Create task from dictionary.
 
@@ -289,22 +304,24 @@ class Task:
             Task instance
         """
         return cls(
-            task_id=data.get('task_id'),
-            goal=data['goal'],
-            task_type=data.get('task_type', 'general'),
-            priority=TaskPriority(data.get('priority', 'medium')),
-            dependencies=data.get('dependencies'),
-            required_tools=data.get('required_tools'),
-            estimated_duration=timedelta(seconds=data.get('estimated_duration', 300)),
-            risk_level=TaskRiskLevel(data.get('risk_level', 'medium')),
-            retry_policy=RetryPolicy(data.get('retry_policy', 'default')),
-            approval_required=ApprovalRequired(data.get('approval_required', 'auto')),
-            description=data.get('description', ''),
-            retry_count=data.get('retry_count', 0),
-            max_retries=data.get('max_retries', 3),
-            timeout=timedelta(seconds=data.get('timeout')) if data.get('timeout') else None,
-            status=TaskStatus(data.get('status', 'pending')),
-            parent_goal_id=data.get('parent_goal_id')
+            task_id=data.get("task_id"),
+            goal=data["goal"],
+            task_type=data.get("task_type", "general"),
+            priority=TaskPriority(data.get("priority", "medium")),
+            dependencies=data.get("dependencies"),
+            required_tools=data.get("required_tools"),
+            estimated_duration=timedelta(seconds=data.get("estimated_duration", 300)),
+            risk_level=TaskRiskLevel(data.get("risk_level", "medium")),
+            retry_policy=RetryPolicy(data.get("retry_policy", "default")),
+            approval_required=ApprovalRequired(data.get("approval_required", "auto")),
+            description=data.get("description", ""),
+            retry_count=data.get("retry_count", 0),
+            max_retries=data.get("max_retries", 3),
+            timeout=(
+                timedelta(seconds=data.get("timeout")) if data.get("timeout") else None
+            ),
+            status=TaskStatus(data.get("status", "pending")),
+            parent_goal_id=data.get("parent_goal_id"),
         )
 
     def __repr__(self) -> str:

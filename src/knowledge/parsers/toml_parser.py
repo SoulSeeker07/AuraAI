@@ -10,10 +10,10 @@ Supports:
 
 import logging
 import tomllib
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Any
 
-from ..models import DocumentChunk, DocumentMetadata, ChunkType, SourceType
+from ..models import ChunkType, DocumentChunk, DocumentMetadata, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +22,17 @@ class TomlParser:
     """Parse TOML files into structured chunks."""
 
     def __init__(self):
-        self.supported_extensions = ['.toml']
+        self.supported_extensions = [".toml"]
 
     def supports(self, file_path: Path) -> bool:
         """Check if file type is supported."""
         return file_path.suffix.lower() in self.supported_extensions
 
-    def parse(self, file_path: Path) -> List[DocumentChunk]:
+    def parse(self, file_path: Path) -> list[DocumentChunk]:
         """Parse TOML file into structure chunks."""
         chunks = []
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 data = tomllib.load(f)
 
             if data is None:
@@ -52,9 +52,9 @@ class TomlParser:
                             type=ChunkType.SECTION,
                             metadata={
                                 **file_metadata,
-                                'chunk_key': key,
-                                'chunk_type': type(value).__name__,
-                            }
+                                "chunk_key": key,
+                                "chunk_type": type(value).__name__,
+                            },
                         )
                         chunks.append(chunk)
                     else:
@@ -66,14 +66,14 @@ class TomlParser:
                             type=ChunkType.TEXT,
                             metadata={
                                 **file_metadata,
-                                'chunk_key': key,
-                                'chunk_type': type(value).__name__,
-                            }
+                                "chunk_key": key,
+                                "chunk_type": type(value).__name__,
+                            },
                         )
                         chunks.append(chunk)
             elif isinstance(data, list):
                 # Handle arrays as a single chunk
-                chunk_content = self._format_chunk('items', data)
+                chunk_content = self._format_chunk("items", data)
                 chunk = DocumentChunk(
                     id=f"{file_path.stem}_items",
                     content=chunk_content,
@@ -82,9 +82,9 @@ class TomlParser:
                     source_file=str(file_path),
                     metadata={
                         **file_metadata,
-                        'chunk_key': 'items',
-                        'chunk_type': 'list',
-                    }
+                        "chunk_key": "items",
+                        "chunk_type": "list",
+                    },
                 )
                 chunks.append(chunk)
             else:
@@ -95,7 +95,7 @@ class TomlParser:
                     chunk_type=ChunkType.TEXT,
                     source_type=SourceType.TOML,
                     source_file=str(file_path),
-                    metadata=file_metadata
+                    metadata=file_metadata,
                 )
                 chunks.append(chunk)
 
@@ -108,7 +108,7 @@ class TomlParser:
     def _format_chunk(self, key: str, value: Any) -> str:
         """Format a chunk's content."""
         if isinstance(value, list):
-            items_str = ', '.join(str(item) for item in value)
+            items_str = ", ".join(str(item) for item in value)
             return f"{key} = [{items_str}]"
         else:
             return f"{key} = {value}"
@@ -116,7 +116,7 @@ class TomlParser:
     def extract_metadata(self, file_path: Path) -> DocumentMetadata:
         """Extract metadata from TOML file."""
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 data = tomllib.load(f)
 
             metadata = DocumentMetadata(
@@ -130,13 +130,13 @@ class TomlParser:
 
             # Extract metadata from TOML file if present
             if isinstance(data, dict):
-                if 'name' in data:
-                    metadata.title = data['name']
-                if 'description' in data:
-                    metadata.description = str(data['description'])
+                if "name" in data:
+                    metadata.title = data["name"]
+                if "description" in data:
+                    metadata.description = str(data["description"])
                 # Version is stored in extra_metadata for extensibility
-                if 'version' in data:
-                    metadata.extra_metadata['version'] = str(data['version'])
+                if "version" in data:
+                    metadata.extra_metadata["version"] = str(data["version"])
 
             return metadata
 

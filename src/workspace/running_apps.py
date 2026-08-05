@@ -11,8 +11,8 @@ Features:
 """
 
 import logging
-from typing import List, Optional
-from dataclasses import dataclass
+from typing import Optional
+
 import psutil
 
 from .models import RunningApplication
@@ -33,98 +33,103 @@ class RunningAppsMonitor:
 
     # System processes to exclude
     SYSTEM_PROCESSES = {
-        'System',
-        'System Idle Process',
-        'registry',
-        'svchost',
-        'spoolsv',
-        'alg',
-        'csrss',
-        'smss',
-        'csrss',
-        'wininit',
-        'services',
-        'lsass',
-        'lsm',
-        'fontdrvhost',
-        'tiwinsrv',
-        'tiimgtbt',
-        'winlogon',
-        'dwm',
-        'runtimebroker',
-        'locationnlp',
-        'nlahost',
-        'werfault',
-        'conhost',
-        'vmware',
-        'vmtools',
-        'vmsrvc',
-        'mpcmdrun',
-        'sppsvc',
-        'wuauserv',
-        'audiodg',
-        'csrss',
-        'smss',
-        'wininit',
-        'services',
-        'lsass',
-        'lsass',
-        'wininit',
-        'services',
+        "System",
+        "System Idle Process",
+        "registry",
+        "svchost",
+        "spoolsv",
+        "alg",
+        "csrss",
+        "smss",
+        "csrss",
+        "wininit",
+        "services",
+        "lsass",
+        "lsm",
+        "fontdrvhost",
+        "tiwinsrv",
+        "tiimgtbt",
+        "winlogon",
+        "dwm",
+        "runtimebroker",
+        "locationnlp",
+        "nlahost",
+        "werfault",
+        "conhost",
+        "vmware",
+        "vmtools",
+        "vmsrvc",
+        "mpcmdrun",
+        "sppsvc",
+        "wuauserv",
+        "audiodg",
+        "csrss",
+        "smss",
+        "wininit",
+        "services",
+        "lsass",
+        "lsass",
+        "wininit",
+        "services",
     }
 
     # App name mappings for better UX
     APP_MAPPINGS = {
-        'code': 'VS Code',
-        'cursor': 'Cursor',
-        'atom': 'Atom',
-        'sublime_text': 'Sublime Text',
-        'pycharm': 'PyCharm',
-        'idea': 'IntelliJ IDEA',
-        'visual_studio': 'Visual Studio',
-        'visual_studio_code': 'VS Code',
-        'code.exe': 'VS Code',
-        'cursor.exe': 'Cursor',
-        'atom.exe': 'Atom',
-        'sublime_text.exe': 'Sublime Text',
-        'pycharm64.exe': 'PyCharm',
-        'idea64.exe': 'IntelliJ IDEA',
-        'devenv.exe': 'Visual Studio',
-        'powershell.exe': 'Windows Terminal',
-        'cmd.exe': 'Command Prompt',
-        'powershell_ise.exe': 'Windows PowerShell ISE',
-        'node.exe': 'Node.js',
-        'python.exe': 'Python',
-        'pythonw.exe': 'Python',
-        'python3.exe': 'Python',
-        'pythonw3.exe': 'Python',
-        'google_chrome.exe': 'Chrome',
-        'chrome.exe': 'Chrome',
-        'msedge.exe': 'Edge',
-        'microsoftedge.exe': 'Edge',
-        'firefox.exe': 'Firefox',
-        'brave.exe': 'Brave',
-        'safari.exe': 'Safari',
-        'discord.exe': 'Discord',
-        'slack.exe': 'Slack',
-        'microsoft_teams.exe': 'Teams',
-        'outlook.exe': 'Outlook',
-        'teamviewer.exe': 'TeamViewer',
-        'wireshark.exe': 'Wireshark',
-        'packettracer.exe': 'Packet Tracer',
-        'vmware.exe': 'VMware',
+        "code": "VS Code",
+        "cursor": "Cursor",
+        "atom": "Atom",
+        "sublime_text": "Sublime Text",
+        "pycharm": "PyCharm",
+        "idea": "IntelliJ IDEA",
+        "visual_studio": "Visual Studio",
+        "visual_studio_code": "VS Code",
+        "code.exe": "VS Code",
+        "cursor.exe": "Cursor",
+        "atom.exe": "Atom",
+        "sublime_text.exe": "Sublime Text",
+        "pycharm64.exe": "PyCharm",
+        "idea64.exe": "IntelliJ IDEA",
+        "devenv.exe": "Visual Studio",
+        "powershell.exe": "Windows Terminal",
+        "cmd.exe": "Command Prompt",
+        "powershell_ise.exe": "Windows PowerShell ISE",
+        "node.exe": "Node.js",
+        "python.exe": "Python",
+        "pythonw.exe": "Python",
+        "python3.exe": "Python",
+        "pythonw3.exe": "Python",
+        "google_chrome.exe": "Chrome",
+        "chrome.exe": "Chrome",
+        "msedge.exe": "Edge",
+        "microsoftedge.exe": "Edge",
+        "firefox.exe": "Firefox",
+        "brave.exe": "Brave",
+        "safari.exe": "Safari",
+        "discord.exe": "Discord",
+        "slack.exe": "Slack",
+        "microsoft_teams.exe": "Teams",
+        "outlook.exe": "Outlook",
+        "teamviewer.exe": "TeamViewer",
+        "wireshark.exe": "Wireshark",
+        "packettracer.exe": "Packet Tracer",
+        "vmware.exe": "VMware",
     }
 
     # Common editors
     EDITOR_APPS = {
-        'vscode', 'cursor', 'code', 'atom', 'sublime', 'pycharm', 'idea',
-        'visual_studio', 'visual_studio_code'
+        "vscode",
+        "cursor",
+        "code",
+        "atom",
+        "sublime",
+        "pycharm",
+        "idea",
+        "visual_studio",
+        "visual_studio_code",
     }
 
     # Common browsers
-    BROWSER_APPS = {
-        'chrome', 'edge', 'firefox', 'brave', 'safari'
-    }
+    BROWSER_APPS = {"chrome", "edge", "firefox", "brave", "safari"}
 
     def __init__(self, update_interval: int = 5):
         """
@@ -134,15 +139,17 @@ class RunningAppsMonitor:
             update_interval: Seconds between updates
         """
         self.update_interval = update_interval
-        self._running_apps: List[RunningApplication] = []
-        self._last_foreground_app: Optional[str] = None
-        self._foreground_pid: Optional[int] = None
+        self._running_apps: list[RunningApplication] = []
+        self._last_foreground_app: str | None = None
+        self._foreground_pid: int | None = None
         self._running = False
         self._thread: Optional = None
 
-        logger.info(f"Running apps monitor initialized (update_interval={update_interval}s)")
+        logger.info(
+            f"Running apps monitor initialized (update_interval={update_interval}s)"
+        )
 
-    async def get_running_apps(self) -> List[RunningApplication]:
+    async def get_running_apps(self) -> list[RunningApplication]:
         """
         Get list of running applications.
 
@@ -165,7 +172,7 @@ class RunningAppsMonitor:
             logger.error(f"Failed to get running apps: {e}")
             return self._running_apps
 
-    def _get_all_processes(self) -> List[RunningApplication]:
+    def _get_all_processes(self) -> list[RunningApplication]:
         """
         Get all non-system processes.
 
@@ -175,14 +182,14 @@ class RunningAppsMonitor:
         apps = []
 
         try:
-            for proc in psutil.process_iter(['pid', 'name', 'exe']):
+            for proc in psutil.process_iter(["pid", "name", "exe"]):
                 try:
                     # Skip system processes
-                    proc_name = proc.info['name']
+                    proc_name = proc.info["name"]
                     if proc_name in self.SYSTEM_PROCESSES:
                         continue
 
-                    exe_path = proc.info['exe']
+                    exe_path = proc.info["exe"]
                     if not exe_path:
                         continue
 
@@ -194,12 +201,16 @@ class RunningAppsMonitor:
                         name=process_name,
                         process_name=proc_name,
                         window_title=self._get_window_title(proc_name),
-                        is_foreground=False
+                        is_foreground=False,
                     )
 
                     apps.append(app)
 
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                except (
+                    psutil.NoSuchProcess,
+                    psutil.AccessDenied,
+                    psutil.ZombieProcess,
+                ):
                     continue
 
         except Exception as e:
@@ -207,7 +218,7 @@ class RunningAppsMonitor:
 
         return apps
 
-    def _get_app_by_pid(self, pid: int) -> Optional[RunningApplication]:
+    def _get_app_by_pid(self, pid: int) -> RunningApplication | None:
         """
         Get application by PID.
 
@@ -233,7 +244,7 @@ class RunningAppsMonitor:
             Clean process name
         """
         # Get basename
-        basename = exe_path.split('\\')[-1].split('/')[-1]
+        basename = exe_path.split("\\")[-1].split("/")[-1]
 
         # Check mappings
         basename_lower = basename.lower()
@@ -241,7 +252,7 @@ class RunningAppsMonitor:
             return self.APP_MAPPINGS[basename_lower]
 
         # Clean up the name
-        return basename.replace('.exe', '')
+        return basename.replace(".exe", "")
 
     def _get_window_title(self, process_name: str) -> str:
         """
@@ -259,7 +270,7 @@ class RunningAppsMonitor:
         except Exception:
             return ""
 
-    async def get_foreground_app(self) -> Optional[RunningApplication]:
+    async def get_foreground_app(self) -> RunningApplication | None:
         """
         Get the currently foreground application.
 
@@ -285,7 +296,7 @@ class RunningAppsMonitor:
             logger.error(f"Failed to get foreground app: {e}")
             return None
 
-    async def get_app_by_name(self, name: str) -> Optional[RunningApplication]:
+    async def get_app_by_name(self, name: str) -> RunningApplication | None:
         """
         Get application by name.
 
@@ -306,7 +317,7 @@ class RunningAppsMonitor:
             logger.error(f"Failed to get app by name: {e}")
             return None
 
-    async def get_editor_apps(self) -> List[RunningApplication]:
+    async def get_editor_apps(self) -> list[RunningApplication]:
         """
         Get all running editor applications.
 
@@ -321,7 +332,7 @@ class RunningAppsMonitor:
             logger.error(f"Failed to get editor apps: {e}")
             return []
 
-    async def get_browser_apps(self) -> List[RunningApplication]:
+    async def get_browser_apps(self) -> list[RunningApplication]:
         """
         Get all running browser applications.
 
@@ -336,7 +347,7 @@ class RunningAppsMonitor:
             logger.error(f"Failed to get browser apps: {e}")
             return []
 
-    def get_foreground_app_name(self) -> Optional[str]:
+    def get_foreground_app_name(self) -> str | None:
         """
         Get name of foreground application.
 

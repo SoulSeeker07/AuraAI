@@ -5,24 +5,25 @@ Main orchestrator for the Vision System.
 Coordinates all vision components to provide desktop vision capabilities.
 """
 
-
 import logging
-from typing import Optional, Dict, Any, List
-from pathlib import Path
-from .models import (
-    VisionContext, ImageType, VisionProvider,
-    ScreenshotSettings, OCRSettings,
-    VisionContextCoordinator
-)
-from .screenshot_manager import ScreenshotManager
-from .preprocessing import ImagePreprocessor
-from .image_loader import ImageLoader
-from .object_detector import ObjectDetector
-from .layout_analyzer import LayoutAnalyzer
-from .ui_analyzer import UIAnalyzer
-from .diagram_analyzer import DiagramAnalyzer
-from .code_detector import CodeDetector
+from typing import Any
 
+from .code_detector import CodeDetector
+from .diagram_analyzer import DiagramAnalyzer
+from .image_loader import ImageLoader
+from .layout_analyzer import LayoutAnalyzer
+from .models import (
+    ImageType,
+    OCRSettings,
+    ScreenshotSettings,
+    VisionContext,
+    VisionContextCoordinator,
+    VisionProvider,
+)
+from .object_detector import ObjectDetector
+from .preprocessing import ImagePreprocessor
+from .screenshot_manager import ScreenshotManager
+from .ui_analyzer import UIAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class VisionManager:
     def __init__(
         self,
         screenshot_settings: ScreenshotSettings = None,
-        ocr_settings: OCRSettings = None
+        ocr_settings: OCRSettings = None,
     ):
         """
         Initialize the vision manager.
@@ -70,15 +71,13 @@ class VisionManager:
         self.code_detector = CodeDetector()
 
         # Store last processed image
-        self.last_image_path: Optional[str] = None
-        self.last_image_type: Optional[ImageType] = None
+        self.last_image_path: str | None = None
+        self.last_image_type: ImageType | None = None
 
         logger.info("Vision Manager initialized")
 
     def capture_and_analyze(
-        self,
-        capture_type: str = "full_screen",
-        **kwargs
+        self, capture_type: str = "full_screen", **kwargs
     ) -> VisionContext:
         """
         Capture screen and analyze it.
@@ -95,8 +94,8 @@ class VisionManager:
         # Update screenshot settings
         if capture_type != self.screenshot_settings.capture_type:
             self.screenshot_settings.capture_type = capture_type
-            self.screenshot_settings.selected_region = kwargs.get('selected_region')
-            self.screenshot_settings.monitor_index = kwargs.get('monitor_index', 0)
+            self.screenshot_settings.selected_region = kwargs.get("selected_region")
+            self.screenshot_settings.monitor_index = kwargs.get("monitor_index", 0)
 
         # Capture screenshot
         screenshot_path = self.screenshot_manager.capture_from_settings()
@@ -115,17 +114,17 @@ class VisionManager:
             image_path=screenshot_path,
             image_type=image_type,
             image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
-            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1]
+            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
         )
 
         # Preprocess image
         try:
             img, dims = self.image_preprocessor.preprocess_image(screenshot_path)
-            context.metadata['preprocessing'] = {
-                'original_dims': (img.shape[1], img.shape[0]),
-                'processed_dims': dims,
-                'deskewed': True,
-                'rotated': True
+            context.metadata["preprocessing"] = {
+                "original_dims": (img.shape[1], img.shape[0]),
+                "processed_dims": dims,
+                "deskewed": True,
+                "rotated": True,
             }
         except Exception as e:
             logger.warning(f"Preprocessing failed: {e}")
@@ -138,8 +137,7 @@ class VisionManager:
         return context
 
     def capture_active_window_and_analyze(
-        self,
-        window_title: str = None
+        self, window_title: str = None
     ) -> VisionContext:
         """
         Capture active window and analyze it.
@@ -154,7 +152,9 @@ class VisionManager:
 
         try:
             if window_title:
-                screenshot_path = self.screenshot_manager.capture_window_by_title(window_title)
+                screenshot_path = self.screenshot_manager.capture_window_by_title(
+                    window_title
+                )
             else:
                 screenshot_path = self.screenshot_manager.capture_active_window()
         except Exception as e:
@@ -169,7 +169,7 @@ class VisionManager:
             image_path=screenshot_path,
             image_type=image_type,
             image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
-            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1]
+            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
         )
 
         # Run analysis pipeline
@@ -178,9 +178,7 @@ class VisionManager:
         return self.coordinator.finalize_context(context)
 
     def analyze_image(
-        self,
-        image_path: str,
-        image_type: ImageType = None
+        self, image_path: str, image_type: ImageType = None
     ) -> VisionContext:
         """
         Analyze an existing image file.
@@ -204,7 +202,7 @@ class VisionManager:
             image_path=image_path,
             image_type=image_type,
             image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
-            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1]
+            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
         )
 
         # Run analysis pipeline
@@ -213,10 +211,7 @@ class VisionManager:
         return self.coordinator.finalize_context(context)
 
     def _run_analysis_pipeline(
-        self,
-        context: VisionContext,
-        img: np.ndarray,
-        image_path: str
+        self, context: VisionContext, img: np.ndarray, image_path: str
     ):
         """
         Run the complete vision analysis pipeline.
@@ -234,15 +229,17 @@ class VisionManager:
 
         # 2. Run object detection
         try:
-            objects_result = self.object_detector.detect_objects(img, context.image_type)
-            context.objects = objects_result.get('detected_objects', [])
-            context.bounding_boxes = objects_result.get('bounding_boxes', [])
-            context.buttons = objects_result.get('buttons', [])
-            context.menus = objects_result.get('menus', [])
-            context.dialogs = objects_result.get('dialogs', [])
-            context.paragraphs = objects_result.get('paragraphs', [])
-            context.table_regions = objects_result.get('table_regions', [])
-            context.errors_detected = objects_result.get('errors', [])
+            objects_result = self.object_detector.detect_objects(
+                img, context.image_type
+            )
+            context.objects = objects_result.get("detected_objects", [])
+            context.bounding_boxes = objects_result.get("bounding_boxes", [])
+            context.buttons = objects_result.get("buttons", [])
+            context.menus = objects_result.get("menus", [])
+            context.dialogs = objects_result.get("dialogs", [])
+            context.paragraphs = objects_result.get("paragraphs", [])
+            context.table_regions = objects_result.get("table_regions", [])
+            context.errors_detected = objects_result.get("errors", [])
             logger.info(f"Object detection complete: {len(context.objects)} objects")
         except Exception as e:
             logger.warning(f"Object detection failed: {e}")
@@ -251,19 +248,19 @@ class VisionManager:
         # 3. Run layout analysis
         try:
             layout_result = self.layout_analyzer.analyze_layout(img, context.image_type)
-            context.layout = layout_result.get('layout', {})
-            context.title_bar = layout_result.get('title_bar', [])
-            context.menu_bar = layout_result.get('menu_bar', [])
-            context.content_area = layout_result.get('content_area', [])
-            context.footer = layout_result.get('footer', [])
-            context.scrollbars = layout_result.get('scrollbars', [])
-            context.sidebar = layout_result.get('sidebar', [])
-            context.margins = layout_result.get('margins', [])
-            context.header = layout_result.get('header', [])
-            context.columns = layout_result.get('columns', [])
-            context.diagram_sections = layout_result.get('diagram_sections', [])
-            context.elements = layout_result.get('elements', [])
-            context.sections = layout_result.get('sections', [])
+            context.layout = layout_result.get("layout", {})
+            context.title_bar = layout_result.get("title_bar", [])
+            context.menu_bar = layout_result.get("menu_bar", [])
+            context.content_area = layout_result.get("content_area", [])
+            context.footer = layout_result.get("footer", [])
+            context.scrollbars = layout_result.get("scrollbars", [])
+            context.sidebar = layout_result.get("sidebar", [])
+            context.margins = layout_result.get("margins", [])
+            context.header = layout_result.get("header", [])
+            context.columns = layout_result.get("columns", [])
+            context.diagram_sections = layout_result.get("diagram_sections", [])
+            context.elements = layout_result.get("elements", [])
+            context.sections = layout_result.get("sections", [])
             logger.info(f"Layout analysis complete: {context.layout}")
         except Exception as e:
             logger.warning(f"Layout analysis failed: {e}")
@@ -273,35 +270,45 @@ class VisionManager:
         try:
             ui_result = self.ui_analyzer.analyze_ui(img, context.image_type)
             context.ui_analysis = ui_result
-            context.buttons.extend(ui_result.get('buttons', []))
-            context.menus.extend(ui_result.get('menus', []))
-            context.dialogs.extend(ui_result.get('dialogs', []))
-            context.forms.extend(ui_result.get('forms', []))
-            context.notifications.extend(ui_result.get('notifications', []))
-            context.tooltips.extend(ui_result.get('tooltips', []))
-            context.input_fields.extend(ui_result.get('inputs', []))
-            context.checkboxes.extend(ui_result.get('checkboxes', []))
-            context.radio_buttons.extend(ui_result.get('radio_buttons', []))
-            context.dropdowns.extend(ui_result.get('dropdowns', []))
-            logger.info(f"UI analysis complete: {len(context.buttons)} buttons, "
-                       f"{len(context.menus)} menus, {len(context.dialogs)} dialogs")
+            context.buttons.extend(ui_result.get("buttons", []))
+            context.menus.extend(ui_result.get("menus", []))
+            context.dialogs.extend(ui_result.get("dialogs", []))
+            context.forms.extend(ui_result.get("forms", []))
+            context.notifications.extend(ui_result.get("notifications", []))
+            context.tooltips.extend(ui_result.get("tooltips", []))
+            context.input_fields.extend(ui_result.get("inputs", []))
+            context.checkboxes.extend(ui_result.get("checkboxes", []))
+            context.radio_buttons.extend(ui_result.get("radio_buttons", []))
+            context.dropdowns.extend(ui_result.get("dropdowns", []))
+            logger.info(
+                f"UI analysis complete: {len(context.buttons)} buttons, "
+                f"{len(context.menus)} menus, {len(context.dialogs)} dialogs"
+            )
         except Exception as e:
             logger.warning(f"UI analysis failed: {e}")
             context.errors_detected.append(f"UI analysis error: {str(e)}")
 
         # 5. Run diagram analysis (if diagram-type image)
         try:
-            if context.image_type in [ImageType.DIAGRAM, ImageType.NETWORK, ImageType.CIRCUIT]:
-                diagram_result = self.diagram_analyzer.analyze_diagram(img, context.image_type)
+            if context.image_type in [
+                ImageType.DIAGRAM,
+                ImageType.NETWORK,
+                ImageType.CIRCUIT,
+            ]:
+                diagram_result = self.diagram_analyzer.analyze_diagram(
+                    img, context.image_type
+                )
                 context.diagram_analysis = diagram_result
-                context.nodes.extend(diagram_result.get('nodes', []))
-                context.connections.extend(diagram_result.get('connections', []))
-                context.diagram_type = diagram_result.get('type', 'unknown')
-                context.diagram_complexity = diagram_result.get('complexity', 'simple')
-                context.network_devices = diagram_result.get('devices', [])
-                context.ip_addresses.extend(diagram_result.get('ip_addresses', []))
-                context.vlan_ids.extend(diagram_result.get('vlans', []))
-                context.interface_names.extend(diagram_result.get('interface_names', []))
+                context.nodes.extend(diagram_result.get("nodes", []))
+                context.connections.extend(diagram_result.get("connections", []))
+                context.diagram_type = diagram_result.get("type", "unknown")
+                context.diagram_complexity = diagram_result.get("complexity", "simple")
+                context.network_devices = diagram_result.get("devices", [])
+                context.ip_addresses.extend(diagram_result.get("ip_addresses", []))
+                context.vlan_ids.extend(diagram_result.get("vlans", []))
+                context.interface_names.extend(
+                    diagram_result.get("interface_names", [])
+                )
                 logger.info(f"Diagram analysis complete: {len(context.nodes)} nodes")
             else:
                 logger.info("Skipping diagram analysis for non-diagram image type")
@@ -314,13 +321,17 @@ class VisionManager:
             if context.image_type == ImageType.CODE:
                 code_result = self.code_detector.detect_code(img, context.image_type)
                 context.code_analysis = code_result
-                context.code_language = code_result.get('language', 'unknown')
-                context.code_lines = code_result.get('lines', [])
-                context.code_snippets = code_result.get('snippets', [])
-                context.syntax_highlighting = code_result.get('has_syntax_highlighting', False)
-                context.code_complexity = code_result.get('complexity', 'simple')
-                logger.info(f"Code detection complete: {context.code_language}, "
-                           f"{code_result.get('line_count', 0)} lines")
+                context.code_language = code_result.get("language", "unknown")
+                context.code_lines = code_result.get("lines", [])
+                context.code_snippets = code_result.get("snippets", [])
+                context.syntax_highlighting = code_result.get(
+                    "has_syntax_highlighting", False
+                )
+                context.code_complexity = code_result.get("complexity", "simple")
+                logger.info(
+                    f"Code detection complete: {context.code_language}, "
+                    f"{code_result.get('line_count', 0)} lines"
+                )
             else:
                 logger.info("Skipping code detection for non-code image type")
         except Exception as e:
@@ -331,12 +342,12 @@ class VisionManager:
         self.coordinator.update_with_summary(
             context,
             f"Analyzed {context.image_type.value} image with {len(context.objects)} objects",
-            description="Vision analysis complete"
+            description="Vision analysis complete",
         )
 
         logger.info(f"Analysis pipeline completed for {image_path}")
 
-    def get_context_info(self) -> Dict[str, Any]:
+    def get_context_info(self) -> dict[str, Any]:
         """
         Get information about the last analyzed context.
 
@@ -358,11 +369,11 @@ class VisionManager:
             return self.coordinator.should_use_llm(self.coordinator.current_context)
         return False
 
-    def get_last_context(self) -> Optional[VisionContext]:
+    def get_last_context(self) -> VisionContext | None:
         """Get the last processed vision context."""
         return self.coordinator.current_context
 
-    def get_last_image_path(self) -> Optional[str]:
+    def get_last_image_path(self) -> str | None:
         """Get the path of the last processed image."""
         return self.last_image_path
 
@@ -414,13 +425,13 @@ class VisionManager:
             enabled: Whether to enable (True) or disable (False)
         """
         features = {
-            'auto_rotate': self.ocr_settings.auto_rotate,
-            'deskew': self.ocr_settings.deskew,
-            'table_detection': self.ocr_settings.table_detection,
-            'code_detection': self.ocr_settings.code_detection,
-            'diagram_detection': self.ocr_settings.diagram_detection,
-            'include_cursor': self.screenshot_settings.include_cursor,
-            'include_timestamp': self.screenshot_settings.include_timestamp
+            "auto_rotate": self.ocr_settings.auto_rotate,
+            "deskew": self.ocr_settings.deskew,
+            "table_detection": self.ocr_settings.table_detection,
+            "code_detection": self.ocr_settings.code_detection,
+            "diagram_detection": self.ocr_settings.diagram_detection,
+            "include_cursor": self.screenshot_settings.include_cursor,
+            "include_timestamp": self.screenshot_settings.include_timestamp,
         }
 
         if feature in features:

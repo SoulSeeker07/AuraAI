@@ -11,16 +11,18 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Callable, Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class PermissionLevel(str, Enum):
     """Permission levels for different types of operations"""
+
     SAFE = "safe"  # No confirmation needed (read-only, query operations)
     MODERATE = "moderate"  # Confirmation needed (moderate impact)
     DANGEROUS = "dangerous"  # Strong confirmation needed (destructive)
@@ -34,18 +36,19 @@ class PermissionRequest:
     Captures all context needed for a user to make an informed decision about
     whether to approve or deny an operation.
     """
+
     id: str
     operation: str
     target: str  # PID, filename, URL, etc.
     details: str  # Human-readable description
     level: PermissionLevel
-    requester: Optional[str] = None  # Who is requesting the permission
+    requester: str | None = None  # Who is requesting the permission
     timestamp: datetime = field(default_factory=datetime.now)
-    context: Dict[str, Any] = field(default_factory=dict)  # Additional context
+    context: dict[str, Any] = field(default_factory=dict)  # Additional context
     approved: bool = False
-    approved_at: Optional[datetime] = None
-    approved_by: Optional[str] = None
-    reason: Optional[str] = None
+    approved_at: datetime | None = None
+    approved_by: str | None = None
+    reason: str | None = None
 
 
 class PermissionManager:
@@ -62,7 +65,10 @@ class PermissionManager:
     - Thread-safe operation
     """
 
-    def __init__(self, default_confirmation_handler: Optional[Callable[[PermissionRequest], bool]] = None):
+    def __init__(
+        self,
+        default_confirmation_handler: Callable[[PermissionRequest], bool] | None = None,
+    ):
         """
         Initialize the permission manager.
 
@@ -70,9 +76,11 @@ class PermissionManager:
             default_confirmation_handler: Optional callback to use as default confirmation method.
                                          If not provided, uses a simple prompt (good for CLI).
         """
-        self._request_log: List[PermissionRequest] = []
+        self._request_log: list[PermissionRequest] = []
         self._lock = threading.RLock()
-        self._confirmation_handler = default_confirmation_handler or self._default_confirmation_handler
+        self._confirmation_handler = (
+            default_confirmation_handler or self._default_confirmation_handler
+        )
 
         logger.info("PermissionManager initialized")
 
@@ -109,10 +117,14 @@ class PermissionManager:
             print(f"\nReason: {request.reason}")
 
         while True:
-            response = input("\nDo you want to approve this operation? (yes/no): ").strip().lower()
-            if response in ('yes', 'y'):
+            response = (
+                input("\nDo you want to approve this operation? (yes/no): ")
+                .strip()
+                .lower()
+            )
+            if response in ("yes", "y"):
                 return True
-            elif response in ('no', 'n'):
+            elif response in ("no", "n"):
                 return False
             print("Please enter 'yes' or 'no'.")
 
@@ -122,8 +134,8 @@ class PermissionManager:
         target: str,
         details: str,
         level: PermissionLevel = PermissionLevel.MODERATE,
-        requester: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        requester: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> bool:
         """
         Request permission for an operation.
@@ -140,13 +152,13 @@ class PermissionManager:
             True if approved, False if denied
         """
         request = PermissionRequest(
-            id=str(datetime.now().timestamp()).replace('.', '_'),
+            id=str(datetime.now().timestamp()).replace(".", "_"),
             operation=operation,
             target=target,
             details=details,
             level=level,
             requester=requester,
-            context=context or {}
+            context=context or {},
         )
 
         try:
@@ -179,8 +191,8 @@ class PermissionManager:
         operation: str,
         target: str,
         details: str,
-        requester: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        requester: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> bool:
         """
         Request permission for a dangerous operation.
@@ -204,10 +216,10 @@ class PermissionManager:
             details=details,
             level=PermissionLevel.DANGEROUS,
             requester=requester,
-            context=context
+            context=context,
         )
 
-    def get_request_log(self) -> List[PermissionRequest]:
+    def get_request_log(self) -> list[PermissionRequest]:
         """
         Get the audit log of all permission requests.
 
@@ -217,7 +229,7 @@ class PermissionManager:
         with self._lock:
             return self._request_log.copy()
 
-    def get_approved_requests(self) -> List[PermissionRequest]:
+    def get_approved_requests(self) -> list[PermissionRequest]:
         """
         Get all approved permission requests.
 
@@ -227,7 +239,7 @@ class PermissionManager:
         with self._lock:
             return [r for r in self._request_log if r.approved]
 
-    def get_denied_requests(self) -> List[PermissionRequest]:
+    def get_denied_requests(self) -> list[PermissionRequest]:
         """
         Get all denied permission requests.
 
@@ -237,7 +249,7 @@ class PermissionManager:
         with self._lock:
             return [r for r in self._request_log if not r.approved]
 
-    def get_recent_requests(self, limit: int = 10) -> List[PermissionRequest]:
+    def get_recent_requests(self, limit: int = 10) -> list[PermissionRequest]:
         """
         Get the most recent permission requests.
 
@@ -256,7 +268,9 @@ class PermissionManager:
             self._request_log.clear()
         logger.info("Permission log cleared")
 
-    def set_confirmation_handler(self, handler: Callable[[PermissionRequest], bool]) -> None:
+    def set_confirmation_handler(
+        self, handler: Callable[[PermissionRequest], bool]
+    ) -> None:
         """
         Set a custom confirmation handler.
 
@@ -279,23 +293,32 @@ class PermissionManager:
 
             lines = ["Permission Request Log:"]
             lines.append(f"{'='*70}")
-            lines.append(f"{'TIMESTAMP':<20} {'OPERATION':<25} {'TARGET':<30} {'APPROVED':<10}")
+            lines.append(
+                f"{'TIMESTAMP':<20} {'OPERATION':<25} {'TARGET':<30} {'APPROVED':<10}"
+            )
             lines.append(f"{'-'*70}")
 
             for request in self._request_log:
                 approved_str = "✓" if request.approved else "✗"
-                timestamp_str = request.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                timestamp_str = request.timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 operation_str = request.operation[:25]
                 target_str = request.target[:30]
 
-                lines.append(f"{timestamp_str:<20} {operation_str:<25} {target_str:<30} {approved_str:<10}")
+                lines.append(
+                    f"{timestamp_str:<20} {operation_str:<25} {target_str:<30} {approved_str:<10}"
+                )
 
             lines.append(f"{'='*70}")
             lines.append(f"Total: {len(self._request_log)} requests")
 
             return "\n".join(lines)
 
-    def can_execute_operation(self, operation: str, target: str, level: PermissionLevel = PermissionLevel.MODERATE) -> bool:
+    def can_execute_operation(
+        self,
+        operation: str,
+        target: str,
+        level: PermissionLevel = PermissionLevel.MODERATE,
+    ) -> bool:
         """
         Check if an operation can be executed without asking for permission.
 
@@ -312,13 +335,13 @@ class PermissionManager:
         """
         # Safe operations don't require confirmation
         safe_operations = {
-            'list_processes',
-            'get_process_info',
-            'search_processes',
-            'list_files',
-            'read_file',
-            'get_process_state',
-            'get_all_process_states',
+            "list_processes",
+            "get_process_info",
+            "search_processes",
+            "list_files",
+            "read_file",
+            "get_process_state",
+            "get_all_process_states",
         }
 
         if operation in safe_operations:
@@ -326,11 +349,11 @@ class PermissionManager:
 
         # Only dangerous operations with specific targets might be safe
         dangerous_operations = {
-            'kill_process',
-            'stop_process',
-            'delete_file',
-            'terminate_service',
-            'format_disk',
+            "kill_process",
+            "stop_process",
+            "delete_file",
+            "terminate_service",
+            "format_disk",
         }
 
         if operation in dangerous_operations:

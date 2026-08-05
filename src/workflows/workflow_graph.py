@@ -4,15 +4,13 @@ Workflow Graph
 Manages workflow execution with steps, variables, conditions, and loops.
 """
 
-
 import logging
 import time
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any
 
-from .workflow_step import WorkflowStep, ActionType
-from .models import StepType, ConditionType, WorkflowStatus
-
+from .models import ConditionType, StepType, WorkflowStatus
+from .workflow_step import ActionType, WorkflowStep
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +30,13 @@ class WorkflowGraph:
         """
         self.workflow_id = workflow_id
         self.name = name
-        self.steps: Dict[str, WorkflowStep] = {}
-        self.variables: Dict[str, Dict[str, Any]] = {}
+        self.steps: dict[str, WorkflowStep] = {}
+        self.variables: dict[str, dict[str, Any]] = {}
         self.active = True
         self.status: WorkflowStatus = WorkflowStatus.CREATED
-        self.started_at: Optional[datetime] = None
-        self.completed_at: Optional[datetime] = None
-        self.error: Optional[str] = None
+        self.started_at: datetime | None = None
+        self.completed_at: datetime | None = None
+        self.error: str | None = None
 
     # ------------------------------------------------------------------
     # Workflow-level status tracking
@@ -67,7 +65,7 @@ class WorkflowGraph:
     # Step management
     # ------------------------------------------------------------------
 
-    def add_step(self, step: WorkflowStep) -> 'WorkflowGraph':
+    def add_step(self, step: WorkflowStep) -> "WorkflowGraph":
         """
         Add a step to the workflow.
 
@@ -78,7 +76,9 @@ class WorkflowGraph:
             Self for chaining
         """
         self.steps[step.step_id] = step
-        logger.debug(f"Added step {step.step_id[:8]} to workflow {self.workflow_id[:8]}")
+        logger.debug(
+            f"Added step {step.step_id[:8]} to workflow {self.workflow_id[:8]}"
+        )
         return self
 
     def remove_step(self, step_id: str) -> bool:
@@ -98,7 +98,7 @@ class WorkflowGraph:
         logger.debug(f"Removed step {step_id[:8]} from workflow {self.workflow_id[:8]}")
         return True
 
-    def get_step(self, step_id: str) -> Optional[WorkflowStep]:
+    def get_step(self, step_id: str) -> WorkflowStep | None:
         """
         Get step by ID.
 
@@ -110,7 +110,7 @@ class WorkflowGraph:
         """
         return self.steps.get(step_id)
 
-    def get_step_by_index(self, index: int) -> Optional[WorkflowStep]:
+    def get_step_by_index(self, index: int) -> WorkflowStep | None:
         """
         Get step by index.
 
@@ -125,7 +125,7 @@ class WorkflowGraph:
             return self.steps[step_ids[index]]
         return None
 
-    def get_next_step(self, current_step_id: str) -> Optional[str]:
+    def get_next_step(self, current_step_id: str) -> str | None:
         """
         Get next step ID.
 
@@ -144,14 +144,14 @@ class WorkflowGraph:
             pass
         return None
 
-    def get_parallel_groups(self) -> List[List[str]]:
+    def get_parallel_groups(self) -> list[list[str]]:
         """
         Get steps that can execute in parallel.
 
         Returns:
             List of parallel execution groups
         """
-        groups: List[List[str]] = []
+        groups: list[list[str]] = []
         remaining_steps = set(self.steps.keys())
 
         while remaining_steps:
@@ -178,7 +178,7 @@ class WorkflowGraph:
 
         return groups
 
-    def get_ready_steps(self) -> List[str]:
+    def get_ready_steps(self) -> list[str]:
         """
         Get steps ready to execute.
 
@@ -188,9 +188,10 @@ class WorkflowGraph:
         ready_steps = []
 
         for step_id, step in self.steps.items():
-            if step.status.value == 'pending':
+            if step.status.value == "pending":
                 if all(
-                    dep_id in self.steps and self.steps[dep_id].status.value in ['completed', 'skipped']
+                    dep_id in self.steps
+                    and self.steps[dep_id].status.value in ["completed", "skipped"]
                     for dep_id in step.dependencies
                 ):
                     ready_steps.append(step_id)
@@ -224,7 +225,9 @@ class WorkflowGraph:
             step.mark_completed(output)
         else:
             step.mark_failed(str(output) if output is not None else "Step failed")
-        logger.debug(f"Marked step {step_id[:8]} as completed: {'success' if success else 'failed'}")
+        logger.debug(
+            f"Marked step {step_id[:8]} as completed: {'success' if success else 'failed'}"
+        )
 
     def mark_step_failed(self, step_id: str, error: str):
         """
@@ -263,13 +266,13 @@ class WorkflowGraph:
             value: New value
         """
         if variable_name in self.variables:
-            self.variables[variable_name]['value'] = value
-            self.variables[variable_name]['modified_at'] = datetime.now()
+            self.variables[variable_name]["value"] = value
+            self.variables[variable_name]["modified_at"] = datetime.now()
         else:
             self.variables[variable_name] = {
-                'value': value,
-                'description': f'Workflow variable: {variable_name}',
-                'modified_at': datetime.now()
+                "value": value,
+                "description": f"Workflow variable: {variable_name}",
+                "modified_at": datetime.now(),
             }
 
     def get_variable(self, variable_name: str) -> Any:
@@ -282,13 +285,15 @@ class WorkflowGraph:
         Returns:
             Variable value or None
         """
-        return self.variables.get(variable_name, {}).get('value')
+        return self.variables.get(variable_name, {}).get("value")
 
     # ------------------------------------------------------------------
     # Conditions
     # ------------------------------------------------------------------
 
-    def evaluate_condition(self, condition: Optional[Dict[str, Any]], context: Dict[str, Any]) -> bool:
+    def evaluate_condition(
+        self, condition: dict[str, Any] | None, context: dict[str, Any]
+    ) -> bool:
         """
         Evaluate a condition.
 
@@ -304,35 +309,35 @@ class WorkflowGraph:
         if not condition:
             return False
 
-        condition_type = condition.get('condition_type')
+        condition_type = condition.get("condition_type")
 
         if condition_type == ConditionType.ATTRIBUTE_CHECK.value:
-            attr_name = condition.get('attribute_name', '')
+            attr_name = condition.get("attribute_name", "")
             attr_value = context.get(attr_name)
 
-            if condition.get('expected_value') is not None:
-                return attr_value == condition['expected_value']
+            if condition.get("expected_value") is not None:
+                return attr_value == condition["expected_value"]
             return attr_value is not None
 
         elif condition_type == ConditionType.VALUE_CHECK.value:
-            value = context.get('value')
-            operator = condition.get('operator', '==')
-            expected = condition.get('expected_value')
+            value = context.get("value")
+            operator = condition.get("operator", "==")
+            expected = condition.get("expected_value")
 
-            if operator == '==':
+            if operator == "==":
                 return value == expected
-            elif operator == '!=':
+            elif operator == "!=":
                 return value != expected
-            elif operator == '>':
+            elif operator == ">":
                 return value > expected
-            elif operator == '<':
+            elif operator == "<":
                 return value < expected
-            elif operator == 'exists':
+            elif operator == "exists":
                 return value is not None
             return False
 
         elif condition_type == ConditionType.CUSTOM.value:
-            func = condition.get('custom_function')
+            func = condition.get("custom_function")
             if func and callable(func):
                 return func(context)
             return False
@@ -343,7 +348,9 @@ class WorkflowGraph:
     # Loops
     # ------------------------------------------------------------------
 
-    def apply_loop(self, loop_step: WorkflowStep, collection: Any, context: Dict[str, Any]) -> List[Any]:
+    def apply_loop(
+        self, loop_step: WorkflowStep, collection: Any, context: dict[str, Any]
+    ) -> list[Any]:
         """
         Apply loop iteration.
 
@@ -357,22 +364,24 @@ class WorkflowGraph:
         """
         results = []
         loop_config = loop_step.loop or {}
-        loop_type = loop_config.get('type', 'for_each')
-        item_variable = loop_config.get('item_variable', 'item')
+        loop_type = loop_config.get("type", "for_each")
+        item_variable = loop_config.get("item_variable", "item")
 
-        if loop_type == 'for_each':
+        if loop_type == "for_each":
             for item in collection:
                 context[item_variable] = item
                 result = self._execute_step(loop_step, context)
                 results.append(result)
 
-        elif loop_type == 'while':
-            max_iterations = loop_config.get('max_iterations', 100)
+        elif loop_type == "while":
+            max_iterations = loop_config.get("max_iterations", 100)
             iteration = 0
             while iteration < max_iterations:
-                context['iteration'] = iteration
+                context["iteration"] = iteration
 
-                condition_met = self.evaluate_condition(loop_config.get('condition'), context)
+                condition_met = self.evaluate_condition(
+                    loop_config.get("condition"), context
+                )
                 if not condition_met:
                     break
 
@@ -380,14 +389,14 @@ class WorkflowGraph:
                 results.append(result)
                 iteration += 1
 
-        elif loop_type == 'for_range':
-            start = loop_config.get('start', 0)
-            end = loop_config.get('end', 10)
-            step_size = loop_config.get('step', 1)
+        elif loop_type == "for_range":
+            start = loop_config.get("start", 0)
+            end = loop_config.get("end", 10)
+            step_size = loop_config.get("step", 1)
 
             for i in range(start, end, step_size):
-                context['index'] = i
-                context['value'] = i
+                context["index"] = i
+                context["value"] = i
                 result = self._execute_step(loop_step, context)
                 results.append(result)
 
@@ -397,7 +406,7 @@ class WorkflowGraph:
     # Step execution
     # ------------------------------------------------------------------
 
-    def _execute_step(self, step: WorkflowStep, context: Dict[str, Any]) -> Any:
+    def _execute_step(self, step: WorkflowStep, context: dict[str, Any]) -> Any:
         """
         Execute a workflow step in-place (used directly by simple callers,
         and internally by apply_loop for loop-body execution).
@@ -420,27 +429,29 @@ class WorkflowGraph:
                 return result
 
             elif step.step_type == StepType.WAIT:
-                wait_time = action_config.get('wait_seconds', action_config.get('duration', 1))
+                wait_time = action_config.get(
+                    "wait_seconds", action_config.get("duration", 1)
+                )
                 time.sleep(wait_time)
                 step.mark_completed(f"Waited {wait_time}s")
                 return f"Waited {wait_time}s"
 
             elif step.step_type == StepType.ECHO:
-                message = action_config.get('message', '')
+                message = action_config.get("message", "")
                 print(f"[ECHO] {message}")
                 step.mark_completed(message)
                 return message
 
             elif step.step_type == StepType.SET_VARIABLE:
-                var_name = action_config.get('variable_name', '')
-                var_value = self._resolve_value(action_config.get('value', ''), context)
+                var_name = action_config.get("variable_name", "")
+                var_value = self._resolve_value(action_config.get("value", ""), context)
                 context[var_name] = var_value
                 self.update_variable(var_name, var_value)
                 step.mark_completed(var_value)
                 return var_value
 
             elif step.step_type == StepType.GET_VARIABLE:
-                var_name = action_config.get('variable_name', '')
+                var_name = action_config.get("variable_name", "")
                 var_value = context.get(var_name, self.get_variable(var_name))
                 step.mark_completed(var_value)
                 return var_value
@@ -449,7 +460,11 @@ class WorkflowGraph:
                 condition_met = self.evaluate_condition(step.condition, context)
                 decision = step.decision or {}
 
-                branch_ids = decision.get('on_true', []) if condition_met else decision.get('on_false', [])
+                branch_ids = (
+                    decision.get("on_true", [])
+                    if condition_met
+                    else decision.get("on_false", [])
+                )
                 for branch_step_id in branch_ids:
                     if branch_step_id in self.steps:
                         self._execute_step(self.steps[branch_step_id], context)
@@ -466,37 +481,43 @@ class WorkflowGraph:
                 return None
 
         except Exception as e:
-            on_error = step.on_error or 'continue'
+            on_error = step.on_error or "continue"
             step.mark_failed(str(e))
 
-            if on_error == 'continue':
+            if on_error == "continue":
                 logger.warning(f"Step {step.step_id[:8]} failed but continuing: {e}")
                 return None
-            elif on_error == 'stop':
+            elif on_error == "stop":
                 logger.error(f"Step {step.step_id[:8]} failed and stopping: {e}")
                 raise
-            elif on_error == 'ask_user':
-                user_input = input(f"Step {step.step_id[:8]} failed: {e}\nEnter value or 'skip': ")
-                if user_input.lower() == 'skip':
+            elif on_error == "ask_user":
+                user_input = input(
+                    f"Step {step.step_id[:8]} failed: {e}\nEnter value or 'skip': "
+                )
+                if user_input.lower() == "skip":
                     step.mark_skipped("User skipped")
                     return None
                 step.mark_completed(user_input)
                 return user_input
-            elif on_error == 'retry':
+            elif on_error == "retry":
                 if step.should_retry():
                     step.retry_count += 1
                     time.sleep(1)
                     return self._execute_step(step, context)
                 else:
-                    logger.error(f"Step {step.step_id[:8]} failed and retries exhausted: {e}")
+                    logger.error(
+                        f"Step {step.step_id[:8]} failed and retries exhausted: {e}"
+                    )
                     raise
-            elif on_error == 'skip':
+            elif on_error == "skip":
                 step.mark_skipped(f"Skipped due to error: {e}")
                 return None
 
         return None
 
-    def _execute_action(self, action_config: Dict[str, Any], context: Dict[str, Any]) -> Any:
+    def _execute_action(
+        self, action_config: dict[str, Any], context: dict[str, Any]
+    ) -> Any:
         """
         Execute an action.
 
@@ -509,32 +530,32 @@ class WorkflowGraph:
         Returns:
             Action output
         """
-        action_type = ActionType(action_config.get('action_type', 'goal'))
+        action_type = ActionType(action_config.get("action_type", "goal"))
 
         if action_type == ActionType.GOAL:
-            goal_id = action_config.get('goal', '')
+            goal_id = action_config.get("goal", "")
             # Placeholder - would connect to Agent Runtime
             return f"Goal {goal_id} executed"
 
         elif action_type == ActionType.TOOL:
-            tool_name = action_config.get('tool', '')
-            tool_params = action_config.get('parameters', {})
+            tool_name = action_config.get("tool", "")
+            tool_params = action_config.get("parameters", {})
             # Placeholder - would connect to Tool Execution Engine
             return f"Tool {tool_name} executed with params {tool_params}"
 
         elif action_type == ActionType.SCRIPT:
-            script = action_config.get('script', '')
+            script = action_config.get("script", "")
             # Placeholder - would execute script
             return "Script executed"
 
         elif action_type == ActionType.PROMPT_USER:
-            prompt_text = action_config.get('prompt', 'Enter value:')
+            prompt_text = action_config.get("prompt", "Enter value:")
             user_input = input(prompt_text)
             return user_input
 
         return None
 
-    def _resolve_value(self, value: Any, context: Dict[str, Any]) -> Any:
+    def _resolve_value(self, value: Any, context: dict[str, Any]) -> Any:
         """
         Resolve value from context or literal.
 
@@ -545,12 +566,12 @@ class WorkflowGraph:
         Returns:
             Resolved value
         """
-        if isinstance(value, str) and value.startswith('${') and value.endswith('}'):
+        if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
             var_name = value[2:-1]
             return context.get(var_name)
         return value
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert workflow graph to dictionary.
 
@@ -558,11 +579,11 @@ class WorkflowGraph:
             Dictionary representation
         """
         return {
-            'workflow_id': self.workflow_id,
-            'name': self.name,
-            'status': self.status.value,
-            'step_count': len(self.steps),
-            'steps': [step.export_to_dict() for step in self.steps.values()]
+            "workflow_id": self.workflow_id,
+            "name": self.name,
+            "status": self.status.value,
+            "step_count": len(self.steps),
+            "steps": [step.export_to_dict() for step in self.steps.values()],
         }
 
     def __repr__(self) -> str:

@@ -3,62 +3,36 @@ Native Windows Layer Manager
 Main facade for all Windows operations.
 All desktop actions must flow through this layer.
 """
-from typing import Optional, List, Dict, Any, Callable
-from enum import Enum
-import logging
 
+import logging
+from enum import Enum
+from typing import Any
+
+from ..permission_manager import PermissionManager
+from .native_events import (
+    EventType,
+    NativeEvent,
+    get_event_bus,
+)
+from .native_exceptions import (
+    PermissionDeniedError,
+)
 from .native_models import (
-    WindowInfo,
-    ProcessInfo,
+    AudioDevice,
     ClipboardData,
     DisplayInfo,
-    AudioDevice,
     NetworkInterface,
     RegistryKey,
     ServiceInfo,
-    WindowStyle,
+    WindowInfo,
 )
-from .native_exceptions import (
-    NativeError,
-    WindowNotFoundError,
-    ProcessNotFoundError,
-    ClipboardError,
-    DisplayNotFoundError,
-    PowerError,
-    AudioDeviceNotFoundError,
-    NetworkInterfaceNotFoundError,
-    RegistryKeyNotFoundError,
-    RegistryValueNotFoundError,
-    ServiceNotFoundError,
-    CapabilityNotAvailableError,
-    PermissionDeniedError,
-)
-from .native_events import (
-    NativeEventBus,
-    EventListener,
-    get_event_bus,
-    EventType,
-    NativeEvent,
-)
-from .native_utils import (
-    get_window_by_title,
-    get_window_by_process_id,
-    get_active_window,
-    get_all_windows,
-    activate_window,
-    close_window,
-    minimize_window,
-    maximize_window,
-    restore_window,
-)
-
-from ..permission_manager import PermissionManager
 
 logger = logging.getLogger(__name__)
 
 
 class NativeCapability(Enum):
     """Supported native capabilities"""
+
     # Window management
     LIST_WINDOWS = "list_windows"
     GET_WINDOW = "get_window"
@@ -149,27 +123,27 @@ class NativeManager:
         pass
 
     # Window management
-    def list_windows(self, **kwargs) -> List[WindowInfo]:
+    def list_windows(self, **kwargs) -> list[WindowInfo]:
         """List all visible windows"""
         if not self.permission_manager.check_permission(
-            "desktop.list_windows",
-            capability=NativeCapability.LIST_WINDOWS
+            "desktop.list_windows", capability=NativeCapability.LIST_WINDOWS
         ):
             raise PermissionDeniedError("Permission denied: list_windows")
 
         # Trigger event
-        self.event_bus.publish(NativeEvent(
-            event_type=EventType.DESKTOP_CONTEXT_UPDATED,
-            data={"action": "list_windows"}
-        ))
+        self.event_bus.publish(
+            NativeEvent(
+                event_type=EventType.DESKTOP_CONTEXT_UPDATED,
+                data={"action": "list_windows"},
+            )
+        )
 
         return self._window_manager.list_windows(**kwargs)
 
-    def get_window(self, hwnd: int) -> Optional[WindowInfo]:
+    def get_window(self, hwnd: int) -> WindowInfo | None:
         """Get information about a specific window"""
         if not self.permission_manager.check_permission(
-            "desktop.get_window",
-            capability=NativeCapability.GET_WINDOW
+            "desktop.get_window", capability=NativeCapability.GET_WINDOW
         ):
             raise PermissionDeniedError("Permission denied: get_window")
 
@@ -178,8 +152,7 @@ class NativeManager:
     def activate_window(self, hwnd: int) -> bool:
         """Activate a specific window"""
         if not self.permission_manager.check_permission(
-            "desktop.activate_window",
-            capability=NativeCapability.ACTIVATE_WINDOW
+            "desktop.activate_window", capability=NativeCapability.ACTIVATE_WINDOW
         ):
             raise PermissionDeniedError("Permission denied: activate_window")
 
@@ -187,18 +160,16 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.WINDOW_ACTIVATED,
-                data={"hwnd": hwnd}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.WINDOW_ACTIVATED, data={"hwnd": hwnd})
+            )
 
         return result
 
     def close_window(self, hwnd: int) -> bool:
         """Close a specific window"""
         if not self.permission_manager.check_permission(
-            "desktop.close_window",
-            capability=NativeCapability.CLOSE_WINDOW
+            "desktop.close_window", capability=NativeCapability.CLOSE_WINDOW
         ):
             raise PermissionDeniedError("Permission denied: close_window")
 
@@ -206,10 +177,9 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.WINDOW_CLOSED,
-                data={"hwnd": hwnd}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.WINDOW_CLOSED, data={"hwnd": hwnd})
+            )
 
         return result
 
@@ -217,18 +187,16 @@ class NativeManager:
     def read_clipboard(self) -> ClipboardData:
         """Read clipboard data"""
         if not self.permission_manager.check_permission(
-            "desktop.read_clipboard",
-            capability=NativeCapability.READ_CLIPBOARD
+            "desktop.read_clipboard", capability=NativeCapability.READ_CLIPBOARD
         ):
             raise PermissionDeniedError("Permission denied: read_clipboard")
 
         return self._clipboard_manager.read()
 
-    def write_clipboard(self, text: str, html: Optional[str] = None) -> bool:
+    def write_clipboard(self, text: str, html: str | None = None) -> bool:
         """Write to clipboard"""
         if not self.permission_manager.check_permission(
-            "desktop.write_clipboard",
-            capability=NativeCapability.WRITE_CLIPBOARD
+            "desktop.write_clipboard", capability=NativeCapability.WRITE_CLIPBOARD
         ):
             raise PermissionDeniedError("Permission denied: write_clipboard")
 
@@ -236,18 +204,19 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.CLIPBOARD_CHANGED,
-                data={"text": text[:100]}  # Truncate for event
-            ))
+            self.event_bus.publish(
+                NativeEvent(
+                    event_type=EventType.CLIPBOARD_CHANGED,
+                    data={"text": text[:100]},  # Truncate for event
+                )
+            )
 
         return result
 
     def clear_clipboard(self) -> bool:
         """Clear clipboard"""
         if not self.permission_manager.check_permission(
-            "desktop.clear_clipboard",
-            capability=NativeCapability.CLEAR_CLIPBOARD
+            "desktop.clear_clipboard", capability=NativeCapability.CLEAR_CLIPBOARD
         ):
             raise PermissionDeniedError("Permission denied: clear_clipboard")
 
@@ -255,19 +224,17 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.CLIPBOARD_CHANGED,
-                data={"text": ""}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.CLIPBOARD_CHANGED, data={"text": ""})
+            )
 
         return result
 
     # Display management
-    def list_displays(self) -> List[DisplayInfo]:
+    def list_displays(self) -> list[DisplayInfo]:
         """List all displays"""
         if not self.permission_manager.check_permission(
-            "desktop.list_displays",
-            capability=NativeCapability.LIST_DISPLAYS
+            "desktop.list_displays", capability=NativeCapability.LIST_DISPLAYS
         ):
             raise PermissionDeniedError("Permission denied: list_displays")
 
@@ -277,7 +244,7 @@ class NativeManager:
         """Get primary display information"""
         if not self.permission_manager.check_permission(
             "desktop.get_primary_display",
-            capability=NativeCapability.GET_PRIMARY_DISPLAY
+            capability=NativeCapability.GET_PRIMARY_DISPLAY,
         ):
             raise PermissionDeniedError("Permission denied: get_primary_display")
 
@@ -286,8 +253,7 @@ class NativeManager:
     def get_display(self, index: int) -> DisplayInfo:
         """Get specific display information"""
         if not self.permission_manager.check_permission(
-            "desktop.get_display",
-            capability=NativeCapability.GET_DISPLAY
+            "desktop.get_display", capability=NativeCapability.GET_DISPLAY
         ):
             raise PermissionDeniedError("Permission denied: get_display")
 
@@ -297,8 +263,7 @@ class NativeManager:
     def shutdown(self) -> bool:
         """Shutdown the system"""
         if not self.permission_manager.check_permission(
-            "desktop.shutdown",
-            capability=NativeCapability.SHUTDOWN
+            "desktop.shutdown", capability=NativeCapability.SHUTDOWN
         ):
             raise PermissionDeniedError("Permission denied: shutdown")
 
@@ -306,18 +271,16 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.SYSTEM_SHUTDOWN,
-                data={}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.SYSTEM_SHUTDOWN, data={})
+            )
 
         return result
 
     def restart(self) -> bool:
         """Restart the system"""
         if not self.permission_manager.check_permission(
-            "desktop.restart",
-            capability=NativeCapability.RESTART
+            "desktop.restart", capability=NativeCapability.RESTART
         ):
             raise PermissionDeniedError("Permission denied: restart")
 
@@ -325,18 +288,16 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.SYSTEM_RESTART,
-                data={}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.SYSTEM_RESTART, data={})
+            )
 
         return result
 
     def sleep(self) -> bool:
         """Sleep the system"""
         if not self.permission_manager.check_permission(
-            "desktop.sleep",
-            capability=NativeCapability.SLEEP
+            "desktop.sleep", capability=NativeCapability.SLEEP
         ):
             raise PermissionDeniedError("Permission denied: sleep")
 
@@ -344,18 +305,16 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.SYSTEM_SLEEP,
-                data={}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.SYSTEM_SLEEP, data={})
+            )
 
         return result
 
     def lock(self) -> bool:
         """Lock the system"""
         if not self.permission_manager.check_permission(
-            "desktop.lock",
-            capability=NativeCapability.LOCK
+            "desktop.lock", capability=NativeCapability.LOCK
         ):
             raise PermissionDeniedError("Permission denied: lock")
 
@@ -363,52 +322,50 @@ class NativeManager:
 
         # Trigger event
         if result:
-            self.event_bus.publish(NativeEvent(
-                event_type=EventType.SYSTEM_LOCK,
-                data={}
-            ))
+            self.event_bus.publish(
+                NativeEvent(event_type=EventType.SYSTEM_LOCK, data={})
+            )
 
         return result
 
     # Audio management
-    def list_audio_devices(self) -> List[AudioDevice]:
+    def list_audio_devices(self) -> list[AudioDevice]:
         """List all audio devices"""
         if not self.permission_manager.check_permission(
-            "desktop.list_audio_devices",
-            capability=NativeCapability.LIST_AUDIO_DEVICES
+            "desktop.list_audio_devices", capability=NativeCapability.LIST_AUDIO_DEVICES
         ):
             raise PermissionDeniedError("Permission denied: list_audio_devices")
 
         return self._audio_manager.list_devices()
 
     # Network management
-    def list_network_interfaces(self) -> List[NetworkInterface]:
+    def list_network_interfaces(self) -> list[NetworkInterface]:
         """List all network interfaces"""
         if not self.permission_manager.check_permission(
             "desktop.list_network_interfaces",
-            capability=NativeCapability.LIST_NETWORK_INTERFACES
+            capability=NativeCapability.LIST_NETWORK_INTERFACES,
         ):
             raise PermissionDeniedError("Permission denied: list_network_interfaces")
 
         return self._network_manager.list_interfaces()
 
     # Registry management
-    def read_registry_key(self, key_path: str, key_name: Optional[str] = None) -> List[RegistryKey]:
+    def read_registry_key(
+        self, key_path: str, key_name: str | None = None
+    ) -> list[RegistryKey]:
         """Read registry key or value"""
         if not self.permission_manager.check_permission(
-            "desktop.read_registry_key",
-            capability=NativeCapability.READ_REGISTRY_KEY
+            "desktop.read_registry_key", capability=NativeCapability.READ_REGISTRY_KEY
         ):
             raise PermissionDeniedError("Permission denied: read_registry_key")
 
         return self._registry_manager.read_key(key_path, key_name)
 
     # Service management
-    def list_services(self) -> List[ServiceInfo]:
+    def list_services(self) -> list[ServiceInfo]:
         """List all services"""
         if not self.permission_manager.check_permission(
-            "desktop.list_services",
-            capability=NativeCapability.LIST_SERVICES
+            "desktop.list_services", capability=NativeCapability.LIST_SERVICES
         ):
             raise PermissionDeniedError("Permission denied: list_services")
 
@@ -420,6 +377,7 @@ class NativeManager:
         """Get window manager"""
         if self._window_manager is None:
             from .window_manager import WindowManager
+
             self._window_manager = WindowManager(self)
         return self._window_manager
 
@@ -428,6 +386,7 @@ class NativeManager:
         """Get clipboard manager"""
         if self._clipboard_manager is None:
             from .clipboard_manager import ClipboardManager
+
             self._clipboard_manager = ClipboardManager(self)
         return self._clipboard_manager
 
@@ -436,6 +395,7 @@ class NativeManager:
         """Get display manager"""
         if self._display_manager is None:
             from .display_manager import DisplayManager
+
             self._display_manager = DisplayManager(self)
         return self._display_manager
 
@@ -444,6 +404,7 @@ class NativeManager:
         """Get power manager"""
         if self._power_manager is None:
             from .power_manager import PowerManager
+
             self._power_manager = PowerManager(self)
         return self._power_manager
 
@@ -452,6 +413,7 @@ class NativeManager:
         """Get audio manager"""
         if self._audio_manager is None:
             from .audio_manager import AudioManager
+
             self._audio_manager = AudioManager(self)
         return self._audio_manager
 
@@ -460,6 +422,7 @@ class NativeManager:
         """Get network manager"""
         if self._network_manager is None:
             from .network_manager import NetworkManager
+
             self._network_manager = NetworkManager(self)
         return self._network_manager
 
@@ -468,6 +431,7 @@ class NativeManager:
         """Get registry manager"""
         if self._registry_manager is None:
             from .registry_manager import RegistryManager
+
             self._registry_manager = RegistryManager(self)
         return self._registry_manager
 
@@ -476,5 +440,6 @@ class NativeManager:
         """Get service manager"""
         if self._service_manager is None:
             from .service_manager import ServiceManager
+
             self._service_manager = ServiceManager(self)
         return self._service_manager

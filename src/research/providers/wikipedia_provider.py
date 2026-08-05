@@ -5,22 +5,25 @@ Provides research capabilities from Wikipedia.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-import requests
+from typing import Any
+
 import wikipedia
-from wikipedia import WikipediaPage, search as wiki_search
+from wikipedia import WikipediaPage
+from wikipedia import search as wiki_search
 from wikipedia.exceptions import DisambiguationError, PageError
 
+from ..content_fetcher import ContentFetcher
 from ..models import SearchResult
 from ..provider_interface import BaseResearchProvider
-from ..content_fetcher import ContentFetcher
 
 logger = logging.getLogger(__name__)
 
 # Wikipedia's API blocks/soft-fails requests without a descriptive User-Agent,
 # which otherwise surfaces as a confusing JSONDecodeError deep inside the
 # wikipedia package ("Expecting value: line 1 column 1 (char 0)").
-wikipedia.set_user_agent("AuraAI-JarvisAssistant/1.0 (research provider; contact: you@example.com)")
+wikipedia.set_user_agent(
+    "AuraAI-JarvisAssistant/1.0 (research provider; contact: you@example.com)"
+)
 
 
 class WikipediaProvider(BaseResearchProvider):
@@ -30,7 +33,7 @@ class WikipediaProvider(BaseResearchProvider):
     Provides structured information from Wikipedia articles.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize Wikipedia provider.
 
@@ -40,12 +43,7 @@ class WikipediaProvider(BaseResearchProvider):
         super().__init__(config, name="wikipedia", trust_level="wikipedia")
         self.content_fetcher = ContentFetcher()
 
-    def search(
-        self,
-        query: str,
-        max_results: int = 10,
-        **kwargs
-    ) -> List[SearchResult]:
+    def search(self, query: str, max_results: int = 10, **kwargs) -> list[SearchResult]:
         """
         Search Wikipedia.
 
@@ -76,7 +74,7 @@ class WikipediaProvider(BaseResearchProvider):
             logger.info(f"Wikipedia search returned {len(results)} results")
             return results
 
-        except DisambiguationError as e:
+        except DisambiguationError:
             # Handle disambiguation pages
             logger.debug(f"Wikipedia disambiguation for {query}")
             return results
@@ -84,7 +82,7 @@ class WikipediaProvider(BaseResearchProvider):
             logger.error(f"Wikipedia search error: {e}")
             return []
 
-    def _fetch_wikipedia_page(self, title: str) -> Optional[SearchResult]:
+    def _fetch_wikipedia_page(self, title: str) -> SearchResult | None:
         """
         Fetch a Wikipedia page.
 
@@ -96,10 +94,10 @@ class WikipediaProvider(BaseResearchProvider):
         """
         try:
             page = WikipediaPage(title)
-            
+
             # Create a document for fetching
             doc = self.content_fetcher.fetch(page.url)
-            
+
             return SearchResult(
                 url=page.url,
                 title=page.title,
@@ -113,8 +111,8 @@ class WikipediaProvider(BaseResearchProvider):
                     "title": page.title,
                     "summary": page.summary,
                     "content_length": len(page.content),
-                    "categories": page.categories
-                }
+                    "categories": page.categories,
+                },
             )
 
         except PageError:
@@ -124,7 +122,7 @@ class WikipediaProvider(BaseResearchProvider):
             logger.error(f"Failed to fetch Wikipedia page {title}: {e}")
             return None
 
-    def get_page(self, title: str) -> Optional[Dict[str, Any]]:
+    def get_page(self, title: str) -> dict[str, Any] | None:
         """
         Get detailed information about a Wikipedia page.
 
@@ -136,7 +134,7 @@ class WikipediaProvider(BaseResearchProvider):
         """
         try:
             page = WikipediaPage(title)
-            
+
             return {
                 "title": page.title,
                 "url": page.url,
@@ -145,7 +143,7 @@ class WikipediaProvider(BaseResearchProvider):
                 "categories": page.categories,
                 "infobox": page.infobox,
                 "references": page.references,
-                "images": page.images
+                "images": page.images,
             }
 
         except PageError:
@@ -155,7 +153,7 @@ class WikipediaProvider(BaseResearchProvider):
             logger.error(f"Failed to get Wikipedia page {title}: {e}")
             return None
 
-    def search_with_categories(self, query: str) -> List[Dict[str, Any]]:
+    def search_with_categories(self, query: str) -> list[dict[str, Any]]:
         """
         Search Wikipedia with category filtering.
 
@@ -166,21 +164,21 @@ class WikipediaProvider(BaseResearchProvider):
             List of results with categories
         """
         results = []
-        
+
         try:
             search_results = wiki_search(query, results=20)
-            
+
             for title in search_results:
                 info = self.get_page(title)
                 if info:
                     results.append(info)
-        
+
         except Exception as e:
             logger.error(f"Wikipedia search with categories error: {e}")
-        
+
         return results
 
-    def get_category(self, category: str, limit: int = 20) -> List[str]:
+    def get_category(self, category: str, limit: int = 20) -> list[str]:
         """
         Get pages in a category.
 
@@ -193,19 +191,20 @@ class WikipediaProvider(BaseResearchProvider):
         """
         try:
             from wikipedia import page
+
             cat_page = page(category)
-            
+
             # Get links from the category page
             links = cat_page.links[:limit]
-            
+
             logger.info(f"Found {len(links)} pages in category {category}")
             return links
-        
+
         except Exception as e:
             logger.error(f"Failed to get category {category}: {e}")
             return []
 
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """Get provider capabilities."""
         return ["search", "page_info", "categories"]
 

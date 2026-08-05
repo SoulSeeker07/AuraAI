@@ -71,11 +71,12 @@ print("🔄 Running buggy code...")
 print("=" * 80)
 
 import subprocess
+
 result = subprocess.run(
     [str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"), "buggy_code.py"],
     capture_output=True,
     text=True,
-    cwd=PROJECT_ROOT
+    cwd=PROJECT_ROOT,
 )
 
 print(result.stdout)
@@ -138,7 +139,7 @@ result2 = subprocess.run(
     [str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"), "fixed_code.py"],
     capture_output=True,
     text=True,
-    cwd=PROJECT_ROOT
+    cwd=PROJECT_ROOT,
 )
 
 print(result2.stdout)
@@ -157,7 +158,7 @@ print()
 
 if result.returncode != 0:
     print("✅ BUGGY CODE FAILED (expected):")
-    print(f"   Error: IndentationError detected")
+    print("   Error: IndentationError detected")
     print()
     print("✅ Test Step 1: PASS - Bug exists")
 else:

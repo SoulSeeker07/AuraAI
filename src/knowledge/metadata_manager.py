@@ -4,13 +4,13 @@ Knowledge Metadata Manager
 Extracts and manages metadata from documents.
 """
 
-import logging
 import hashlib
 import json
-from typing import Dict, Any, List, Optional
+import logging
 from datetime import datetime
-from pathlib import Path
-from .models import MetadataType, SourceType, DocumentChunk
+from typing import Any
+
+from .models import MetadataType, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +25,8 @@ class MetadataManager:
         self.logger = logger
 
     def extract_metadata(
-        self,
-        file_path: str,
-        file_type: SourceType,
-        content: str
-    ) -> Dict[str, Any]:
+        self, file_path: str, file_type: SourceType, content: str
+    ) -> dict[str, Any]:
         """
         Extract metadata from document.
 
@@ -73,19 +70,23 @@ class MetadataManager:
 
         return metadata
 
-    def _extract_pdf_metadata(self, file_path: str, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_pdf_metadata(
+        self, file_path: str, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract PDF metadata."""
         metadata[MetadataType.CHUNK_TYPE.value] = "page"
         metadata[MetadataType.IMPORTANCE.value] = 0.7
         return metadata
 
-    def _extract_markdown_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_markdown_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract markdown metadata."""
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # Extract title from first heading
         for line in lines[:5]:
-            if line.startswith('# '):
+            if line.startswith("# "):
                 metadata[MetadataType.TITLE.value] = line[2:].strip()
                 break
 
@@ -93,41 +94,43 @@ class MetadataManager:
         in_frontmatter = False
         frontmatter = {}
         for line in lines[:10]:
-            if line.strip() == '---':
+            if line.strip() == "---":
                 if in_frontmatter:
                     break
                 in_frontmatter = True
             elif in_frontmatter:
-                if ':' in line:
-                    key, value = line.split(':', 1)
+                if ":" in line:
+                    key, value = line.split(":", 1)
                     frontmatter[key.strip().lower()] = value.strip()
 
-        if 'tags' in frontmatter:
-            metadata[MetadataType.TAGS.value] = frontmatter['tags'].split(',')
+        if "tags" in frontmatter:
+            metadata[MetadataType.TAGS.value] = frontmatter["tags"].split(",")
 
-        if 'project' in frontmatter:
-            metadata[MetadataType.PROJECT.value] = frontmatter['project']
+        if "project" in frontmatter:
+            metadata[MetadataType.PROJECT.value] = frontmatter["project"]
 
-        if 'author' in frontmatter:
-            metadata[MetadataType.AUTHOR.value] = frontmatter['author']
+        if "author" in frontmatter:
+            metadata[MetadataType.AUTHOR.value] = frontmatter["author"]
 
         metadata[MetadataType.CHUNK_TYPE.value] = "section"
         metadata[MetadataType.IMPORTANCE.value] = 0.8
         return metadata
 
-    def _extract_python_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_python_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract Python code metadata."""
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # Extract class names
         classes = []
         functions = []
         for line in lines:
-            if line.strip().startswith('class '):
-                class_name = line.split('class ')[1].split('(')[0].strip()
+            if line.strip().startswith("class "):
+                class_name = line.split("class ")[1].split("(")[0].strip()
                 classes.append(class_name)
-            elif line.strip().startswith('def '):
-                func_name = line.split('def ')[1].split('(')[0].strip()
+            elif line.strip().startswith("def "):
+                func_name = line.split("def ")[1].split("(")[0].strip()
                 functions.append(func_name)
 
         if classes:
@@ -139,33 +142,39 @@ class MetadataManager:
         metadata[MetadataType.IMPORTANCE.value] = 0.9
         return metadata
 
-    def _extract_docx_metadata(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_docx_metadata(
+        self, file_path: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract DOCX metadata."""
         metadata[MetadataType.CHUNK_TYPE.value] = "page"
         metadata[MetadataType.IMPORTANCE.value] = 0.6
         return metadata
 
-    def _extract_pptx_metadata(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_pptx_metadata(
+        self, file_path: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract PPTX metadata."""
         metadata[MetadataType.CHUNK_TYPE.value] = "slide"
         metadata[MetadataType.IMPORTANCE.value] = 0.5
         return metadata
 
-    def _extract_html_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_html_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract HTML metadata."""
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # Extract title from <title> tag
         for line in lines:
-            if '<title>' in line and '</title>' in line:
-                title = line[line.find('<title>') + 7:line.find('</title>')]
+            if "<title>" in line and "</title>" in line:
+                title = line[line.find("<title>") + 7 : line.find("</title>")]
                 metadata[MetadataType.TITLE.value] = title.strip()
                 break
 
         # Check for meta description
         for line in lines:
             if '<meta name="description"' in line:
-                if 'content=' in line:
+                if "content=" in line:
                     content_attr = line.split('content="')[1].split('"')[0]
                     metadata[MetadataType.DESCRIPTION.value] = content_attr
                 break
@@ -174,7 +183,9 @@ class MetadataManager:
         metadata[MetadataType.IMPORTANCE.value] = 0.7
         return metadata
 
-    def _extract_json_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_json_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract JSON metadata."""
         try:
             data = json.loads(content)
@@ -185,42 +196,48 @@ class MetadataManager:
 
         return metadata
 
-    def _extract_yaml_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_yaml_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract YAML metadata."""
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         in_frontmatter = False
         frontmatter = {}
         for line in lines[:10]:
-            if line.strip() == '---':
+            if line.strip() == "---":
                 if in_frontmatter:
                     break
                 in_frontmatter = True
             elif in_frontmatter:
-                if ':' in line:
-                    key, value = line.split(':', 1)
+                if ":" in line:
+                    key, value = line.split(":", 1)
                     frontmatter[key.strip().lower()] = value.strip()
 
-        if 'tags' in frontmatter:
-            metadata[MetadataType.TAGS.value] = frontmatter['tags'].split(',')
+        if "tags" in frontmatter:
+            metadata[MetadataType.TAGS.value] = frontmatter["tags"].split(",")
 
-        if 'project' in frontmatter:
-            metadata[MetadataType.PROJECT.value] = frontmatter['project']
+        if "project" in frontmatter:
+            metadata[MetadataType.PROJECT.value] = frontmatter["project"]
 
         metadata[MetadataType.CHUNK_TYPE.value] = "section"
         return metadata
 
-    def _extract_csv_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_csv_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract CSV metadata."""
-        lines = content.split('\n')
+        lines = content.split("\n")
         if len(lines) > 1:
             metadata[MetadataType.CHUNK_TYPE.value] = "table"
             metadata[MetadataType.CHUNK_TYPE.value] = "row"
         return metadata
 
-    def _extract_generic_metadata(self, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_generic_metadata(
+        self, content: str, metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract generic metadata."""
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # Extract title from first non-empty line
         for line in lines[:3]:
@@ -244,7 +261,7 @@ class MetadataManager:
         """
         try:
             hash_obj = hashlib.sha256()
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 while chunk := f.read(8192):
                     hash_obj.update(chunk)
             return hash_obj.hexdigest()
@@ -252,7 +269,7 @@ class MetadataManager:
             logger.error(f"Error calculating file hash: {e}")
             return ""
 
-    def normalize_tags(self, tags: List[str]) -> List[str]:
+    def normalize_tags(self, tags: list[str]) -> list[str]:
         """
         Normalize tags (lowercase, remove duplicates).
 
@@ -264,7 +281,7 @@ class MetadataManager:
         """
         return list(set(tag.lower().strip() for tag in tags if tag.strip()))
 
-    def get_language_family(self, language: Optional[str]) -> str:
+    def get_language_family(self, language: str | None) -> str:
         """
         Get language family from language code.
 
@@ -281,8 +298,23 @@ class MetadataManager:
 
         # Programming languages
         programming = [
-            'python', 'javascript', 'typescript', 'java', 'csharp', 'cpp', 'c', 'rust',
-            'go', 'ruby', 'php', 'swift', 'kotlin', 'scala', 'haskell', 'r', 'matlab'
+            "python",
+            "javascript",
+            "typescript",
+            "java",
+            "csharp",
+            "cpp",
+            "c",
+            "rust",
+            "go",
+            "ruby",
+            "php",
+            "swift",
+            "kotlin",
+            "scala",
+            "haskell",
+            "r",
+            "matlab",
         ]
 
         if language_lower in programming:
@@ -290,9 +322,17 @@ class MetadataManager:
 
         # Natural languages
         languages = {
-            'en': 'english', 'es': 'spanish', 'fr': 'french', 'de': 'german',
-            'zh': 'chinese', 'ja': 'japanese', 'ko': 'korean', 'ru': 'russian',
-            'ar': 'arabic', 'pt': 'portuguese', 'it': 'italian'
+            "en": "english",
+            "es": "spanish",
+            "fr": "french",
+            "de": "german",
+            "zh": "chinese",
+            "ja": "japanese",
+            "ko": "korean",
+            "ru": "russian",
+            "ar": "arabic",
+            "pt": "portuguese",
+            "it": "italian",
         }
 
         for code, lang in languages.items():

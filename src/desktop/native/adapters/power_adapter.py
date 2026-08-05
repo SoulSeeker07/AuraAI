@@ -7,11 +7,11 @@ Provides PowerAdapter interface and backends:
 3. DummyPowerAdapter (Fallback mock backend)
 """
 
-from abc import abstractmethod
-from typing import Dict, Any, Optional
 import ctypes
-from ctypes import wintypes
 import logging
+from abc import abstractmethod
+from ctypes import wintypes
+from typing import Any
 
 from .base_adapter import BaseNativeAdapter
 from .base_adapter_factory import BaseAdapterFactory
@@ -36,17 +36,17 @@ class PowerAdapter(BaseNativeAdapter):
     NAME = "power_adapter"
 
     @abstractmethod
-    def get_battery_status(self) -> Dict[str, Any]:
+    def get_battery_status(self) -> dict[str, Any]:
         """Get battery level percentage and charging status."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_ac_status(self) -> Dict[str, Any]:
+    def get_ac_status(self) -> dict[str, Any]:
         """Get AC power line status."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_power_plan(self) -> Dict[str, Any]:
+    def get_power_plan(self) -> dict[str, Any]:
         """Get active Windows power plan scheme."""
         raise NotImplementedError
 
@@ -90,6 +90,7 @@ class WMIPowerAdapter(PowerAdapter):
     def is_available(self) -> bool:
         try:
             import wmi
+
             c = wmi.WMI()
             # Test OS or battery class access
             return len(c.Win32_OperatingSystem()) > 0
@@ -97,9 +98,10 @@ class WMIPowerAdapter(PowerAdapter):
             logger.debug(f"WMIPowerAdapter not available: {e}")
             return False
 
-    def get_battery_status(self) -> Dict[str, Any]:
+    def get_battery_status(self) -> dict[str, Any]:
         try:
             import wmi
+
             c = wmi.WMI()
             batteries = c.Win32_Battery()
             if batteries:
@@ -125,16 +127,18 @@ class WMIPowerAdapter(PowerAdapter):
             "backend": self.name,
         }
 
-    def get_ac_status(self) -> Dict[str, Any]:
+    def get_ac_status(self) -> dict[str, Any]:
         batt = self.get_battery_status()
         return {
-            "ac_online": batt.get("is_charging", True) or not batt.get("has_battery", False),
+            "ac_online": batt.get("is_charging", True)
+            or not batt.get("has_battery", False),
             "backend": self.name,
         }
 
-    def get_power_plan(self) -> Dict[str, Any]:
+    def get_power_plan(self) -> dict[str, Any]:
         try:
             import wmi
+
             c = wmi.WMI(namespace="root\\cimv2\\power")
             plans = c.Win32_PowerPlan(IsActive=True)
             if plans:
@@ -173,6 +177,7 @@ class WMIPowerAdapter(PowerAdapter):
     def shutdown(self, force: bool = False, timeout_sec: int = 0) -> bool:
         try:
             import wmi
+
             c = wmi.WMI()
             os_sys = c.Win32_OperatingSystem()[0]
             # 1 = Shutdown, 4 = Forced Shutdown
@@ -186,6 +191,7 @@ class WMIPowerAdapter(PowerAdapter):
     def restart(self, force: bool = False, timeout_sec: int = 0) -> bool:
         try:
             import wmi
+
             c = wmi.WMI()
             os_sys = c.Win32_OperatingSystem()[0]
             # 2 = Reboot, 6 = Forced Reboot
@@ -199,6 +205,7 @@ class WMIPowerAdapter(PowerAdapter):
     def logoff(self, force: bool = False) -> bool:
         try:
             import wmi
+
             c = wmi.WMI()
             os_sys = c.Win32_OperatingSystem()[0]
             # 0 = Logoff, 4 = Forced Logoff
@@ -218,16 +225,22 @@ class Win32PowerAdapter(PowerAdapter):
 
     def is_available(self) -> bool:
         try:
-            return hasattr(ctypes.windll, "kernel32") and hasattr(ctypes.windll, "user32")
+            return hasattr(ctypes.windll, "kernel32") and hasattr(
+                ctypes.windll, "user32"
+            )
         except Exception:
             return False
 
-    def get_battery_status(self) -> Dict[str, Any]:
+    def get_battery_status(self) -> dict[str, Any]:
         try:
             sps = SYSTEM_POWER_STATUS()
             if ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(sps)):
                 has_batt = sps.BatteryFlag != 128 and sps.BatteryFlag != 255
-                pct = int(sps.BatteryLifePercent) if sps.BatteryLifePercent <= 100 else 100
+                pct = (
+                    int(sps.BatteryLifePercent)
+                    if sps.BatteryLifePercent <= 100
+                    else 100
+                )
                 charging = bool(sps.ACLineStatus == 1)
                 return {
                     "has_battery": has_batt,
@@ -238,13 +251,18 @@ class Win32PowerAdapter(PowerAdapter):
         except Exception as e:
             logger.debug(f"Win32 GetSystemPowerStatus failed: {e}")
 
-        return {"has_battery": False, "percent": 100, "is_charging": True, "backend": self.name}
+        return {
+            "has_battery": False,
+            "percent": 100,
+            "is_charging": True,
+            "backend": self.name,
+        }
 
-    def get_ac_status(self) -> Dict[str, Any]:
+    def get_ac_status(self) -> dict[str, Any]:
         batt = self.get_battery_status()
         return {"ac_online": batt.get("is_charging", True), "backend": self.name}
 
-    def get_power_plan(self) -> Dict[str, Any]:
+    def get_power_plan(self) -> dict[str, Any]:
         return {"name": "Balanced", "guid": "", "backend": self.name}
 
     def lock_workstation(self) -> bool:
@@ -299,13 +317,18 @@ class DummyPowerAdapter(PowerAdapter):
     def is_available(self) -> bool:
         return True
 
-    def get_battery_status(self) -> Dict[str, Any]:
-        return {"has_battery": True, "percent": 95, "is_charging": True, "backend": self.name}
+    def get_battery_status(self) -> dict[str, Any]:
+        return {
+            "has_battery": True,
+            "percent": 95,
+            "is_charging": True,
+            "backend": self.name,
+        }
 
-    def get_ac_status(self) -> Dict[str, Any]:
+    def get_ac_status(self) -> dict[str, Any]:
         return {"ac_online": True, "backend": self.name}
 
-    def get_power_plan(self) -> Dict[str, Any]:
+    def get_power_plan(self) -> dict[str, Any]:
         return {"name": "High Performance", "guid": "mock_guid", "backend": self.name}
 
     def lock_workstation(self) -> bool:

@@ -78,11 +78,12 @@ print("🔄 Running buggy code...")
 print("=" * 80)
 
 import subprocess
+
 result = subprocess.run(
     [str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"), "buggy_code.py"],
     capture_output=True,
     text=True,
-    cwd=PROJECT_ROOT
+    cwd=PROJECT_ROOT,
 )
 
 print(result.stdout)
@@ -148,7 +149,7 @@ result2 = subprocess.run(
     [str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"), "fixed_code.py"],
     capture_output=True,
     text=True,
-    cwd=PROJECT_ROOT
+    cwd=PROJECT_ROOT,
 )
 
 print(result2.stdout)

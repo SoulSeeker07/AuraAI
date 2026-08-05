@@ -1,5 +1,3 @@
-from typing import List
-
 from backend.core.logger import get_logger
 
 logger = get_logger("service_manager")
@@ -7,7 +5,7 @@ logger = get_logger("service_manager")
 
 class ServiceManager:
     def __init__(self):
-        self._services: List = []
+        self._services: list = []
 
     def register(self, service):
         self._services.append(service)

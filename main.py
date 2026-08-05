@@ -1,19 +1,18 @@
-import sys
 import argparse
 import asyncio
 import io
+import sys
 from pathlib import Path
 
 # Configure stdout to UTF-8 BEFORE any other imports
 # This fixes Unicode encoding issues on Windows (cp1252 vs UTF-8)
 try:
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 except Exception:
     pass  # If reconfiguration fails, keep the default
 
 # Import logger from core module
 from core import logger
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "src"
@@ -22,14 +21,14 @@ sys.path.insert(0, str(PROJECT_ROOT))  # project root first to find core/
 sys.path.insert(1, str(SRC_DIR))  # src second to find logger
 sys.path.insert(2, str(PROJECT_ROOT / "scripts"))  # scripts third to find utilities
 
-from core.aura_core import AuraCore
 from clients.cli_client import CLIClient
 from clients.gui_client import GUIClient
+from core.aura_core import AuraCore
 from scripts.aura_monitor import AuraMonitor
-
 
 # Singleton instance of AuraCore
 _aura_core_instance = None
+
 
 def get_aura_core(config: dict = None) -> AuraCore:
     """
@@ -48,9 +47,12 @@ def get_aura_core(config: dict = None) -> AuraCore:
         if config is None:
             config = {}
 
-        if 'data_path' not in config:
+        if "data_path" not in config:
             from pathlib import Path
-            config['data_path'] = str(Path(__file__).resolve().parent / "Data" / "ChatLog.json")
+
+            config["data_path"] = str(
+                Path(__file__).resolve().parent / "Data" / "ChatLog.json"
+            )
 
         _aura_core_instance = AuraCore(config=config)
 
@@ -73,10 +75,8 @@ async def main_cli():
 
     # Start monitor in a separate thread
     import threading
-    monitor_thread = threading.Thread(
-        target=monitor.monitor,
-        daemon=True
-    )
+
+    monitor_thread = threading.Thread(target=monitor.monitor, daemon=True)
     monitor_thread.start()
 
     # Run CLI (now properly awaited)
@@ -125,7 +125,7 @@ def main_gui():
 def main():
     """Main entry point for AuraAI."""
     parser = argparse.ArgumentParser(
-        description='AuraAI - Multi-Agent AI Assistant',
+        description="AuraAI - Multi-Agent AI Assistant",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -137,35 +137,50 @@ Examples:
 Modes:
   CLI    - Interactive command-line interface
   GUI    - Graphical user interface (QML)
-        """
+        """,
     )
 
     parser.add_argument(
-        '--cli',
-        action='store_true',
-        help='Run in CLI mode (default)'
+        "--doctor", action="store_true", help="Run Aura Doctor diagnostics"
     )
 
     parser.add_argument(
-        '--gui',
-        action='store_true',
-        help='Run in GUI mode'
+        "--inspect", action="store_true", help="Run Aura Inspector debugging dashboard"
     )
 
     parser.add_argument(
-        '--workspace',
-        type=str,
-        help='Override workspace path'
+        "--verify", action="store_true", help="Run CI quality pipeline verification"
     )
+
+    parser.add_argument("--cli", action="store_true", help="Run in CLI mode (default)")
+
+    parser.add_argument("--gui", action="store_true", help="Run in GUI mode")
+
+    parser.add_argument("--workspace", type=str, help="Override workspace path")
 
     args = parser.parse_args()
 
-    # Determine mode
-    if args.gui:
+    if args.doctor:
+        from src.engineering.doctor import AuraDoctor
+
+        doctor = AuraDoctor(project_root=PROJECT_ROOT)
+        doctor.diagnose()
+        sys.exit(0)
+    elif args.inspect:
+        from src.engineering.inspector import AuraInspector
+
+        inspector = AuraInspector(project_root=PROJECT_ROOT)
+        inspector.inspect()
+        sys.exit(0)
+    elif args.verify:
+        from src.engineering.doctor import AuraVerifier
+
+        verifier = AuraVerifier(project_root=PROJECT_ROOT)
+        success = verifier.run_verify()
+        sys.exit(0 if success else 1)
+    elif args.gui:
         # GUI mode
         gui_client = main_gui()
-        # In real implementation, this would launch QML
-        # For now, return the GUI client for reference
         return gui_client
     else:
         # CLI mode (default)

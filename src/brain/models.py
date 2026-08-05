@@ -7,7 +7,6 @@ from typing import Any, Literal
 from ai.models import ChatMessage, ImageAttachment
 from Memory import MemoryFact
 
-
 IntentName = Literal[
     "local_time",
     "memory_summary",
@@ -59,7 +58,9 @@ class ConversationResult:
     remembered_facts: list[MemoryFact] = field(default_factory=list)
 
 
-def image_attachment_from_conversation(attachment: ConversationAttachment) -> ImageAttachment:
+def image_attachment_from_conversation(
+    attachment: ConversationAttachment,
+) -> ImageAttachment:
     return ImageAttachment(path=attachment.path, mime_type=attachment.mime_type)
 
 
@@ -67,7 +68,7 @@ def image_attachment_from_conversation(attachment: ConversationAttachment) -> Im
 @dataclass(frozen=True)
 class WebSearchResultSimple:
     """Simple web search result for compatibility."""
-    
+
     title: str
     url: str
     snippet: str
@@ -77,7 +78,7 @@ class WebSearchResultSimple:
 @dataclass(frozen=True)
 class ResearchFinding:
     """A finding from deep research."""
-    
+
     source_title: str
     source_url: str
     source_authority: float
@@ -89,7 +90,7 @@ class ResearchFinding:
 @dataclass(frozen=True)
 class DeepResearchResult:
     """Complete deep research result."""
-    
+
     query: str
     main_results: list[dict[str, Any]]
     top_sources: list[Any]  # RankedResult objects

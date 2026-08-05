@@ -12,14 +12,18 @@ from Memory import Memory
 
 
 class FakeProvider(Provider):
-    capabilities = ProviderCapabilities(name="fake", default_model="fake-model", supports_streaming=True)
+    capabilities = ProviderCapabilities(
+        name="fake", default_model="fake-model", supports_streaming=True
+    )
 
     def __init__(self):
         self.last_request = None
 
     def chat(self, request: ChatRequest) -> ProviderResponse:
         self.last_request = request
-        return ProviderResponse("provider answer", provider="fake", model=request.model or "fake-model")
+        return ProviderResponse(
+            "provider answer", provider="fake", model=request.model or "fake-model"
+        )
 
 
 class FakeWebSearch:
@@ -34,7 +38,9 @@ class FakeWebSearch:
 
 
 def build_engine(tmp_path):
-    memory = Memory(db_path=tmp_path / "Memory.db", chat_log_path=tmp_path / "ChatLog.json")
+    memory = Memory(
+        db_path=tmp_path / "Memory.db", chat_log_path=tmp_path / "ChatLog.json"
+    )
     provider = FakeProvider()
     manager = ProviderManager(default_provider="fake")
     manager.register("fake", provider)
@@ -71,7 +77,10 @@ def test_conversation_engine_builds_context_for_provider(tmp_path):
     assert result.intent.name == "provider_chat"
     assert result.used_provider is True
     assert provider.last_request is not None
-    assert any("Known user memory" in message.content for message in provider.last_request.messages)
+    assert any(
+        "Known user memory" in message.content
+        for message in provider.last_request.messages
+    )
 
 
 def test_conversation_engine_adds_web_context_for_current_questions(tmp_path):
@@ -82,4 +91,7 @@ def test_conversation_engine_adds_web_context_for_current_questions(tmp_path):
     assert result.intent.name == "web_search"
     assert result.used_provider is True
     assert provider.last_request is not None
-    assert any("Fresh web context" in message.content for message in provider.last_request.messages)
+    assert any(
+        "Fresh web context" in message.content
+        for message in provider.last_request.messages
+    )

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Native Windows Managers
 
@@ -17,16 +16,18 @@ Available Managers:
 - RegistryManager: Registry operations
 """
 
+from .audio_manager import AudioManager
 from .base_manager import BaseNativeManager
-from .window_manager import WindowManager
 from .clipboard_manager import ClipboardManager
 from .display_manager import DisplayManager
-from .audio_manager import AudioManager
-from .power_manager import PowerManager
+from .native_manager_registry import NativeManagerRegistry
 from .network_manager import NetworkManager
+from .power_manager import PowerManager
+from .window_manager import WindowManager
 
 __all__ = [
     "BaseNativeManager",
+    "NativeManagerRegistry",
     "WindowManager",
     "ClipboardManager",
     "DisplayManager",
@@ -34,4 +35,3 @@ __all__ = [
     "PowerManager",
     "NetworkManager",
 ]
-

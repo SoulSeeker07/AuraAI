@@ -11,17 +11,17 @@ from ai.exceptions import ProviderError
 from ai.models import ChatRequest, VisionRequest
 from ai.provider_manager import ProviderManager
 from brain.context_builder import ContextBuilder
+from brain.deep_research_manager import DeepResearchManager
 from brain.intent_router import IntentRouter
 from brain.models import (
     ConversationAttachment,
     ConversationContext,
     ConversationResult,
+    DeepResearchResult,
     Intent,
     image_attachment_from_conversation,
 )
 from brain.web_search import WebSearchClient
-from brain.deep_research_manager import DeepResearchManager
-from brain.models import WebSearchResultSimple, DeepResearchResult, IntentName
 from Memory import Memory, MemoryFact
 
 
@@ -36,14 +36,16 @@ class ConversationEngine:
         model: str | None = None,
         web_search: WebSearchClient | None = None,
         deep_research_enabled: bool = True,
-        aura_core = None,
+        aura_core=None,
     ):
         self.memory = memory
         self.provider_manager = provider_manager
         self.settings = settings or {}
         self.model = model
         self.intent_router = IntentRouter(memory)
-        self.context_builder = ContextBuilder(memory, self.settings, username, assistant_name)
+        self.context_builder = ContextBuilder(
+            memory, self.settings, username, assistant_name
+        )
         self.web_search = web_search or WebSearchClient()
         self._cancel_requested = False
         self.deep_research_manager = (
@@ -54,11 +56,14 @@ class ConversationEngine:
 
         # Log the aura_core reference
         import logging
+
         logger = logging.getLogger(__name__)
         if self.aura_core:
-            logger.info(f"[ConversationEngine.__init__] aura_core set correctly, research_enabled={self.aura_core.research_enabled}, research_integration is None={self.aura_core.research_integration is None}")
+            logger.info(
+                f"[ConversationEngine.__init__] aura_core set correctly, research_enabled={self.aura_core.research_enabled}, research_integration is None={self.aura_core.research_integration is None}"
+            )
         else:
-            logger.error(f"[ConversationEngine.__init__] aura_core is None")
+            logger.error("[ConversationEngine.__init__] aura_core is None")
 
     async def process(
         self,
@@ -67,28 +72,43 @@ class ConversationEngine:
     ) -> ConversationResult:
         user_input = user_input.strip()
         if not user_input:
-            return ConversationResult("Ask me something and I will help.", Intent("provider_chat"))
+            return ConversationResult(
+                "Ask me something and I will help.", Intent("provider_chat")
+            )
 
         intent = self.intent_router.detect(user_input, attachments)
-        
+
         # Check if deep research should be used
-        if intent.name == "deep_research" and self._use_deep_research and self.deep_research_manager:
-            deep_research_results = await self._perform_deep_research(user_input, intent)
+        if (
+            intent.name == "deep_research"
+            and self._use_deep_research
+            and self.deep_research_manager
+        ):
+            deep_research_results = await self._perform_deep_research(
+                user_input, intent
+            )
             web_results = self._format_deep_research_results(deep_research_results)
         else:
             web_results = self._lookup_web(user_input, intent)
-        
-        context = self.context_builder.build(user_input, intent, attachments, web_results)
+
+        context = self.context_builder.build(
+            user_input, intent, attachments, web_results
+        )
 
         if intent.name == "remember_fact":
             facts = list(intent.data.get("facts", []))
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.info(f"[ConversationEngine] remember_fact intent detected with {len(facts)} facts")
+            logger.info(
+                f"[ConversationEngine] remember_fact intent detected with {len(facts)} facts"
+            )
             self.intent_router.remember_detected_facts(facts)
             text = self._fact_ack(facts)
             self._save_turn(context, text)
-            logger.info(f"[ConversationEngine] remember_fact processed, acknowledgment: {text}")
+            logger.info(
+                f"[ConversationEngine] remember_fact processed, acknowledgment: {text}"
+            )
             return ConversationResult(text, intent, remembered_facts=facts)
 
         local_answer = self._answer_local_intent(intent)
@@ -126,7 +146,9 @@ class ConversationEngine:
         mime_type = mimetypes.guess_type(str(path))[0] or "image/png"
         return ConversationAttachment(path=path, mime_type=mime_type)
 
-    def _process_provider_chat(self, context: ConversationContext) -> ConversationResult:
+    def _process_provider_chat(
+        self, context: ConversationContext
+    ) -> ConversationResult:
         try:
             response = self.provider_manager.chat(
                 ChatRequest(
@@ -166,61 +188,97 @@ class ConversationEngine:
 
         # Use ResearchEngine instead of directly calling WebSearchClient
         import logging
+
         logger = logging.getLogger(__name__)
 
         # Check if AuraCore's research_integration is available
-        if hasattr(self, 'aura_core') and hasattr(self.aura_core, 'research_integration'):
+        if hasattr(self, "aura_core") and hasattr(
+            self.aura_core, "research_integration"
+        ):
             try:
-                logger.info(f"[ConversationEngine] Using ResearchEngine for query: {user_input}")
+                logger.info(
+                    f"[ConversationEngine] Using ResearchEngine for query: {user_input}"
+                )
 
                 # Check if ResearchIntegration has an id
-                if hasattr(self.aura_core.research_integration, '__id__'):
-                    logger.info(f"[ConversationEngine] research_integration.id={self.aura_core.research_integration.__id__}")
+                if hasattr(self.aura_core.research_integration, "__id__"):
+                    logger.info(
+                        f"[ConversationEngine] research_integration.id={self.aura_core.research_integration.__id__}"
+                    )
                 else:
-                    logger.error(f"[ConversationEngine] research_integration does not have __id__ attribute")
+                    logger.error(
+                        "[ConversationEngine] research_integration does not have __id__ attribute"
+                    )
 
                 # Check if ResearchIntegration has a research_engine attribute
-                if hasattr(self.aura_core.research_integration, 'research_engine'):
-                    logger.info(f"[ConversationEngine] research_integration.research_engine exists")
-                    if hasattr(self.aura_core.research_integration.research_engine, '__id__'):
-                        logger.info(f"[ConversationEngine] research_integration.research_engine.id={self.aura_core.research_integration.research_engine.__id__}")
+                if hasattr(self.aura_core.research_integration, "research_engine"):
+                    logger.info(
+                        "[ConversationEngine] research_integration.research_engine exists"
+                    )
+                    if hasattr(
+                        self.aura_core.research_integration.research_engine, "__id__"
+                    ):
+                        logger.info(
+                            f"[ConversationEngine] research_integration.research_engine.id={self.aura_core.research_integration.research_engine.__id__}"
+                        )
                     else:
-                        logger.error(f"[ConversationEngine] research_engine does not have __id__ attribute")
+                        logger.error(
+                            "[ConversationEngine] research_engine does not have __id__ attribute"
+                        )
                 else:
-                    logger.error(f"[ConversationEngine] research_integration does not have research_engine attribute")
-                    logger.error(f"[ConversationEngine] self.aura_core.research_integration is None: {self.aura_core.research_integration is None}")
+                    logger.error(
+                        "[ConversationEngine] research_integration does not have research_engine attribute"
+                    )
+                    logger.error(
+                        f"[ConversationEngine] self.aura_core.research_integration is None: {self.aura_core.research_integration is None}"
+                    )
 
                 # Use ResearchIntegration to perform research
                 # The ResearchEngine will handle planning, providers, evidence, etc.
-                logger.info(f"[ConversationEngine] Calling aura_core.perform_research() with query='{user_input}'")
-                logger.info(f"[ConversationEngine] aura_core.research_enabled={self.aura_core.research_enabled}, aura_core.research_integration is None={self.aura_core.research_integration is None}")
-                research_results = self.aura_core.perform_research(
-                    query=user_input
+                logger.info(
+                    f"[ConversationEngine] Calling aura_core.perform_research() with query='{user_input}'"
                 )
-                logger.info(f"[ConversationEngine] perform_research() returned: has_results={research_results.get('has_results', False) if research_results else False}")
+                logger.info(
+                    f"[ConversationEngine] aura_core.research_enabled={self.aura_core.research_enabled}, aura_core.research_integration is None={self.aura_core.research_integration is None}"
+                )
+                research_results = self.aura_core.perform_research(query=user_input)
+                logger.info(
+                    f"[ConversationEngine] perform_research() returned: has_results={research_results.get('has_results', False) if research_results else False}"
+                )
 
                 # Convert ResearchEngine results to the expected format
-                if research_results and research_results.get('has_results'):
-                    logger.info(f"[ConversationEngine] ResearchEngine returned {len(research_results.get('citations', []))} citations")
+                if research_results and research_results.get("has_results"):
+                    logger.info(
+                        f"[ConversationEngine] ResearchEngine returned {len(research_results.get('citations', []))} citations"
+                    )
                     return [
                         {
                             "title": citation.get("title", ""),
                             "url": citation.get("url", ""),
                             "snippet": citation.get("score", ""),
                             "score": citation.get("score", 0),
-                            "trust_level": citation.get("trust_level", "")
+                            "trust_level": citation.get("trust_level", ""),
                         }
-                        for citation in research_results.get('citations', [])
+                        for citation in research_results.get("citations", [])
                     ]
                 else:
-                    logger.warning(f"[ConversationEngine] ResearchEngine returned no results for: {user_input}")
+                    logger.warning(
+                        f"[ConversationEngine] ResearchEngine returned no results for: {user_input}"
+                    )
             except Exception as e:
                 import traceback
-                logger.error(f"[ConversationEngine] ResearchEngine failed: {type(e).__name__}: {e}")
-                logger.error(f"[ConversationEngine] Traceback: {traceback.format_exc()}")
+
+                logger.error(
+                    f"[ConversationEngine] ResearchEngine failed: {type(e).__name__}: {e}"
+                )
+                logger.error(
+                    f"[ConversationEngine] Traceback: {traceback.format_exc()}"
+                )
 
         # Fallback to WebSearchClient if ResearchEngine is not available or failed
-        logger.warning(f"[ConversationEngine] Falling back to WebSearchClient for: {user_input}")
+        logger.warning(
+            f"[ConversationEngine] Falling back to WebSearchClient for: {user_input}"
+        )
         try:
             results = self.web_search.search(user_input, limit=5)
             return [
@@ -231,7 +289,7 @@ class ConversationEngine:
             return []
 
         return []
-    
+
     async def _perform_deep_research(
         self,
         query: str,
@@ -239,11 +297,11 @@ class ConversationEngine:
     ) -> DeepResearchResult:
         """
         Perform deep research using the DeepResearchManager.
-        
+
         Args:
             query: User query
             intent: Detected intent
-            
+
         Returns:
             DeepResearchResult with findings
         """
@@ -252,42 +310,57 @@ class ConversationEngine:
             context=None,
         )
         return result
-    
+
     def _format_deep_research_results(
         self,
         deep_research_result: DeepResearchResult,
     ) -> list[dict[str, str]]:
         """
         Format DeepResearchResult into the web_results format expected by context_builder.
-        
+
         Args:
             deep_research_result: Deep research result
-            
+
         Returns:
             List of web results in dict format
         """
         # Format main search results
         web_results = []
-        
+
         for result in deep_research_result.main_results:
-            web_results.append({
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "snippet": result.get("snippet", ""),
-            })
-        
+            web_results.append(
+                {
+                    "title": result.get("title", ""),
+                    "url": result.get("url", ""),
+                    "snippet": result.get("snippet", ""),
+                }
+            )
+
         # Add page contents as additional sources
         for page in deep_research_result.page_contents:
-            web_results.append({
-                "title": page.title,
-                "url": page.url,
-                "snippet": page.main_text[:200] + "..." if len(page.main_text) > 200 else page.main_text,
-            })
-        
+            web_results.append(
+                {
+                    "title": page.title,
+                    "url": page.url,
+                    "snippet": (
+                        page.main_text[:200] + "..."
+                        if len(page.main_text) > 200
+                        else page.main_text
+                    ),
+                }
+            )
+
         return web_results
 
     def _process_vision(self, context: ConversationContext) -> ConversationResult:
-        image = next((item for item in context.attachments if item.mime_type.startswith("image/")), None)
+        image = next(
+            (
+                item
+                for item in context.attachments
+                if item.mime_type.startswith("image/")
+            ),
+            None,
+        )
         if image is None:
             text = "I did not receive an image to analyze."
             self._save_turn(context, text)
@@ -305,7 +378,10 @@ class ConversationEngine:
                 )
             )
             text = self._format_answer(response.text)
-            text = text or "I captured the screen, but the vision model returned an empty answer."
+            text = (
+                text
+                or "I captured the screen, but the vision model returned an empty answer."
+            )
             self._save_turn(context, text)
             return ConversationResult(
                 text=text,
@@ -339,7 +415,9 @@ class ConversationEngine:
             return f"Your name is {name}." if name else "I do not know your name yet."
 
         if intent.name == "projects_lookup":
-            return self._list_answer("Projects I remember", self.memory.values_for_category("projects"))
+            return self._list_answer(
+                "Projects I remember", self.memory.values_for_category("projects")
+            )
 
         if intent.name == "skills_lookup":
             skills = self.memory.values_for_category("skills")
@@ -348,10 +426,14 @@ class ConversationEngine:
             return self._list_answer("Skills I remember", skills)
 
         if intent.name == "goals_lookup":
-            return self._list_answer("Goals I remember", self.memory.values_for_category("goals"))
+            return self._list_answer(
+                "Goals I remember", self.memory.values_for_category("goals")
+            )
 
         if intent.name == "preferences_lookup":
-            return self._list_answer("Preferences I remember", self.memory.values_for_category("preferences"))
+            return self._list_answer(
+                "Preferences I remember", self.memory.values_for_category("preferences")
+            )
 
         if intent.name == "capability_status":
             enabled = self.settings.get("web_search_enabled", True) is not False
@@ -370,7 +452,11 @@ class ConversationEngine:
         self.memory.remember_exchange(context.user_input, answer, topic)
 
     def _fact_ack(self, facts: list[MemoryFact]) -> str:
-        if len(facts) == 1 and facts[0].category == "profile" and facts[0].key == "name":
+        if (
+            len(facts) == 1
+            and facts[0].category == "profile"
+            and facts[0].key == "name"
+        ):
             return f"Got it. Your name is {facts[0].value}."
 
         grouped: dict[str, list[str]] = {}
@@ -384,7 +470,9 @@ class ConversationEngine:
         return "Remembered. " + " | ".join(parts)
 
     def _infer_topic(self, query: str) -> str:
-        words = [word for word in re.findall(r"[a-zA-Z0-9]+", query.lower()) if len(word) > 3]
+        words = [
+            word for word in re.findall(r"[a-zA-Z0-9]+", query.lower()) if len(word) > 3
+        ]
         if not words:
             return "General"
         return " ".join(words[:3]).title()

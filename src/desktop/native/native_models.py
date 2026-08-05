@@ -2,15 +2,17 @@
 Native Windows Layer Models
 Strongly typed dataclasses for Windows desktop operations.
 """
+
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
 from enum import Enum
-import win32api
+from typing import Any
+
 import win32con
 
 
 class WindowStyle(Enum):
     """Window styles"""
+
     NORMAL = 0
     MINIMIZED = win32con.WS_MINIMIZE
     MAXIMIZED = win32con.WS_MAXIMIZE
@@ -19,6 +21,7 @@ class WindowStyle(Enum):
 
 class WindowState(Enum):
     """Window states"""
+
     NORMAL = "normal"
     MINIMIZED = "minimized"
     MAXIMIZED = "maximized"
@@ -29,6 +32,7 @@ class WindowState(Enum):
 @dataclass
 class Rect:
     """Window rectangle coordinates"""
+
     left: int
     top: int
     right: int
@@ -54,6 +58,7 @@ class Rect:
 @dataclass
 class WindowInfo:
     """Window information"""
+
     hwnd: int
     title: str
     process_id: int
@@ -67,7 +72,7 @@ class WindowInfo:
     class_name: str
     thread_id: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "hwnd": self.hwnd,
@@ -93,17 +98,18 @@ class WindowInfo:
 @dataclass
 class ProcessInfo:
     """Process information"""
+
     process_id: int
     name: str
     executable_path: str
     command_line: str
     working_set_size: int
     cpu_time: float
-    threads: List[int]
-    parent_pid: Optional[int]
-    user: Optional[str]
+    threads: list[int]
+    parent_pid: int | None
+    user: str | None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "process_id": self.process_id,
@@ -121,13 +127,14 @@ class ProcessInfo:
 @dataclass
 class ClipboardData:
     """Clipboard data"""
-    text: str
-    html: Optional[str]
-    image: Optional[Any]
-    files: List[str]
-    format: Optional[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    text: str
+    html: str | None
+    image: Any | None
+    files: list[str]
+    format: str | None
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "text": self.text,
@@ -141,6 +148,7 @@ class ClipboardData:
 @dataclass
 class DisplayInfo:
     """Display information"""
+
     index: int
     name: str
     width: int
@@ -151,7 +159,7 @@ class DisplayInfo:
     refresh_rate: int
     orientation: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "index": self.index,
@@ -174,6 +182,7 @@ class DisplayInfo:
 @dataclass
 class AudioDevice:
     """Audio device information"""
+
     index: int
     name: str
     type: str  # 'output' or 'input'
@@ -182,7 +191,7 @@ class AudioDevice:
     is_default: bool
     device_id: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "index": self.index,
@@ -198,19 +207,20 @@ class AudioDevice:
 @dataclass
 class NetworkInterface:
     """Network interface information"""
+
     name: str
     index: int
     description: str
     is_up: bool
     is_connected: bool
-    ip_address: Optional[str]
-    subnet_mask: Optional[str]
-    gateway: Optional[str]
+    ip_address: str | None
+    subnet_mask: str | None
+    gateway: str | None
     mac_address: str
-    dns_servers: List[str]
+    dns_servers: list[str]
     speed: int  # in Mbps
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "name": self.name,
@@ -230,6 +240,7 @@ class NetworkInterface:
 @dataclass
 class RegistryKey:
     """Registry key information"""
+
     key_path: str
     key_name: str
     value_type: str
@@ -238,7 +249,7 @@ class RegistryKey:
     is_integer: bool
     is_binary: bool
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "key_path": self.key_path,
@@ -254,14 +265,15 @@ class RegistryKey:
 @dataclass
 class ServiceInfo:
     """Service information"""
+
     service_name: str
     display_name: str
     status: str
     start_type: str
-    description: Optional[str]
-    process_id: Optional[int]
+    description: str | None
+    process_id: int | None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "service_name": self.service_name,

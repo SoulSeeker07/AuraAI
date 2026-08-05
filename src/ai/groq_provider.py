@@ -38,7 +38,10 @@ class GroqProvider(Provider):
         model = request.model or self.default_model
         response = client.chat.completions.create(
             model=model,
-            messages=[{"role": message.role, "content": message.content} for message in request.messages],
+            messages=[
+                {"role": message.role, "content": message.content}
+                for message in request.messages
+            ],
             stream=True,
             temperature=request.temperature,
             max_tokens=request.max_tokens,
@@ -84,7 +87,9 @@ class GroqProvider(Provider):
         try:
             from groq import Groq
         except ImportError as exc:
-            raise ProviderNotConfiguredError("The groq package is not installed.") from exc
+            raise ProviderNotConfiguredError(
+                "The groq package is not installed."
+            ) from exc
 
         self._client = Groq(api_key=self.api_key)
         return self._client

@@ -2,12 +2,12 @@
 Audio Manager
 Manages audio device operations.
 """
-from typing import List
+
 import logging
 
+from .native_exceptions import AudioDeviceNotFoundError
 from .native_manager import NativeManager
 from .native_models import AudioDevice
-from .native_exceptions import AudioDeviceNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class AudioManager:
         self.native_manager = native_manager
         logger.debug("AudioManager initialized")
 
-    def list_devices(self) -> List[AudioDevice]:
+    def list_devices(self) -> list[AudioDevice]:
         """
         List all audio devices.
 
@@ -91,7 +91,7 @@ class AudioManager:
         raise AudioDeviceNotFoundError(
             f"Audio device not found with name: {name}",
             "get_device_by_name",
-            details={"name": name}
+            details={"name": name},
         )
 
     def set_volume(self, device_index: int, volume: float) -> bool:

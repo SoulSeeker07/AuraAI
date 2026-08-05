@@ -22,11 +22,11 @@ Architecture:
 """
 
 import logging
-from typing import Optional, Dict, Any, List
-from .capability_types import CapabilityType, CapabilityPriority
-from .routing_result import RoutingResult
-from .keyword_router import KeywordRouter
+
+from .capability_types import CapabilityPriority, CapabilityType
 from .intent_classifier import IntentClassifier
+from .keyword_router import KeywordRouter
+from .routing_result import RoutingResult
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class CapabilityRouter:
 
         logger.info("Capability Router initialized")
 
-    def route(self, text: str) -> Optional[RoutingResult]:
+    def route(self, text: str) -> RoutingResult | None:
         """
         Route request through all three levels of routing.
 
@@ -102,7 +102,7 @@ class CapabilityRouter:
         logger.debug("No routing match found")
         return None
 
-    def _llm_fallback(self, text: str) -> Optional[RoutingResult]:
+    def _llm_fallback(self, text: str) -> RoutingResult | None:
         """
         LLM fallback for requests that don't match any specific pattern.
 
@@ -131,10 +131,10 @@ Respond in JSON: {"capability": "provider", "confidence": 0.5, "reasoning": "gen
                 response = self.intent_classifier.provider_manager.generate(
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": text}
+                        {"role": "user", "content": text},
                     ],
                     temperature=0.1,
-                    max_tokens=100
+                    max_tokens=100,
                 )
 
                 # Parse and return result
@@ -143,10 +143,12 @@ Respond in JSON: {"capability": "provider", "confidence": 0.5, "reasoning": "gen
                     routing_result = RoutingResult(
                         capability=result["capability"],
                         confidence=result["confidence"],
-                        priority="low"  # LLM fallback has low confidence
+                        priority="low",  # LLM fallback has low confidence
                     )
                     routing_result.metadata["routing_level"] = "level3"
-                    routing_result.metadata["classification_reason"] = result.get("reasoning", "")
+                    routing_result.metadata["classification_reason"] = result.get(
+                        "reasoning", ""
+                    )
                     return routing_result
 
             except Exception as e:
@@ -156,10 +158,10 @@ Respond in JSON: {"capability": "provider", "confidence": 0.5, "reasoning": "gen
         return RoutingResult(
             capability=CapabilityType.PROVIDER,
             confidence=0.3,
-            priority=CapabilityPriority.LOWEST
+            priority=CapabilityPriority.LOWEST,
         )
 
-    def get_supported_capabilities(self) -> List[CapabilityType]:
+    def get_supported_capabilities(self) -> list[CapabilityType]:
         """
         Get all supported capabilities.
 

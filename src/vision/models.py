@@ -4,15 +4,15 @@ Vision System Models
 Core data models for the Vision System.
 """
 
-
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class ImageType(Enum):
     """Types of images the Vision System can process."""
+
     SCREENSHOT = "screenshot"
     DOCUMENT = "document"
     DIAGRAM = "diagram"
@@ -26,6 +26,7 @@ class ImageType(Enum):
 
 class VisionProvider(Enum):
     """Supported vision providers."""
+
     LOCAL_OCR = "local_ocr"
     OPENAI = "openai"
     GEMINI = "gemini"
@@ -50,25 +51,25 @@ class VisionContext:
 
     # OCR results
     detected_text: str = ""
-    text_blocks: List[Dict[str, Any]] = field(default_factory=list)
+    text_blocks: list[dict[str, Any]] = field(default_factory=list)
     confidence: float = 0.0
 
     # Object detection
-    objects: List[Dict[str, Any]] = field(default_factory=list)
-    bounding_boxes: List[Dict[str, Any]] = field(default_factory=list)
+    objects: list[dict[str, Any]] = field(default_factory=list)
+    bounding_boxes: list[dict[str, Any]] = field(default_factory=list)
 
     # Layout analysis
-    layout: Dict[str, Any] = field(default_factory=dict)
-    elements: List[Dict[str, Any]] = field(default_factory=list)
-    sections: List[Dict[str, Any]] = field(default_factory=list)
+    layout: dict[str, Any] = field(default_factory=dict)
+    elements: list[dict[str, Any]] = field(default_factory=list)
+    sections: list[dict[str, Any]] = field(default_factory=list)
 
     # Specialized analysis
-    tables: List[List[List[str]]] = field(default_factory=list)
-    code_snippets: List[Dict[str, Any]] = field(default_factory=list)
-    diagrams: List[Dict[str, Any]] = field(default_factory=list)
-    tables_found: List[str] = field(default_factory=list)
-    code_found: List[str] = field(default_factory=list)
-    diagrams_found: List[str] = field(default_factory=list)
+    tables: list[list[list[str]]] = field(default_factory=list)
+    code_snippets: list[dict[str, Any]] = field(default_factory=list)
+    diagrams: list[dict[str, Any]] = field(default_factory=list)
+    tables_found: list[str] = field(default_factory=list)
+    code_found: list[str] = field(default_factory=list)
+    diagrams_found: list[str] = field(default_factory=list)
 
     # Vision model results
     summary: str = ""
@@ -76,32 +77,35 @@ class VisionContext:
     description: str = ""
 
     # UI specific
-    buttons: List[Dict[str, Any]] = field(default_factory=list)
-    menus: List[Dict[str, Any]] = field(default_factory=list)
-    dialogs: List[Dict[str, Any]] = field(default_factory=list)
-    forms: List[Dict[str, Any]] = field(default_factory=list)
-    notifications: List[Dict[str, Any]] = field(default_factory=list)
+    buttons: list[dict[str, Any]] = field(default_factory=list)
+    menus: list[dict[str, Any]] = field(default_factory=list)
+    dialogs: list[dict[str, Any]] = field(default_factory=list)
+    forms: list[dict[str, Any]] = field(default_factory=list)
+    notifications: list[dict[str, Any]] = field(default_factory=list)
 
     # Network diagram specific
-    network_devices: List[Dict[str, Any]] = field(default_factory=list)
-    network_connections: List[Dict[str, Any]] = field(default_factory=list)
-    ip_addresses: List[str] = field(default_factory=list)
-    vlan_ids: List[int] = field(default_factory=list)
-    interface_names: List[str] = field(default_factory=list)
+    network_devices: list[dict[str, Any]] = field(default_factory=list)
+    network_connections: list[dict[str, Any]] = field(default_factory=list)
+    ip_addresses: list[str] = field(default_factory=list)
+    vlan_ids: list[int] = field(default_factory=list)
+    interface_names: list[str] = field(default_factory=list)
 
     # Error detection
-    errors_detected: List[Dict[str, Any]] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors_detected: list[dict[str, Any]] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     # Metadata
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert vision context to dictionary."""
         return {
             "image_type": self.image_type.value,
             "image_path": self.image_path,
-            "image_dimensions": {"width": self.image_width, "height": self.image_height},
+            "image_dimensions": {
+                "width": self.image_width,
+                "height": self.image_height,
+            },
             "capture_time": self.capture_time.isoformat(),
             "detected_text": self.detected_text,
             "text_blocks": self.text_blocks,
@@ -132,10 +136,10 @@ class VisionContext:
             "interface_names": self.interface_names,
             "errors_detected": self.errors_detected,
             "warnings": self.warnings,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
-    def from_dict(self, data: Dict[str, Any]) -> 'VisionContext':
+    def from_dict(self, data: dict[str, Any]) -> "VisionContext":
         """Create VisionContext from dictionary."""
         self.image_type = ImageType(data.get("image_type", "unknown"))
         self.image_path = data.get("image_path", "")
@@ -196,24 +200,30 @@ class VisionContext:
 
     def has_ui_elements(self) -> bool:
         """Check if any UI elements were detected."""
-        return (len(self.buttons) > 0 or len(self.menus) > 0 or
-                len(self.dialogs) > 0 or len(self.forms) > 0 or
-                len(self.notifications) > 0)
+        return (
+            len(self.buttons) > 0
+            or len(self.menus) > 0
+            or len(self.dialogs) > 0
+            or len(self.forms) > 0
+            or len(self.notifications) > 0
+        )
 
 
 @dataclass
 class ScreenshotSettings:
     """Settings for screenshot capture."""
 
-    capture_type: str = "full_screen"  # full_screen, active_monitor, active_window, selected_region
+    capture_type: str = (
+        "full_screen"  # full_screen, active_monitor, active_window, selected_region
+    )
     monitor_index: int = 0
-    window_handle: Optional[int] = None
-    selected_region: Optional[tuple] = None  # (x1, y1, x2, y2)
+    window_handle: int | None = None
+    selected_region: tuple | None = None  # (x1, y1, x2, y2)
     format: str = "png"
     quality: int = 95
     include_cursor: bool = True
     include_timestamp: bool = True
-    save_path: Optional[str] = None
+    save_path: str | None = None
 
 
 @dataclass
@@ -234,10 +244,10 @@ class OCRSettings:
 class UIAnalysisResult:
     """Result from UI analysis."""
 
-    buttons: List[Dict[str, Any]]
-    menus: List[Dict[str, Any]]
-    dialogs: List[Dict[str, Any]]
-    forms: List[Dict[str, Any]]
-    notifications: List[Dict[str, Any]]
+    buttons: list[dict[str, Any]]
+    menus: list[dict[str, Any]]
+    dialogs: list[dict[str, Any]]
+    forms: list[dict[str, Any]]
+    notifications: list[dict[str, Any]]
     success: bool
     message: str

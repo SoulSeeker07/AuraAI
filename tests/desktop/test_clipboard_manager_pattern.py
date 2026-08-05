@@ -11,18 +11,22 @@ Validates that ClipboardManager follows the strict pattern:
 This test serves as the reference pattern that all future managers should follow.
 """
 
-import sys
 import os
+import sys
 
 # Add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-from src.desktop.native.managers.clipboard_manager import ClipboardManager, ClipboardContent
-from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-from src.desktop.native.native_exceptions import ClipboardError
 import win32clipboard
+
+from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
+from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
+from src.desktop.native.managers.clipboard_manager import (
+    ClipboardContent,
+    ClipboardManager,
+)
+from src.desktop.native.native_exceptions import ClipboardError
 
 
 def test_manager_native_structure():
@@ -31,19 +35,21 @@ def test_manager_native_structure():
     assert manager.name == "clipboard", "Manager name must be 'clipboard'"
 
     # Check it implements required native methods
-    assert hasattr(manager, 'execute'), "Must implement execute() method"
-    assert hasattr(manager, 'capabilities'), "Must have capabilities property"
-    assert hasattr(manager, 'read_text'), "Must implement read_text()"
-    assert hasattr(manager, 'write_text'), "Must implement write_text()"
-    assert hasattr(manager, 'clear'), "Must implement clear()"
-    assert hasattr(manager, 'read_files'), "Must implement read_files()"
-    assert hasattr(manager, 'read_image'), "Must implement read_image()"
-    assert hasattr(manager, 'has_text'), "Must implement has_text()"
-    assert hasattr(manager, 'has_image'), "Must implement has_image()"
-    assert hasattr(manager, 'has_files'), "Must implement has_files()"
+    assert hasattr(manager, "execute"), "Must implement execute() method"
+    assert hasattr(manager, "capabilities"), "Must have capabilities property"
+    assert hasattr(manager, "read_text"), "Must implement read_text()"
+    assert hasattr(manager, "write_text"), "Must implement write_text()"
+    assert hasattr(manager, "clear"), "Must implement clear()"
+    assert hasattr(manager, "read_files"), "Must implement read_files()"
+    assert hasattr(manager, "read_image"), "Must implement read_image()"
+    assert hasattr(manager, "has_text"), "Must implement has_text()"
+    assert hasattr(manager, "has_image"), "Must implement has_image()"
+    assert hasattr(manager, "has_files"), "Must implement has_files()"
 
     # Verify NO internal cross-cutting methods (verify, rollback belong to execution engine)
-    assert not hasattr(manager, 'verify_action'), "Verification should not be inside ClipboardManager"
+    assert not hasattr(
+        manager, "verify_action"
+    ), "Verification should not be inside ClipboardManager"
 
     print("[OK] Manager native structure is correct")
 
@@ -60,8 +66,9 @@ def test_only_windows_specific_code():
     - Event bus publishing
     """
 
-    import src.desktop.native.managers.clipboard_manager as cm_module
     import inspect
+
+    import src.desktop.native.managers.clipboard_manager as cm_module
 
     source = inspect.getsource(cm_module)
 
@@ -107,29 +114,29 @@ def test_full_capability_coverage():
 
     # Check that all capabilities are registered
     expected_capabilities = [
-        'clipboard.read_text',
-        'clipboard.write_text',
-        'clipboard.clear',
-        'clipboard.read_image',
-        'clipboard.write_image',
-        'clipboard.read_files',
-        'clipboard.write_files',
-        'clipboard.read_html',
-        'clipboard.write_html',
-        'clipboard.get_formats',
-        'clipboard.has_text',
-        'clipboard.has_image',
-        'clipboard.has_files',
+        "clipboard.read_text",
+        "clipboard.write_text",
+        "clipboard.clear",
+        "clipboard.read_image",
+        "clipboard.write_image",
+        "clipboard.read_files",
+        "clipboard.write_files",
+        "clipboard.read_html",
+        "clipboard.write_html",
+        "clipboard.get_formats",
+        "clipboard.has_text",
+        "clipboard.has_image",
+        "clipboard.has_files",
     ]
 
     for capability in expected_capabilities:
-        assert capability in manager.capabilities, (
-            f"Capability '{capability}' not registered"
-        )
+        assert (
+            capability in manager.capabilities
+        ), f"Capability '{capability}' not registered"
 
-    assert len(manager.capabilities) == len(expected_capabilities), (
-        f"Expected {len(expected_capabilities)} capabilities, got {len(manager.capabilities)}"
-    )
+    assert len(manager.capabilities) == len(
+        expected_capabilities
+    ), f"Expected {len(expected_capabilities)} capabilities, got {len(manager.capabilities)}"
 
     print(f"[OK] All {len(expected_capabilities)} capabilities registered")
 
@@ -139,7 +146,11 @@ def test_external_verification_and_rollback():
     manager = ClipboardManager()
     engine = DesktopExecutionEngine(manager=manager)
 
-    result = engine.execute(goal="write clipboard", capability="clipboard.write_text", text="Pipeline Verification Test")
+    result = engine.execute(
+        goal="write clipboard",
+        capability="clipboard.write_text",
+        text="Pipeline Verification Test",
+    )
     assert result.success is True
     assert result.verification.get("passed") is True
 
@@ -151,19 +162,45 @@ def test_execute_methods_exist():
     manager = ClipboardManager()
 
     # Test that all exposed methods exist
-    assert hasattr(manager, 'execute_clipboard_read_text'), "Missing execute_clipboard_read_text()"
-    assert hasattr(manager, 'execute_clipboard_write_text'), "Missing execute_clipboard_write_text()"
-    assert hasattr(manager, 'execute_clipboard_clear'), "Missing execute_clipboard_clear()"
-    assert hasattr(manager, 'execute_clipboard_read_image'), "Missing execute_clipboard_read_image()"
-    assert hasattr(manager, 'execute_clipboard_write_image'), "Missing execute_clipboard_write_image()"
-    assert hasattr(manager, 'execute_clipboard_read_files'), "Missing execute_clipboard_read_files()"
-    assert hasattr(manager, 'execute_clipboard_write_files'), "Missing execute_clipboard_write_files()"
-    assert hasattr(manager, 'execute_clipboard_read_html'), "Missing execute_clipboard_read_html()"
-    assert hasattr(manager, 'execute_clipboard_write_html'), "Missing execute_clipboard_write_html()"
-    assert hasattr(manager, 'execute_clipboard_get_formats'), "Missing execute_clipboard_get_formats()"
-    assert hasattr(manager, 'execute_clipboard_has_text'), "Missing execute_clipboard_has_text()"
-    assert hasattr(manager, 'execute_clipboard_has_image'), "Missing execute_clipboard_has_image()"
-    assert hasattr(manager, 'execute_clipboard_has_files'), "Missing execute_clipboard_has_files()"
+    assert hasattr(
+        manager, "execute_clipboard_read_text"
+    ), "Missing execute_clipboard_read_text()"
+    assert hasattr(
+        manager, "execute_clipboard_write_text"
+    ), "Missing execute_clipboard_write_text()"
+    assert hasattr(
+        manager, "execute_clipboard_clear"
+    ), "Missing execute_clipboard_clear()"
+    assert hasattr(
+        manager, "execute_clipboard_read_image"
+    ), "Missing execute_clipboard_read_image()"
+    assert hasattr(
+        manager, "execute_clipboard_write_image"
+    ), "Missing execute_clipboard_write_image()"
+    assert hasattr(
+        manager, "execute_clipboard_read_files"
+    ), "Missing execute_clipboard_read_files()"
+    assert hasattr(
+        manager, "execute_clipboard_write_files"
+    ), "Missing execute_clipboard_write_files()"
+    assert hasattr(
+        manager, "execute_clipboard_read_html"
+    ), "Missing execute_clipboard_read_html()"
+    assert hasattr(
+        manager, "execute_clipboard_write_html"
+    ), "Missing execute_clipboard_write_html()"
+    assert hasattr(
+        manager, "execute_clipboard_get_formats"
+    ), "Missing execute_clipboard_get_formats()"
+    assert hasattr(
+        manager, "execute_clipboard_has_text"
+    ), "Missing execute_clipboard_has_text()"
+    assert hasattr(
+        manager, "execute_clipboard_has_image"
+    ), "Missing execute_clipboard_has_image()"
+    assert hasattr(
+        manager, "execute_clipboard_has_files"
+    ), "Missing execute_clipboard_has_files()"
 
     print("[OK] All execute helper methods exist")
 
@@ -201,7 +238,9 @@ def test_execute_workflow():
     # Test reading text
     result = manager.execute_clipboard_read_text()
     assert isinstance(result, DesktopResult), "execute must return DesktopResult"
-    assert result.capability == 'clipboard.read_text', "Result should have correct capability"
+    assert (
+        result.capability == "clipboard.read_text"
+    ), "Result should have correct capability"
 
     # Test writing text
     result = manager.execute_clipboard_write_text("Test Text")
@@ -247,17 +286,22 @@ def test_separation_of_concerns():
     manager = ClipboardManager()
 
     # The manager should ONLY call win32clipboard functions
-    import src.desktop.native.managers.clipboard_manager as cm_module
     import inspect
+
+    import src.desktop.native.managers.clipboard_manager as cm_module
 
     source = inspect.getsource(cm_module.ClipboardManager)
 
     # Check that win32clipboard is imported
-    assert 'win32clipboard' in source, "Should import win32clipboard"
+    assert "win32clipboard" in source, "Should import win32clipboard"
 
     # Check that the execute method only routes to handlers
-    assert '_handle_read_text' in source or 'handle_read_text' in source, "Should have handle methods"
-    assert '_handle_write_text' in source or 'handle_write_text' in source, "Should have handle methods"
+    assert (
+        "_handle_read_text" in source or "handle_read_text" in source
+    ), "Should have handle methods"
+    assert (
+        "_handle_write_text" in source or "handle_write_text" in source
+    ), "Should have handle methods"
 
     print("[OK] Separation of concerns is maintained")
 
@@ -308,4 +352,3 @@ def run_all_tests():
 if __name__ == "__main__":
     success = run_all_tests()
     sys.exit(0 if success else 1)
-

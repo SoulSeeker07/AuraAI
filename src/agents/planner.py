@@ -4,16 +4,13 @@ Planner
 Converts goals into executable execution plans.
 """
 
-
 import logging
-from typing import List, Dict, Any, Optional, Callable
-from datetime import datetime
+from collections.abc import Callable
 
-from .goal import Goal
-from .task import Task
 from .execution_graph import ExecutionGraph
-from .models import TaskPriority, TaskRiskLevel, TaskType
-
+from .goal import Goal
+from .models import TaskPriority, TaskRiskLevel
+from .task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +25,8 @@ class Planner:
 
     def __init__(
         self,
-        on_plan_generated: Optional[Callable[['Planner', ExecutionGraph], None]] = None,
-        on_task_created: Optional[Callable[['Planner', Task], None]] = None
+        on_plan_generated: Callable[["Planner", ExecutionGraph], None] | None = None,
+        on_task_created: Callable[["Planner", Task], None] | None = None,
     ):
         """
         Initialize planner.
@@ -74,7 +71,7 @@ class Planner:
 
         return graph
 
-    def _generate_tasks(self, goal: Goal) -> List[Task]:
+    def _generate_tasks(self, goal: Goal) -> list[Task]:
         """
         Generate tasks based on goal description.
 
@@ -113,7 +110,7 @@ class Planner:
 
         return tasks
 
-    def _plan_general_task(self, goal: Goal) -> List[Task]:
+    def _plan_general_task(self, goal: Goal) -> list[Task]:
         """
         Plan a general task.
 
@@ -133,7 +130,7 @@ class Planner:
             estimated_duration=goal.estimated_total_duration,
             risk_level=self._calculate_risk(goal.risk_level),
             description=f"Execute general task: {goal.description[:50]}",
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         if self.on_task_created:
@@ -143,7 +140,7 @@ class Planner:
 
         return tasks
 
-    def _plan_file_operation(self, goal: Goal) -> List[Task]:
+    def _plan_file_operation(self, goal: Goal) -> list[Task]:
         """
         Plan file operations.
 
@@ -163,7 +160,7 @@ class Planner:
             estimated_duration=timedelta(minutes=2),
             risk_level=TaskRiskLevel.MEDIUM,
             description="Analyze file operation requirements",
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         execute_task = Task(
@@ -174,7 +171,7 @@ class Planner:
             risk_level=self._calculate_risk(goal.risk_level),
             description="Execute file operation",
             dependencies=[analyze_task.task_id],
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         if self.on_task_created:
@@ -185,7 +182,7 @@ class Planner:
 
         return tasks
 
-    def _plan_git_operation(self, goal: Goal) -> List[Task]:
+    def _plan_git_operation(self, goal: Goal) -> list[Task]:
         """
         Plan git operations.
 
@@ -205,7 +202,7 @@ class Planner:
             estimated_duration=timedelta(minutes=2),
             risk_level=TaskRiskLevel.MEDIUM,
             description="Analyze git repository state",
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         create_backup = Task(
@@ -216,7 +213,7 @@ class Planner:
             risk_level=TaskRiskLevel.LOW,
             description="Create backup before operations",
             dependencies=[analyze_task.task_id],
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         execute_task = Task(
@@ -227,7 +224,7 @@ class Planner:
             risk_level=self._calculate_risk(goal.risk_level),
             description="Execute git operation",
             dependencies=[create_backup.task_id],
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         if self.on_task_created:
@@ -239,7 +236,7 @@ class Planner:
 
         return tasks
 
-    def _plan_network_operation(self, goal: Goal) -> List[Task]:
+    def _plan_network_operation(self, goal: Goal) -> list[Task]:
         """
         Plan network operations.
 
@@ -259,7 +256,7 @@ class Planner:
             estimated_duration=timedelta(minutes=2),
             risk_level=TaskRiskLevel.MEDIUM,
             description="Analyze network connectivity",
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         execute_task = Task(
@@ -270,7 +267,7 @@ class Planner:
             risk_level=self._calculate_risk(goal.risk_level),
             description="Execute network operation",
             dependencies=[analyze_task.task_id],
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         if self.on_task_created:
@@ -281,7 +278,7 @@ class Planner:
 
         return tasks
 
-    def _plan_document_operation(self, goal: Goal) -> List[Task]:
+    def _plan_document_operation(self, goal: Goal) -> list[Task]:
         """
         Plan document operations.
 
@@ -301,7 +298,7 @@ class Planner:
             estimated_duration=timedelta(minutes=2),
             risk_level=TaskRiskLevel.LOW,
             description="Analyze document structure",
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         process_task = Task(
@@ -312,7 +309,7 @@ class Planner:
             risk_level=TaskRiskLevel.MEDIUM,
             description="Process document",
             dependencies=[analyze_task.task_id],
-            parent_goal_id=goal.goal_id
+            parent_goal_id=goal.goal_id,
         )
 
         if self.on_task_created:
@@ -325,40 +322,67 @@ class Planner:
 
     def _is_file_operation(self, goal_text: str) -> bool:
         """Check if goal involves file operations."""
-        file_keywords = ['create', 'write', 'read', 'delete', 'move', 'copy', 'rename', 'backup', 'file']
+        file_keywords = [
+            "create",
+            "write",
+            "read",
+            "delete",
+            "move",
+            "copy",
+            "rename",
+            "backup",
+            "file",
+        ]
         return any(kw in goal_text for kw in file_keywords)
 
     def _is_git_operation(self, goal_text: str) -> bool:
         """Check if goal involves git operations."""
-        git_keywords = ['git', 'commit', 'push', 'pull', 'branch', 'merge', 'commit', 'repository']
+        git_keywords = [
+            "git",
+            "commit",
+            "push",
+            "pull",
+            "branch",
+            "merge",
+            "commit",
+            "repository",
+        ]
         return any(kw in goal_text for kw in git_keywords)
 
     def _is_network_operation(self, goal_text: str) -> bool:
         """Check if goal involves network operations."""
-        network_keywords = ['download', 'upload', 'internet', 'server', 'api', 'request', 'http']
+        network_keywords = [
+            "download",
+            "upload",
+            "internet",
+            "server",
+            "api",
+            "request",
+            "http",
+        ]
         return any(kw in goal_text for kw in network_keywords)
 
     def _is_document_operation(self, goal_text: str) -> bool:
         """Check if goal involves document operations."""
-        doc_keywords = ['document', 'pdf', 'word', 'excel', 'slide', 'report', 'note']
+        doc_keywords = ["document", "pdf", "word", "excel", "slide", "report", "note"]
         return any(kw in goal_text for kw in doc_keywords)
 
     def _calculate_priority(self, goal_priority: str) -> TaskPriority:
         """Convert goal priority to task priority."""
         priority_map = {
-            'HIGH': TaskPriority.HIGH,
-            'NORMAL': TaskPriority.NORMAL,
-            'LOW': TaskPriority.LOW
+            "HIGH": TaskPriority.HIGH,
+            "NORMAL": TaskPriority.NORMAL,
+            "LOW": TaskPriority.LOW,
         }
         return priority_map.get(goal_priority, TaskPriority.NORMAL)
 
     def _calculate_risk(self, risk_level: str) -> TaskRiskLevel:
         """Convert goal risk to task risk."""
         risk_map = {
-            'LOW': TaskRiskLevel.LOW,
-            'MEDIUM': TaskRiskLevel.MEDIUM,
-            'HIGH': TaskRiskLevel.HIGH,
-            'CRITICAL': TaskRiskLevel.CRITICAL
+            "LOW": TaskRiskLevel.LOW,
+            "MEDIUM": TaskRiskLevel.MEDIUM,
+            "HIGH": TaskRiskLevel.HIGH,
+            "CRITICAL": TaskRiskLevel.CRITICAL,
         }
         return risk_map.get(risk_level, TaskRiskLevel.MEDIUM)
 
@@ -379,4 +403,6 @@ class Planner:
         # Log each task
         for i, task in enumerate(graph.tasks.values(), 1):
             deps = graph.get_task_dependencies(task.task_id)
-            logger.info(f"  {i}. {task.task_id[:8]} - {task.goal[:50]} (deps: {len(deps)})")
+            logger.info(
+                f"  {i}. {task.task_id[:8]} - {task.goal[:50]} (deps: {len(deps)})"
+            )

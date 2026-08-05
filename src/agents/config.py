@@ -12,13 +12,14 @@ The Configuration System provides:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 
 class ProviderType(Enum):
     """Types of AI providers."""
+
     OPENAI = "openai"
     GROQ = "groq"
     OLLAMA = "ollama"
@@ -29,6 +30,7 @@ class ProviderType(Enum):
 @dataclass
 class ModelSettings:
     """Settings for AI model usage."""
+
     provider: ProviderType
     model_name: str = "gpt-4"
     temperature: float = 0.7
@@ -40,15 +42,17 @@ class ModelSettings:
 @dataclass
 class PluginSettings:
     """Settings for plugin system."""
+
     auto_load: bool = True
     load_directory: str = "plugins"
-    enabled_plugins: List[str] = field(default_factory=list)
-    disabled_plugins: List[str] = field(default_factory=list)
+    enabled_plugins: list[str] = field(default_factory=list)
+    disabled_plugins: list[str] = field(default_factory=list)
 
 
 @dataclass
 class SafetySettings:
     """Settings for safety layer."""
+
     require_confirmation: bool = True
     confirmation_timeout_seconds: int = 30
     destructive_operations_only: bool = True
@@ -59,8 +63,9 @@ class SafetySettings:
 @dataclass
 class LoggingSettings:
     """Settings for logging."""
+
     level: str = "INFO"
-    log_file: Optional[str] = None
+    log_file: str | None = None
     log_format: str = "json"  # or "text"
     max_log_size_mb: int = 10
     backup_count: int = 5
@@ -69,6 +74,7 @@ class LoggingSettings:
 @dataclass
 class PerformanceSettings:
     """Settings for performance tuning."""
+
     max_concurrent_tasks: int = 10
     task_timeout_seconds: int = 300
     queue_size: int = 100
@@ -80,6 +86,7 @@ class PerformanceSettings:
 @dataclass
 class ResearchSettings:
     """Settings for research agent."""
+
     max_search_results: int = 10
     deep_research_depth: int = 3
     enable_citations: bool = True
@@ -93,8 +100,9 @@ class Configuration:
 
     Provides access to all configuration settings.
     """
+
     # Provider settings
-    providers: Dict[ProviderType, ModelSettings] = field(default_factory=dict)
+    providers: dict[ProviderType, ModelSettings] = field(default_factory=dict)
 
     # Plugin settings
     plugins: PluginSettings = field(default_factory=PluginSettings)
@@ -112,19 +120,17 @@ class Configuration:
     research: ResearchSettings = field(default_factory=ResearchSettings)
 
     # Custom settings
-    custom: Dict[str, Any] = field(default_factory=dict)
+    custom: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Initialize default provider settings."""
         if not self.providers:
             # Add default OpenAI configuration
             self.providers[ProviderType.OPENAI] = ModelSettings(
-                provider=ProviderType.OPENAI,
-                model_name="gpt-4",
-                enabled=True
+                provider=ProviderType.OPENAI, model_name="gpt-4", enabled=True
             )
 
-    def get_provider_key(self, provider: ProviderType) -> Optional[str]:
+    def get_provider_key(self, provider: ProviderType) -> str | None:
         """Get API key for a provider."""
         if provider not in self.providers:
             return None
@@ -136,7 +142,7 @@ class Configuration:
         """Set API key for a provider."""
         self.custom[f"{provider.value}_api_key"] = api_key
 
-    def get_model_settings(self, provider: ProviderType) -> Optional[ModelSettings]:
+    def get_model_settings(self, provider: ProviderType) -> ModelSettings | None:
         """Get model settings for a provider."""
         return self.providers.get(provider)
 
@@ -160,8 +166,13 @@ class Configuration:
     def is_operation_destructive(self, operation: str) -> bool:
         """Check if an operation is destructive."""
         return self.safety.destructive_operations_only or operation in [
-            "file_delete", "file_move", "file_rename", "file_overwrite",
-            "application_close", "system_shutdown", "system_restart"
+            "file_delete",
+            "file_move",
+            "file_rename",
+            "file_overwrite",
+            "application_close",
+            "system_shutdown",
+            "system_restart",
         ]
 
 
@@ -176,7 +187,7 @@ class ConfigManager:
     - Default configuration
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize the config manager.
 
@@ -187,7 +198,7 @@ class ConfigManager:
         self._config: Configuration = Configuration()
         self._loaded = False
 
-    def load_config(self, config_path: Optional[str] = None) -> bool:
+    def load_config(self, config_path: str | None = None) -> bool:
         """
         Load configuration from file.
 
@@ -204,7 +215,7 @@ class ConfigManager:
             return False
 
         try:
-            with open(self._config_path, 'r', encoding='utf-8') as f:
+            with open(self._config_path, encoding="utf-8") as f:
                 data = json.load(f)
                 self._config = Configuration(**data)
 
@@ -214,7 +225,7 @@ class ConfigManager:
         except Exception:
             return False
 
-    def save_config(self, config_path: Optional[str] = None) -> bool:
+    def save_config(self, config_path: str | None = None) -> bool:
         """
         Save configuration to file.
 
@@ -238,7 +249,7 @@ class ConfigManager:
                         "temperature": val.temperature,
                         "max_tokens": val.max_tokens,
                         "timeout_seconds": val.timeout_seconds,
-                        "enabled": val.enabled
+                        "enabled": val.enabled,
                     }
                     for key, val in self._config.providers.items()
                 },
@@ -246,21 +257,21 @@ class ConfigManager:
                     "auto_load": self._config.plugins.auto_load,
                     "load_directory": self._config.plugins.load_directory,
                     "enabled_plugins": self._config.plugins.enabled_plugins,
-                    "disabled_plugins": self._config.plugins.disabled_plugins
+                    "disabled_plugins": self._config.plugins.disabled_plugins,
                 },
                 "safety": {
                     "require_confirmation": self._config.safety.require_confirmation,
                     "confirmation_timeout_seconds": self._config.safety.confirmation_timeout_seconds,
                     "destructive_operations_only": self._config.safety.destructive_operations_only,
                     "critical_operations_only": self._config.safety.critical_operations_only,
-                    "permission_checks_enabled": self._config.safety.permission_checks_enabled
+                    "permission_checks_enabled": self._config.safety.permission_checks_enabled,
                 },
                 "logging": {
                     "level": self._config.logging.level,
                     "log_file": self._config.logging.log_file,
                     "log_format": self._config.logging.log_format,
                     "max_log_size_mb": self._config.logging.max_log_size_mb,
-                    "backup_count": self._config.logging.backup_count
+                    "backup_count": self._config.logging.backup_count,
                 },
                 "performance": {
                     "max_concurrent_tasks": self._config.performance.max_concurrent_tasks,
@@ -268,17 +279,17 @@ class ConfigManager:
                     "queue_size": self._config.performance.queue_size,
                     "enable_caching": self._config.performance.enable_caching,
                     "cache_ttl_seconds": self._config.performance.cache_ttl_seconds,
-                    "memory_limit_mb": self._config.performance.memory_limit_mb
+                    "memory_limit_mb": self._config.performance.memory_limit_mb,
                 },
                 "research": {
                     "max_search_results": self._config.research.max_search_results,
                     "deep_research_depth": self._config.research.deep_research_depth,
                     "enable_citations": self._config.research.enable_citations,
-                    "use_cache": self._config.research.use_cache
-                }
+                    "use_cache": self._config.research.use_cache,
+                },
             }
 
-            with open(save_path, 'w', encoding='utf-8') as f:
+            with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, default=str)
 
             return True
@@ -308,7 +319,7 @@ class ConfigManager:
 
 
 # Global config manager instance
-_global_config_manager: Optional[ConfigManager] = None
+_global_config_manager: ConfigManager | None = None
 
 
 def get_config_manager() -> ConfigManager:

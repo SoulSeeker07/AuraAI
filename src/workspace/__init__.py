@@ -12,36 +12,36 @@ Features:
 - Terminal context
 """
 
-from .workspace_manager import WorkspaceManager
 from .models import (
-    WorkspaceState,
     ActiveWindow,
+    BrowserContext,
+    ClipboardContext,
     CurrentProject,
     GitRepository,
     OpenFile,
-    TerminalContext,
-    ClipboardContext,
-    RunningApplication,
-    BrowserContext,
     PlatformType,
     ProjectType,
-    TerminalType
+    RunningApplication,
+    TerminalContext,
+    TerminalType,
+    WorkspaceState,
 )
+from .workspace_manager import WorkspaceManager
 
 __all__ = [
-    'WorkspaceManager',
-    'WorkspaceState',
-    'ActiveWindow',
-    'CurrentProject',
-    'GitRepository',
-    'OpenFile',
-    'TerminalContext',
-    'ClipboardContext',
-    'RunningApplication',
-    'BrowserContext',
-    'PlatformType',
-    'ProjectType',
-    'TerminalType',
+    "WorkspaceManager",
+    "WorkspaceState",
+    "ActiveWindow",
+    "CurrentProject",
+    "GitRepository",
+    "OpenFile",
+    "TerminalContext",
+    "ClipboardContext",
+    "RunningApplication",
+    "BrowserContext",
+    "PlatformType",
+    "ProjectType",
+    "TerminalType",
 ]
 
-__version__ = '1.0.0'
+__version__ = "1.0.0"

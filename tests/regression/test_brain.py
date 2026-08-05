@@ -30,10 +30,10 @@ class TestBrainRegression:
         core = AuraCore()
 
         # Check that core has expected attributes
-        assert hasattr(core, 'memory')
-        assert hasattr(core, 'conversation_engine')
-        assert hasattr(core, 'components')
-        assert hasattr(core, 'get_status')
+        assert hasattr(core, "memory")
+        assert hasattr(core, "conversation_engine")
+        assert hasattr(core, "components")
+        assert hasattr(core, "get_status")
 
     def test_brain_status_reporting(self):
         """Verify AuraBrain status reporting works."""
@@ -44,9 +44,9 @@ class TestBrainRegression:
         status = core.get_status()
 
         # Verify status structure
-        assert 'components' in status
-        assert 'memory' in status
-        assert 'plugins' in status
+        assert "components" in status
+        assert "memory" in status
+        assert "plugins" in status
 
     def test_brain_add_to_conversation(self):
         """Verify adding to conversation works."""
@@ -56,13 +56,13 @@ class TestBrainRegression:
         core = AuraCore()
 
         # Add to conversation
-        core.add_to_conversation('user', 'Hello world')
+        core.add_to_conversation("user", "Hello world")
 
         # Verify
         history = core.get_conversation_history()
         assert len(history) == 1
-        assert history[0]['role'] == 'user'
-        assert history[0]['content'] == 'Hello world'
+        assert history[0]["role"] == "user"
+        assert history[0]["content"] == "Hello world"
 
     def test_brain_clear_conversation(self):
         """Verify clearing conversation works."""
@@ -72,8 +72,8 @@ class TestBrainRegression:
         core = AuraCore()
 
         # Add messages
-        core.add_to_conversation('user', 'Hello')
-        core.add_to_conversation('assistant', 'Hi there')
+        core.add_to_conversation("user", "Hello")
+        core.add_to_conversation("assistant", "Hi there")
 
         # Clear
         core.clear_conversation_history()

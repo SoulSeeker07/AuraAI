@@ -1,0 +1,40 @@
+{
+  "capabilities": {
+    "chat.fast@1": {
+      "description": "Low-latency conversational responses (v1)",
+      "backend": ["groq"],
+      "fallback": ["gemini"]
+    },
+    "reason.deep@3": {
+      "description": "Complex reasoning, analysis, and multi-step planning (v3)",
+      "backend": ["gemini"],
+      "fallback": ["groq"]
+    },
+    "code.edit@1": {
+      "description": "Autonomous code generation, refactoring, and AST manipulation (v1)",
+      "backend": ["antigravity"],
+      "fallback": ["gemini"]
+    },
+    "desktop.window.activate@1": {
+      "description": "Native desktop window management and automation (v1)",
+      "backend": ["desktop_engine"]
+    },
+    "desktop.clipboard.manage@1": {
+      "description": "System clipboard monitoring and management (v1)",
+      "backend": ["desktop_engine"]
+    },
+    "desktop.network.status@1": {
+      "description": "Network adapter monitoring and connection diagnosis (v1)",
+      "backend": ["desktop_engine"]
+    },
+    "vision.analyze@2": {
+      "description": "Visual screen analysis and image understanding (v2)",
+      "backend": ["gemini"]
+    },
+    "browser.navigate@1": {
+      "description": "Automated browser navigation and DOM interaction (v1)",
+      "planner": ["browser_planner"],
+      "backend": ["desktop_engine"]
+    }
+  }
+}

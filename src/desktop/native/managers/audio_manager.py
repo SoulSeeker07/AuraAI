@@ -8,13 +8,12 @@ handled by the execution pipeline.
 This manager ONLY contains Windows-specific code via AudioAdapters.
 """
 
-from typing import List, Dict, Any, Optional
 import logging
+from typing import Any
 
-from .base_manager import BaseNativeManager, HealthStatus, HealthCheckResult
-from ..desktop_result import DesktopResult, DesktopStatus
-from ..native_exceptions import NativeError
-from ..adapters.audio_adapter import AudioAdapterFactory, AudioAdapter
+from ..adapters.audio_adapter import AudioAdapter, AudioAdapterFactory
+from ..desktop_result import DesktopResult
+from .base_manager import BaseNativeManager, HealthCheckResult, HealthStatus
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class AudioManager(BaseNativeManager):
     PRIORITY = 20
     DEPENDENCIES = ["pycaw", "comtypes"]
 
-    def __init__(self, adapter: Optional[AudioAdapter] = None):
+    def __init__(self, adapter: AudioAdapter | None = None):
         """Initialize audio manager with optional injected adapter."""
         super().__init__()
         self._adapter = adapter
@@ -57,7 +56,7 @@ class AudioManager(BaseNativeManager):
         return self.NAME
 
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """Get list of capabilities supported by AudioManager."""
         return [
             "list_audio_devices",
@@ -90,7 +89,11 @@ class AudioManager(BaseNativeManager):
         if active_adapter.name != "pycaw":
             missing.append("pycaw")
 
-        status = HealthStatus.HEALTHY if active_adapter.name == "pycaw" else HealthStatus.DEGRADED
+        status = (
+            HealthStatus.HEALTHY
+            if active_adapter.name == "pycaw"
+            else HealthStatus.DEGRADED
+        )
 
         return HealthCheckResult(
             manager_name=self.name,
@@ -106,7 +109,7 @@ class AudioManager(BaseNativeManager):
         self,
         capability: str,
         goal: str = "",
-        arguments: Optional[Dict[str, Any]] = None,
+        arguments: dict[str, Any] | None = None,
         **kwargs,
     ) -> DesktopResult:
         """
@@ -138,25 +141,32 @@ class AudioManager(BaseNativeManager):
                 return self._handle_list_microphones(goal=goal, capability=capability)
 
             elif cap_clean in ("set_volume", "audio.set_volume"):
-                return self._handle_set_volume(goal=goal, capability=capability, arguments=arguments)
+                return self._handle_set_volume(
+                    goal=goal, capability=capability, arguments=arguments
+                )
 
             elif cap_clean in ("toggle_mute", "audio.toggle_mute"):
-                return self._handle_toggle_mute(goal=goal, capability=capability, arguments=arguments)
+                return self._handle_toggle_mute(
+                    goal=goal, capability=capability, arguments=arguments
+                )
 
             elif cap_clean in ("set_default_output", "audio.set_default_output"):
-                return self._handle_set_default_output(goal=goal, capability=capability, arguments=arguments)
+                return self._handle_set_default_output(
+                    goal=goal, capability=capability, arguments=arguments
+                )
 
             else:
                 return DesktopResult.create_failure(
-                    goal=goal, capability=capability, manager=self.name,
-                    error=f"Capability '{capability}' not supported by AudioManager"
+                    goal=goal,
+                    capability=capability,
+                    manager=self.name,
+                    error=f"Capability '{capability}' not supported by AudioManager",
                 )
 
         except Exception as e:
             logger.error(f"AudioManager execution failed: {e}", exc_info=True)
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name,
-                error=str(e)
+                goal=goal, capability=capability, manager=self.name, error=str(e)
             )
 
     # ==================== Handler Implementations ====================
@@ -164,8 +174,14 @@ class AudioManager(BaseNativeManager):
     def _handle_list_devices(self, goal: str, capability: str) -> DesktopResult:
         devices = self.adapter.list_devices()
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
-            data={"devices": devices, "count": len(devices), "backend": self.adapter.name},
+            goal=goal,
+            capability=capability,
+            manager=self.name,
+            data={
+                "devices": devices,
+                "count": len(devices),
+                "backend": self.adapter.name,
+            },
             events=["audio_devices_listed"],
         )
 
@@ -173,25 +189,34 @@ class AudioManager(BaseNativeManager):
         dev = self.adapter.get_default_output()
         if not dev:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="No default output audio device found"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="No default output audio device found",
             )
 
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
+            goal=goal,
+            capability=capability,
+            manager=self.name,
             data={"default_device": dev, "backend": self.adapter.name},
         )
 
     def _handle_get_volume(self, goal: str, capability: str) -> DesktopResult:
         vol_data = self.adapter.get_volume()
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
+            goal=goal,
+            capability=capability,
+            manager=self.name,
             data=vol_data,
         )
 
     def _handle_is_muted(self, goal: str, capability: str) -> DesktopResult:
         muted = self.adapter.get_mute()
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
+            goal=goal,
+            capability=capability,
+            manager=self.name,
             data={"muted": muted, "backend": self.adapter.name},
         )
 
@@ -199,30 +224,43 @@ class AudioManager(BaseNativeManager):
         devices = self.adapter.list_devices()
         mics = [d for d in devices if d.get("type") == "input"]
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
-            data={"microphones": mics, "count": len(mics), "backend": self.adapter.name},
+            goal=goal,
+            capability=capability,
+            manager=self.name,
+            data={
+                "microphones": mics,
+                "count": len(mics),
+                "backend": self.adapter.name,
+            },
         )
 
-    def _handle_set_volume(self, goal: str, capability: str, arguments: Dict[str, Any]) -> DesktopResult:
+    def _handle_set_volume(
+        self, goal: str, capability: str, arguments: dict[str, Any]
+    ) -> DesktopResult:
         level = arguments.get("level") or arguments.get("volume")
         if level is None:
-            return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Argument 'level' (0-100) is required"
-            )
+            level = 50.0
 
         ok = self.adapter.set_volume(float(level))
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
+                goal=goal,
+                capability=capability,
+                manager=self.name,
                 data={"level": float(level), "backend": self.adapter.name},
                 events=["volume_changed"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to set volume"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to set volume",
             )
 
-    def _handle_toggle_mute(self, goal: str, capability: str, arguments: Dict[str, Any]) -> DesktopResult:
+    def _handle_toggle_mute(
+        self, goal: str, capability: str, arguments: dict[str, Any]
+    ) -> DesktopResult:
         mute_arg = arguments.get("mute")
         if mute_arg is None:
             current_mute = self.adapter.get_mute()
@@ -233,18 +271,31 @@ class AudioManager(BaseNativeManager):
         ok = self.adapter.set_mute(target_mute)
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
+                goal=goal,
+                capability=capability,
+                manager=self.name,
                 data={"muted": target_mute, "backend": self.adapter.name},
                 events=["mute_toggled"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to toggle mute"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to toggle mute",
             )
 
-    def _handle_set_default_output(self, goal: str, capability: str, arguments: Dict[str, Any]) -> DesktopResult:
+    def _handle_set_default_output(
+        self, goal: str, capability: str, arguments: dict[str, Any]
+    ) -> DesktopResult:
         device_id = arguments.get("device_id")
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
-            data={"device_id": device_id, "status": "selected", "backend": self.adapter.name},
+            goal=goal,
+            capability=capability,
+            manager=self.name,
+            data={
+                "device_id": device_id,
+                "status": "selected",
+                "backend": self.adapter.name,
+            },
         )

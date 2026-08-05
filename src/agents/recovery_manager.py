@@ -4,16 +4,14 @@ Recovery Manager
 Handles failure recovery strategies and retry logic.
 """
 
-
 import logging
-import time
 import random
-from typing import Optional, Callable, List, Dict, Any
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
-from .task import Task
 from .models import RetryPolicy
-
+from .task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +26,11 @@ class RecoveryManager:
 
     def __init__(
         self,
-        on_recover: Optional[Callable[['RecoveryManager', Task, str], None]] = None,
-        on_fail_permanently: Optional[Callable[['RecoveryManager', Task], None]] = None,
-        on_pause: Optional[Callable[['RecoveryManager', Task], None]] = None,
+        on_recover: Callable[["RecoveryManager", Task, str], None] | None = None,
+        on_fail_permanently: Callable[["RecoveryManager", Task], None] | None = None,
+        on_pause: Callable[["RecoveryManager", Task], None] | None = None,
         max_retries_per_task: int = 3,
-        retry_backoff: int = 2  # Exponential backoff multiplier
+        retry_backoff: int = 2,  # Exponential backoff multiplier
     ):
         """
         Initialize recovery manager.
@@ -55,11 +53,11 @@ class RecoveryManager:
         self.total_recovered = 0
         self.total_permanently_failed = 0
         self.total_paused = 0
-        self.recovery_actions: List[Dict[str, Any]] = []
+        self.recovery_actions: list[dict[str, Any]] = []
 
         logger.debug("Initialized recovery manager")
 
-    def handle_task_failure(self, task: Task) -> Optional[str]:
+    def handle_task_failure(self, task: Task) -> str | None:
         """
         Handle task failure and determine recovery action.
 
@@ -78,7 +76,7 @@ class RecoveryManager:
         if task.should_retry:
             recovery_action = self._determine_recovery_action(task)
         else:
-            recovery_action = 'continue'
+            recovery_action = "continue"
             self.total_permanently_failed += 1
             logger.error(f"Task {task.task_id[:8]} failed permanently")
 
@@ -103,30 +101,30 @@ class RecoveryManager:
 
         # Check if out of retries
         if retry_count >= task.max_retries:
-            return 'continue'
+            return "continue"
 
         # Check retry policy
         if task.retry_policy == RetryPolicy.NO_RETRY:
-            return 'continue'
+            return "continue"
 
         # For network errors, retry more aggressively
-        if 'network' in task.error.lower() or 'connection' in task.error.lower():
-            return 'retry'
+        if "network" in task.error.lower() or "connection" in task.error.lower():
+            return "retry"
 
         # For temporary errors, retry
-        if 'timeout' in task.error.lower() or 'temporary' in task.error.lower():
-            return 'retry'
+        if "timeout" in task.error.lower() or "temporary" in task.error.lower():
+            return "retry"
 
         # For file errors, pause and notify
-        if 'file' in task.error.lower() or 'permission' in task.error.lower():
-            return 'pause'
+        if "file" in task.error.lower() or "permission" in task.error.lower():
+            return "pause"
 
         # For database errors, pause and notify
-        if 'database' in task.error.lower() or 'sql' in task.error.lower():
-            return 'pause'
+        if "database" in task.error.lower() or "sql" in task.error.lower():
+            return "pause"
 
         # Default: retry with backoff
-        return 'retry'
+        return "retry"
 
     def _execute_recovery(self, task: Task, action: str):
         """
@@ -137,35 +135,35 @@ class RecoveryManager:
             action: Recovery action to execute
         """
         recovery_log = {
-            'task_id': task.task_id,
-            'action': action,
-            'retry_count': task.retry_count,
-            'max_retries': task.max_retries,
-            'error': task.error,
-            'recovered_at': datetime.now().isoformat(),
-            'strategy': self._get_recovery_strategy(task)
+            "task_id": task.task_id,
+            "action": action,
+            "retry_count": task.retry_count,
+            "max_retries": task.max_retries,
+            "error": task.error,
+            "recovered_at": datetime.now().isoformat(),
+            "strategy": self._get_recovery_strategy(task),
         }
 
-        if action == 'retry':
+        if action == "retry":
             self._execute_retry(task)
-            recovery_log['strategy'] = 'retry_with_backoff'
+            recovery_log["strategy"] = "retry_with_backoff"
             self.total_recovered += 1
             logger.info(f"Task {task.task_id[:8]} will be retried")
 
-        elif action == 'pause':
+        elif action == "pause":
             self._execute_pause(task)
-            recovery_log['strategy'] = 'pause_for_user_action'
+            recovery_log["strategy"] = "pause_for_user_action"
             self.total_paused += 1
             logger.info(f"Task {task.task_id[:8]} paused for user action")
 
-        elif action == 'notify':
+        elif action == "notify":
             self._execute_notify(task)
-            recovery_log['strategy'] = 'notify_and_continue'
+            recovery_log["strategy"] = "notify_and_continue"
             logger.info(f"Task {task.task_id[:8]} notified and will continue")
 
-        elif action == 'continue':
+        elif action == "continue":
             self._execute_continue(task)
-            recovery_log['strategy'] = 'continue_without_recovery'
+            recovery_log["strategy"] = "continue_without_recovery"
             logger.info(f"Task {task.task_id[:8]} will continue without recovery")
 
         self.recovery_actions.append(recovery_log)
@@ -193,7 +191,7 @@ class RecoveryManager:
         )
 
         # Reset task status and allow retry
-        task.status = 'QUEUED'
+        task.status = "QUEUED"
 
     def _calculate_retry_delay(self, task: Task) -> int:
         """
@@ -206,10 +204,7 @@ class RecoveryManager:
             Delay in seconds
         """
         # Exponential backoff: base * (backoff ^ retry_count)
-        delay = min(
-            300,  # Max 5 minutes
-            2 ** task.retry_count
-        )
+        delay = min(300, 2**task.retry_count)  # Max 5 minutes
 
         # Add jitter to prevent thundering herd
         jitter = random.uniform(0, 1) * delay * 0.1
@@ -267,18 +262,18 @@ class RecoveryManager:
             return f"no_retry_{task.max_retries}"
         elif task.retry_policy == RetryPolicy.NO_RETRY:
             return "no_retry_policy"
-        elif 'network' in task.error.lower():
+        elif "network" in task.error.lower():
             return "network_retry"
-        elif 'timeout' in task.error.lower():
+        elif "timeout" in task.error.lower():
             return "timeout_retry"
-        elif 'file' in task.error.lower():
+        elif "file" in task.error.lower():
             return "file_pause"
-        elif 'database' in task.error.lower():
+        elif "database" in task.error.lower():
             return "database_pause"
         else:
             return "default_retry"
 
-    def get_recovered_tasks(self) -> List[Task]:
+    def get_recovered_tasks(self) -> list[Task]:
         """
         Get all tasks that were recovered.
 
@@ -288,14 +283,14 @@ class RecoveryManager:
         recovered = []
 
         for action in self.recovery_actions:
-            if action['action'] == 'retry':
-                task_id = action['task_id']
+            if action["action"] == "retry":
+                task_id = action["task_id"]
                 # In a real implementation, we'd look up the task from the graph
                 # This is a placeholder
 
         return recovered
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get recovery manager statistics.
 
@@ -303,36 +298,37 @@ class RecoveryManager:
             Statistics dictionary
         """
         return {
-            'total_failures': self.total_failures,
-            'total_recovered': self.total_recovered,
-            'total_permanently_failed': self.total_permanently_failed,
-            'total_paused': self.total_paused,
-            'success_rate': (
+            "total_failures": self.total_failures,
+            "total_recovered": self.total_recovered,
+            "total_permanently_failed": self.total_permanently_failed,
+            "total_paused": self.total_paused,
+            "success_rate": (
                 (self.total_recovered / self.total_failures * 100)
                 if self.total_failures > 0
                 else 0.0
             ),
-            'recovery_actions': self.recovery_actions[-10:]  # Last 10 actions
+            "recovery_actions": self.recovery_actions[-10:],  # Last 10 actions
         }
 
-    def get_failure_summary(self) -> Dict[str, Any]:
+    def get_failure_summary(self) -> dict[str, Any]:
         """
         Get summary of failures by recovery type.
 
         Returns:
             Summary dictionary
         """
-        summary = {
-            'by_action': {},
-            'by_strategy': {}
-        }
+        summary = {"by_action": {}, "by_strategy": {}}
 
         for action in self.recovery_actions:
-            action_type = action['action']
-            strategy = action['strategy']
+            action_type = action["action"]
+            strategy = action["strategy"]
 
-            summary['by_action'][action_type] = summary['by_action'].get(action_type, 0) + 1
-            summary['by_strategy'][strategy] = summary['by_strategy'].get(strategy, 0) + 1
+            summary["by_action"][action_type] = (
+                summary["by_action"].get(action_type, 0) + 1
+            )
+            summary["by_strategy"][strategy] = (
+                summary["by_strategy"].get(strategy, 0) + 1
+            )
 
         return summary
 

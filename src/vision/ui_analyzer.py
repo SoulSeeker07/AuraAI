@@ -4,13 +4,13 @@ UI Analyzer
 Specialized analysis for UI elements and patterns.
 """
 
-
 import logging
-from typing import List, Dict, Any
+from typing import Any
+
 import cv2
 import numpy as np
-from .models import ImageType
 
+from .models import ImageType
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,7 @@ class UIAnalyzer:
         self.input_field_min_size = 100
 
     def analyze_ui(
-        self,
-        image: np.ndarray,
-        image_type: ImageType = ImageType.SCREENSHOT
+        self, image: np.ndarray, image_type: ImageType = ImageType.SCREENSHOT
     ) -> dict:
         """
         Perform UI analysis.
@@ -81,21 +79,27 @@ class UIAnalyzer:
 
         # Count UI elements
         result = {
-            'buttons': buttons,
-            'menus': menus,
-            'dialogs': dialogs,
-            'forms': forms,
-            'notifications': notifications,
-            'tooltips': tooltips,
-            'total_ui_elements': len(buttons) + len(menus) + len(dialogs) + len(forms) + len(notifications),
-            'is_button_heavy': len(buttons) > len(menus) + len(dialogs),
-            'is_menu_heavy': len(menus) > len(buttons) + len(dialogs),
-            'is_form_heavy': len(forms) > len(buttons) + len(menus)
+            "buttons": buttons,
+            "menus": menus,
+            "dialogs": dialogs,
+            "forms": forms,
+            "notifications": notifications,
+            "tooltips": tooltips,
+            "total_ui_elements": len(buttons)
+            + len(menus)
+            + len(dialogs)
+            + len(forms)
+            + len(notifications),
+            "is_button_heavy": len(buttons) > len(menus) + len(dialogs),
+            "is_menu_heavy": len(menus) > len(buttons) + len(dialogs),
+            "is_form_heavy": len(forms) > len(buttons) + len(menus),
         }
 
-        logger.info(f"UI analysis complete: "
-                   f"{len(buttons)} buttons, {len(menus)} menus, "
-                   f"{len(dialogs)} dialogs, {len(forms)} forms")
+        logger.info(
+            f"UI analysis complete: "
+            f"{len(buttons)} buttons, {len(menus)} menus, "
+            f"{len(dialogs)} dialogs, {len(forms)} forms"
+        )
 
         return result
 
@@ -119,17 +123,23 @@ class UIAnalyzer:
         buttons = self._detect_buttons(image, gray)
 
         result = {
-            'inputs': inputs,
-            'checkboxes': checkboxes,
-            'radio_buttons': radio_buttons,
-            'dropdowns': dropdowns,
-            'buttons': buttons,
-            'total_form_elements': len(inputs) + len(checkboxes) + len(radio_buttons) + len(dropdowns) + len(buttons)
+            "inputs": inputs,
+            "checkboxes": checkboxes,
+            "radio_buttons": radio_buttons,
+            "dropdowns": dropdowns,
+            "buttons": buttons,
+            "total_form_elements": len(inputs)
+            + len(checkboxes)
+            + len(radio_buttons)
+            + len(dropdowns)
+            + len(buttons),
         }
 
-        logger.info(f"Document UI analysis complete: "
-                   f"{len(inputs)} inputs, {len(checkboxes)} checkboxes, "
-                   f"{len(radio_buttons)} radio buttons, {len(dropdowns)} dropdowns")
+        logger.info(
+            f"Document UI analysis complete: "
+            f"{len(inputs)} inputs, {len(checkboxes)} checkboxes, "
+            f"{len(radio_buttons)} radio buttons, {len(dropdowns)} dropdowns"
+        )
 
         return result
 
@@ -149,15 +159,19 @@ class UIAnalyzer:
         interactive_elements = self._detect_interactive_elements(image, gray)
 
         result = {
-            'interactive_elements': interactive_elements,
-            'total_elements': len(interactive_elements)
+            "interactive_elements": interactive_elements,
+            "total_elements": len(interactive_elements),
         }
 
-        logger.info(f"Generic UI analysis complete: {len(interactive_elements)} elements")
+        logger.info(
+            f"Generic UI analysis complete: {len(interactive_elements)} elements"
+        )
 
         return result
 
-    def _detect_buttons(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_buttons(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect buttons in image.
 
@@ -172,7 +186,9 @@ class UIAnalyzer:
 
         # Detect button-like shapes
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -188,17 +204,21 @@ class UIAnalyzer:
                 continue
 
             # Check if it's likely a button (lighter, has borders)
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_button_like(roi, w, h):
-                buttons.append({
-                    'type': 'button',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                buttons.append(
+                    {
+                        "type": "button",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return buttons
 
-    def _detect_menus(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_menus(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect menus in image.
 
@@ -213,7 +233,9 @@ class UIAnalyzer:
 
         # Detect menu-like structures
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -229,17 +251,21 @@ class UIAnalyzer:
                 continue
 
             # Check if menu-like
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_menu_like(roi):
-                menus.append({
-                    'type': 'menu',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                menus.append(
+                    {
+                        "type": "menu",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return menus
 
-    def _detect_dialogs(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_dialogs(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect dialog boxes in image.
 
@@ -253,7 +279,9 @@ class UIAnalyzer:
         dialogs = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -267,17 +295,21 @@ class UIAnalyzer:
             if aspect_ratio < 0.5 or aspect_ratio > 2:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_dialog_like(roi, w, h):
-                dialogs.append({
-                    'type': 'dialog',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                dialogs.append(
+                    {
+                        "type": "dialog",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return dialogs
 
-    def _detect_forms(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_forms(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect form elements in image.
 
@@ -291,7 +323,9 @@ class UIAnalyzer:
         forms = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -306,17 +340,21 @@ class UIAnalyzer:
             if aspect_ratio < 0.2 or aspect_ratio > 5:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_form_like(roi, w, h):
-                forms.append({
-                    'type': 'form',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                forms.append(
+                    {
+                        "type": "form",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return forms
 
-    def _detect_notifications(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_notifications(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect notifications/toasts in image.
 
@@ -331,7 +369,9 @@ class UIAnalyzer:
 
         # Notifications are typically small, near edges
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -345,17 +385,21 @@ class UIAnalyzer:
             if aspect_ratio < 0.5 or aspect_ratio > 2:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_notification_like(roi, w, h):
-                notifications.append({
-                    'type': 'notification',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                notifications.append(
+                    {
+                        "type": "notification",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return notifications
 
-    def _detect_tooltips(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_tooltips(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect tooltips in image.
 
@@ -370,7 +414,9 @@ class UIAnalyzer:
 
         # Tooltips are typically very small
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         min_tooltip_size = 500
 
@@ -385,22 +431,28 @@ class UIAnalyzer:
             if aspect_ratio < 0.3 or aspect_ratio > 3:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_tooltip_like(roi, w, h):
-                tooltips.append({
-                    'type': 'tooltip',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                tooltips.append(
+                    {
+                        "type": "tooltip",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return tooltips
 
-    def _detect_form_inputs(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_form_inputs(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """Detect input fields in document."""
         inputs = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -414,21 +466,27 @@ class UIAnalyzer:
             if aspect_ratio < 0.2 or aspect_ratio > 5:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_input_like(roi):
-                inputs.append({
-                    'type': 'input_field',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h}
-                })
+                inputs.append(
+                    {
+                        "type": "input_field",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                    }
+                )
 
         return inputs
 
-    def _detect_checkboxes(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_checkboxes(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """Detect checkboxes in document."""
         checkboxes = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         min_size = 200
 
@@ -443,21 +501,27 @@ class UIAnalyzer:
             if aspect_ratio < 0.5 or aspect_ratio > 2:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_checkbox_like(roi):
-                checkboxes.append({
-                    'type': 'checkbox',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h}
-                })
+                checkboxes.append(
+                    {
+                        "type": "checkbox",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                    }
+                )
 
         return checkboxes
 
-    def _detect_radio_buttons(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_radio_buttons(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """Detect radio buttons in document."""
         radio_buttons = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         min_size = 200
 
@@ -472,21 +536,27 @@ class UIAnalyzer:
             if aspect_ratio < 0.5 or aspect_ratio > 2:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_radio_button_like(roi):
-                radio_buttons.append({
-                    'type': 'radio_button',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h}
-                })
+                radio_buttons.append(
+                    {
+                        "type": "radio_button",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                    }
+                )
 
         return radio_buttons
 
-    def _detect_dropdowns(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_dropdowns(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """Detect dropdown menus in document."""
         dropdowns = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         min_size = 500
 
@@ -501,21 +571,27 @@ class UIAnalyzer:
             if aspect_ratio < 0.2 or aspect_ratio > 3:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_dropdown_like(roi):
-                dropdowns.append({
-                    'type': 'dropdown',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h}
-                })
+                dropdowns.append(
+                    {
+                        "type": "dropdown",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                    }
+                )
 
         return dropdowns
 
-    def _detect_interactive_elements(self, image: np.ndarray, gray: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_interactive_elements(
+        self, image: np.ndarray, gray: np.ndarray
+    ) -> list[dict[str, Any]]:
         """Detect generic interactive elements."""
         interactive = []
 
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
@@ -528,13 +604,15 @@ class UIAnalyzer:
             if aspect_ratio < 0.2 or aspect_ratio > 5:
                 continue
 
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._is_interactive_like(roi, w, h):
-                interactive.append({
-                    'type': 'interactive_element',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                interactive.append(
+                    {
+                        "type": "interactive_element",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return interactive
 

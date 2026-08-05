@@ -11,16 +11,18 @@ The Skill System provides:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Dict, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
-from .task_model import Task, TaskInput, TaskOutput
+from .task_model import Task, TaskOutput
 
 
 class SkillCategory(Enum):
     """Categories for skills."""
+
     PRODUCTIVITY = "productivity"
     LEARNING = "learning"
     DEVELOPMENT = "development"
@@ -33,6 +35,7 @@ class SkillCategory(Enum):
 @dataclass
 class SkillStep:
     """A single step in a skill."""
+
     agent_type: str
     task_type: str
     input_template: dict[str, Any]
@@ -47,36 +50,37 @@ class Skill:
     Skills are pre-configured chains of tasks that can be executed
     with minimal user input.
     """
+
     skill_id: str
     name: str
     description: str
     category: SkillCategory
-    steps: List[SkillStep] = field(default_factory=list)
+    steps: list[SkillStep] = field(default_factory=list)
     input_schema: dict[str, Any] = field(default_factory=dict)
     output_schema: dict[str, Any] = field(default_factory=dict)
     is_public: bool = True
     created_at: datetime = field(default_factory=datetime.now)
     usage_count: int = 0
     average_rating: float = 0.0
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
     def add_step(
         self,
         agent_type: str,
         task_type: str,
         input_template: dict[str, Any],
-        description: str = ""
+        description: str = "",
     ):
         """Add a step to the skill."""
         step = SkillStep(
             agent_type=agent_type,
             task_type=task_type,
             input_template=input_template,
-            description=description
+            description=description,
         )
         self.steps.append(step)
 
-    def to_task_chain(self, input_params: dict[str, Any]) -> List[Task]:
+    def to_task_chain(self, input_params: dict[str, Any]) -> list[Task]:
         """
         Convert skill steps to a task chain.
 
@@ -98,7 +102,7 @@ class Skill:
                 title=step.name or f"Skill step {i+1}",
                 input=task_input,
                 priority="MEDIUM",
-                description=f"Skill step {i+1}: {step.description}"
+                description=f"Skill step {i+1}: {step.description}",
             )
 
             tasks.append(task)
@@ -106,9 +110,7 @@ class Skill:
         return tasks
 
     def _fill_template(
-        self,
-        template: dict[str, Any],
-        params: dict[str, Any]
+        self, template: dict[str, Any], params: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Fill template with parameter values.
@@ -146,9 +148,9 @@ class SkillRegistry:
 
     def __init__(self):
         """Initialize the skill registry."""
-        self._skills: Dict[str, Skill] = {}
-        self._skills_by_category: Dict[SkillCategory, List[Skill]] = {}
-        self._callbacks: List[Callable] = []
+        self._skills: dict[str, Skill] = {}
+        self._skills_by_category: dict[SkillCategory, list[Skill]] = {}
+        self._callbacks: list[Callable] = []
 
     def register_callback(self, callback: Callable):
         """Register a callback for skill events."""
@@ -184,11 +186,14 @@ class SkillRegistry:
             # Store skill
             self._skills[skill.skill_id] = skill
 
-            self._notify_callback("register", {
-                "skill_id": skill.skill_id,
-                "name": skill.name,
-                "category": skill.category.value
-            })
+            self._notify_callback(
+                "register",
+                {
+                    "skill_id": skill.skill_id,
+                    "name": skill.name,
+                    "category": skill.category.value,
+                },
+            )
 
             return True
 
@@ -226,15 +231,13 @@ class SkillRegistry:
         except Exception:
             return False
 
-    def get_skill(self, skill_id: str) -> Optional[Skill]:
+    def get_skill(self, skill_id: str) -> Skill | None:
         """Get skill by ID."""
         return self._skills.get(skill_id)
 
     def list_skills(
-        self,
-        category: Optional[SkillCategory] = None,
-        is_public_only: bool = False
-    ) -> List[Skill]:
+        self, category: SkillCategory | None = None, is_public_only: bool = False
+    ) -> list[Skill]:
         """
         List all skills.
 
@@ -255,11 +258,11 @@ class SkillRegistry:
 
         return sorted(skills, key=lambda s: s.usage_count, reverse=True)
 
-    def get_skills_by_category(self, category: SkillCategory) -> List[Skill]:
+    def get_skills_by_category(self, category: SkillCategory) -> list[Skill]:
         """Get skills by category."""
         return self._skills_by_category.get(category, []).copy()
 
-    def search_skills(self, query: str) -> List[Skill]:
+    def search_skills(self, query: str) -> list[Skill]:
         """
         Search skills by name or description.
 
@@ -273,21 +276,17 @@ class SkillRegistry:
         matching_skills = []
 
         for skill in self._skills.values():
-            if query_lower in skill.name.lower() or query_lower in skill.description.lower():
+            if (
+                query_lower in skill.name.lower()
+                or query_lower in skill.description.lower()
+            ):
                 matching_skills.append(skill)
 
-        return sorted(
-            matching_skills,
-            key=lambda s: s.usage_count,
-            reverse=True
-        )
+        return sorted(matching_skills, key=lambda s: s.usage_count, reverse=True)
 
     def execute_skill(
-        self,
-        skill_id: str,
-        input_params: dict[str, Any],
-        task_manager
-    ) -> List[TaskOutput]:
+        self, skill_id: str, input_params: dict[str, Any], task_manager
+    ) -> list[TaskOutput]:
         """
         Execute a skill.
 
@@ -302,11 +301,13 @@ class SkillRegistry:
         skill = self._skills.get(skill_id)
 
         if not skill:
-            return [TaskOutput(
-                success=False,
-                message=f"Skill not found: {skill_id}",
-                error=f"No skill registered with ID '{skill_id}'"
-            )]
+            return [
+                TaskOutput(
+                    success=False,
+                    message=f"Skill not found: {skill_id}",
+                    error=f"No skill registered with ID '{skill_id}'",
+                )
+            ]
 
         try:
             # Convert skill to task chain
@@ -328,25 +329,27 @@ class SkillRegistry:
             successes = sum(1 for o in outputs if o.success)
             if successes > 0:
                 skill.average_rating = (
-                    (skill.average_rating * (skill.usage_count - 1) + successes) / skill.usage_count
-                )
+                    skill.average_rating * (skill.usage_count - 1) + successes
+                ) / skill.usage_count
 
             return outputs
 
         except Exception as e:
-            return [TaskOutput(
-                success=False,
-                message=f"Skill execution failed: {skill.name}",
-                error=str(e)
-            )]
+            return [
+                TaskOutput(
+                    success=False,
+                    message=f"Skill execution failed: {skill.name}",
+                    error=str(e),
+                )
+            ]
 
     def create_skill_from_template(
         self,
         skill_id: str,
         name: str,
         category: SkillCategory,
-        steps: List[dict[str, Any]],
-        description: str = ""
+        steps: list[dict[str, Any]],
+        description: str = "",
     ) -> Skill:
         """
         Create a skill from a template.
@@ -362,10 +365,7 @@ class SkillRegistry:
             Created skill
         """
         skill = Skill(
-            skill_id=skill_id,
-            name=name,
-            description=description,
-            category=category
+            skill_id=skill_id, name=name, description=description, category=category
         )
 
         for step in steps:
@@ -373,13 +373,13 @@ class SkillRegistry:
                 agent_type=step.get("agent_type", "unknown"),
                 task_type=step.get("task_type", "unknown"),
                 input_template=step.get("input_template", {}),
-                description=step.get("description", "")
+                description=step.get("description", ""),
             )
 
         self.register_skill(skill)
         return skill
 
-    def get_skill_templates(self) -> List[dict[str, Any]]:
+    def get_skill_templates(self) -> list[dict[str, Any]]:
         """Get available skill templates."""
         return [
             {
@@ -388,9 +388,17 @@ class SkillRegistry:
                 "category": "RESEARCH",
                 "description": "Summarize a YouTube video using web research",
                 "steps": [
-                    {"agent_type": "research", "task_type": "web_research", "input_template": {"query": "${video_url}"}},
-                    {"agent_type": "research", "task_type": "deep_research", "input_template": {"topic": "${video_title}"}}
-                ]
+                    {
+                        "agent_type": "research",
+                        "task_type": "web_research",
+                        "input_template": {"query": "${video_url}"},
+                    },
+                    {
+                        "agent_type": "research",
+                        "task_type": "deep_research",
+                        "input_template": {"topic": "${video_title}"},
+                    },
+                ],
             },
             {
                 "id": "weekly_review",
@@ -398,10 +406,18 @@ class SkillRegistry:
                 "category": "PRODUCTIVITY",
                 "description": "Review completed work and plan next steps",
                 "steps": [
-                    {"agent_type": "learning", "task_type": "workflow_list", "input_template": {}},
-                    {"agent_type": "coding", "task_type": "code_analysis", "input_template": {"project_path": "${project_path}"}}
-                ]
-            }
+                    {
+                        "agent_type": "learning",
+                        "task_type": "workflow_list",
+                        "input_template": {},
+                    },
+                    {
+                        "agent_type": "coding",
+                        "task_type": "code_analysis",
+                        "input_template": {"project_path": "${project_path}"},
+                    },
+                ],
+            },
         ]
 
 

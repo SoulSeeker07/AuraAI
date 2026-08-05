@@ -7,13 +7,12 @@ Supports:
 - Data analysis ready
 """
 
-import logging
 import csv
-from typing import List, Dict, Any, Optional
+import logging
 from pathlib import Path
-import io
+from typing import Any
 
-from ..models import DocumentChunk, DocumentMetadata, ChunkType, SourceType
+from ..models import ChunkType, DocumentChunk, DocumentMetadata, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +21,24 @@ class CSVParser:
     """Parse CSV files into row-based chunks."""
 
     def __init__(self):
-        self.supported_extensions = ['.csv']
+        self.supported_extensions = [".csv"]
 
     def supports(self, file_path: Path) -> bool:
         """Check if file type is supported."""
         return file_path.suffix.lower() in self.supported_extensions
 
-    def parse(self, file_path: Path) -> List[DocumentChunk]:
+    def parse(self, file_path: Path) -> list[DocumentChunk]:
         """Parse CSV file into row chunks."""
         chunks = []
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 reader = csv.DictReader(f)
 
                 if not reader.fieldnames:
                     # No header, create one
-                    reader.fieldnames = [f"column_{i}" for i in range(10)]  # Limit to 10 columns
+                    reader.fieldnames = [
+                        f"column_{i}" for i in range(10)
+                    ]  # Limit to 10 columns
                     reader.line_num = 1
 
                 header = reader.fieldnames
@@ -46,7 +47,7 @@ class CSVParser:
                     # Create row chunk
                     row_content = {}
                     for col in header:
-                        row_content[col] = row.get(col, '')
+                        row_content[col] = row.get(col, "")
 
                     chunk = DocumentChunk(
                         id=f"{file_path.stem}_row_{row_num}",
@@ -64,38 +65,40 @@ class CSVParser:
                             row_number=row_num,
                             column_names=header,
                             data=row,
-                            data_size=len(header)
+                            data_size=len(header),
                         ),
-                        embeddings=None
+                        embeddings=None,
                     )
                     chunks.append(chunk)
 
         except Exception as e:
             logger.error(f"Error parsing CSV file {file_path}: {e}")
-            chunks.append(DocumentChunk(
-                id=f"{file_path.stem}_error",
-                content=f"Error parsing CSV: {e}",
-                chunk_type=ChunkType.PARAGRAPH,
-                source_type=SourceType.CSV,
-                source_file=str(file_path),
-                metadata=DocumentMetadata(
-                    source=str(file_path),
-                    file_type="csv",
-                    chunk_type="error",
-                    chunk_id="error",
-                    line_start=1,
-                    line_end=1,
-                    error_message=str(e)
-                ),
-                embeddings=None
-            ))
+            chunks.append(
+                DocumentChunk(
+                    id=f"{file_path.stem}_error",
+                    content=f"Error parsing CSV: {e}",
+                    chunk_type=ChunkType.PARAGRAPH,
+                    source_type=SourceType.CSV,
+                    source_file=str(file_path),
+                    metadata=DocumentMetadata(
+                        source=str(file_path),
+                        file_type="csv",
+                        chunk_type="error",
+                        chunk_id="error",
+                        line_start=1,
+                        line_end=1,
+                        error_message=str(e),
+                    ),
+                    embeddings=None,
+                )
+            )
 
         return chunks
 
     def extract_metadata(self, file_path: Path) -> DocumentMetadata:
         """Extract metadata from CSV file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 reader = csv.reader(f)
 
                 header = next(reader, None)
@@ -114,7 +117,7 @@ class CSVParser:
                 column_count=len(header),
                 row_count=len(rows),
                 data_size=len(header) * len(rows),
-                column_names=header
+                column_names=header,
             )
         except Exception as e:
             logger.error(f"Error extracting metadata from CSV file {file_path}: {e}")
@@ -124,13 +127,15 @@ class CSVParser:
                 chunk_type="file",
                 chunk_id=file_path.stem,
                 line_start=1,
-                line_end=0
+                line_end=0,
             )
 
-    def _format_row_as_text(self, row_num: int, header: List[str], row: Dict[str, Any]) -> str:
+    def _format_row_as_text(
+        self, row_num: int, header: list[str], row: dict[str, Any]
+    ) -> str:
         """Format row as text string."""
         lines = [f"Row {row_num}:"]
         for col in header:
-            value = row.get(col, '')
+            value = row.get(col, "")
             lines.append(f"  {col}: {value}")
-        return '\n'.join(lines)
+        return "\n".join(lines)

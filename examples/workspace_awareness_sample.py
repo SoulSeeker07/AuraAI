@@ -12,20 +12,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.workspace import (
-    WorkspaceManager,
-    WorkspaceState,
-    ActiveWindow,
-    CurrentProject,
-    GitRepository,
-    OpenFile,
-    TerminalContext,
-    ClipboardContext,
-    RunningApplication,
-    PlatformType,
-    ProjectType,
-    TerminalType
-)
+from src.workspace import PlatformType, WorkspaceManager, WorkspaceState
 
 
 async def demo_basic_workspace_state():
@@ -53,12 +40,12 @@ async def demo_workspace_manager():
     # Create workspace manager
     manager = WorkspaceManager(
         enabled_features={
-            'active_window': False,
-            'project_detection': False,
-            'git': False,
-            'clipboard': False,
-            'running_apps': False,
-            'terminal': False,
+            "active_window": False,
+            "project_detection": False,
+            "git": False,
+            "clipboard": False,
+            "running_apps": False,
+            "terminal": False,
         }
     )
 
@@ -269,7 +256,7 @@ async def demo_git_context():
 
         # Get recent commits
         commits = await git.get_recent_commits(count=3)
-        print(f"\nRecent commits:")
+        print("\nRecent commits:")
         for commit in commits:
             print(f"  {commit['hash'][:8]}: {commit['message'][:50]}...")
 
@@ -287,7 +274,9 @@ async def demo_context_summary():
     manager = WorkspaceManager()
 
     # Add some test data
-    await manager.add_open_file("src/workspace/models.py", modified=True, line_number=10)
+    await manager.add_open_file(
+        "src/workspace/models.py", modified=True, line_number=10
+    )
     await manager.add_open_file("src/workspace/workspace_manager.py", modified=False)
     await manager.add_open_file("README.md", modified=True)
 
@@ -327,6 +316,7 @@ async def main():
     except Exception as e:
         print(f"\nError running demo: {e}")
         import traceback
+
         traceback.print_exc()
 
 

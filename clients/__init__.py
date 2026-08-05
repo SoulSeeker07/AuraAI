@@ -11,4 +11,4 @@ Provides different client implementations:
 from .cli_client import CLIClient
 from .gui_client import GUIClient
 
-__all__ = ['CLIClient', 'GUIClient']
+__all__ = ["CLIClient", "GUIClient"]

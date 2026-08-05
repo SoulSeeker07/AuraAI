@@ -1,13 +1,12 @@
 import asyncio
+import json
 import threading
 import time
-import json
 
 import pytest
 import websockets
 
 from src.aura.client.connection_manager import ConnectionManager
-
 
 PORT = 8766
 PATH = "/ws"
@@ -58,7 +57,7 @@ def test_connection_and_echo(ws_server):
         connected_ev.set()
 
     def on_msg(m):
-        received['msg'] = m
+        received["msg"] = m
         msg_ev.set()
 
     def on_err(e):
@@ -80,7 +79,7 @@ def test_connection_and_echo(ws_server):
     ok2 = msg_ev.wait(timeout=5)
     assert ok2, "Did not receive echoed message"
 
-    assert 'msg' in received
-    assert received['msg'].get("type") == "echo"
+    assert "msg" in received
+    assert received["msg"].get("type") == "echo"
 
     mgr.stop()

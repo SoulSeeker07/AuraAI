@@ -29,31 +29,38 @@ class WebSearchClient:
 
     def search(self, query: str, limit: int = 5) -> list[WebSearchResult]:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"[WebSearch] Search called for: '{query}' with limit={limit}")
-        logger.info(f"[WebSearch] Google API configured: {bool(self.google_api_key and self.google_search_engine_id)}")
+        logger.info(
+            f"[WebSearch] Google API configured: {bool(self.google_api_key and self.google_search_engine_id)}"
+        )
 
         if self.google_api_key and self.google_search_engine_id:
-            logger.info(f"[WebSearch] Attempting Google Custom Search")
+            logger.info("[WebSearch] Attempting Google Custom Search")
             google_results = self._search_google_custom(query, limit)
             if google_results:
-                logger.info(f"[WebSearch] Google search returned {len(google_results)} results")
+                logger.info(
+                    f"[WebSearch] Google search returned {len(google_results)} results"
+                )
                 return google_results
             else:
-                logger.info(f"[WebSearch] Google search returned no results")
+                logger.info("[WebSearch] Google search returned no results")
 
         try:
-            logger.info(f"[WebSearch] Attempting Google News Search")
+            logger.info("[WebSearch] Attempting Google News Search")
             news_results = self._search_google_news(query, limit)
             if news_results:
-                logger.info(f"[WebSearch] Google news search returned {len(news_results)} results")
+                logger.info(
+                    f"[WebSearch] Google news search returned {len(news_results)} results"
+                )
                 return news_results
             else:
-                logger.info(f"[WebSearch] Google news search returned no results")
+                logger.info("[WebSearch] Google news search returned no results")
         except Exception as exc:
             logger.warning(f"[WebSearch] Google news search failed: {exc}")
 
-        logger.info(f"[WebSearch] Attempting DuckDuckGo search")
+        logger.info("[WebSearch] Attempting DuckDuckGo search")
         urls = (
             f"https://html.duckduckgo.com/html/?q={quote_plus(query)}",
             f"https://duckduckgo.com/html/?q={quote_plus(query)}",
@@ -72,10 +79,12 @@ class WebSearchClient:
                     body = response.read().decode("utf-8", errors="replace")
                 results = self._parse_results(body, limit)
                 if results:
-                    logger.info(f"[WebSearch] DuckDuckGo search returned {len(results)} results")
+                    logger.info(
+                        f"[WebSearch] DuckDuckGo search returned {len(results)} results"
+                    )
                     return results
                 else:
-                    logger.info(f"[WebSearch] DuckDuckGo search returned no results")
+                    logger.info("[WebSearch] DuckDuckGo search returned no results")
             except Exception as exc:
                 last_error = exc
                 logger.warning(f"[WebSearch] DuckDuckGo search failed: {exc}")
@@ -83,7 +92,7 @@ class WebSearchClient:
         if last_error is not None:
             logger.error(f"[WebSearch] All search methods failed: {last_error}")
             raise last_error
-        logger.info(f"[WebSearch] No results returned from any search method")
+        logger.info("[WebSearch] No results returned from any search method")
         return []
 
     def _search_google_custom(self, query: str, limit: int) -> list[WebSearchResult]:
@@ -146,9 +155,16 @@ class WebSearchClient:
 
     def _parse_results(self, body: str, limit: int) -> list[WebSearchResult]:
         results: list[WebSearchResult] = []
-        block_pattern = re.compile(r'<div class="result(?: results_links.*?)?".*?</div>\s*</div>', re.DOTALL)
-        title_pattern = re.compile(r'<a[^>]*class="result__a"[^>]*href="(?P<url>.*?)"[^>]*>(?P<title>.*?)</a>', re.DOTALL)
-        snippet_pattern = re.compile(r'<a[^>]*class="result__snippet"[^>]*>(?P<snippet>.*?)</a>', re.DOTALL)
+        block_pattern = re.compile(
+            r'<div class="result(?: results_links.*?)?".*?</div>\s*</div>', re.DOTALL
+        )
+        title_pattern = re.compile(
+            r'<a[^>]*class="result__a"[^>]*href="(?P<url>.*?)"[^>]*>(?P<title>.*?)</a>',
+            re.DOTALL,
+        )
+        snippet_pattern = re.compile(
+            r'<a[^>]*class="result__snippet"[^>]*>(?P<snippet>.*?)</a>', re.DOTALL
+        )
 
         for block in block_pattern.findall(body):
             title_match = title_pattern.search(block)
@@ -158,7 +174,11 @@ class WebSearchClient:
             snippet_match = snippet_pattern.search(block)
             title = self._clean_html(title_match.group("title"))
             url = self._clean_url(html.unescape(title_match.group("url")))
-            snippet = self._clean_html(snippet_match.group("snippet")) if snippet_match else ""
+            snippet = (
+                self._clean_html(snippet_match.group("snippet"))
+                if snippet_match
+                else ""
+            )
             if title and url:
                 results.append(WebSearchResult(title=title, url=url, snippet=snippet))
             if len(results) >= limit:

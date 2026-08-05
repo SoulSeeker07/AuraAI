@@ -4,8 +4,7 @@ Browser Rules
 Rules for routing browser-related requests.
 """
 
-from typing import Optional
-from ..capability_types import CapabilityType, CapabilityPriority
+from ..capability_types import CapabilityPriority, CapabilityType
 from ..routing_result import RoutingResult
 
 
@@ -41,7 +40,7 @@ class BrowserRules:
             },
         ]
 
-    def route(self, text: str) -> Optional[RoutingResult]:
+    def route(self, text: str) -> RoutingResult | None:
         """
         Route browser-related request.
 

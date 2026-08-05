@@ -5,13 +5,14 @@ Provides research capabilities from GitHub repositories.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-import requests
+from typing import Any
 from urllib.parse import quote
 
+import requests
+
+from ..content_fetcher import ContentFetcher
 from ..models import SearchResult
 from ..provider_interface import BaseResearchProvider
-from ..content_fetcher import ContentFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class GitHubProvider(BaseResearchProvider):
     Searches GitHub for repositories, issues, and pull requests.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize GitHub provider.
 
@@ -40,12 +41,7 @@ class GitHubProvider(BaseResearchProvider):
         """Check if GitHub API is available."""
         return bool(self.api_token)
 
-    def search(
-        self,
-        query: str,
-        max_results: int = 10,
-        **kwargs
-    ) -> List[SearchResult]:
+    def search(self, query: str, max_results: int = 10, **kwargs) -> list[SearchResult]:
         """
         Perform search on GitHub.
 
@@ -79,11 +75,7 @@ class GitHubProvider(BaseResearchProvider):
             logger.error(f"GitHub search error: {e}")
             return []
 
-    def _search_repositories(
-        self,
-        query: str,
-        max_results: int
-    ) -> List[SearchResult]:
+    def _search_repositories(self, query: str, max_results: int) -> list[SearchResult]:
         """
         Search GitHub repositories.
 
@@ -98,12 +90,9 @@ class GitHubProvider(BaseResearchProvider):
             url = f"{self.base_url}/search/repositories"
             headers = {
                 "Authorization": f"token {self.api_token}",
-                "Accept": "application/vnd.github.v3+json"
+                "Accept": "application/vnd.github.v3+json",
             }
-            params = {
-                "q": query,
-                "per_page": min(max_results, 100)
-            }
+            params = {"q": query, "per_page": min(max_results, 100)}
 
             response = requests.get(url, headers=headers, params=params, timeout=30)
             response.raise_for_status()
@@ -121,11 +110,7 @@ class GitHubProvider(BaseResearchProvider):
             logger.error(f"GitHub repository search failed: {e}")
             return []
 
-    def _search_issues(
-        self,
-        query: str,
-        max_results: int
-    ) -> List[SearchResult]:
+    def _search_issues(self, query: str, max_results: int) -> list[SearchResult]:
         """
         Search GitHub issues.
 
@@ -140,12 +125,9 @@ class GitHubProvider(BaseResearchProvider):
             url = f"{self.base_url}/search/issues"
             headers = {
                 "Authorization": f"token {self.api_token}",
-                "Accept": "application/vnd.github.v3+json"
+                "Accept": "application/vnd.github.v3+json",
             }
-            params = {
-                "q": query,
-                "per_page": min(max_results, 100)
-            }
+            params = {"q": query, "per_page": min(max_results, 100)}
 
             response = requests.get(url, headers=headers, params=params, timeout=30)
             response.raise_for_status()
@@ -163,7 +145,7 @@ class GitHubProvider(BaseResearchProvider):
             logger.error(f"GitHub issue search failed: {e}")
             return []
 
-    def _parse_repository(self, raw_data: Dict[str, Any]) -> SearchResult:
+    def _parse_repository(self, raw_data: dict[str, Any]) -> SearchResult:
         """
         Parse a GitHub repository.
 
@@ -180,10 +162,10 @@ class GitHubProvider(BaseResearchProvider):
             source=self.name,
             score=raw_data.get("score", 50),
             trust_level=self.trust_level,
-            raw_data=raw_data
+            raw_data=raw_data,
         )
 
-    def _parse_issue(self, raw_data: Dict[str, Any]) -> SearchResult:
+    def _parse_issue(self, raw_data: dict[str, Any]) -> SearchResult:
         """
         Parse a GitHub issue.
 
@@ -200,10 +182,10 @@ class GitHubProvider(BaseResearchProvider):
             source=self.name,
             score=raw_data.get("score", 50),
             trust_level=self.trust_level,
-            raw_data=raw_data
+            raw_data=raw_data,
         )
 
-    def get_repository_info(self, repo: str) -> Optional[Dict[str, Any]]:
+    def get_repository_info(self, repo: str) -> dict[str, Any] | None:
         """
         Get detailed information about a repository.
 
@@ -217,7 +199,7 @@ class GitHubProvider(BaseResearchProvider):
             url = f"{self.base_url}/repos/{quote(repo)}"
             headers = {
                 "Authorization": f"token {self.api_token}",
-                "Accept": "application/vnd.github.v3+json"
+                "Accept": "application/vnd.github.v3+json",
             }
 
             response = requests.get(url, headers=headers, timeout=30)
@@ -229,11 +211,8 @@ class GitHubProvider(BaseResearchProvider):
             return None
 
     def get_issues_for_repo(
-        self,
-        repo: str,
-        state: str = "open",
-        per_page: int = 10
-    ) -> List[Dict[str, Any]]:
+        self, repo: str, state: str = "open", per_page: int = 10
+    ) -> list[dict[str, Any]]:
         """
         Get issues for a repository.
 
@@ -249,12 +228,9 @@ class GitHubProvider(BaseResearchProvider):
             url = f"{self.base_url}/repos/{quote(repo)}/issues"
             headers = {
                 "Authorization": f"token {self.api_token}",
-                "Accept": "application/vnd.github.v3+json"
+                "Accept": "application/vnd.github.v3+json",
             }
-            params = {
-                "state": state,
-                "per_page": per_page
-            }
+            params = {"state": state, "per_page": per_page}
 
             response = requests.get(url, headers=headers, params=params, timeout=30)
             response.raise_for_status()
@@ -264,7 +240,7 @@ class GitHubProvider(BaseResearchProvider):
             logger.error(f"Failed to get issues for {repo}: {e}")
             return []
 
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """Get provider capabilities."""
         return ["search", "repository_info", "issues", "document_fetch"]
 

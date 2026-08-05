@@ -1,6 +1,12 @@
-from core.screen_context import ScreenContext
+try:
+    from Chatbot import get_default_bot
+except ImportError:
 
-from Chatbot import get_default_bot
+    def get_default_bot():
+        return None
+
+
+from .screen_context import ScreenContext
 
 
 class LocalResponder:
@@ -35,5 +41,11 @@ class LocalResponder:
         return self.chatbot.ask(prompt)
 
     def _asks_about_screen(self, normalized_prompt: str) -> bool:
-        screen_words = ("screen", "desktop", "window", "what am i looking at", "what do you see")
+        screen_words = (
+            "screen",
+            "desktop",
+            "window",
+            "what am i looking at",
+            "what do you see",
+        )
         return any(word in normalized_prompt for word in screen_words)

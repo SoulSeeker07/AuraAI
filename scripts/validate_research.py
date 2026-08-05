@@ -12,8 +12,8 @@ Usage:
     python scripts/validate_research.py
 """
 
-import sys
 import logging
+import sys
 import time
 from pathlib import Path
 
@@ -21,17 +21,11 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from research import (
-    ResearchEngine,
-    SearchQuery,
-    SearchMode,
-    ResearchConfig
-)
+from research import ResearchConfig, ResearchEngine, SearchMode
 
 # Configure logging - show everything
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -63,9 +57,7 @@ def test_query(query: str, mode: SearchMode = SearchMode.STANDARD):
     # Enable debug mode to see all diagnostics
     engine = ResearchEngine(
         config=ResearchConfig(
-            enabled=True,
-            default_mode=mode,
-            debug=True  # Enable detailed diagnostics
+            enabled=True, default_mode=mode, debug=True  # Enable detailed diagnostics
         )
     )
 
@@ -75,35 +67,39 @@ def test_query(query: str, mode: SearchMode = SearchMode.STANDARD):
         duration = time.time() - start_time
 
         # Print summary
-        print(f"\n📊 RESULTS")
+        print("\n📊 RESULTS")
         print(f"  Confidence: {result.confidence:.2f}")
         print(f"  Strong Evidence: {len(result.strong_evidence)}")
         print(f"  Duration: {duration:.2f}s")
 
         if result.citations:
-            print(f"\n📚 Sources:")
+            print("\n📚 Sources:")
             for i, citation in enumerate(result.citations[:5], 1):
-                trust = citation.trust_level.value.upper() if hasattr(citation.trust_level, 'value') else citation.trust_level
+                trust = (
+                    citation.trust_level.value.upper()
+                    if hasattr(citation.trust_level, "value")
+                    else citation.trust_level
+                )
                 print(f"  {i}. [{trust}] {citation.title[:50]}...")
 
         if result.conflicts:
             print(f"\n⚠️  Conflicts: {len(result.conflicts)}")
 
         if result.recommendations:
-            print(f"\n💡 Recommendations:")
+            print("\n💡 Recommendations:")
             for rec in result.recommendations[:3]:
                 print(f"  - {rec}")
 
         return {
-            'success': True,
-            'query': query,
-            'mode': mode.value,
-            'confidence': result.confidence,
-            'iterations': getattr(result, 'iterations', 1),
-            'duration': duration,
-            'strong_evidence': len(result.strong_evidence),
-            'weak_evidence': len(result.weak_evidence),
-            'conflicts': len(result.conflicts)
+            "success": True,
+            "query": query,
+            "mode": mode.value,
+            "confidence": result.confidence,
+            "iterations": getattr(result, "iterations", 1),
+            "duration": duration,
+            "strong_evidence": len(result.strong_evidence),
+            "weak_evidence": len(result.weak_evidence),
+            "conflicts": len(result.conflicts),
         }
 
     except Exception as e:
@@ -111,11 +107,11 @@ def test_query(query: str, mode: SearchMode = SearchMode.STANDARD):
         print(f"\n❌ ERROR: {e}")
         print(f"Duration: {duration:.2f}s")
         return {
-            'success': False,
-            'query': query,
-            'mode': mode.value,
-            'error': str(e),
-            'duration': duration
+            "success": False,
+            "query": query,
+            "mode": mode.value,
+            "error": str(e),
+            "duration": duration,
         }
 
 
@@ -124,10 +120,7 @@ def validate_planner_refinement():
     print_section("PLANNER VALIDATION")
 
     # Test queries that should trigger refinement
-    queries = [
-        "latest Python release",
-        "latest Nvidia drivers"
-    ]
+    queries = ["latest Python release", "latest Nvidia drivers"]
 
     for query in queries:
         print(f"\nQuery: {query}")
@@ -144,7 +137,7 @@ def validate_provider_selection():
         ("Latest BEL quarterly results", SearchMode.STANDARD),
         ("Review this repository", SearchMode.QUICK),
         ("Explain asyncio", SearchMode.QUICK),
-        ("Python 3.14 changes", SearchMode.STANDARD)
+        ("Python 3.14 changes", SearchMode.STANDARD),
     ]
 
     for query, mode in queries:
@@ -160,7 +153,7 @@ def validate_confidence_loop():
     queries = [
         "latest Python release",
         "latest Nvidia drivers",
-        "BEL quarterly results"
+        "BEL quarterly results",
     ]
 
     for query in queries:
@@ -169,18 +162,18 @@ def validate_confidence_loop():
         print(f"Final Confidence: {result.get('confidence', 0):.2f}")
 
         # Expected: Confidence should increase naturally, not stay at 0.50
-        if result.get('confidence', 0) < 0.5:
-            print(f"  ⚠️  WARNING: Confidence is suspiciously low ({result.get('confidence', 0):.2f})")
-            print(f"  Check the detailed logs above for evidence scoring issues")
+        if result.get("confidence", 0) < 0.5:
+            print(
+                f"  ⚠️  WARNING: Confidence is suspiciously low ({result.get('confidence', 0):.2f})"
+            )
+            print("  Check the detailed logs above for evidence scoring issues")
 
 
 def validate_performance():
     """Test and measure performance components."""
     print_section("PERFORMANCE VALIDATION")
 
-    queries = [
-        "latest Python release"
-    ]
+    queries = ["latest Python release"]
 
     for query in queries:
         print(f"\nQuery: {query}")
@@ -230,6 +223,7 @@ def main():
     except Exception as e:
         print(f"\n\n❌ Validation failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

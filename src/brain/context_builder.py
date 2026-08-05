@@ -60,9 +60,13 @@ class ContextBuilder:
         memory_context = self.memory.get_context()
         messages = self._system_messages()
         if memory_context:
-            messages.append(ChatMessage("system", f"Known user memory:\n{memory_context}"))
+            messages.append(
+                ChatMessage("system", f"Known user memory:\n{memory_context}")
+            )
         if web_results:
-            messages.append(ChatMessage("system", self._format_web_results(web_results)))
+            messages.append(
+                ChatMessage("system", self._format_web_results(web_results))
+            )
         messages.extend(self._recent_messages(limit=12))
         messages.append(ChatMessage("user", user_input))
 
@@ -95,7 +99,9 @@ class ContextBuilder:
         context.attachments = attachments or []
         context.conversation_id = conversation_id or ""
         context.workspace_info = workspace_info or {}
-        context.metadata = {"created_at": dt.datetime.now().isoformat(timespec="seconds")}
+        context.metadata = {
+            "created_at": dt.datetime.now().isoformat(timespec="seconds")
+        }
 
         context.messages = await self._build_conversation_history(conversation_id)
         context.memory_facts = await self._build_memory_facts()
@@ -109,7 +115,9 @@ class ContextBuilder:
 
         return context
 
-    async def _build_conversation_history(self, conversation_id: str | None = None) -> list:
+    async def _build_conversation_history(
+        self, conversation_id: str | None = None
+    ) -> list:
         """Build conversation history."""
         messages = []
 
@@ -143,7 +151,9 @@ class ContextBuilder:
         }
 
         try:
-            workspace_context["current_directory"] = str(self.workspace.current_directory)
+            workspace_context["current_directory"] = str(
+                self.workspace.current_directory
+            )
             workspace_context["git_repository"] = self.workspace.get_git_repo()
             workspace_context["clipboard"] = self.workspace.get_clipboard()
         except Exception as e:

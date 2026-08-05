@@ -41,28 +41,28 @@ This makes Aura self-learning and intelligent!
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
 import threading
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
-from .knowledge_db import KnowledgeDB, KnowledgeFact
-from .topic_memory import TopicMemory
-from .knowledge_graph import KnowledgeGraph
-from .freshness_checker import FreshnessChecker, KnowledgeCategory
-from .learning_engine import LearningEngine, LearnedFact
 from .cache_manager import CacheManager
+from .freshness_checker import FreshnessChecker
+from .knowledge_db import KnowledgeDB, KnowledgeFact
+from .knowledge_graph import KnowledgeGraph
+from .learning_engine import LearnedFact, LearningEngine
+from .topic_memory import TopicMemory
 
 
 @dataclass
 class KnowledgeRetrievalResult:
     """Result of knowledge retrieval."""
-    facts: List[KnowledgeFact]
+
+    facts: list[KnowledgeFact]
     retrieved_from: str  # "cache", "database", "search", "none"
     confidence: float
     needs_refresh: bool
-    suggestions: List[str]
+    suggestions: list[str]
 
 
 class KnowledgeManager:
@@ -102,7 +102,7 @@ class KnowledgeManager:
         knowledge_graph: KnowledgeGraph = None,
         freshness_checker: FreshnessChecker = None,
         learning_engine: LearningEngine = None,
-        cache_manager: CacheManager = None
+        cache_manager: CacheManager = None,
     ):
         """
         Initialize knowledge manager.
@@ -119,13 +119,15 @@ class KnowledgeManager:
         self.cache_manager = cache_manager or CacheManager()
         self.topic_memory = topic_memory or TopicMemory(self.knowledge_db)
         self.knowledge_graph = knowledge_graph or KnowledgeGraph(self.knowledge_db)
-        self.freshness_checker = freshness_checker or FreshnessChecker(self.knowledge_db)
+        self.freshness_checker = freshness_checker or FreshnessChecker(
+            self.knowledge_db
+        )
         self.learning_engine = learning_engine or LearningEngine(
             self.knowledge_db,
             self.topic_memory,
             self.knowledge_graph,
             self.freshness_checker,
-            self.cache_manager
+            self.cache_manager,
         )
 
         self.vector_store = None
@@ -137,10 +139,7 @@ class KnowledgeManager:
         self._total_learnings = 0
 
     def retrieve_facts(
-        self,
-        query: str,
-        category: Optional[str] = None,
-        max_results: int = 10
+        self, query: str, category: str | None = None, max_results: int = 10
     ) -> KnowledgeRetrievalResult:
         """
         Retrieve facts for a query using multi-level retrieval.
@@ -171,7 +170,7 @@ class KnowledgeManager:
                     cached,
                     retrieved_from="cache",
                     needs_refresh=False,
-                    category=category
+                    category=category,
                 )
 
             # Try to get from knowledge base
@@ -185,7 +184,10 @@ class KnowledgeManager:
                     # Check facts in topic
                     facts = self.knowledge_db.get_facts_by_topic(topic, limit=100)
                     for fact in facts:
-                        if query.lower() in fact.fact.lower() or query.lower() in fact.source.lower():
+                        if (
+                            query.lower() in fact.fact.lower()
+                            or query.lower() in fact.source.lower()
+                        ):
                             relevant_topics.append(topic)
                             break
 
@@ -202,7 +204,7 @@ class KnowledgeManager:
                     facts,
                     retrieved_from="database",
                     needs_refresh=False,
-                    category=category
+                    category=category,
                 )
 
             # Not found in cache or database - need to search
@@ -211,15 +213,15 @@ class KnowledgeManager:
                 retrieved_from="none",
                 confidence=0.0,
                 needs_refresh=True,
-                suggestions=[f"Search for '{query}'", f"Learn about {query}"]
+                suggestions=[f"Search for '{query}'", f"Learn about {query}"],
             )
 
     def _create_result_from_facts(
         self,
-        facts: List[KnowledgeFact],
+        facts: list[KnowledgeFact],
         retrieved_from: str,
         needs_refresh: bool,
-        category: Optional[str]
+        category: str | None,
     ) -> KnowledgeRetrievalResult:
         """
         Create a retrieval result from facts.
@@ -239,7 +241,7 @@ class KnowledgeManager:
                 retrieved_from=retrieved_from,
                 confidence=0.0,
                 needs_refresh=needs_refresh,
-                suggestions=[]
+                suggestions=[],
             )
 
         # Check freshness
@@ -259,14 +261,12 @@ class KnowledgeManager:
             retrieved_from=retrieved_from,
             confidence=avg_confidence,
             needs_refresh=needs_refresh,
-            suggestions=suggestions
+            suggestions=suggestions,
         )
 
     def search_web(
-        self,
-        query: str,
-        category: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, category: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Search the web for a query.
 
@@ -286,10 +286,10 @@ class KnowledgeManager:
 
     def learn_from_search_results(
         self,
-        search_results: List[Dict[str, Any]],
+        search_results: list[dict[str, Any]],
         query: str,
-        category: Optional[str] = None
-    ) -> List[LearnedFact]:
+        category: str | None = None,
+    ) -> list[LearnedFact]:
         """
         Learn important facts from search results.
 
@@ -310,16 +310,14 @@ class KnowledgeManager:
 
         # Learn from search results
         learned_facts = self.learning_engine.learn_from_web_search(
-            topic,
-            search_results,
-            query
+            topic, search_results, query
         )
 
         self._total_learnings += len(learned_facts)
 
         return learned_facts
 
-    def _extract_topic(self, query: str) -> Optional[str]:
+    def _extract_topic(self, query: str) -> str | None:
         """
         Extract topic from query.
 
@@ -339,7 +337,7 @@ class KnowledgeManager:
 
         return None
 
-    def get_related_topics(self, topic: str, depth: int = 2) -> List[str]:
+    def get_related_topics(self, topic: str, depth: int = 2) -> list[str]:
         """
         Get related topics for a given topic.
 
@@ -352,7 +350,7 @@ class KnowledgeManager:
         """
         return self.knowledge_graph.get_topic_neighbors(topic, depth)
 
-    def get_topic_hierarchy(self, topic: str) -> Dict[str, Any]:
+    def get_topic_hierarchy(self, topic: str) -> dict[str, Any]:
         """
         Get hierarchical structure for a topic.
 
@@ -364,7 +362,7 @@ class KnowledgeManager:
         """
         return self.topic_memory.get_topic_hierarchy(topic, max_depth=3)
 
-    def get_all_topics(self) -> List[str]:
+    def get_all_topics(self) -> list[str]:
         """
         Get all available topics.
 
@@ -373,7 +371,7 @@ class KnowledgeManager:
         """
         return self.knowledge_db.get_topics()
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get overall knowledge brain statistics.
 
@@ -391,15 +389,15 @@ class KnowledgeManager:
             "knowledge_db": {
                 "total_facts": self.knowledge_db.count_facts(),
                 "total_topics": len(self.knowledge_db.get_topics()),
-                "total_categories": len(self.knowledge_db.get_categories())
+                "total_categories": len(self.knowledge_db.get_categories()),
             },
             "cache": cache_stats,
             "freshness": freshness_stats,
             "knowledge_graph": graph_stats,
-            "learning": learning_stats
+            "learning": learning_stats,
         }
 
-    def refresh_expired_knowledge(self) -> Dict[str, int]:
+    def refresh_expired_knowledge(self) -> dict[str, int]:
         """
         Refresh all expired knowledge.
 
@@ -420,7 +418,9 @@ class KnowledgeManager:
 
             return stats
 
-    def get_facts_by_topic(self, topic: str, max_results: int = 50) -> List[KnowledgeFact]:
+    def get_facts_by_topic(
+        self, topic: str, max_results: int = 50
+    ) -> list[KnowledgeFact]:
         """
         Get facts for a specific topic.
 
@@ -433,7 +433,9 @@ class KnowledgeManager:
         """
         return self.knowledge_db.get_facts_by_topic(topic, limit=max_results)
 
-    def get_facts_by_category(self, category: str, max_results: int = 50) -> List[KnowledgeFact]:
+    def get_facts_by_category(
+        self, category: str, max_results: int = 50
+    ) -> list[KnowledgeFact]:
         """
         Get facts for a specific category.
 
@@ -453,7 +455,7 @@ class KnowledgeManager:
         source: str,
         confidence: float = 0.9,
         category: str = "General",
-        source_url: Optional[str] = None
+        source_url: str | None = None,
     ) -> bool:
         """
         Add a fact to the knowledge base.
@@ -477,7 +479,7 @@ class KnowledgeManager:
             source=source,
             source_url=source_url,
             confidence=confidence,
-            category=category
+            category=category,
         )
 
         self.knowledge_db.add_fact(knowledge_fact)
@@ -486,7 +488,7 @@ class KnowledgeManager:
 
         return True
 
-    def batch_add_facts(self, facts: List[Dict[str, Any]]) -> int:
+    def batch_add_facts(self, facts: list[dict[str, Any]]) -> int:
         """
         Batch add multiple facts.
 
@@ -505,7 +507,7 @@ class KnowledgeManager:
                 source=fact_data.get("source", "web"),
                 confidence=fact_data.get("confidence", 0.9),
                 category=fact_data.get("category", "General"),
-                source_url=fact_data.get("source_url")
+                source_url=fact_data.get("source_url"),
             )
             added += 1
 
@@ -520,7 +522,7 @@ class KnowledgeManager:
         """
         return self.knowledge_db.cleanup_expired_facts()
 
-    def get_category_lifetimes(self) -> Dict[str, int]:
+    def get_category_lifetimes(self) -> dict[str, int]:
         """
         Get category lifetimes.
 
@@ -539,7 +541,7 @@ class KnowledgeManager:
         """
         self.freshness_checker.update_lifetime(category, days)
 
-    def get_freshness_checker_stats(self) -> Dict[str, Any]:
+    def get_freshness_checker_stats(self) -> dict[str, Any]:
         """
         Get freshness checker statistics.
 
@@ -548,7 +550,7 @@ class KnowledgeManager:
         """
         return self.freshness_checker.get_statistics()
 
-    def get_cache_manager_stats(self) -> Dict[str, Any]:
+    def get_cache_manager_stats(self) -> dict[str, Any]:
         """
         Get cache manager statistics.
 
@@ -557,7 +559,7 @@ class KnowledgeManager:
         """
         return self.cache_manager.get_cache_stats()
 
-    def get_knowledge_graph_stats(self) -> Dict[str, Any]:
+    def get_knowledge_graph_stats(self) -> dict[str, Any]:
         """
         Get knowledge graph statistics.
 
@@ -566,7 +568,7 @@ class KnowledgeManager:
         """
         return self.knowledge_graph.get_statistics()
 
-    def get_learning_engine_stats(self) -> Dict[str, Any]:
+    def get_learning_engine_stats(self) -> dict[str, Any]:
         """
         Get learning engine statistics.
 
@@ -585,26 +587,27 @@ class IndexingProgress:
     id: str
     status: str = "pending"  # pending, in_progress, completed, failed
     progress: float = 0.0  # 0.0 to 100.0
-    current_file: Optional[str] = None
+    current_file: str | None = None
     total_files: int = 0
     processed_files: int = 0
     failed_files: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
     created_at: datetime = field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'id': self.id,
-            'status': self.status,
-            'progress': self.progress,
-            'current_file': self.current_file,
-            'total_files': self.total_files,
-            'processed_files': self.processed_files,
-            'failed_files': self.failed_files,
-            'error_message': self.error_message,
-            'created_at': self.created_at.isoformat(),
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            "id": self.id,
+            "status": self.status,
+            "progress": self.progress,
+            "current_file": self.current_file,
+            "total_files": self.total_files,
+            "processed_files": self.processed_files,
+            "failed_files": self.failed_files,
+            "error_message": self.error_message,
+            "created_at": self.created_at.isoformat(),
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
         }
-

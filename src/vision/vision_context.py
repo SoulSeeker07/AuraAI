@@ -4,11 +4,10 @@ Vision Context Coordinator
 Coordinates vision processing across all components.
 """
 
-
 import logging
-from typing import Dict, Any, Optional, Callable
-from .models import VisionContext, ImageType, VisionProvider
+from typing import Any
 
+from .models import ImageType, VisionContext
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +22,11 @@ class VisionContextCoordinator:
 
     def __init__(self):
         """Initialize the vision context coordinator."""
-        self.current_context: Optional[VisionContext] = None
-        self.last_context: Optional[VisionContext] = None
+        self.current_context: VisionContext | None = None
+        self.last_context: VisionContext | None = None
 
     def create_context(
-        self,
-        image_path: str,
-        image_type: ImageType = ImageType.SCREENSHOT,
-        **kwargs
+        self, image_path: str, image_type: ImageType = ImageType.SCREENSHOT, **kwargs
     ) -> VisionContext:
         """
         Create a new VisionContext.
@@ -43,11 +39,7 @@ class VisionContextCoordinator:
         Returns:
             New VisionContext instance
         """
-        context = VisionContext(
-            image_type=image_type,
-            image_path=image_path,
-            **kwargs
-        )
+        context = VisionContext(image_type=image_type, image_path=image_path, **kwargs)
 
         logger.info(f"Created VisionContext for {image_type.value}: {image_path}")
         return context
@@ -57,7 +49,7 @@ class VisionContextCoordinator:
         context: VisionContext,
         text: str,
         blocks: list = None,
-        confidence: float = 1.0
+        confidence: float = 1.0,
     ) -> VisionContext:
         """
         Update context with OCR results.
@@ -76,16 +68,13 @@ class VisionContextCoordinator:
         context.confidence = confidence
 
         # Add to metadata
-        context.metadata['ocr_processed'] = True
+        context.metadata["ocr_processed"] = True
 
         logger.debug(f"Updated context with OCR: {len(text)} characters")
         return context
 
     def update_with_objects(
-        self,
-        context: VisionContext,
-        objects: list,
-        bounding_boxes: list = None
+        self, context: VisionContext, objects: list, bounding_boxes: list = None
     ) -> VisionContext:
         """
         Update context with object detection results.
@@ -101,7 +90,7 @@ class VisionContextCoordinator:
         context.objects = objects
         context.bounding_boxes = bounding_boxes or []
 
-        context.metadata['object_detection_processed'] = True
+        context.metadata["object_detection_processed"] = True
 
         logger.debug(f"Updated context with {len(objects)} objects")
         return context
@@ -109,9 +98,9 @@ class VisionContextCoordinator:
     def update_with_layout(
         self,
         context: VisionContext,
-        layout: Dict[str, Any],
+        layout: dict[str, Any],
         elements: list = None,
-        sections: list = None
+        sections: list = None,
     ) -> VisionContext:
         """
         Update context with layout analysis.
@@ -129,16 +118,13 @@ class VisionContextCoordinator:
         context.elements = elements or []
         context.sections = sections or []
 
-        context.metadata['layout_analysis_processed'] = True
+        context.metadata["layout_analysis_processed"] = True
 
         logger.debug("Updated context with layout analysis")
         return context
 
     def update_with_tables(
-        self,
-        context: VisionContext,
-        tables: list,
-        found_tables: list = None
+        self, context: VisionContext, tables: list, found_tables: list = None
     ) -> VisionContext:
         """
         Update context with table detection results.
@@ -154,16 +140,13 @@ class VisionContextCoordinator:
         context.tables = tables
         context.tables_found = found_tables or []
 
-        context.metadata['table_detection_processed'] = True
+        context.metadata["table_detection_processed"] = True
 
         logger.debug(f"Updated context with {len(tables)} tables")
         return context
 
     def update_with_code(
-        self,
-        context: VisionContext,
-        code_snippets: list,
-        found_code: list = None
+        self, context: VisionContext, code_snippets: list, found_code: list = None
     ) -> VisionContext:
         """
         Update context with code detection results.
@@ -179,7 +162,7 @@ class VisionContextCoordinator:
         context.code_snippets = code_snippets
         context.code_found = found_code or []
 
-        context.metadata['code_detection_processed'] = True
+        context.metadata["code_detection_processed"] = True
 
         logger.debug(f"Updated context with {len(code_snippets)} code snippets")
         return context
@@ -191,7 +174,7 @@ class VisionContextCoordinator:
         menus: list,
         dialogs: list,
         forms: list,
-        notifications: list
+        notifications: list,
     ) -> VisionContext:
         """
         Update context with UI analysis results.
@@ -213,12 +196,14 @@ class VisionContextCoordinator:
         context.forms = forms
         context.notifications = notifications
 
-        context.metadata['ui_analysis_processed'] = True
+        context.metadata["ui_analysis_processed"] = True
 
-        logger.debug(f"Updated context with UI analysis: "
-                    f"{len(buttons)} buttons, {len(menus)} menus, "
-                    f"{len(dialogs)} dialogs, {len(forms)} forms, "
-                    f"{len(notifications)} notifications")
+        logger.debug(
+            f"Updated context with UI analysis: "
+            f"{len(buttons)} buttons, {len(menus)} menus, "
+            f"{len(dialogs)} dialogs, {len(forms)} forms, "
+            f"{len(notifications)} notifications"
+        )
         return context
 
     def update_with_network_analysis(
@@ -228,7 +213,7 @@ class VisionContextCoordinator:
         connections: list,
         ip_addresses: list,
         vlan_ids: list,
-        interface_names: list
+        interface_names: list,
     ) -> VisionContext:
         """
         Update context with network diagram analysis.
@@ -250,11 +235,13 @@ class VisionContextCoordinator:
         context.vlan_ids = vlan_ids
         context.interface_names = interface_names
 
-        context.metadata['network_analysis_processed'] = True
+        context.metadata["network_analysis_processed"] = True
 
-        logger.debug(f"Updated context with network analysis: "
-                    f"{len(devices)} devices, {len(connections)} connections, "
-                    f"{len(ip_addresses)} IPs")
+        logger.debug(
+            f"Updated context with network analysis: "
+            f"{len(devices)} devices, {len(connections)} connections, "
+            f"{len(ip_addresses)} IPs"
+        )
         return context
 
     def update_with_summary(
@@ -262,7 +249,7 @@ class VisionContextCoordinator:
         context: VisionContext,
         summary: str,
         analysis: str = "",
-        description: str = ""
+        description: str = "",
     ) -> VisionContext:
         """
         Update context with vision model analysis.
@@ -280,16 +267,13 @@ class VisionContextCoordinator:
         context.analysis = analysis
         context.description = description
 
-        context.metadata['vision_model_processed'] = True
+        context.metadata["vision_model_processed"] = True
 
         logger.debug("Updated context with vision model analysis")
         return context
 
     def update_with_errors(
-        self,
-        context: VisionContext,
-        errors: list,
-        warnings: list = None
+        self, context: VisionContext, errors: list, warnings: list = None
     ) -> VisionContext:
         """
         Update context with error detection.
@@ -305,7 +289,7 @@ class VisionContextCoordinator:
         context.errors_detected = errors
         context.warnings = warnings or []
 
-        context.metadata['error_detection_processed'] = True
+        context.metadata["error_detection_processed"] = True
 
         logger.debug(f"Updated context with {len(errors)} errors")
         return context
@@ -320,8 +304,8 @@ class VisionContextCoordinator:
         Returns:
             Finalized VisionContext
         """
-        context.metadata['finalized'] = True
-        context.metadata['finalized_at'] = datetime.now().isoformat()
+        context.metadata["finalized"] = True
+        context.metadata["finalized_at"] = datetime.now().isoformat()
 
         logger.info(f"Finalized VisionContext: {context.image_path}")
         logger.info(f"  - Image type: {context.image_type.value}")
@@ -333,7 +317,7 @@ class VisionContextCoordinator:
         self.last_context = context
         return context
 
-    def get_context_info(self, context: VisionContext) -> Dict[str, Any]:
+    def get_context_info(self, context: VisionContext) -> dict[str, Any]:
         """
         Get information about the vision context.
 
@@ -348,18 +332,18 @@ class VisionContextCoordinator:
             "image_type": context.image_type.value,
             "dimensions": {
                 "width": context.image_width,
-                "height": context.image_height
+                "height": context.image_height,
             },
             "ocr": {
                 "has_text": context.has_text(),
                 "text_length": len(context.detected_text),
-                "confidence": context.confidence
+                "confidence": context.confidence,
             },
             "detection": {
                 "objects": len(context.objects),
                 "tables": len(context.tables),
                 "code": len(context.code_snippets),
-                "diagrams": len(context.diagrams)
+                "diagrams": len(context.diagrams),
             },
             "ui_elements": {
                 "buttons": len(context.buttons),
@@ -369,7 +353,7 @@ class VisionContextCoordinator:
             "network": {
                 "devices": len(context.network_devices),
                 "connections": len(context.network_connections),
-                "ip_addresses": len(context.ip_addresses)
+                "ip_addresses": len(context.ip_addresses),
             },
             "errors_detected": len(context.errors_detected),
             "warnings": len(context.warnings),
@@ -377,7 +361,7 @@ class VisionContextCoordinator:
             "has_code": context.has_code(),
             "has_diagrams": context.has_diagrams(),
             "has_errors": context.has_errors(),
-            "has_ui_elements": context.has_ui_elements()
+            "has_ui_elements": context.has_ui_elements(),
         }
 
     def should_use_llm(self, context: VisionContext) -> bool:
@@ -395,15 +379,29 @@ class VisionContextCoordinator:
             True if LLM should be used, False otherwise
         """
         # Heuristic: Use LLM if there's substantial content to analyze
-        text_score = len(context.detected_text) / (context.image_width * context.image_height * 0.01)
+        text_score = len(context.detected_text) / (
+            context.image_width * context.image_height * 0.01
+        )
         object_score = len(context.objects)
-        ui_score = (len(context.buttons) + len(context.menus) + len(context.dialogs) +
-                   len(context.forms) + len(context.notifications))
+        ui_score = (
+            len(context.buttons)
+            + len(context.menus)
+            + len(context.dialogs)
+            + len(context.forms)
+            + len(context.notifications)
+        )
         network_score = len(context.network_devices) + len(context.network_connections)
         table_score = len(context.tables)
         code_score = len(context.code_snippets)
 
-        total_score = text_score + object_score + ui_score + network_score + table_score + code_score
+        total_score = (
+            text_score
+            + object_score
+            + ui_score
+            + network_score
+            + table_score
+            + code_score
+        )
 
         # Use LLM if total score is above threshold
         return total_score > 5.0
@@ -427,7 +425,7 @@ class VisionContextCoordinator:
             image_path=contexts[0].image_path,
             image_width=contexts[0].image_width,
             image_height=contexts[0].image_height,
-            capture_time=contexts[0].capture_time
+            capture_time=contexts[0].capture_time,
         )
 
         # Merge all fields

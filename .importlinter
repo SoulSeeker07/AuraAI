@@ -1,0 +1,44 @@
+[importlinter]
+root_packages =
+    core
+    desktop
+    execution
+    research
+
+[importlinter:contract:1]
+name = Core layer cannot import higher layers
+type = forbidden
+forbidden_modules =
+    desktop
+    research
+    frontend
+    clients
+    apps
+importer_modules =
+    core
+
+[importlinter:contract:2]
+name = Desktop layer cannot import Research directly
+type = forbidden
+forbidden_modules =
+    research
+importer_modules =
+    desktop
+
+[importlinter:contract:3]
+name = Planner layer cannot import GUI or Frontend
+type = forbidden
+forbidden_modules =
+    frontend
+    clients.gui_client
+importer_modules =
+    desktop.planner
+    core.planning
+
+[importlinter:contract:4]
+name = Backend layer cannot import Desktop layer
+type = forbidden
+forbidden_modules =
+    desktop
+importer_modules =
+    core.backends

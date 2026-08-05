@@ -5,17 +5,16 @@ Graphical user interface client for AuraAI.
 Provides API for QML interface to communicate with Aura Core.
 """
 
-import asyncio
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from typing import Any
 
 from core.aura_core import AuraCore
-from core import logger
 
 
 @dataclass
 class ComponentStatus:
     """Status of a GUI component."""
+
     name: str
     status: str
     message: str
@@ -37,7 +36,7 @@ class GUIClient:
         """
         self.aura_core = aura_core
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get status of all Aura Core components.
 
@@ -46,7 +45,7 @@ class GUIClient:
         """
         return self.aura_core.get_status()
 
-    def get_component_status(self, component_name: str) -> Optional[Dict[str, Any]]:
+    def get_component_status(self, component_name: str) -> dict[str, Any] | None:
         """
         Get status of a specific component.
 
@@ -57,18 +56,18 @@ class GUIClient:
             Component status dictionary or None
         """
         status = self.aura_core.get_status()
-        components = status.get('components', {})
+        components = status.get("components", {})
 
         if component_name in components:
             return {
-                'name': component_name,
-                'status': components[component_name]['status'],
-                'message': components[component_name]['message'],
-                'loaded': components[component_name]['loaded']
+                "name": component_name,
+                "status": components[component_name]["status"],
+                "message": components[component_name]["message"],
+                "loaded": components[component_name]["loaded"],
             }
         return None
 
-    def get_memory_stats(self) -> Dict[str, Any]:
+    def get_memory_stats(self) -> dict[str, Any]:
         """
         Get memory statistics.
 
@@ -77,7 +76,7 @@ class GUIClient:
         """
         return self.aura_core.memory_stats
 
-    def get_knowledge_stats(self) -> Dict[str, Any]:
+    def get_knowledge_stats(self) -> dict[str, Any]:
         """
         Get knowledge statistics.
 
@@ -86,7 +85,7 @@ class GUIClient:
         """
         return self.aura_core.knowledge_stats
 
-    def get_workspace_info(self) -> Dict[str, Any]:
+    def get_workspace_info(self) -> dict[str, Any]:
         """
         Get workspace information.
 
@@ -95,7 +94,7 @@ class GUIClient:
         """
         return self.aura_core.workspace_info
 
-    def get_plugin_status(self, plugin_name: str) -> Optional[Dict[str, Any]]:
+    def get_plugin_status(self, plugin_name: str) -> dict[str, Any] | None:
         """
         Get status of a specific plugin.
 
@@ -107,7 +106,7 @@ class GUIClient:
         """
         return self.aura_core.get_plugin_status(plugin_name)
 
-    def get_all_plugins_status(self) -> Dict[str, Any]:
+    def get_all_plugins_status(self) -> dict[str, Any]:
         """
         Get status of all plugins.
 
@@ -116,7 +115,7 @@ class GUIClient:
         """
         return self.aura_core.get_all_plugins_status()
 
-    def get_plugin_list(self) -> List[str]:
+    def get_plugin_list(self) -> list[str]:
         """
         Get list of loaded plugins.
 
@@ -125,7 +124,7 @@ class GUIClient:
         """
         return self.aura_core.plugins.copy()
 
-    def get_conversation_history(self, limit: int = 50) -> List[Dict[str, str]]:
+    def get_conversation_history(self, limit: int = 50) -> list[dict[str, str]]:
         """
         Get conversation history.
 
@@ -162,7 +161,7 @@ class GUIClient:
         self.aura_core.add_to_conversation(role, content)
         return True
 
-    def get_health_report(self) -> Dict[str, Any]:
+    def get_health_report(self) -> dict[str, Any]:
         """
         Get health report for all components.
 
@@ -180,7 +179,7 @@ class GUIClient:
         """
         return self.aura_core.get_architecture_graph()
 
-    def scan_workspace(self) -> Dict[str, Any]:
+    def scan_workspace(self) -> dict[str, Any]:
         """
         Scan workspace and update workspace info.
 
@@ -189,7 +188,7 @@ class GUIClient:
         """
         return self.aura_core.scan_workspace()
 
-    def analyze_code(self, file_path: str) -> Dict[str, Any]:
+    def analyze_code(self, file_path: str) -> dict[str, Any]:
         """
         Analyze code file.
 
@@ -201,7 +200,7 @@ class GUIClient:
         """
         return self.aura_core.analyze_code(file_path)
 
-    def fix_code(self, file_path: str) -> Dict[str, Any]:
+    def fix_code(self, file_path: str) -> dict[str, Any]:
         """
         Fix code issues in a file.
 
@@ -257,7 +256,7 @@ class GUIClient:
         status_enum = AuraCoreStatus(status)
         self.aura_core.update_task_status(status_enum, message)
 
-    def get_current_task(self) -> Optional[str]:
+    def get_current_task(self) -> str | None:
         """
         Get current task.
 
@@ -266,7 +265,7 @@ class GUIClient:
         """
         return self.aura_core.current_task
 
-    def get_tasks(self) -> List[str]:
+    def get_tasks(self) -> list[str]:
         """
         Get list of all tasks.
 
@@ -274,10 +273,13 @@ class GUIClient:
             List of task names
         """
         # Get all component names except core components
-        return [name for name in self.aura_core.components.keys()
-                if name not in ['Memory', 'Knowledge', 'Plugins', 'Workspace']]
+        return [
+            name
+            for name in self.aura_core.components.keys()
+            if name not in ["Memory", "Knowledge", "Plugins", "Workspace"]
+        ]
 
-    def get_tasks_status(self) -> Dict[str, str]:
+    def get_tasks_status(self) -> dict[str, str]:
         """
         Get status of all tasks.
 
@@ -287,10 +289,10 @@ class GUIClient:
         return {
             name: comp.status.value
             for name, comp in self.aura_core.components.items()
-            if name not in ['Memory', 'Knowledge', 'Plugins', 'Workspace']
+            if name not in ["Memory", "Knowledge", "Plugins", "Workspace"]
         }
 
-    def get_available_commands(self) -> List[str]:
+    def get_available_commands(self) -> list[str]:
         """
         Get list of available commands.
 
@@ -298,13 +300,26 @@ class GUIClient:
             List of command names
         """
         commands = [
-            'status', 'chat', 'memory', 'knowledge', 'workspace', 'plugins',
-            'tasks', 'history', 'workflow', 'agents', 'engineering', 'doctor',
-            'graph', 'help', 'reload', 'quit'
+            "status",
+            "chat",
+            "memory",
+            "knowledge",
+            "workspace",
+            "plugins",
+            "tasks",
+            "history",
+            "workflow",
+            "agents",
+            "engineering",
+            "doctor",
+            "graph",
+            "help",
+            "reload",
+            "quit",
         ]
         return commands
 
-    def get_command_help(self, command: str) -> Optional[Dict[str, str]]:
+    def get_command_help(self, command: str) -> dict[str, str] | None:
         """
         Get help information for a command.
 
@@ -315,86 +330,86 @@ class GUIClient:
             Help dictionary with description and usage
         """
         help_info = {
-            'status': {
-                'description': 'Show system status',
-                'usage': 'status',
-                'returns': 'Status dictionary'
+            "status": {
+                "description": "Show system status",
+                "usage": "status",
+                "returns": "Status dictionary",
             },
-            'chat': {
-                'description': 'Start interactive chat',
-                'usage': 'chat',
-                'returns': 'Chat session'
+            "chat": {
+                "description": "Start interactive chat",
+                "usage": "chat",
+                "returns": "Chat session",
             },
-            'memory': {
-                'description': 'Show memory statistics',
-                'usage': 'memory',
-                'returns': 'Memory stats'
+            "memory": {
+                "description": "Show memory statistics",
+                "usage": "memory",
+                "returns": "Memory stats",
             },
-            'knowledge': {
-                'description': 'Show knowledge statistics',
-                'usage': 'knowledge',
-                'returns': 'Knowledge stats'
+            "knowledge": {
+                "description": "Show knowledge statistics",
+                "usage": "knowledge",
+                "returns": "Knowledge stats",
             },
-            'workspace': {
-                'description': 'Show workspace info',
-                'usage': 'workspace',
-                'returns': 'Workspace info'
+            "workspace": {
+                "description": "Show workspace info",
+                "usage": "workspace",
+                "returns": "Workspace info",
             },
-            'plugins': {
-                'description': 'Show plugin status',
-                'usage': 'plugins',
-                'returns': 'Plugin status'
+            "plugins": {
+                "description": "Show plugin status",
+                "usage": "plugins",
+                "returns": "Plugin status",
             },
-            'tasks': {
-                'description': 'Show task status',
-                'usage': 'tasks',
-                'returns': 'Task status'
+            "tasks": {
+                "description": "Show task status",
+                "usage": "tasks",
+                "returns": "Task status",
             },
-            'history': {
-                'description': 'Show conversation history',
-                'usage': 'history',
-                'returns': 'History entries'
+            "history": {
+                "description": "Show conversation history",
+                "usage": "history",
+                "returns": "History entries",
             },
-            'workflow': {
-                'description': 'Show workflow status',
-                'usage': 'workflow',
-                'returns': 'Workflow status'
+            "workflow": {
+                "description": "Show workflow status",
+                "usage": "workflow",
+                "returns": "Workflow status",
             },
-            'agents': {
-                'description': 'Show agent information',
-                'usage': 'agents',
-                'returns': 'Agent info'
+            "agents": {
+                "description": "Show agent information",
+                "usage": "agents",
+                "returns": "Agent info",
             },
-            'engineering': {
-                'description': 'Show engineering tools',
-                'usage': 'engineering',
-                'returns': 'Engineering tools'
+            "engineering": {
+                "description": "Show engineering tools",
+                "usage": "engineering",
+                "returns": "Engineering tools",
             },
-            'doctor': {
-                'description': 'Run health check',
-                'usage': 'doctor',
-                'returns': 'Health report'
+            "doctor": {
+                "description": "Run health check",
+                "usage": "doctor",
+                "returns": "Health report",
             },
-            'graph': {
-                'description': 'Show architecture graph',
-                'usage': 'graph',
-                'returns': 'Architecture diagram'
+            "graph": {
+                "description": "Show architecture graph",
+                "usage": "graph",
+                "returns": "Architecture diagram",
             },
-            'help': {
-                'description': 'Show help information',
-                'usage': 'help',
-                'returns': 'Help text'
+            "help": {
+                "description": "Show help information",
+                "usage": "help",
+                "returns": "Help text",
             },
-            'reload': {
-                'description': 'Reload configuration',
-                'usage': 'reload',
-                'returns': 'None'
+            "reload": {
+                "description": "Reload configuration",
+                "usage": "reload",
+                "returns": "None",
             },
-            'quit': {
-                'description': 'Exit application',
-                'usage': 'quit',
-                'returns': 'None'
-            }
+            "quit": {
+                "description": "Exit application",
+                "usage": "quit",
+                "returns": "None",
+            },
         }
         return help_info.get(command)
 
@@ -413,11 +428,11 @@ class GUIClient:
             AI response
         """
         # Add to conversation
-        self.aura_core.add_to_conversation('user', message)
+        self.aura_core.add_to_conversation("user", message)
 
         # Placeholder - in real implementation, this would call the AI API
         response = f"I received: {message}"
-        self.aura_core.add_to_conversation('assistant', response)
+        self.aura_core.add_to_conversation("assistant", response)
 
         return response
 

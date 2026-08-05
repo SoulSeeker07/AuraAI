@@ -7,7 +7,8 @@ Manages loading and unloading of AuraAI plugins.
 import importlib
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
+
 
 class PluginManager:
     """
@@ -16,7 +17,7 @@ class PluginManager:
 
     def __init__(self):
         """Initialize the plugin manager."""
-        self.loaded_plugins: Dict[str, Any] = {}
+        self.loaded_plugins: dict[str, Any] = {}
         self.plugin_path = Path(__file__).parent.parent
 
     def load_plugin(self, plugin_name: str) -> bool:
@@ -100,7 +101,7 @@ class PluginManager:
         """
         return self.loaded_plugins.get(plugin_name)
 
-    def get_all_plugins(self) -> Dict[str, Any]:
+    def get_all_plugins(self) -> dict[str, Any]:
         """
         Get all loaded plugins.
 
@@ -109,7 +110,7 @@ class PluginManager:
         """
         return self.loaded_plugins
 
-    def get_plugin_info(self, plugin_name: str) -> Dict[str, Any]:
+    def get_plugin_info(self, plugin_name: str) -> dict[str, Any]:
         """
         Get information about a loaded plugin.
 
@@ -121,23 +122,15 @@ class PluginManager:
         """
         plugin = self.loaded_plugins.get(plugin_name)
         if not plugin:
-            return {
-                'loaded': False,
-                'name': plugin_name,
-                'status': 'Not loaded'
-            }
+            return {"loaded": False, "name": plugin_name, "status": "Not loaded"}
 
         # Try to get plugin info
-        if hasattr(plugin, 'get_info'):
+        if hasattr(plugin, "get_info"):
             return plugin.get_info()
 
-        return {
-            'loaded': True,
-            'name': plugin_name,
-            'status': 'Loaded'
-        }
+        return {"loaded": True, "name": plugin_name, "status": "Loaded"}
 
-    def get_plugin_status(self, plugin_name: str) -> Dict[str, Any]:
+    def get_plugin_status(self, plugin_name: str) -> dict[str, Any]:
         """
         Get status of a plugin (alias for get_plugin_info).
 

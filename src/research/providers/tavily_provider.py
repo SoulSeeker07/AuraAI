@@ -5,12 +5,13 @@ Uses Tavily API for web searches.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 import requests
 
+from ..content_fetcher import ContentFetcher
 from ..models import SearchResult
 from ..provider_interface import BaseResearchProvider
-from ..content_fetcher import ContentFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class TavilyProvider(BaseResearchProvider):
     Provides web search capabilities through Tavily API.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize Tavily provider.
 
@@ -38,12 +39,7 @@ class TavilyProvider(BaseResearchProvider):
         """Check if Tavily API is available and configured."""
         return bool(self.api_key)
 
-    def search(
-        self,
-        query: str,
-        max_results: int = 10,
-        **kwargs
-    ) -> List[SearchResult]:
+    def search(self, query: str, max_results: int = 10, **kwargs) -> list[SearchResult]:
         """
         Perform search using Tavily API.
 
@@ -64,7 +60,7 @@ class TavilyProvider(BaseResearchProvider):
             url = "https://api.tavily.com/search"
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
             params = {
                 "api_key": self.api_key,
@@ -76,7 +72,7 @@ class TavilyProvider(BaseResearchProvider):
                 "include_domains": kwargs.get("include_domains"),
                 "exclude_domains": kwargs.get("exclude_domains"),
                 "search_depth": kwargs.get("search_depth", "basic"),
-                "topic": kwargs.get("topic", "general")
+                "topic": kwargs.get("topic", "general"),
             }
 
             # Remove None values
@@ -105,7 +101,7 @@ class TavilyProvider(BaseResearchProvider):
             logger.error(f"Tavily search error: {e}")
             return []
 
-    def _parse_result(self, raw_data: Dict[str, Any]) -> SearchResult:
+    def _parse_result(self, raw_data: dict[str, Any]) -> SearchResult:
         """
         Parse a raw Tavily result.
 
@@ -118,7 +114,7 @@ class TavilyProvider(BaseResearchProvider):
         # Tavily provides title, url, and content
         # We can use the answer field if available
         answer = raw_data.get("answer")
-        
+
         return SearchResult(
             url=raw_data.get("url", ""),
             title=raw_data.get("title", ""),
@@ -126,10 +122,10 @@ class TavilyProvider(BaseResearchProvider):
             source=self.name,
             score=raw_data.get("score", 50),
             trust_level=self.trust_level,
-            raw_data=raw_data
+            raw_data=raw_data,
         )
 
-    def fetch_document(self, url: str) -> Optional[Any]:
+    def fetch_document(self, url: str) -> Any | None:
         """
         Fetch document using content fetcher.
 
@@ -141,7 +137,7 @@ class TavilyProvider(BaseResearchProvider):
         """
         return self.content_fetcher.fetch(url)
 
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """Get provider capabilities."""
         return ["search", "document_fetch"]
 

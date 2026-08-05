@@ -9,17 +9,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # Re-export for convenience
-from brain.models import (
-    ConversationAttachment,
-    ConversationContext,
-    ConversationResult,
-    Intent,
-)
 
 
 @dataclass(frozen=True)
 class WebSearchResult:
     """Result from a web search."""
+
     title: str
     url: str
     snippet: str
@@ -35,6 +30,7 @@ SearchResult = WebSearchResult
 @dataclass(frozen=True)
 class IntentAnalysis:
     """Result of intent analysis with confidence scores."""
+
     intent: str  # e.g., "LIVE_INFORMATION", "KNOWLEDGE_REQUEST", "PROGRAMMING"
     confidence: float  # 0.0 to 1.0
     subintent: str | None = None  # More specific category
@@ -42,13 +38,16 @@ class IntentAnalysis:
     metadata: dict[str, Any] = field(default_factory=dict)
     needs_web_search: bool = False  # Should this query use web search?
     needs_deep_research: bool = False  # Should this query read multiple pages?
-    specialized_sources: list[str] = field(default_factory=list)  # Domains to prioritize
+    specialized_sources: list[str] = field(
+        default_factory=list
+    )  # Domains to prioritize
     data: dict[str, Any] = field(default_factory=dict)  # Additional extracted data
 
 
 @dataclass(frozen=True)
 class PageContent:
     """Extracted content from a webpage."""
+
     title: str
     url: str
     main_text: str

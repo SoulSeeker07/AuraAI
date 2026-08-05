@@ -44,31 +44,39 @@ Usage:
 """
 
 # ==================== OLD KNOWLEDGE SYSTEM (Backward Compatibility) ====================
-from .knowledge_db import KnowledgeDB, KnowledgeFact
-from .topic_memory import TopicMemory, TopicNode
+from .cache_manager import CachedSearchResult, CacheManager
+from .chunker import Chunker
+from .citation_engine import CitationEngine
+from .embedding_manager import EmbeddingManager
+from .file_watcher import KnowledgeFileWatcher
 from .freshness_checker import FreshnessChecker, KnowledgeCategory
+from .graph_store import GraphStore
+from .indexer import Indexer
+from .knowledge_context import KnowledgeContext as ContextBuilder
+from .knowledge_db import KnowledgeDB, KnowledgeFact
 from .knowledge_graph import KnowledgeGraph, KnowledgeNode
-from .learning_engine import LearningEngine, LearnedFact
-from .cache_manager import CacheManager, CachedSearchResult
+from .knowledge_manager import IndexingProgress, KnowledgeManager
+from .learning_engine import LearnedFact, LearningEngine
+from .metadata_manager import MetadataManager
 
 # ==================== NEW RAG 2.0 SYSTEM ====================
 from .models import (
-    DocumentChunk, KnowledgeNode as RAGKnowledgeNode,
-    KnowledgeEdge, Citation, KnowledgeContext, RetrievalResult,
-    IndexingTask, KnowledgeStats, RetrievalMode
+    Citation,
+    DocumentChunk,
+    IndexingTask,
+    KnowledgeContext,
+    KnowledgeEdge,
 )
-from .metadata_manager import MetadataManager
-from .chunker import Chunker
-from .embedding_manager import EmbeddingManager
-from .vector_store import VectorStore
-from .graph_store import GraphStore
-from .retrieval_engine import RetrievalEngine
+from .models import KnowledgeNode as RAGKnowledgeNode
+from .models import (
+    KnowledgeStats,
+    RetrievalMode,
+    RetrievalResult,
+)
 from .ranking_engine import RankingEngine
-from .citation_engine import CitationEngine
-from .knowledge_context import KnowledgeContext as ContextBuilder
-from .indexer import Indexer
-from .file_watcher import KnowledgeFileWatcher
-from .knowledge_manager import KnowledgeManager, IndexingProgress
+from .retrieval_engine import RetrievalEngine
+from .topic_memory import TopicMemory, TopicNode
+from .vector_store import VectorStore
 
 __version__ = "2.0.0"
 __all__ = [

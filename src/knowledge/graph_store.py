@@ -4,13 +4,12 @@ Knowledge Graph Store
 Manages knowledge graph with relationships between chunks.
 """
 
-import logging
 import json
-from typing import List, Dict, Any, Optional, Set, Tuple
+import logging
 from collections import defaultdict
 from datetime import datetime
 
-from .models import KnowledgeNode, KnowledgeEdge, DocumentChunk, SourceType, KnowledgeStats
+from .models import DocumentChunk, KnowledgeEdge, KnowledgeNode, KnowledgeStats
 from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
@@ -22,11 +21,7 @@ class GraphStore:
     Supports both simple in-memory graph and more sophisticated graph databases.
     """
 
-    def __init__(
-        self,
-        vector_store: VectorStore,
-        enable_node_creation: bool = True
-    ):
+    def __init__(self, vector_store: VectorStore, enable_node_creation: bool = True):
         """
         Initialize graph store.
 
@@ -37,26 +32,23 @@ class GraphStore:
         self.vector_store = vector_store
 
         # Nodes: dict of node_id -> KnowledgeNode
-        self.nodes: Dict[str, KnowledgeNode] = {}
+        self.nodes: dict[str, KnowledgeNode] = {}
 
         # Edges: dict of (source_id, target_id, edge_type) -> KnowledgeEdge
-        self.edges: Dict[Tuple[str, str, str], KnowledgeEdge] = {}
+        self.edges: dict[tuple[str, str, str], KnowledgeEdge] = {}
 
         # Node relationships for fast lookup
-        self._outgoing_edges: Dict[str, List[KnowledgeEdge]] = defaultdict(list)
-        self._incoming_edges: Dict[str, List[KnowledgeEdge]] = defaultdict(list)
-        self._node_type_indices: Dict[str, List[str]] = defaultdict(list)
-        self._source_indices: Dict[str, List[str]] = defaultdict(list)
-        self._project_indices: Dict[str, List[str]] = defaultdict(list)
+        self._outgoing_edges: dict[str, list[KnowledgeEdge]] = defaultdict(list)
+        self._incoming_edges: dict[str, list[KnowledgeEdge]] = defaultdict(list)
+        self._node_type_indices: dict[str, list[str]] = defaultdict(list)
+        self._source_indices: dict[str, list[str]] = defaultdict(list)
+        self._project_indices: dict[str, list[str]] = defaultdict(list)
 
         self.enable_node_creation = enable_node_creation
 
         logger.info("Graph store initialized")
 
-    def add_nodes_from_chunks(
-        self,
-        chunks: List[DocumentChunk]
-    ) -> List[KnowledgeNode]:
+    def add_nodes_from_chunks(self, chunks: list[DocumentChunk]) -> list[KnowledgeNode]:
         """
         Create nodes from document chunks.
 
@@ -86,7 +78,7 @@ class GraphStore:
                 language=chunk.language,
                 tags=chunk.tags,
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
 
             self.nodes[chunk.id] = node
@@ -104,10 +96,10 @@ class GraphStore:
 
     def add_edges_from_chunks(
         self,
-        chunks: List[DocumentChunk],
+        chunks: list[DocumentChunk],
         vector_store: VectorStore,
         similarity_threshold: float = 0.7,
-        max_edges_per_node: int = 10
+        max_edges_per_node: int = 10,
     ) -> int:
         """
         Create edges between chunks based on semantic similarity.
@@ -143,7 +135,7 @@ class GraphStore:
                     language=chunk.language,
                     tags=chunk.tags,
                     created_at=datetime.now(),
-                    updated_at=datetime.now()
+                    updated_at=datetime.now(),
                 )
                 self.nodes[chunk.id] = node
 
@@ -151,7 +143,7 @@ class GraphStore:
             similar_chunks = vector_store.semantic_search(
                 chunk.content,
                 top_k=max_edges_per_node + 1,  # +1 to exclude self
-                min_similarity=similarity_threshold
+                min_similarity=similarity_threshold,
             )
 
             for similar_chunk, score in similar_chunks:
@@ -165,7 +157,7 @@ class GraphStore:
                     edge_type=KnowledgeEdge.EdgeType.RELATED,
                     weight=score,
                     description=f"Semantic similarity: {score:.3f}",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
 
                 # Check if edge already exists
@@ -183,11 +175,8 @@ class GraphStore:
         return edge_count
 
     def get_neighbors(
-        self,
-        node_id: str,
-        edge_type: Optional[str] = None,
-        limit: int = 10
-    ) -> List[Tuple[KnowledgeNode, KnowledgeEdge]]:
+        self, node_id: str, edge_type: str | None = None, limit: int = 10
+    ) -> list[tuple[KnowledgeNode, KnowledgeEdge]]:
         """
         Get neighbors of a node.
 
@@ -215,11 +204,7 @@ class GraphStore:
 
         return neighbors[:limit]
 
-    def get_related_nodes(
-        self,
-        node_id: str,
-        max_depth: int = 2
-    ) -> Set[str]:
+    def get_related_nodes(self, node_id: str, max_depth: int = 2) -> set[str]:
         """
         Get all nodes reachable from a node within max_depth hops.
 
@@ -251,10 +236,7 @@ class GraphStore:
 
         return reachable
 
-    def get_nodes_by_type(
-        self,
-        chunk_type: str
-    ) -> List[KnowledgeNode]:
+    def get_nodes_by_type(self, chunk_type: str) -> list[KnowledgeNode]:
         """
         Get nodes by chunk type.
 
@@ -269,10 +251,7 @@ class GraphStore:
             for node_id in self._node_type_indices.get(chunk_type, [])
         ]
 
-    def get_nodes_by_source(
-        self,
-        source_type: str
-    ) -> List[KnowledgeNode]:
+    def get_nodes_by_source(self, source_type: str) -> list[KnowledgeNode]:
         """
         Get nodes by source type.
 
@@ -283,14 +262,10 @@ class GraphStore:
             List of matching nodes
         """
         return [
-            self.nodes[node_id]
-            for node_id in self._source_indices.get(source_type, [])
+            self.nodes[node_id] for node_id in self._source_indices.get(source_type, [])
         ]
 
-    def get_nodes_by_project(
-        self,
-        project: str
-    ) -> List[KnowledgeNode]:
+    def get_nodes_by_project(self, project: str) -> list[KnowledgeNode]:
         """
         Get nodes by project.
 
@@ -301,14 +276,10 @@ class GraphStore:
             List of matching nodes
         """
         return [
-            self.nodes[node_id]
-            for node_id in self._project_indices.get(project, [])
+            self.nodes[node_id] for node_id in self._project_indices.get(project, [])
         ]
 
-    def get_nodes_by_tag(
-        self,
-        tag: str
-    ) -> List[KnowledgeNode]:
+    def get_nodes_by_tag(self, tag: str) -> list[KnowledgeNode]:
         """
         Get nodes by tag.
 
@@ -331,8 +302,8 @@ class GraphStore:
         query: str,
         top_k: int = 10,
         include_neighbors: bool = True,
-        max_depth: int = 2
-    ) -> List[Tuple[KnowledgeNode, float, int]]:
+        max_depth: int = 2,
+    ) -> list[tuple[KnowledgeNode, float, int]]:
         """
         Search graph using node content and neighbor information.
 
@@ -392,10 +363,10 @@ class GraphStore:
             total_edges=len(self.edges),
             by_source_type=by_source_type,
             by_project=by_project,
-            by_chunk_type=by_chunk_type
+            by_chunk_type=by_chunk_type,
         )
 
-    def get_node_by_id(self, node_id: str) -> Optional[KnowledgeNode]:
+    def get_node_by_id(self, node_id: str) -> KnowledgeNode | None:
         """
         Get node by ID.
 
@@ -408,11 +379,8 @@ class GraphStore:
         return self.nodes.get(node_id)
 
     def get_edge(
-        self,
-        source_id: str,
-        target_id: str,
-        edge_type: Optional[str] = None
-    ) -> Optional[KnowledgeEdge]:
+        self, source_id: str, target_id: str, edge_type: str | None = None
+    ) -> KnowledgeEdge | None:
         """
         Get edge between two nodes.
 
@@ -434,7 +402,7 @@ class GraphStore:
 
         return self.edges.get(key)
 
-    def get_all_nodes(self) -> List[KnowledgeNode]:
+    def get_all_nodes(self) -> list[KnowledgeNode]:
         """
         Get all nodes.
 
@@ -443,7 +411,7 @@ class GraphStore:
         """
         return list(self.nodes.values())
 
-    def get_all_edges(self) -> List[KnowledgeEdge]:
+    def get_all_edges(self) -> list[KnowledgeEdge]:
         """
         Get all edges.
 
@@ -473,11 +441,11 @@ class GraphStore:
         """
         try:
             data = {
-                'nodes': [node.to_dict() for node in self.nodes.values()],
-                'edges': [edge.to_dict() for edge in self.edges.values()]
+                "nodes": [node.to_dict() for node in self.nodes.values()],
+                "edges": [edge.to_dict() for edge in self.edges.values()],
             }
 
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 json.dump(data, f, indent=2)
 
             logger.info(f"Graph saved to {path}")
@@ -493,39 +461,39 @@ class GraphStore:
             path: Path to load graph from
         """
         try:
-            with open(path, 'r') as f:
+            with open(path) as f:
                 data = json.load(f)
 
             self.nodes.clear()
             self.edges.clear()
 
             # Load nodes
-            for node_data in data.get('nodes', []):
+            for node_data in data.get("nodes", []):
                 node = KnowledgeNode(
-                    id=node_data['id'],
-                    content=node_data['content'],
-                    title=node_data['title'],
-                    summary=node_data.get('summary'),
-                    chunk_type=node_data['chunk_type'],
-                    source_type=node_data['source_type'],
-                    source_file=node_data.get('source_file'),
-                    project=node_data.get('project'),
-                    language=node_data.get('language'),
-                    tags=node_data.get('tags', []),
-                    created_at=datetime.fromisoformat(node_data['created_at']),
-                    updated_at=datetime.fromisoformat(node_data['updated_at'])
+                    id=node_data["id"],
+                    content=node_data["content"],
+                    title=node_data["title"],
+                    summary=node_data.get("summary"),
+                    chunk_type=node_data["chunk_type"],
+                    source_type=node_data["source_type"],
+                    source_file=node_data.get("source_file"),
+                    project=node_data.get("project"),
+                    language=node_data.get("language"),
+                    tags=node_data.get("tags", []),
+                    created_at=datetime.fromisoformat(node_data["created_at"]),
+                    updated_at=datetime.fromisoformat(node_data["updated_at"]),
                 )
                 self.nodes[node.id] = node
 
             # Load edges
-            for edge_data in data.get('edges', []):
+            for edge_data in data.get("edges", []):
                 edge = KnowledgeEdge(
-                    source_id=edge_data['source_id'],
-                    target_id=edge_data['target_id'],
-                    edge_type=edge_data['edge_type'],
-                    weight=edge_data['weight'],
-                    description=edge_data.get('description'),
-                    created_at=datetime.fromisoformat(edge_data['created_at'])
+                    source_id=edge_data["source_id"],
+                    target_id=edge_data["target_id"],
+                    edge_type=edge_data["edge_type"],
+                    weight=edge_data["weight"],
+                    description=edge_data.get("description"),
+                    created_at=datetime.fromisoformat(edge_data["created_at"]),
                 )
                 key = (edge.source_id, edge.target_id, edge.edge_type.value)
                 self.edges[key] = edge

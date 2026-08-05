@@ -12,32 +12,33 @@ Run:
     python -m pytest tests/desktop/test_execution_pipeline.py -v
 """
 
-import sys
 import os
+import sys
 import time
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-import pytest
 from unittest.mock import MagicMock
 
-from desktop.native.desktop_result import DesktopResult, DesktopStatus
-from desktop.native.mock_manager import MockManager, MockWindowState
+import pytest
+
+from desktop.native.capability_registry import (
+    CapabilityDescriptor,
+    CapabilityRegistry,
+    PermissionRequired,
+    RiskLevel,
+)
 from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     ExecutionStage,
 )
-from desktop.native.capability_registry import (
-    CapabilityRegistry,
-    CapabilityDescriptor,
-    PermissionRequired,
-    RiskLevel,
-)
-
+from desktop.native.desktop_result import DesktopResult, DesktopStatus
+from desktop.native.mock_manager import MockManager, MockWindowState
 
 # ==================== Fixtures ====================
+
 
 @pytest.fixture
 def mock_manager():
@@ -62,6 +63,7 @@ def engine(mock_manager, registry):
 
 
 # ==================== DesktopResult Tests ====================
+
 
 class TestDesktopResult:
     """Test the DesktopResult model."""
@@ -128,7 +130,9 @@ class TestDesktopResult:
             return True
 
         result = DesktopResult.create_success(
-            goal="Test", capability="test", manager="mock",
+            goal="Test",
+            capability="test",
+            manager="mock",
             rollback=rollback,
         )
         assert result.rollback_available is True
@@ -138,7 +142,9 @@ class TestDesktopResult:
     def test_rollback_not_available(self):
         """Test rollback when not available."""
         result = DesktopResult.create_success(
-            goal="Test", capability="test", manager="mock",
+            goal="Test",
+            capability="test",
+            manager="mock",
         )
         assert result.rollback_available is False
         assert result.execute_rollback() is False
@@ -146,7 +152,9 @@ class TestDesktopResult:
     def test_add_warning(self):
         """Test adding warnings."""
         result = DesktopResult.create_success(
-            goal="Test", capability="test", manager="mock",
+            goal="Test",
+            capability="test",
+            manager="mock",
         )
         result.add_warning("Warning 1")
         result.add_warning("Warning 2")
@@ -155,7 +163,9 @@ class TestDesktopResult:
     def test_add_event(self):
         """Test adding events (no duplicates)."""
         result = DesktopResult.create_success(
-            goal="Test", capability="test", manager="mock",
+            goal="Test",
+            capability="test",
+            manager="mock",
         )
         result.add_event("window_activated")
         result.add_event("window_activated")  # Should not duplicate
@@ -164,7 +174,9 @@ class TestDesktopResult:
     def test_to_dict(self):
         """Test serialization to dictionary."""
         result = DesktopResult.create_success(
-            goal="Test", capability="test", manager="mock",
+            goal="Test",
+            capability="test",
+            manager="mock",
             data={"key": "value"},
         )
         d = result.to_dict()
@@ -177,15 +189,21 @@ class TestDesktopResult:
     def test_duration_ms(self):
         """Test duration calculation."""
         result = DesktopResult(
-            success=True, goal="Test", capability="test", manager="mock",
-            started_at=1000.0, completed_at=1001.5,
+            success=True,
+            goal="Test",
+            capability="test",
+            manager="mock",
+            started_at=1000.0,
+            completed_at=1001.5,
         )
         assert result.duration_ms == 1500.0
 
     def test_repr(self):
         """Test string representation."""
         result = DesktopResult.create_success(
-            goal="Test", capability="activate_window", manager="mock",
+            goal="Test",
+            capability="activate_window",
+            manager="mock",
         )
         repr_str = repr(result)
         assert "DesktopResult" in repr_str
@@ -193,6 +211,7 @@ class TestDesktopResult:
 
 
 # ==================== MockManager Tests ====================
+
 
 class TestMockManager:
     """Test the MockManager."""
@@ -308,10 +327,14 @@ class TestMockManager:
     def test_call_log(self, mock_manager):
         """Test call logging."""
         mock_manager.execute(
-            capability="list_windows", goal="List windows", arguments={},
+            capability="list_windows",
+            goal="List windows",
+            arguments={},
         )
         mock_manager.execute(
-            capability="list_displays", goal="List displays", arguments={},
+            capability="list_displays",
+            goal="List displays",
+            arguments={},
         )
         assert mock_manager.get_call_count() == 2
         assert mock_manager.was_called("list_windows") is True
@@ -320,7 +343,9 @@ class TestMockManager:
     def test_reset(self, mock_manager):
         """Test resetting the mock manager."""
         mock_manager.execute(
-            capability="list_windows", goal="List", arguments={},
+            capability="list_windows",
+            goal="List",
+            arguments={},
         )
         assert mock_manager.get_call_count() == 1
         mock_manager.reset()
@@ -328,6 +353,7 @@ class TestMockManager:
 
 
 # ==================== DesktopExecutionEngine Tests ====================
+
 
 class TestDesktopExecutionEngine:
     """Test the DesktopExecutionEngine - the main orchestrator."""
@@ -405,9 +431,7 @@ class TestDesktopExecutionEngine:
 
     def test_capability_discovery_volume(self, engine):
         """Test capability discovery for volume operations."""
-        result = engine.execute(
-            goal="set volume", arguments={"volume": 0.7}
-        )
+        result = engine.execute(goal="set volume", arguments={"volume": 0.7})
         assert result.capability == "set_volume"
         assert result.success is True
 
@@ -490,7 +514,7 @@ class TestDesktopExecutionEngine:
         engine.execute(goal="unknown xyz123")  # Failure
 
         rate = engine.get_success_rate()
-        assert rate == 2/3
+        assert rate == 2 / 3
 
     def test_reset(self, engine):
         """Test resetting the engine."""
@@ -502,7 +526,8 @@ class TestDesktopExecutionEngine:
     def test_disabled_engine(self, mock_manager, registry):
         """Test that a disabled engine returns failure."""
         engine = DesktopExecutionEngine(
-            manager=mock_manager, registry=registry,
+            manager=mock_manager,
+            registry=registry,
             config=ExecutionConfig(enabled=False),
         )
         result = engine.execute(goal="list windows")
@@ -511,6 +536,7 @@ class TestDesktopExecutionEngine:
 
 
 # ==================== Full Pipeline Integration Tests ====================
+
 
 class TestFullPipeline:
     """Test the full pipeline end-to-end."""
@@ -658,6 +684,7 @@ class TestFullPipeline:
 
 # ==================== Architecture Validation Tests ====================
 
+
 class TestArchitectureValidation:
     """Validate that the architecture mirrors ResearchEngine correctly."""
 
@@ -673,34 +700,34 @@ class TestArchitectureValidation:
         result = engine.execute(goal="Activate VS Code")
 
         # Core fields
-        assert hasattr(result, 'success')
-        assert hasattr(result, 'goal')
-        assert hasattr(result, 'capability')
-        assert hasattr(result, 'manager')
-        assert hasattr(result, 'data')
-        assert hasattr(result, 'error')
+        assert hasattr(result, "success")
+        assert hasattr(result, "goal")
+        assert hasattr(result, "capability")
+        assert hasattr(result, "manager")
+        assert hasattr(result, "data")
+        assert hasattr(result, "error")
 
         # Execution metadata
-        assert hasattr(result, 'status')
+        assert hasattr(result, "status")
 
         # Events
-        assert hasattr(result, 'events')
+        assert hasattr(result, "events")
 
         # Rollback
-        assert hasattr(result, 'rollback')
-        assert hasattr(result, 'rollback_available')
+        assert hasattr(result, "rollback")
+        assert hasattr(result, "rollback_available")
 
         # Verification
-        assert hasattr(result, 'verification')
+        assert hasattr(result, "verification")
 
         # Metrics
-        assert hasattr(result, 'metrics')
+        assert hasattr(result, "metrics")
 
         # Context changes
-        assert hasattr(result, 'context_changes')
+        assert hasattr(result, "context_changes")
 
         # Warnings
-        assert hasattr(result, 'warnings')
+        assert hasattr(result, "warnings")
 
     def test_pipeline_stages_all_executed(self, engine):
         """Verify all pipeline stages are executed."""
@@ -775,12 +802,13 @@ class TestArchitectureValidation:
 
         for goal, expected_cap, expected_manager in test_cases:
             result = engine.execute(goal=goal)
-            assert result.capability == expected_cap, \
-                f"Goal '{goal}' → expected '{expected_cap}', got '{result.capability}'"
-            assert result.manager == expected_manager, \
-                f"Goal '{goal}' → expected manager '{expected_manager}', got '{result.manager}'"
-            assert result.success is True, \
-                f"Goal '{goal}' failed: {result.error}"
+            assert (
+                result.capability == expected_cap
+            ), f"Goal '{goal}' → expected '{expected_cap}', got '{result.capability}'"
+            assert (
+                result.manager == expected_manager
+            ), f"Goal '{goal}' → expected manager '{expected_manager}', got '{result.manager}'"
+            assert result.success is True, f"Goal '{goal}' failed: {result.error}"
 
     def test_simulation_mode_execution(self, registry):
         """Verify simulation_mode automatically intercepts destructive actions."""
@@ -799,9 +827,6 @@ class TestArchitectureValidation:
         assert "list_windows" in graph["requires"]
         assert "get_window" in graph["verifies"]
         assert "activate_window" in graph["rollback_capabilities"]
-
-
-
 
 
 # ==================== Main Entry Point ====================

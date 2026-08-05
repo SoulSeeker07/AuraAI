@@ -4,8 +4,8 @@ AuraAI Launcher
 Simple launcher to switch between CLI and GUI modes.
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -20,7 +20,7 @@ from main import main
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='AuraAI - Multi-Agent AI Assistant Launcher',
+        description="AuraAI - Multi-Agent AI Assistant Launcher",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Usage:
@@ -28,26 +28,14 @@ Usage:
   python run_aura.py --cli        # Run CLI
   python run_aura.py --gui        # Run GUI
   python run_aura.py --help       # Show help
-        """
+        """,
     )
 
-    parser.add_argument(
-        '--cli',
-        action='store_true',
-        help='Run in CLI mode (default)'
-    )
+    parser.add_argument("--cli", action="store_true", help="Run in CLI mode (default)")
 
-    parser.add_argument(
-        '--gui',
-        action='store_true',
-        help='Run in GUI mode'
-    )
+    parser.add_argument("--gui", action="store_true", help="Run in GUI mode")
 
-    parser.add_argument(
-        '--workspace',
-        type=str,
-        help='Override workspace path'
-    )
+    parser.add_argument("--workspace", type=str, help="Override workspace path")
 
     args = parser.parse_args()
 

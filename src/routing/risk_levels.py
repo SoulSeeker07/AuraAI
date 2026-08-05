@@ -14,6 +14,7 @@ class RiskLevel(str, Enum):
 
     Higher risk levels require more explicit user confirmation.
     """
+
     NONE = "none"  # Safe operations that don't require permission
     LOW = "low"  # Safe operations that might need confirmation
     MEDIUM = "medium"  # Operations that could cause issues
@@ -60,28 +61,45 @@ def get_risk_level(operation_type: str, details: dict = None) -> str:
 
     # Critical operations
     critical_ops = [
-        "shutdown", "reboot", "format", "delete_system", "modify_registry",
-        "kill_process", "terminate_all"
+        "shutdown",
+        "reboot",
+        "format",
+        "delete_system",
+        "modify_registry",
+        "kill_process",
+        "terminate_all",
     ]
 
     # High risk operations
     high_ops = [
-        "delete_file", "delete_directory", "delete_all", "format_drive",
-        "network_delete", "modify_firewall", "disable_security"
+        "delete_file",
+        "delete_directory",
+        "delete_all",
+        "format_drive",
+        "network_delete",
+        "modify_firewall",
+        "disable_security",
     ]
 
     # Medium risk operations
     medium_ops = [
-        "move_file", "rename_file", "modify_settings", "change_timezone",
-        "stop_service", "restart_service"
+        "move_file",
+        "rename_file",
+        "modify_settings",
+        "change_timezone",
+        "stop_service",
+        "restart_service",
     ]
 
     # Operation checks
-    if details.get("path", "").lower().startswith("/") or \
-       details.get("path", "").lower().startswith("\\"):
-        if "system" in str(details.get("path", "")).lower() or \
-           "windows" in str(details.get("path", "")).lower() or \
-           "program files" in str(details.get("path", "")).lower():
+    if details.get("path", "").lower().startswith("/") or details.get(
+        "path", ""
+    ).lower().startswith("\\"):
+        if (
+            "system" in str(details.get("path", "")).lower()
+            or "windows" in str(details.get("path", "")).lower()
+            or "program files" in str(details.get("path", "")).lower()
+        ):
             return RiskLevel.CRITICAL.value
 
     if operation_type.lower() in critical_ops:

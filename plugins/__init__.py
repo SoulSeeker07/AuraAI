@@ -10,4 +10,4 @@ This package contains all AuraAI plugins including:
 
 from .shared.plugin_manager import PluginManager
 
-__all__ = ['PluginManager']
+__all__ = ["PluginManager"]

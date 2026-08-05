@@ -32,18 +32,16 @@ Example:
 
 from __future__ import annotations
 
-import asyncio
-import json
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
-from dataclasses import dataclass, field
 import threading
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
-from .knowledge_db import KnowledgeDB
-from .topic_memory import TopicMemory
-from .knowledge_graph import KnowledgeGraph
-from .freshness_checker import FreshnessChecker
 from .cache_manager import CacheManager
+from .freshness_checker import FreshnessChecker
+from .knowledge_db import KnowledgeDB
+from .knowledge_graph import KnowledgeGraph
+from .topic_memory import TopicMemory
 
 
 @dataclass
@@ -51,15 +49,18 @@ class LearnedFact:
     """
     A fact learned from a web search result.
     """
+
     topic: str
     fact: str
     source: str
-    source_url: Optional[str] = None
+    source_url: str | None = None
     confidence: float = 0.8  # 0.0 to 1.0
     category: str = "General"
-    related_topics: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    learned_at: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    related_topics: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    learned_at: str = field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     processing_time: float = 0.0
 
 
@@ -83,7 +84,7 @@ class LearningEngine:
         topic_memory: TopicMemory = None,
         knowledge_graph: KnowledgeGraph = None,
         freshness_checker: FreshnessChecker = None,
-        cache_manager: CacheManager = None
+        cache_manager: CacheManager = None,
     ):
         """
         Initialize learning engine.
@@ -98,7 +99,9 @@ class LearningEngine:
         self.knowledge_db = knowledge_db or KnowledgeDB()
         self.topic_memory = topic_memory or TopicMemory(self.knowledge_db)
         self.knowledge_graph = knowledge_graph or KnowledgeGraph(self.knowledge_db)
-        self.freshness_checker = freshness_checker or FreshnessChecker(self.knowledge_db)
+        self.freshness_checker = freshness_checker or FreshnessChecker(
+            self.knowledge_db
+        )
         self.cache_manager = cache_manager or CacheManager()
 
         self._lock = threading.Lock()
@@ -106,15 +109,12 @@ class LearningEngine:
             "total_learned": 0,
             "topics_learned": 0,
             "average_confidence": 0.0,
-            "learning_time": 0.0
+            "learning_time": 0.0,
         }
 
     def learn_from_web_search(
-        self,
-        topic: str,
-        search_results: List[Dict[str, Any]],
-        user_query: str = ""
-    ) -> List[LearnedFact]:
+        self, topic: str, search_results: list[dict[str, Any]], user_query: str = ""
+    ) -> list[LearnedFact]:
         """
         Learn important facts from web search results.
 
@@ -127,6 +127,7 @@ class LearningEngine:
             List of learned facts
         """
         import time
+
         start_time = time.time()
 
         with self._lock:
@@ -154,11 +155,8 @@ class LearningEngine:
             return learned_facts
 
     def _extract_fact_from_result(
-        self,
-        result: Dict[str, Any],
-        topic: str,
-        user_query: str
-    ) -> Optional[LearnedFact]:
+        self, result: dict[str, Any], topic: str, user_query: str
+    ) -> LearnedFact | None:
         """
         Extract a fact from a search result.
 
@@ -200,7 +198,7 @@ class LearningEngine:
                 source_url=url,
                 confidence=confidence,
                 category=category,
-                related_topics=related_topics
+                related_topics=related_topics,
             )
 
             return learned_fact
@@ -228,7 +226,7 @@ class LearningEngine:
             source_url=learned_fact.source_url,
             confidence=learned_fact.confidence,
             category=learned_fact.category,
-            related_topics=learned_fact.related_topics
+            related_topics=learned_fact.related_topics,
         )
 
     def _determine_category(self, content: str, topic: str) -> str:
@@ -246,11 +244,19 @@ class LearningEngine:
         topic_lower = topic.lower()
         content_lower = content.lower()
 
-        if any(x in topic_lower for x in ["python", "java", "javascript", "programming", "code"]):
+        if any(
+            x in topic_lower
+            for x in ["python", "java", "javascript", "programming", "code"]
+        ):
             return "Programming"
-        elif any(x in topic_lower for x in ["network", "routing", "ospf", "bgp", "firewall"]):
+        elif any(
+            x in topic_lower for x in ["network", "routing", "ospf", "bgp", "firewall"]
+        ):
             return "Networking"
-        elif any(x in topic_lower for x in ["security", "vulnerability", "patch", "cybersecurity"]):
+        elif any(
+            x in topic_lower
+            for x in ["security", "vulnerability", "patch", "cybersecurity"]
+        ):
             return "Cybersecurity"
         elif any(x in topic_lower for x in ["ai", "machine learning", "llm", "model"]):
             return "AI"
@@ -263,7 +269,7 @@ class LearningEngine:
         else:
             return "General"
 
-    def _extract_keywords(self, content: str) -> Set[str]:
+    def _extract_keywords(self, content: str) -> set[str]:
         """
         Extract keywords from content.
 
@@ -274,13 +280,67 @@ class LearningEngine:
             Set of keywords
         """
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "can", "of", "in", "on", "at", "to",
-            "for", "with", "by", "from", "as", "this", "that", "these", "those",
-            "it", "its", "they", "them", "their", "we", "our", "you", "your",
-            "what", "which", "who", "whom", "where", "when", "why", "how",
-            "new", "version", "latest", "update", "release", "feature"
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "can",
+            "of",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "with",
+            "by",
+            "from",
+            "as",
+            "this",
+            "that",
+            "these",
+            "those",
+            "it",
+            "its",
+            "they",
+            "them",
+            "their",
+            "we",
+            "our",
+            "you",
+            "your",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "where",
+            "when",
+            "why",
+            "how",
+            "new",
+            "version",
+            "latest",
+            "update",
+            "release",
+            "feature",
         }
 
         words = content.lower().split()
@@ -292,7 +352,7 @@ class LearningEngine:
 
         return keywords
 
-    def _find_related_topics(self, keywords: Set[str], current_topic: str) -> List[str]:
+    def _find_related_topics(self, keywords: set[str], current_topic: str) -> list[str]:
         """
         Find related topics based on keywords.
 
@@ -328,7 +388,12 @@ class LearningEngine:
         """
         source_lower = source.lower()
 
-        if "official" in source_lower or source_lower in ["python.org", "microsoft.com", "github.com", "cisco.com"]:
+        if "official" in source_lower or source_lower in [
+            "python.org",
+            "microsoft.com",
+            "github.com",
+            "cisco.com",
+        ]:
             return 0.95
         elif "news" in source_lower or "blog" in source_lower:
             return 0.75
@@ -337,7 +402,7 @@ class LearningEngine:
         else:
             return 0.8
 
-    def _update_stats(self, fact_count: int, topics: Set[str]) -> None:
+    def _update_stats(self, fact_count: int, topics: set[str]) -> None:
         """
         Update learning statistics.
 
@@ -348,7 +413,7 @@ class LearningEngine:
         self._learning_stats["total_learned"] += fact_count
         self._learning_stats["topics_learned"] = len(topics)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get learning engine statistics.
 
@@ -357,7 +422,7 @@ class LearningEngine:
         """
         return self._learning_stats.copy()
 
-    def get_known_topics(self) -> List[str]:
+    def get_known_topics(self) -> list[str]:
         """
         Get all topics that have been learned.
 
@@ -367,7 +432,7 @@ class LearningEngine:
         topics = self.knowledge_db.get_topics()
         return sorted(topics)
 
-    def get_topic_facts(self, topic: str) -> List[LearnedFact]:
+    def get_topic_facts(self, topic: str) -> list[LearnedFact]:
         """
         Get all facts for a topic.
 
@@ -381,23 +446,23 @@ class LearningEngine:
         learned_facts = []
 
         for fact in facts:
-            learned_facts.append(LearnedFact(
-                topic=fact.topic,
-                fact=fact.fact,
-                source=fact.source,
-                source_url=fact.source_url,
-                confidence=fact.confidence,
-                category=fact.category,
-                related_topics=fact.related_topics or []
-            ))
+            learned_facts.append(
+                LearnedFact(
+                    topic=fact.topic,
+                    fact=fact.fact,
+                    source=fact.source,
+                    source_url=fact.source_url,
+                    confidence=fact.confidence,
+                    category=fact.category,
+                    related_topics=fact.related_topics or [],
+                )
+            )
 
         return learned_facts
 
     def batch_learn(
-        self,
-        learnings: List[Dict[str, Any]],
-        topic: str
-    ) -> List[LearnedFact]:
+        self, learnings: list[dict[str, Any]], topic: str
+    ) -> list[LearnedFact]:
         """
         Batch process multiple learnings.
 
@@ -416,7 +481,7 @@ class LearningEngine:
                 "title": learning.get("title", ""),
                 "snippet": learning.get("snippet", ""),
                 "url": learning.get("url", ""),
-                "source": learning.get("source", "web")
+                "source": learning.get("source", "web"),
             }
 
             learned_fact = self._extract_fact_from_result(fact_data, topic, "")
@@ -425,42 +490,46 @@ class LearningEngine:
 
                 # Store in knowledge base
                 from .knowledge_db import KnowledgeFact
-                self.knowledge_db.add_fact(KnowledgeFact(
-                    topic=learned_fact.topic,
-                    fact=learned_fact.fact,
-                    source=learned_fact.source,
-                    source_url=learned_fact.source_url,
-                    confidence=learned_fact.confidence,
-                    category=learned_fact.category,
-                    related_topics=learned_fact.related_topics
-                ))
-                self.topic_memory.add_fact(KnowledgeFact(
-                    topic=learned_fact.topic,
-                    fact=learned_fact.fact,
-                    source=learned_fact.source,
-                    source_url=learned_fact.source_url,
-                    confidence=learned_fact.confidence,
-                    category=learned_fact.category,
-                    related_topics=learned_fact.related_topics
-                ))
-                self.knowledge_graph.add_fact(KnowledgeFact(
-                    topic=learned_fact.topic,
-                    fact=learned_fact.fact,
-                    source=learned_fact.source,
-                    source_url=learned_fact.source_url,
-                    confidence=learned_fact.confidence,
-                    category=learned_fact.category,
-                    related_topics=learned_fact.related_topics
-                ))
+
+                self.knowledge_db.add_fact(
+                    KnowledgeFact(
+                        topic=learned_fact.topic,
+                        fact=learned_fact.fact,
+                        source=learned_fact.source,
+                        source_url=learned_fact.source_url,
+                        confidence=learned_fact.confidence,
+                        category=learned_fact.category,
+                        related_topics=learned_fact.related_topics,
+                    )
+                )
+                self.topic_memory.add_fact(
+                    KnowledgeFact(
+                        topic=learned_fact.topic,
+                        fact=learned_fact.fact,
+                        source=learned_fact.source,
+                        source_url=learned_fact.source_url,
+                        confidence=learned_fact.confidence,
+                        category=learned_fact.category,
+                        related_topics=learned_fact.related_topics,
+                    )
+                )
+                self.knowledge_graph.add_fact(
+                    KnowledgeFact(
+                        topic=learned_fact.topic,
+                        fact=learned_fact.fact,
+                        source=learned_fact.source,
+                        source_url=learned_fact.source_url,
+                        confidence=learned_fact.confidence,
+                        category=learned_fact.category,
+                        related_topics=learned_fact.related_topics,
+                    )
+                )
 
         return learned_facts
 
     async def auto_learn_from_conversation(
-        self,
-        user_query: str,
-        ai_response: str,
-        search_results: List[Dict[str, Any]]
-    ) -> List[LearnedFact]:
+        self, user_query: str, ai_response: str, search_results: list[dict[str, Any]]
+    ) -> list[LearnedFact]:
         """
         Automatically learn from conversation context.
 
@@ -483,7 +552,7 @@ class LearningEngine:
 
         return learned_facts
 
-    def _extract_topic_from_query(self, query: str) -> Optional[str]:
+    def _extract_topic_from_query(self, query: str) -> str | None:
         """
         Extract topic from user query.
 
@@ -517,5 +586,5 @@ class LearningEngine:
             "total_learned": 0,
             "topics_learned": 0,
             "average_confidence": 0.0,
-            "learning_time": 0.0
+            "learning_time": 0.0,
         }

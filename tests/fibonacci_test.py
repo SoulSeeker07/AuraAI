@@ -13,16 +13,19 @@ def fibonacci_iter(n: int) -> int:
     """
     if n < 0:
         raise ValueError("n must be non-negative")
-    a, b = 0, 1               # F(0), F(1)
+    a, b = 0, 1  # F(0), F(1)
     for _ in range(n):
         a, b = b, a + b
     return a
+
+
 # -------------------------------------------------
 # 2️⃣ Recursive version with memoization
 # -------------------------------------------------
-from functools import lru_cache
+from functools import cache, lru_cache
 
-@lru_cache(maxsize=None)
+
+@cache
 def fibonacci_rec(n: int) -> int:
     """
     Return the nth Fibonacci number using recursion and caching.
@@ -34,26 +37,28 @@ def fibonacci_rec(n: int) -> int:
     if n in (0, 1):
         return n
     return fibonacci_rec(n - 1) + fibonacci_rec(n - 2)
+
+
 # -------------------------------------------------
 # Simple sanity‑check driver
 # -------------------------------------------------
 if __name__ == "__main__":
     print("Testing Fibonacci implementations:")
     print("=" * 70)
-    
+
     # Test both implementations
     for i in range(10):
         result_iter = fibonacci_iter(i)
         result_rec = fibonacci_rec(i)
         print(f"F({i}) = {result_iter} (iter)   |   {result_rec} (rec)")
-    
+
     print("=" * 70)
     print("\nTesting edge cases:")
-    
+
     # Test error handling
     try:
         print(f"F(-1) = {fibonacci_iter(-1)}")
     except ValueError as e:
         print(f"F(-1) raised ValueError: {e}")
-    
+
     print("\n✅ All tests completed successfully!")

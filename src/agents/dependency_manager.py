@@ -4,15 +4,12 @@ Dependency Manager
 Manages task dependencies and validation.
 """
 
-
 import logging
-from typing import List, Set, Dict, Any, Optional
-from collections import defaultdict
+from typing import Any
 
 from .execution_graph import ExecutionGraph
-from .task import Task
 from .models import TaskStatus
-
+from .task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +30,7 @@ class DependencyManager:
             graph: Execution graph to manage
         """
         self.graph = graph
-        self.resolved_dependencies: Dict[str, List[str]] = {}
+        self.resolved_dependencies: dict[str, list[str]] = {}
 
         logger.debug(f"Initialized dependency manager for {len(graph.tasks)} tasks")
 
@@ -49,9 +46,7 @@ class DependencyManager:
         for task_id, task in self.graph.tasks.items():
             # Check for self-dependencies
             if task_id in task.dependencies:
-                errors.append(
-                    f"Task {task_id[:8]} depends on itself"
-                )
+                errors.append(f"Task {task_id[:8]} depends on itself")
 
             # Check if dependency tasks exist
             for dep_id in task.dependencies:
@@ -75,7 +70,7 @@ class DependencyManager:
         logger.debug("All dependencies validated successfully")
         return True
 
-    def resolve_dependencies(self) -> Dict[str, List[str]]:
+    def resolve_dependencies(self) -> dict[str, list[str]]:
         """
         Resolve all dependencies into a hierarchical structure.
 
@@ -87,10 +82,14 @@ class DependencyManager:
         for task_id, task in self.graph.tasks.items():
             self.resolved_dependencies[task_id] = self._get_all_dependencies(task_id)
 
-        logger.debug(f"Resolved dependencies for {len(self.resolved_dependencies)} tasks")
+        logger.debug(
+            f"Resolved dependencies for {len(self.resolved_dependencies)} tasks"
+        )
         return self.resolved_dependencies
 
-    def _get_all_dependencies(self, task_id: str, visited: Optional[Set[str]] = None) -> List[str]:
+    def _get_all_dependencies(
+        self, task_id: str, visited: set[str] | None = None
+    ) -> list[str]:
         """
         Get all direct and indirect dependencies for a task.
 
@@ -121,7 +120,7 @@ class DependencyManager:
 
         return dependencies
 
-    def check_ready_tasks(self) -> List[Task]:
+    def check_ready_tasks(self) -> list[Task]:
         """
         Get all tasks that are ready to execute.
 
@@ -152,7 +151,9 @@ class DependencyManager:
 
         # All dependencies must be complete
         for dep_id in task.dependencies:
-            dep_status = self.graph.metadata.get(f"dependency_{dep_id}", TaskStatus.QUEUED)
+            dep_status = self.graph.metadata.get(
+                f"dependency_{dep_id}", TaskStatus.QUEUED
+            )
             if dep_status not in [TaskStatus.COMPLETED, TaskStatus.CANCELLED]:
                 return False
 
@@ -174,7 +175,7 @@ class DependencyManager:
             if self._is_task_ready(task):
                 logger.debug(f"Task {dep_id[:8]} is now ready")
 
-    def get_dependency_chain(self, task_id: str) -> List[Task]:
+    def get_dependency_chain(self, task_id: str) -> list[Task]:
         """
         Get the dependency chain leading to a task.
 
@@ -204,7 +205,7 @@ class DependencyManager:
         build_chain(task_id)
         return chain
 
-    def get_critical_path(self) -> List[Task]:
+    def get_critical_path(self) -> list[Task]:
         """
         Get the critical path (longest execution path) in the graph.
 
@@ -224,7 +225,7 @@ class DependencyManager:
 
         return critical_path
 
-    def _find_longest_path(self, task_id: str, visited: set) -> List[Task]:
+    def _find_longest_path(self, task_id: str, visited: set) -> list[Task]:
         """
         Find the longest path from a given task.
 
@@ -251,7 +252,7 @@ class DependencyManager:
         path.extend(longest_extension)
         return path
 
-    def get_dependencies_summary(self) -> Dict[str, Any]:
+    def get_dependencies_summary(self) -> dict[str, Any]:
         """
         Get a summary of dependencies.
 
@@ -262,10 +263,16 @@ class DependencyManager:
             self.resolve_dependencies()
 
         return {
-            'total_tasks': len(self.graph.tasks),
-            'dependency_count': sum(len(deps) for deps in self.resolved_dependencies.values()),
-            'tasks_with_dependencies': sum(1 for deps in self.resolved_dependencies.values() if deps),
-            'tasks_without_dependencies': sum(1 for deps in self.resolved_dependencies.values() if not deps)
+            "total_tasks": len(self.graph.tasks),
+            "dependency_count": sum(
+                len(deps) for deps in self.resolved_dependencies.values()
+            ),
+            "tasks_with_dependencies": sum(
+                1 for deps in self.resolved_dependencies.values() if deps
+            ),
+            "tasks_without_dependencies": sum(
+                1 for deps in self.resolved_dependencies.values() if not deps
+            ),
         }
 
     def validate_no_cycles(self) -> bool:
@@ -277,7 +284,7 @@ class DependencyManager:
         """
         return not self.graph.has_cycle()
 
-    def check_cycles(self) -> List[List[str]]:
+    def check_cycles(self) -> list[list[str]]:
         """
         Find all cycles in the dependency graph.
 
@@ -288,7 +295,7 @@ class DependencyManager:
         visited = set()
         rec_stack = set()
 
-        def visit(task_id: str, path: List[str]) -> None:
+        def visit(task_id: str, path: list[str]) -> None:
             if task_id in rec_stack:
                 # Found a cycle
                 cycle_start = path.index(task_id)

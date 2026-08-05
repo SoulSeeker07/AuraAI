@@ -7,17 +7,17 @@ Validates:
 3. Capability execution through DesktopExecutionEngine.
 """
 
-import sys
-import os
 import inspect
+import os
+import sys
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
+import src.desktop.native.managers.display_manager as dm_module
+from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
 from src.desktop.native.managers.display_manager import DisplayManager
 from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-import src.desktop.native.managers.display_manager as dm_module
 
 
 def setup_function():
@@ -52,7 +52,9 @@ def test_display_manager_native_structure():
         "NativeEventBus",
     ]
     for symbol in forbidden_symbols:
-        assert symbol not in source, f"DisplayManager code body contains forbidden symbol: {symbol}"
+        assert (
+            symbol not in source
+        ), f"DisplayManager code body contains forbidden symbol: {symbol}"
 
     print("[OK] DisplayManager native structure verified")
 
@@ -78,22 +80,30 @@ def test_display_capabilities_execution():
     engine = DesktopExecutionEngine(manager_registry=registry)
 
     # Test list_displays
-    res_list = engine.execute(goal="list connected displays", capability="list_displays")
+    res_list = engine.execute(
+        goal="list connected displays", capability="list_displays"
+    )
     assert res_list.success is True
     assert "monitors" in res_list.data
     assert res_list.manager == "display"
 
     # Test display.list
-    res_list_dot = engine.execute(goal="list connected monitors", capability="display.list")
+    res_list_dot = engine.execute(
+        goal="list connected monitors", capability="display.list"
+    )
     assert res_list_dot.success is True
 
     # Test get_primary_display
-    res_primary = engine.execute(goal="get primary monitor", capability="get_primary_display")
+    res_primary = engine.execute(
+        goal="get primary monitor", capability="get_primary_display"
+    )
     assert res_primary.success is True
     assert "primary_display" in res_primary.data
 
     # Test get_display_layout
-    res_layout = engine.execute(goal="get virtual screen layout", capability="get_display_layout")
+    res_layout = engine.execute(
+        goal="get virtual screen layout", capability="get_display_layout"
+    )
     assert res_layout.success is True
     assert "virtual_screen" in res_layout.data
 
@@ -103,7 +113,9 @@ def test_display_capabilities_execution():
     assert "dpi_x" in res_dpi.data
 
     # Test get_brightness
-    res_bright = engine.execute(goal="get screen brightness", capability="get_brightness")
+    res_bright = engine.execute(
+        goal="get screen brightness", capability="get_brightness"
+    )
     assert res_bright.success is True
 
     print("[OK] DisplayManager capability execution through engine verified")

@@ -5,12 +5,13 @@ Track performance and action metadata for all native operations.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Any, Optional
 from enum import Enum
+from typing import Any
 
 
 class PermissionRequired(Enum):
     """Permission level required"""
+
     NONE = "none"
     READ = "read"
     WRITE = "write"
@@ -20,6 +21,7 @@ class PermissionRequired(Enum):
 
 class MetricsLevel(Enum):
     """Level of detail in metrics"""
+
     MINIMAL = "minimal"
     STANDARD = "standard"
     DETAILED = "detailed"
@@ -33,6 +35,7 @@ class NativeOperationMetrics:
     Tracks timing, permissions, events, and other metadata
     for performance monitoring and audit trails.
     """
+
     # Timing
     started_at: datetime
     completed_at: datetime
@@ -53,7 +56,7 @@ class NativeOperationMetrics:
 
     # Result metadata
     success: bool = True
-    data_size_bytes: Optional[int] = None
+    data_size_bytes: int | None = None
 
     def get_duration_formatted(self) -> str:
         """Get duration formatted as readable string"""
@@ -64,7 +67,7 @@ class NativeOperationMetrics:
         else:
             return f"{self.duration_ms / 60000:.2f}m"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary"""
         return {
             "capability": self.capability,
@@ -109,9 +112,9 @@ class MetricsRecorder:
         category: str,
         permission: PermissionRequired,
         permission_label: str = "Read",
-        events_triggered: Optional[list[str]] = None,
+        events_triggered: list[str] | None = None,
         success: bool = True,
-        data_size_bytes: Optional[int] = None,
+        data_size_bytes: int | None = None,
     ) -> NativeOperationMetrics:
         """
         Record metrics for an operation.
@@ -163,8 +166,8 @@ class MetricsRecorder:
         action: str,
         category: str,
         permission: PermissionRequired,
-        events_triggered: Optional[list[str]] = None,
-        data_size_bytes: Optional[int] = None,
+        events_triggered: list[str] | None = None,
+        data_size_bytes: int | None = None,
     ) -> NativeOperationMetrics:
         """Record a successful operation"""
         return self.record(
@@ -185,7 +188,7 @@ class MetricsRecorder:
         action: str,
         category: str,
         permission: PermissionRequired,
-        events_triggered: Optional[list[str]] = None,
+        events_triggered: list[str] | None = None,
     ) -> NativeOperationMetrics:
         """Record a failed operation"""
         return self.record(
@@ -198,7 +201,7 @@ class MetricsRecorder:
             success=False,
         )
 
-    def get_latest(self) -> Optional[NativeOperationMetrics]:
+    def get_latest(self) -> NativeOperationMetrics | None:
         """Get the most recently recorded operation metrics"""
         if not self._operations:
             return None
@@ -237,7 +240,9 @@ class MetricsRecorder:
             "average_duration_ms": total_duration / total if total > 0 else 0,
         }
 
-    def get_operations_by_capability(self, capability: str) -> list[NativeOperationMetrics]:
+    def get_operations_by_capability(
+        self, capability: str
+    ) -> list[NativeOperationMetrics]:
         """Get all operations for a specific capability"""
         return [op for op in self._operations if op.capability == capability]
 
@@ -245,7 +250,9 @@ class MetricsRecorder:
         """Get all operations for a specific manager"""
         return [op for op in self._operations if op.manager == manager]
 
-    def get_slow_operations(self, threshold_ms: float = 1000.0) -> list[NativeOperationMetrics]:
+    def get_slow_operations(
+        self, threshold_ms: float = 1000.0
+    ) -> list[NativeOperationMetrics]:
         """Get operations that took longer than threshold"""
         return [op for op in self._operations if op.duration_ms > threshold_ms]
 
@@ -255,7 +262,7 @@ class MetricsRecorder:
 
 
 # Singleton instance
-_recorder: Optional[MetricsRecorder] = None
+_recorder: MetricsRecorder | None = None
 
 
 def get_metrics_recorder() -> MetricsRecorder:

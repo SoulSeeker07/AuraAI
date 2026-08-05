@@ -4,13 +4,13 @@ Object Detector
 Detects objects in images using various techniques.
 """
 
-
 import logging
-from typing import List, Dict, Any
+from typing import Any
+
 import cv2
 import numpy as np
-from .models import ImageType
 
+from .models import ImageType
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,7 @@ class ObjectDetector:
         self.confidence_threshold = 0.5
 
     def detect_objects(
-        self,
-        image: np.ndarray,
-        image_type: ImageType = ImageType.SCREENSHOT
+        self, image: np.ndarray, image_type: ImageType = ImageType.SCREENSHOT
     ) -> tuple:
         """
         Detect objects in an image.
@@ -90,26 +88,26 @@ class ObjectDetector:
         # Extract bounding boxes
         bounding_boxes = self._extract_bounding_boxes(all_objects)
 
-        logger.info(f"Detected {len(all_objects)} UI elements: "
-                   f"{len(text_regions)} text regions, "
-                   f"{len(buttons)} buttons, "
-                   f"{len(menus)} menus, "
-                   f"{len(dialogs)} dialogs")
+        logger.info(
+            f"Detected {len(all_objects)} UI elements: "
+            f"{len(text_regions)} text regions, "
+            f"{len(buttons)} buttons, "
+            f"{len(menus)} menus, "
+            f"{len(dialogs)} dialogs"
+        )
 
         return all_objects, bounding_boxes
 
-    def _find_text_regions(self, gray: np.ndarray, original: np.ndarray) -> List[Dict[str, Any]]:
+    def _find_text_regions(
+        self, gray: np.ndarray, original: np.ndarray
+    ) -> list[dict[str, Any]]:
         """Find text regions in an image."""
         # Use morphological operations to find text
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 7))
         morphed = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
 
         # Find contours
-        contours, _ = cv2.findContours(
-            morphed,
-            cv2.RETR_LIST,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
+        contours, _ = cv2.findContours(morphed, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         text_regions = []
         min_area = 100
@@ -127,18 +125,22 @@ class ObjectDetector:
                 continue
 
             # Get the ROI
-            roi = original[y:y+h, x:x+w]
+            roi = original[y : y + h, x : x + w]
 
-            text_regions.append({
-                'type': 'text_region',
-                'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                'area': area,
-                'roi': roi
-            })
+            text_regions.append(
+                {
+                    "type": "text_region",
+                    "position": {"x": x, "y": y, "width": w, "height": h},
+                    "area": area,
+                    "roi": roi,
+                }
+            )
 
         return text_regions
 
-    def _detect_buttons(self, image: np.ndarray, text_regions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _detect_buttons(
+        self, image: np.ndarray, text_regions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Detect button-like elements."""
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
@@ -162,18 +164,22 @@ class ObjectDetector:
                 continue
 
             # Check if region contains text
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._has_text_content(roi):
-                buttons.append({
-                    'type': 'button',
-                    'text': '',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                buttons.append(
+                    {
+                        "type": "button",
+                        "text": "",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         return buttons
 
-    def _detect_menus(self, image: np.ndarray, text_regions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _detect_menus(
+        self, image: np.ndarray, text_regions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Detect menu items."""
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
@@ -193,18 +199,22 @@ class ObjectDetector:
 
             # Typical menu aspect ratios
             if 0.5 < aspect_ratio < 3:
-                roi = image[y:y+h, x:x+w]
+                roi = image[y : y + h, x : x + w]
                 if self._has_text_content(roi):
-                    menus.append({
-                        'type': 'menu_item',
-                        'text': '',
-                        'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                        'area': area
-                    })
+                    menus.append(
+                        {
+                            "type": "menu_item",
+                            "text": "",
+                            "position": {"x": x, "y": y, "width": w, "height": h},
+                            "area": area,
+                        }
+                    )
 
         return menus
 
-    def _detect_dialogs(self, image: np.ndarray, text_regions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _detect_dialogs(
+        self, image: np.ndarray, text_regions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Detect dialog boxes."""
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
@@ -222,14 +232,16 @@ class ObjectDetector:
             # Check aspect ratio (dialogs are typically square-ish)
             aspect_ratio = w / h if h > 0 else 0
             if 0.7 < aspect_ratio < 1.3:
-                roi = image[y:y+h, x:x+w]
+                roi = image[y : y + h, x : x + w]
                 if self._has_text_content(roi):
-                    dialogs.append({
-                        'type': 'dialog',
-                        'text': '',
-                        'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                        'area': area
-                    })
+                    dialogs.append(
+                        {
+                            "type": "dialog",
+                            "text": "",
+                            "position": {"x": x, "y": y, "width": w, "height": h},
+                            "area": area,
+                        }
+                    )
 
         return dialogs
 
@@ -265,24 +277,26 @@ class ObjectDetector:
             num_vertices = len(approx)
 
             if num_vertices == 3:
-                shape = 'triangle'
+                shape = "triangle"
             elif num_vertices == 4:
-                shape = 'rectangle'
+                shape = "rectangle"
             elif num_vertices == 5:
-                shape = 'pentagon'
+                shape = "pentagon"
             elif num_vertices >= 6:
-                shape = 'circle'
+                shape = "circle"
             else:
-                shape = 'unknown'
+                shape = "unknown"
 
             # Get bounding box
             x, y, w, h = cv2.boundingRect(contour)
 
-            objects.append({
-                'type': shape,
-                'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                'area': area
-            })
+            objects.append(
+                {
+                    "type": shape,
+                    "position": {"x": x, "y": y, "width": w, "height": h},
+                    "area": area,
+                }
+            )
 
         bounding_boxes = self._extract_bounding_boxes(objects)
 
@@ -317,13 +331,11 @@ class ObjectDetector:
 
         # Detect horizontal lines (code lines)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 10))
-        horizontal_lines = cv2.morphologyEx(
-            gray,
-            cv2.MORPH_OPEN,
-            kernel
-        )
+        horizontal_lines = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
 
-        _, binary = cv2.threshold(horizontal_lines, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, binary = cv2.threshold(
+            horizontal_lines, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
         contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         code_elements = []
@@ -335,11 +347,13 @@ class ObjectDetector:
             if w < min_length or h < 2:
                 continue
 
-            code_elements.append({
-                'type': 'code_line',
-                'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                'area': w * h
-            })
+            code_elements.append(
+                {
+                    "type": "code_line",
+                    "position": {"x": x, "y": y, "width": w, "height": h},
+                    "area": w * h,
+                }
+            )
 
         bounding_boxes = self._extract_bounding_boxes(code_elements)
 
@@ -347,31 +361,33 @@ class ObjectDetector:
 
         return code_elements, bounding_boxes
 
-    def _detect_paragraphs(self, image: np.ndarray, text_regions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _detect_paragraphs(
+        self, image: np.ndarray, text_regions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Detect paragraph regions."""
         paragraphs = []
         min_area = 1000
         max_area = 50000
 
         for region in text_regions:
-            area = region.get('area', 0)
+            area = region.get("area", 0)
             if area < min_area or area > max_area:
                 continue
 
             # Check if region is wide enough for a paragraph
-            x, y, w, h = region['position'].values()
+            x, y, w, h = region["position"].values()
             aspect_ratio = w / h if h > 0 else 0
 
             if aspect_ratio > 2:  # Wide regions are likely paragraphs
-                paragraphs.append({
-                    'type': 'paragraph',
-                    'position': region['position'],
-                    'area': area
-                })
+                paragraphs.append(
+                    {"type": "paragraph", "position": region["position"], "area": area}
+                )
 
         return paragraphs
 
-    def _detect_table_regions(self, image: np.ndarray, text_regions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _detect_table_regions(
+        self, image: np.ndarray, text_regions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Detect table-like regions."""
         tables = []
 
@@ -380,13 +396,13 @@ class ObjectDetector:
         grouped = []
 
         for region in text_regions:
-            x, y, w, h = region['position'].values()
+            x, y, w, h = region["position"].values()
             area = w * h
 
             # Find nearby regions
             neighbors = []
             for other in text_regions:
-                ox, oy, ow, oh = other['position'].values()
+                ox, oy, ow, oh = other["position"].values()
                 dist = abs(x - ox) + abs(y - oy)
 
                 if dist < 30 and area > 500:  # Close and substantial
@@ -394,12 +410,14 @@ class ObjectDetector:
 
             if len(neighbors) >= 2:
                 # This looks like a table cell
-                tables.append({
-                    'type': 'table_cell',
-                    'position': region['position'],
-                    'area': area,
-                    'neighbors': len(neighbors)
-                })
+                tables.append(
+                    {
+                        "type": "table_cell",
+                        "position": region["position"],
+                        "area": area,
+                        "neighbors": len(neighbors),
+                    }
+                )
 
         return tables
 
@@ -417,7 +435,9 @@ class ObjectDetector:
         # If region is too dark, it might be empty
         return brightness > 30
 
-    def _extract_bounding_boxes(self, objects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_bounding_boxes(
+        self, objects: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Extract bounding boxes from detected objects.
 
@@ -429,11 +449,13 @@ class ObjectDetector:
         """
         boxes = []
         for obj in objects:
-            pos = obj['position']
-            boxes.append({
-                'x': pos['x'],
-                'y': pos['y'],
-                'width': pos['width'],
-                'height': pos['height']
-            })
+            pos = obj["position"]
+            boxes.append(
+                {
+                    "x": pos["x"],
+                    "y": pos["y"],
+                    "width": pos["width"],
+                    "height": pos["height"],
+                }
+            )
         return boxes

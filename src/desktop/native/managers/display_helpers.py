@@ -6,16 +6,16 @@ orientation, DPI awareness, and brightness configuration.
 """
 
 import ctypes
-from ctypes import wintypes
+import logging
+from typing import Any
+
 import win32api
 import win32con
-from typing import List, Dict, Any, Optional
-import logging
 
 logger = logging.getLogger(__name__)
 
 
-def enumerate_monitors() -> List[Dict[str, Any]]:
+def enumerate_monitors() -> list[dict[str, Any]]:
     """
     Enumerate all connected display monitors and their adapters using Win32 API.
 
@@ -42,35 +42,41 @@ def enumerate_monitors() -> List[Dict[str, Any]]:
             # Get display mode settings
             mode_settings = get_display_settings(device_name)
 
-            monitors.append({
-                "id": f"display_{i+1}",
-                "handle": int(handle),
-                "device_name": device_name,
-                "is_primary": is_primary,
-                "bounds": {
-                    "left": monitor_rect[0],
-                    "top": monitor_rect[1],
-                    "right": monitor_rect[2],
-                    "bottom": monitor_rect[3],
-                    "width": monitor_rect[2] - monitor_rect[0],
-                    "height": monitor_rect[3] - monitor_rect[1],
-                },
-                "work_area": {
-                    "left": work_rect[0],
-                    "top": work_rect[1],
-                    "right": work_rect[2],
-                    "bottom": work_rect[3],
-                    "width": work_rect[2] - work_rect[0],
-                    "height": work_rect[3] - work_rect[1],
-                },
-                "resolution": {
-                    "width": mode_settings.get("width", monitor_rect[2] - monitor_rect[0]),
-                    "height": mode_settings.get("height", monitor_rect[3] - monitor_rect[1]),
-                },
-                "refresh_rate": mode_settings.get("refresh_rate", 60),
-                "bits_per_pixel": mode_settings.get("bits_per_pixel", 32),
-                "orientation": mode_settings.get("orientation", 0),
-            })
+            monitors.append(
+                {
+                    "id": f"display_{i+1}",
+                    "handle": int(handle),
+                    "device_name": device_name,
+                    "is_primary": is_primary,
+                    "bounds": {
+                        "left": monitor_rect[0],
+                        "top": monitor_rect[1],
+                        "right": monitor_rect[2],
+                        "bottom": monitor_rect[3],
+                        "width": monitor_rect[2] - monitor_rect[0],
+                        "height": monitor_rect[3] - monitor_rect[1],
+                    },
+                    "work_area": {
+                        "left": work_rect[0],
+                        "top": work_rect[1],
+                        "right": work_rect[2],
+                        "bottom": work_rect[3],
+                        "width": work_rect[2] - work_rect[0],
+                        "height": work_rect[3] - work_rect[1],
+                    },
+                    "resolution": {
+                        "width": mode_settings.get(
+                            "width", monitor_rect[2] - monitor_rect[0]
+                        ),
+                        "height": mode_settings.get(
+                            "height", monitor_rect[3] - monitor_rect[1]
+                        ),
+                    },
+                    "refresh_rate": mode_settings.get("refresh_rate", 60),
+                    "bits_per_pixel": mode_settings.get("bits_per_pixel", 32),
+                    "orientation": mode_settings.get("orientation", 0),
+                }
+            )
             i += 1
     except Exception as e:
         logger.error(f"Error enumerating monitors via win32api: {e}")
@@ -79,23 +85,39 @@ def enumerate_monitors() -> List[Dict[str, Any]]:
     if not monitors:
         width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
-        monitors.append({
-            "id": "display_1",
-            "handle": 0,
-            "device_name": "\\\\.\\DISPLAY1",
-            "is_primary": True,
-            "bounds": {"left": 0, "top": 0, "right": width, "bottom": height, "width": width, "height": height},
-            "work_area": {"left": 0, "top": 0, "right": width, "bottom": height, "width": width, "height": height},
-            "resolution": {"width": width, "height": height},
-            "refresh_rate": 60,
-            "bits_per_pixel": 32,
-            "orientation": 0,
-        })
+        monitors.append(
+            {
+                "id": "display_1",
+                "handle": 0,
+                "device_name": "\\\\.\\DISPLAY1",
+                "is_primary": True,
+                "bounds": {
+                    "left": 0,
+                    "top": 0,
+                    "right": width,
+                    "bottom": height,
+                    "width": width,
+                    "height": height,
+                },
+                "work_area": {
+                    "left": 0,
+                    "top": 0,
+                    "right": width,
+                    "bottom": height,
+                    "width": width,
+                    "height": height,
+                },
+                "resolution": {"width": width, "height": height},
+                "refresh_rate": 60,
+                "bits_per_pixel": 32,
+                "orientation": 0,
+            }
+        )
 
     return monitors
 
 
-def get_display_settings(device_name: str) -> Dict[str, Any]:
+def get_display_settings(device_name: str) -> dict[str, Any]:
     """
     Get current display mode settings for a device name.
 
@@ -106,7 +128,9 @@ def get_display_settings(device_name: str) -> Dict[str, Any]:
         Dict with width, height, refresh_rate, bits_per_pixel, orientation.
     """
     try:
-        devmode = win32api.EnumDisplaySettings(device_name, win32con.ENUM_CURRENT_SETTINGS)
+        devmode = win32api.EnumDisplaySettings(
+            device_name, win32con.ENUM_CURRENT_SETTINGS
+        )
         return {
             "width": devmode.PelsWidth,
             "height": devmode.PelsHeight,
@@ -125,7 +149,7 @@ def get_display_settings(device_name: str) -> Dict[str, Any]:
         }
 
 
-def get_display_layout() -> Dict[str, Any]:
+def get_display_layout() -> dict[str, Any]:
     """
     Get overall virtual desktop bounding box and layout geometry across all monitors.
 
@@ -151,7 +175,7 @@ def get_display_layout() -> Dict[str, Any]:
     }
 
 
-def get_display_dpi(handle: Optional[int] = None) -> Dict[str, Any]:
+def get_display_dpi(handle: int | None = None) -> dict[str, Any]:
     """
     Get DPI awareness information for a monitor handle or primary screen.
 
@@ -185,7 +209,7 @@ def get_display_dpi(handle: Optional[int] = None) -> Dict[str, Any]:
         return {"dpi_x": 96, "dpi_y": 96, "scale_factor_percent": 100.0}
 
 
-def get_display_brightness() -> Dict[str, Any]:
+def get_display_brightness() -> dict[str, Any]:
     """
     Get display brightness using WMI (WmiMonitorBrightness).
 
@@ -194,6 +218,7 @@ def get_display_brightness() -> Dict[str, Any]:
     """
     try:
         import wmi
+
         c = wmi.WMI(namespace="wmi")
         brightness_instances = c.WmiMonitorBrightness()
         if brightness_instances:
@@ -214,7 +239,7 @@ def get_display_brightness() -> Dict[str, Any]:
     }
 
 
-def set_display_brightness(level: int) -> Dict[str, Any]:
+def set_display_brightness(level: int) -> dict[str, Any]:
     """
     Set display brightness using WMI.
 
@@ -227,6 +252,7 @@ def set_display_brightness(level: int) -> Dict[str, Any]:
     target_level = max(0, min(100, int(level)))
     try:
         import wmi
+
         c = wmi.WMI(namespace="wmi")
         methods = c.WmiMonitorBrightnessMethods()
         if methods:
@@ -235,7 +261,11 @@ def set_display_brightness(level: int) -> Dict[str, Any]:
     except Exception as e:
         logger.warning(f"Could not set brightness via WMI: {e}")
 
-    return {"success": False, "level": target_level, "error": "Brightness control unsupported on hardware"}
+    return {
+        "success": False,
+        "level": target_level,
+        "error": "Brightness control unsupported on hardware",
+    }
 
 
 def set_display_resolution(device_name: str, width: int, height: int) -> bool:
@@ -251,7 +281,9 @@ def set_display_resolution(device_name: str, width: int, height: int) -> bool:
         True if successful.
     """
     try:
-        devmode = win32api.EnumDisplaySettings(device_name, win32con.ENUM_CURRENT_SETTINGS)
+        devmode = win32api.EnumDisplaySettings(
+            device_name, win32con.ENUM_CURRENT_SETTINGS
+        )
         devmode.PelsWidth = width
         devmode.PelsHeight = height
         devmode.Fields = win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT
@@ -275,14 +307,25 @@ def set_display_orientation(device_name: str, orientation: int) -> bool:
         True if successful.
     """
     try:
-        devmode = win32api.EnumDisplaySettings(device_name, win32con.ENUM_CURRENT_SETTINGS)
+        devmode = win32api.EnumDisplaySettings(
+            device_name, win32con.ENUM_CURRENT_SETTINGS
+        )
         # Swap width/height if orientation changes between landscape and portrait
         current_orient = devmode.DisplayOrientation
-        if (current_orient in (0, 2) and orientation in (1, 3)) or (current_orient in (1, 3) and orientation in (0, 2)):
-            devmode.PelsWidth, devmode.PelsHeight = devmode.PelsHeight, devmode.PelsWidth
+        if (current_orient in (0, 2) and orientation in (1, 3)) or (
+            current_orient in (1, 3) and orientation in (0, 2)
+        ):
+            devmode.PelsWidth, devmode.PelsHeight = (
+                devmode.PelsHeight,
+                devmode.PelsWidth,
+            )
 
         devmode.DisplayOrientation = orientation
-        devmode.Fields = win32con.DM_DISPLAYORIENTATION | win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT
+        devmode.Fields = (
+            win32con.DM_DISPLAYORIENTATION
+            | win32con.DM_PELSWIDTH
+            | win32con.DM_PELSHEIGHT
+        )
 
         res = win32api.ChangeDisplaySettingsEx(device_name, devmode, 0)
         return res == win32con.DISP_CHANGE_SUCCESSFUL

@@ -11,6 +11,7 @@ from ai.provider_manager import ProviderManager
 @dataclass
 class IntentAnalysis:
     """Result of intent analysis with confidence scores."""
+
     intent: str
     confidence: float
     subintent: str | None = None
@@ -27,7 +28,7 @@ class IntentAnalyzer:
     AI-powered intent analyzer that classifies user queries.
     Uses Groq to detect the user's intent instead of hardcoded keywords.
     """
-    
+
     INTENT_SYSTEM_PROMPT = """You are an intent analyzer for Aura AI, an intelligent assistant.
 Your job is to classify user queries into intents with confidence scores.
 
@@ -58,7 +59,9 @@ Return JSON with:
 
 If unsure, set confidence to 0.3 or lower and include reasoning in metadata."""
 
-    def __init__(self, provider_manager: ProviderManager, model: str = "llama3-70b-8192"):
+    def __init__(
+        self, provider_manager: ProviderManager, model: str = "llama3-70b-8192"
+    ):
         self.provider_manager = provider_manager
         self.model = model
 
@@ -66,28 +69,19 @@ If unsure, set confidence to 0.3 or lower and include reasoning in metadata."""
         """Analyze the user's intent using AI."""
         try:
             system_prompt = self.INTENT_SYSTEM_PROMPT
-            
+
             messages = [
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": user_input
-                }
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input},
             ]
 
             request = ChatRequest(
-                messages=messages,
-                model=self.model,
-                temperature=0.1,
-                max_tokens=300
+                messages=messages, model=self.model, temperature=0.1, max_tokens=300
             )
 
             response = self.provider_manager.chat(request)
             result = json.loads(response.text)
-            
+
             return IntentAnalysis(
                 intent=result.get("intent", "GENERAL_CHAT"),
                 confidence=float(result.get("confidence", 0.5)),
@@ -95,12 +89,12 @@ If unsure, set confidence to 0.3 or lower and include reasoning in metadata."""
                 category=result.get("category"),
                 metadata={
                     "raw_response": result,
-                    "reasoning": result.get("metadata", {}).get("reasoning", "")
+                    "reasoning": result.get("metadata", {}).get("reasoning", ""),
                 },
                 needs_web_search=bool(result.get("needs_web_search", False)),
                 needs_deep_research=bool(result.get("needs_deep_research", False)),
                 specialized_sources=result.get("specialized_sources", []),
-                data=result.get("data", {})
+                data=result.get("data", {}),
             )
         except json.JSONDecodeError:
             # Fallback to simple keyword-based analysis
@@ -108,64 +102,101 @@ If unsure, set confidence to 0.3 or lower and include reasoning in metadata."""
         except Exception:
             # Return general chat as fallback
             return IntentAnalysis(
-                intent="GENERAL_CHAT",
-                confidence=0.3,
-                category="general"
+                intent="GENERAL_CHAT", confidence=0.3, category="general"
             )
 
     def _fallback_analysis(self, user_input: str) -> IntentAnalysis:
         """Simple keyword-based fallback analysis when AI is unavailable."""
         input_lower = user_input.lower()
-        
+
         # Check for specialized domains
-        networking_keywords = ["network", "router", "switch", "ccna", "ccnp", "jncia", "juniper", "cisco", "firewall", "palo alto", "fortinet"]
-        programming_keywords = ["python", "java", "javascript", "react", "django", "api", "function", "code", "programming", "debug"]
-        medical_keywords = ["health", "symptom", "diagnosis", "doctor", "medicine", "medical", "covid"]
-        
+        networking_keywords = [
+            "network",
+            "router",
+            "switch",
+            "ccna",
+            "ccnp",
+            "jncia",
+            "juniper",
+            "cisco",
+            "firewall",
+            "palo alto",
+            "fortinet",
+        ]
+        programming_keywords = [
+            "python",
+            "java",
+            "javascript",
+            "react",
+            "django",
+            "api",
+            "function",
+            "code",
+            "programming",
+            "debug",
+        ]
+        medical_keywords = [
+            "health",
+            "symptom",
+            "diagnosis",
+            "doctor",
+            "medicine",
+            "medical",
+            "covid",
+        ]
+
         # Check for real-time information
-        if any(word in input_lower for word in ["weather", "score", "stock", "price", "news"]):
+        if any(
+            word in input_lower
+            for word in ["weather", "score", "stock", "price", "news"]
+        ):
             return IntentAnalysis(
-                intent="LIVE_INFORMATION",
-                confidence=0.7,
-                category="live"
+                intent="LIVE_INFORMATION", confidence=0.7, category="live"
             )
-        
+
         # Check for research/education
-        if any(word in input_lower for word in ["explain", "how", "why", "what", "compare", "difference", "vs", "tutorial", "guide"]):
+        if any(
+            word in input_lower
+            for word in [
+                "explain",
+                "how",
+                "why",
+                "what",
+                "compare",
+                "difference",
+                "vs",
+                "tutorial",
+                "guide",
+            ]
+        ):
             return IntentAnalysis(
-                intent="KNOWLEDGE_REQUEST",
-                confidence=0.8,
-                category="knowledge"
+                intent="KNOWLEDGE_REQUEST", confidence=0.8, category="knowledge"
             )
-        
+
         # Check for specialized domains
         if any(word in input_lower for word in networking_keywords):
             return IntentAnalysis(
                 intent="NETWORKING",
                 confidence=0.9,
                 category="networking",
-                specialized_sources=["cisco.com", "microsoft.com", "juniper.net"]
+                specialized_sources=["cisco.com", "microsoft.com", "juniper.net"],
             )
-        
+
         if any(word in input_lower for word in programming_keywords):
             return IntentAnalysis(
                 intent="PROGRAMMING",
                 confidence=0.9,
                 category="programming",
-                specialized_sources=["github.com", "stackoverflow.com", "python.org"]
+                specialized_sources=["github.com", "stackoverflow.com", "python.org"],
             )
-        
+
         if any(word in input_lower for word in medical_keywords):
             return IntentAnalysis(
                 intent="MEDICAL",
                 confidence=0.7,
                 category="medical",
-                specialized_sources=["who.int", "mayoclinic.org", "cdc.gov"]
+                specialized_sources=["who.int", "mayoclinic.org", "cdc.gov"],
             )
-        
+
         # Default to general chat
-        return IntentAnalysis(
-            intent="GENERAL_CHAT",
-            confidence=0.5,
-            category="general"
-        )
+        return IntentAnalysis(intent="GENERAL_CHAT", confidence=0.5, category="general")

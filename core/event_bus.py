@@ -19,15 +19,17 @@ from __future__ import annotations
 
 import threading
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, DefaultDict, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class Event:
     """Represents a single published event."""
-    name: Any                              # e.g. a ProcessEvent enum member or plain string
-    payload: Dict[str, Any] = field(default_factory=dict)
+
+    name: Any  # e.g. a ProcessEvent enum member or plain string
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 class EventBus:
@@ -41,7 +43,9 @@ class EventBus:
     """
 
     def __init__(self) -> None:
-        self._subscribers: DefaultDict[Any, List[Callable[[Event], None]]] = defaultdict(list)
+        self._subscribers: defaultdict[Any, list[Callable[[Event], None]]] = (
+            defaultdict(list)
+        )
         self._lock = threading.RLock()
 
     def subscribe(self, event_name: Any, callback: Callable[[Event], None]) -> None:
@@ -59,7 +63,7 @@ class EventBus:
     def publish(
         self,
         event_name: Any,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -68,7 +72,7 @@ class EventBus:
         payload and kwargs are merged into a single dict available as event.payload.
         Subscribers are called synchronously, on the calling thread.
         """
-        merged_payload: Dict[str, Any] = dict(payload) if payload else {}
+        merged_payload: dict[str, Any] = dict(payload) if payload else {}
         merged_payload.update(kwargs)
         event = Event(name=event_name, payload=merged_payload)
 
@@ -81,10 +85,12 @@ class EventBus:
         for callback in callbacks:
             try:
                 callback(event)
-            except Exception as exc:  # noqa: BLE001 - never let one bad subscriber break the bus
+            except (
+                Exception
+            ) as exc:  # noqa: BLE001 - never let one bad subscriber break the bus
                 print(f"[EventBus] Subscriber error for event '{event_name}': {exc}")
 
-    def clear(self, event_name: Optional[Any] = None) -> None:
+    def clear(self, event_name: Any | None = None) -> None:
         """Remove all subscribers for a single event, or all events if None."""
         with self._lock:
             if event_name is None:

@@ -4,18 +4,13 @@ Goal Model
 Represents a high-level objective that the Agent Runtime aims to achieve.
 """
 
-
 import logging
-from typing import List, Dict, Any, Optional, Callable
-from datetime import datetime, timedelta
-from enum import Enum
 import uuid
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from typing import Any
 
-from .models import (
-    GoalStatus, GoalPriority,
-    ApprovalRequired, RetryPolicy
-)
-
+from .models import ApprovalRequired, GoalPriority, GoalStatus, RetryPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +26,18 @@ class Goal:
     def __init__(
         self,
         description: str,
-        goal_id: Optional[str] = None,
+        goal_id: str | None = None,
         priority: GoalPriority = GoalPriority.NORMAL,
         estimated_total_duration: timedelta = timedelta(minutes=30),
         risk_level: str = "MEDIUM",
         approval_required: ApprovalRequired = ApprovalRequired.AUTO,
         retry_policy: RetryPolicy = RetryPolicy.DEFAULT,
         max_retries: int = 1,
-        context: Optional[Dict[str, Any]] = None,
-        parent_goal_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        context: dict[str, Any] | None = None,
+        parent_goal_id: str | None = None,
+        tags: list[str] | None = None,
         estimated_steps: int = 1,
-        success_criteria: Optional[List[str]] = None
+        success_criteria: list[str] | None = None,
     ):
         """
         Initialize a goal.
@@ -79,12 +74,12 @@ class Goal:
         # Execution tracking
         self.status = GoalStatus.CREATED
         self.created_at = datetime.now()
-        self.started_at: Optional[datetime] = None
-        self.completed_at: Optional[datetime] = None
-        self.duration: Optional[timedelta] = None
+        self.started_at: datetime | None = None
+        self.completed_at: datetime | None = None
+        self.duration: timedelta | None = None
 
         # Tasks
-        self.tasks: List['Task'] = []
+        self.tasks: list[Task] = []
 
         # Progress
         self.total_progress = 0.0
@@ -92,14 +87,14 @@ class Goal:
         self.current_step = ""
 
         # Callbacks
-        self.on_start: Optional[Callable[['Goal'], None]] = None
-        self.on_progress: Optional[Callable[['Goal', float], None]] = None
-        self.on_complete: Optional[Callable[['Goal'], None]] = None
-        self.on_fail: Optional[Callable[['Goal'], None]] = None
-        self.on_approval_required: Optional[Callable[['Goal'], bool]] = None
+        self.on_start: Callable[[Goal], None] | None = None
+        self.on_progress: Callable[[Goal, float], None] | None = None
+        self.on_complete: Callable[[Goal], None] | None = None
+        self.on_fail: Callable[[Goal], None] | None = None
+        self.on_approval_required: Callable[[Goal], bool] | None = None
 
         # Sub-goals
-        self.sub_goals: List['Goal'] = []
+        self.sub_goals: list[Goal] = []
 
         logger.debug(f"Created goal: {self.goal_id[:8]} - {description[:50]}")
 
@@ -111,7 +106,11 @@ class Goal:
     @property
     def is_complete(self) -> bool:
         """Check if goal is complete."""
-        return self.status in [GoalStatus.COMPLETED, GoalStatus.FAILED, GoalStatus.CANCELLED]
+        return self.status in [
+            GoalStatus.COMPLETED,
+            GoalStatus.FAILED,
+            GoalStatus.CANCELLED,
+        ]
 
     @property
     def is_active(self) -> bool:
@@ -130,10 +129,10 @@ class Goal:
             return 0.0
 
         total = len(self.tasks)
-        completed = sum(1 for t in self.tasks if t.status == 'COMPLETED')
+        completed = sum(1 for t in self.tasks if t.status == "COMPLETED")
         return completed / total
 
-    def add_task(self, task: 'Task'):
+    def add_task(self, task: "Task"):
         """
         Add a task to this goal.
 
@@ -144,7 +143,7 @@ class Goal:
         self.tasks.append(task)
         logger.debug(f"Added task {task.task_id[:8]} to goal {self.goal_id[:8]}")
 
-    def add_sub_goal(self, sub_goal: 'Goal'):
+    def add_sub_goal(self, sub_goal: "Goal"):
         """
         Add a sub-goal to this goal.
 
@@ -153,7 +152,9 @@ class Goal:
         """
         sub_goal.parent_goal_id = self.goal_id
         self.sub_goals.append(sub_goal)
-        logger.debug(f"Added sub-goal {sub_goal.goal_id[:8]} to goal {self.goal_id[:8]}")
+        logger.debug(
+            f"Added sub-goal {sub_goal.goal_id[:8]} to goal {self.goal_id[:8]}"
+        )
 
     def mark_started(self):
         """Mark goal as started."""
@@ -162,7 +163,7 @@ class Goal:
 
         # Mark all tasks as queued
         for task in self.tasks:
-            task.status = 'QUEUED'
+            task.status = "QUEUED"
 
         logger.info(f"Goal {self.goal_id[:8]} started")
 
@@ -206,26 +207,28 @@ class Goal:
 
         logger.info(f"Goal {self.goal_id[:8]} cancelled")
 
-    def update_progress(self, task: 'Task'):
+    def update_progress(self, task: "Task"):
         """
         Update goal progress based on task status.
 
         Args:
             task: Task that just changed status
         """
-        if task.status == 'COMPLETED':
+        if task.status == "COMPLETED":
             self.completed_steps += 1
             self.current_step = task.goal[:50]
-        elif task.status == 'FAILED':
+        elif task.status == "FAILED":
             self.current_step = f"Task failed: {task.goal[:50]}"
 
         # Calculate overall progress
         if self.tasks:
             total_tasks = len(self.tasks)
-            completed_tasks = sum(1 for t in self.tasks if t.status == 'COMPLETED')
+            completed_tasks = sum(1 for t in self.tasks if t.status == "COMPLETED")
             self.total_progress = completed_tasks / total_tasks
 
-        logger.debug(f"Goal {self.goal_id[:8]} progress: {self.total_progress*100:.1f}% - {self.current_step}")
+        logger.debug(
+            f"Goal {self.goal_id[:8]} progress: {self.total_progress*100:.1f}% - {self.current_step}"
+        )
 
         if self.on_progress:
             self.on_progress(self, self.total_progress)
@@ -251,7 +254,7 @@ class Goal:
         # For critical tasks, always require approval
         return False
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """
         Get a summary of goal status.
 
@@ -259,23 +262,25 @@ class Goal:
             Status summary dictionary
         """
         return {
-            'goal_id': self.goal_id,
-            'description': self.description,
-            'status': self.status.value,
-            'priority': self.priority.value,
-            'progress': self.total_progress,
-            'completed_steps': self.completed_steps,
-            'total_steps': self.estimated_steps,
-            'current_step': self.current_step,
-            'total_duration': self.duration.total_seconds() if self.duration else None,
-            'task_count': len(self.tasks),
-            'completed_task_count': sum(1 for t in self.tasks if t.status == 'COMPLETED'),
-            'failed_task_count': sum(1 for t in self.tasks if t.status == 'FAILED'),
-            'parent_goal_id': self.parent_goal_id,
-            'tags': self.tags
+            "goal_id": self.goal_id,
+            "description": self.description,
+            "status": self.status.value,
+            "priority": self.priority.value,
+            "progress": self.total_progress,
+            "completed_steps": self.completed_steps,
+            "total_steps": self.estimated_steps,
+            "current_step": self.current_step,
+            "total_duration": self.duration.total_seconds() if self.duration else None,
+            "task_count": len(self.tasks),
+            "completed_task_count": sum(
+                1 for t in self.tasks if t.status == "COMPLETED"
+            ),
+            "failed_task_count": sum(1 for t in self.tasks if t.status == "FAILED"),
+            "parent_goal_id": self.parent_goal_id,
+            "tags": self.tags,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert goal to dictionary.
 
@@ -283,32 +288,34 @@ class Goal:
             Goal as dictionary
         """
         return {
-            'goal_id': self.goal_id,
-            'description': self.description,
-            'priority': self.priority.value,
-            'estimated_total_duration': self.estimated_total_duration.total_seconds(),
-            'risk_level': self.risk_level,
-            'approval_required': self.approval_required.value,
-            'retry_policy': self.retry_policy.value,
-            'context': self.context,
-            'parent_goal_id': self.parent_goal_id,
-            'tags': self.tags,
-            'estimated_steps': self.estimated_steps,
-            'success_criteria': self.success_criteria,
-            'status': self.status.value,
-            'created_at': self.created_at.isoformat(),
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
-            'duration': self.duration.total_seconds() if self.duration else None,
-            'total_progress': self.total_progress,
-            'completed_steps': self.completed_steps,
-            'current_step': self.current_step,
-            'task_count': len(self.tasks),
-            'sub_goal_count': len(self.sub_goals)
+            "goal_id": self.goal_id,
+            "description": self.description,
+            "priority": self.priority.value,
+            "estimated_total_duration": self.estimated_total_duration.total_seconds(),
+            "risk_level": self.risk_level,
+            "approval_required": self.approval_required.value,
+            "retry_policy": self.retry_policy.value,
+            "context": self.context,
+            "parent_goal_id": self.parent_goal_id,
+            "tags": self.tags,
+            "estimated_steps": self.estimated_steps,
+            "success_criteria": self.success_criteria,
+            "status": self.status.value,
+            "created_at": self.created_at.isoformat(),
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+            "duration": self.duration.total_seconds() if self.duration else None,
+            "total_progress": self.total_progress,
+            "completed_steps": self.completed_steps,
+            "current_step": self.current_step,
+            "task_count": len(self.tasks),
+            "sub_goal_count": len(self.sub_goals),
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Goal':
+    def from_dict(cls, data: dict[str, Any]) -> "Goal":
         """
         Create goal from dictionary.
 
@@ -319,19 +326,21 @@ class Goal:
             Goal instance
         """
         return cls(
-            goal_id=data.get('goal_id'),
-            description=data['description'],
-            priority=GoalPriority(data.get('priority', 'NORMAL')),
-            estimated_total_duration=timedelta(seconds=data.get('estimated_total_duration', 1800)),
-            risk_level=data.get('risk_level', 'MEDIUM'),
-            approval_required=ApprovalRequired(data.get('approval_required', 'AUTO')),
-            retry_policy=RetryPolicy(data.get('retry_policy', 'DEFAULT')),
-            max_retries=data.get('max_retries', 1),
-            context=data.get('context'),
-            parent_goal_id=data.get('parent_goal_id'),
-            tags=data.get('tags'),
-            estimated_steps=data.get('estimated_steps', 1),
-            success_criteria=data.get('success_criteria')
+            goal_id=data.get("goal_id"),
+            description=data["description"],
+            priority=GoalPriority(data.get("priority", "NORMAL")),
+            estimated_total_duration=timedelta(
+                seconds=data.get("estimated_total_duration", 1800)
+            ),
+            risk_level=data.get("risk_level", "MEDIUM"),
+            approval_required=ApprovalRequired(data.get("approval_required", "AUTO")),
+            retry_policy=RetryPolicy(data.get("retry_policy", "DEFAULT")),
+            max_retries=data.get("max_retries", 1),
+            context=data.get("context"),
+            parent_goal_id=data.get("parent_goal_id"),
+            tags=data.get("tags"),
+            estimated_steps=data.get("estimated_steps", 1),
+            success_criteria=data.get("success_criteria"),
         )
 
     def __repr__(self) -> str:

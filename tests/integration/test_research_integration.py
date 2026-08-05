@@ -5,9 +5,9 @@ This script tests that the Research Engine is properly integrated
 with Aura's Brain system.
 """
 
-import sys
 import asyncio
 import logging
+import sys
 from pathlib import Path
 
 # Add paths before any imports (same as main.py)
@@ -21,8 +21,7 @@ from core.aura_core import AuraCore
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -32,9 +31,9 @@ async def test_research_integration():
 
     # Create config
     config = {
-        'project_root': str(Path(__file__).parent),
-        'workspace': str(Path(__file__).parent),
-        'groq_model': 'llama-3.3-70b-versatile'
+        "project_root": str(Path(__file__).parent),
+        "workspace": str(Path(__file__).parent),
+        "groq_model": "llama-3.3-70b-versatile",
     }
 
     logger.info("Initializing Aura Core...")
@@ -50,8 +49,8 @@ async def test_research_integration():
     if core.research_enabled:
         stats = core.get_research_stats()
         print(f"  - Initialized: {stats.get('research_engine_initialized', False)}")
-        if stats.get('cache_stats'):
-            cache_stats = stats['cache_stats']
+        if stats.get("cache_stats"):
+            cache_stats = stats["cache_stats"]
             print(f"  - Cache Stats: {cache_stats}")
 
     logger.info("=" * 60)
@@ -61,7 +60,7 @@ async def test_research_integration():
         "What is the latest version of Python?",
         "How to configure Palo Alto VPN?",
         "Best AI coding assistant 2024",
-        "Recent NVIDIA driver issues"
+        "Recent NVIDIA driver issues",
     ]
 
     logger.info("\nTesting Research Capability Detection:")
@@ -82,7 +81,7 @@ async def test_research_integration():
         print(f"Query: {test_query}")
         print()
 
-        results = core.perform_research(test_query, mode='quick')
+        results = core.perform_research(test_query, mode="quick")
         if results:
             print(f"  Results found: {results.get('has_results', False)}")
             print(f"  Confidence score: {results.get('confidence_score', 0):.1f}/100")
@@ -104,9 +103,9 @@ def test_response_enhancement():
 
     # Create config
     config = {
-        'project_root': str(Path(__file__).parent),
-        'workspace': str(Path(__file__).parent),
-        'groq_model': 'llama-3.3-70b-versatile'
+        "project_root": str(Path(__file__).parent),
+        "workspace": str(Path(__file__).parent),
+        "groq_model": "llama-3.3-70b-versatile",
     }
 
     core = AuraCore(config=config)
@@ -115,7 +114,7 @@ def test_response_enhancement():
     test_queries = [
         "What is the latest version of Python?",
         "How to configure Palo Alto VPN?",
-        "Best AI coding assistant 2024"
+        "Best AI coding assistant 2024",
     ]
 
     for query in test_queries:
@@ -125,16 +124,18 @@ def test_response_enhancement():
         result = core.enhance_response_with_research(query, query)
         print(f"  Research used: {result.get('research_used', False)}")
 
-        if result.get('research_used'):
-            if 'enhanced_message' in result:
-                print(f"  Enhanced message length: {len(result['enhanced_message'])} chars")
+        if result.get("research_used"):
+            if "enhanced_message" in result:
+                print(
+                    f"  Enhanced message length: {len(result['enhanced_message'])} chars"
+                )
                 print(f"  Sample: {result['enhanced_message'][:100]}...")
-            if 'research_results' in result:
-                research = result['research_results']
+            if "research_results" in result:
+                research = result["research_results"]
                 print(f"  Confidence: {research.get('confidence_score', 0):.1f}/100")
                 print(f"  Sources: {research.get('primary_sources', [])}")
         else:
-            message = result.get('message', '')
+            message = result.get("message", "")
             print(f"  Reason: {message}")
 
     logger.info("\n" + "=" * 60)

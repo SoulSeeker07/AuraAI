@@ -12,11 +12,10 @@ Features:
 """
 
 import logging
-import os
-import psutil
-from pathlib import Path
-from typing import Optional, List
 from dataclasses import dataclass
+from pathlib import Path
+
+import psutil
 
 from .models import TerminalContext, TerminalType
 
@@ -36,14 +35,14 @@ class TerminalContextMonitor:
 
     def __init__(self):
         """Initialize terminal context monitor"""
-        self._current_command: Optional[str] = None
-        self._last_command_output: Optional[str] = None
-        self._running_commands: List[str] = []
-        self._terminal_context: Optional[TerminalContext] = None
+        self._current_command: str | None = None
+        self._last_command_output: str | None = None
+        self._running_commands: list[str] = []
+        self._terminal_context: TerminalContext | None = None
 
         logger.info("Terminal context monitor initialized")
 
-    async def get_terminal_context(self) -> Optional[TerminalContext]:
+    async def get_terminal_context(self) -> TerminalContext | None:
         """
         Get current terminal context.
 
@@ -70,12 +69,14 @@ class TerminalContextMonitor:
                 working_directory=working_directory,
                 running_commands=self._running_commands.copy(),
                 current_command=self._current_command,
-                last_command_output=self._last_command_output
+                last_command_output=self._last_command_output,
             )
 
             self._terminal_context = terminal
 
-            logger.debug(f"Terminal context: {terminal_type.value} @ {working_directory}")
+            logger.debug(
+                f"Terminal context: {terminal_type.value} @ {working_directory}"
+            )
 
             return terminal
 
@@ -104,21 +105,21 @@ class TerminalContextMonitor:
             name_lower = name.lower()
 
             # Check for WSL
-            if 'wsl' in exe_lower or 'wsl.exe' in exe_lower:
+            if "wsl" in exe_lower or "wsl.exe" in exe_lower:
                 return TerminalType.WSL
 
             # Check for Git Bash
-            if 'git-bash' in exe_lower or 'gitbash' in exe_lower:
+            if "git-bash" in exe_lower or "gitbash" in exe_lower:
                 return TerminalType.GIT_BASH
 
             # Check for PowerShell
-            if 'powershell' in exe_lower:
-                if 'ise' in exe_lower:
+            if "powershell" in exe_lower:
+                if "ise" in exe_lower:
                     return TerminalType.POWERSHELL
                 return TerminalType.POWERSHELL
 
             # Check for CMD
-            if 'cmd.exe' in exe_lower or name_lower == 'cmd.exe':
+            if "cmd.exe" in exe_lower or name_lower == "cmd.exe":
                 return TerminalType.CMD
 
             return TerminalType.UNKNOWN
@@ -198,7 +199,7 @@ class TerminalContextMonitor:
         """
         return self._terminal_context is not None and self._terminal_context.is_wsl()
 
-    async def get_terminal_type(self) -> Optional[TerminalType]:
+    async def get_terminal_type(self) -> TerminalType | None:
         """
         Get terminal type.
 
@@ -212,7 +213,7 @@ class TerminalContextMonitor:
             logger.error(f"Failed to get terminal type: {e}")
             return None
 
-    async def get_working_directory(self) -> Optional[str]:
+    async def get_working_directory(self) -> str | None:
         """
         Get working directory.
 
@@ -226,7 +227,7 @@ class TerminalContextMonitor:
             logger.error(f"Failed to get working directory: {e}")
             return None
 
-    async def get_current_command(self) -> Optional[str]:
+    async def get_current_command(self) -> str | None:
         """
         Get current running command.
 
@@ -235,7 +236,7 @@ class TerminalContextMonitor:
         """
         return self._current_command
 
-    async def get_running_commands(self) -> List[str]:
+    async def get_running_commands(self) -> list[str]:
         """
         Get list of running commands.
 

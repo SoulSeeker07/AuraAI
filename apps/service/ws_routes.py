@@ -1,14 +1,13 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
+from Chatbot import get_default_bot
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from Chatbot import get_default_bot
-
-from .ws_manager import WebSocketManager
-from .logger import get_logger
 from .config import settings
+from .logger import get_logger
+from .ws_manager import WebSocketManager
 
 router = APIRouter()
 log = get_logger("ws")
@@ -33,7 +32,11 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             prompt = _extract_prompt(data)
-            response = chatbot.ask(prompt) if prompt else "I did not receive any text to answer."
+            response = (
+                chatbot.ask(prompt)
+                if prompt
+                else "I did not receive any text to answer."
+            )
             await manager.send_personal_message(_chat_response(response), websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -65,7 +68,7 @@ def _chat_response(text: str) -> str:
         {
             "id": str(uuid4()),
             "type": "chat.response",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source": "service",
             "target": "desktop",
             "payload": {"text": text},

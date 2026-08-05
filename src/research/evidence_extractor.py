@@ -4,12 +4,12 @@ Evidence Extractor
 Extracts verifiable facts from research results into structured Evidence objects.
 """
 
-import re
 import logging
-from typing import List, Dict, Any, Optional
+import re
 from dataclasses import dataclass
+from typing import Any
 
-from .models import SearchResult, Evidence, normalize_trust_level
+from .models import Evidence, SearchResult, normalize_trust_level
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExtractedFact:
     """A single fact extracted from source text."""
+
     text: str
     confidence: float  # 0-1, based on relevance and source quality
     source: str  # Provider name
@@ -27,12 +28,12 @@ class ExtractedFact:
 class EvidenceExtractor:
     """
     Extracts evidence (verified facts) from research results.
-    
+
     Converts raw search results into structured Evidence objects with
     verifiable facts, confidence scores, and citations.
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         """
         Initialize evidence extractor.
 
@@ -40,11 +41,13 @@ class EvidenceExtractor:
             config: Configuration dictionary
         """
         self.config = config or {}
-        self.max_facts_per_source = self.config.get('max_facts_per_source', 10)
-        self.min_fact_length = self.config.get('min_fact_length', 20)
-        self.max_fact_length = self.config.get('max_fact_length', 200)
+        self.max_facts_per_source = self.config.get("max_facts_per_source", 10)
+        self.min_fact_length = self.config.get("min_fact_length", 20)
+        self.max_fact_length = self.config.get("max_fact_length", 200)
 
-    def extract_evidence(self, results: List[SearchResult], query: str) -> List[Evidence]:
+    def extract_evidence(
+        self, results: list[SearchResult], query: str
+    ) -> list[Evidence]:
         """
         Extract evidence from search results.
 
@@ -68,10 +71,12 @@ class EvidenceExtractor:
             except Exception as e:
                 logger.warning(f"Failed to extract evidence from {result.url}: {e}")
 
-        logger.info(f"Extracted {len(evidence_list)} evidence objects from {len(results)} sources")
+        logger.info(
+            f"Extracted {len(evidence_list)} evidence objects from {len(results)} sources"
+        )
         return evidence_list
 
-    def _extract_from_source(self, result: SearchResult, query: str) -> Optional[Evidence]:
+    def _extract_from_source(self, result: SearchResult, query: str) -> Evidence | None:
         """
         Extract evidence from a single search result.
 
@@ -95,8 +100,14 @@ class EvidenceExtractor:
             return None
 
         # Create evidence object
-        trust_level_str = result.trust_level.value if hasattr(result.trust_level, 'value') else result.trust_level
-        logger.info(f"[EvidenceExtractor] Creating evidence from {result.url}: trust_level={trust_level_str}")
+        trust_level_str = (
+            result.trust_level.value
+            if hasattr(result.trust_level, "value")
+            else result.trust_level
+        )
+        logger.info(
+            f"[EvidenceExtractor] Creating evidence from {result.url}: trust_level={trust_level_str}"
+        )
         evidence = Evidence(
             query=query,
             source=result.source,
@@ -104,13 +115,15 @@ class EvidenceExtractor:
             facts=facts,
             trust_level=result.trust_level,
             tags=self._extract_tags(result, query),
-            timestamp=None
+            timestamp=None,
         )
-        logger.info(f"[EvidenceExtractor] Evidence created: source={evidence.source}, trust_level={evidence.trust_level}, num_facts={len(evidence.facts)}")
+        logger.info(
+            f"[EvidenceExtractor] Evidence created: source={evidence.source}, trust_level={evidence.trust_level}, num_facts={len(evidence.facts)}"
+        )
 
         return evidence
 
-    def _get_content(self, result: SearchResult) -> Optional[str]:
+    def _get_content(self, result: SearchResult) -> str | None:
         """
         Get content from search result.
 
@@ -121,20 +134,22 @@ class EvidenceExtractor:
             Content text or None
         """
         # Try to get full document content if available
-        if hasattr(result, 'document') and result.document:
+        if hasattr(result, "document") and result.document:
             doc = result.document
-            if hasattr(doc, 'content') and doc.content:
+            if hasattr(doc, "content") and doc.content:
                 return doc.content
-            if hasattr(doc, 'snippet') and doc.snippet:
+            if hasattr(doc, "snippet") and doc.snippet:
                 return doc.snippet
 
         # Fall back to snippet
-        if hasattr(result, 'snippet') and result.snippet:
+        if hasattr(result, "snippet") and result.snippet:
             return result.snippet
 
         return None
 
-    def _extract_facts(self, content: str, result: SearchResult, query: str) -> List[ExtractedFact]:
+    def _extract_facts(
+        self, content: str, result: SearchResult, query: str
+    ) -> list[ExtractedFact]:
         """
         Extract facts from content.
 
@@ -158,9 +173,11 @@ class EvidenceExtractor:
         # Score and rank facts
         scored_facts = self._score_facts(unique_facts, query, result)
 
-        return scored_facts[:self.max_facts_per_source]
+        return scored_facts[: self.max_facts_per_source]
 
-    def _extract_facts_by_sentences(self, content: str, result: SearchResult, query: str) -> List[ExtractedFact]:
+    def _extract_facts_by_sentences(
+        self, content: str, result: SearchResult, query: str
+    ) -> list[ExtractedFact]:
         """
         Extract facts by analyzing sentences.
 
@@ -175,7 +192,7 @@ class EvidenceExtractor:
         facts = []
 
         # Split content into sentences
-        sentences = re.split(r'[.!?]', content)
+        sentences = re.split(r"[.!?]", content)
 
         for sentence in sentences:
             sentence = sentence.strip()
@@ -192,17 +209,21 @@ class EvidenceExtractor:
             score = self._calculate_relevance_score(sentence, query, result)
 
             if score > 0.3:  # Minimum relevance threshold
-                facts.append(ExtractedFact(
-                    text=sentence,
-                    confidence=score,
-                    source=result.source,
-                    source_url=result.url,
-                    trust_level=result.trust_level
-                ))
+                facts.append(
+                    ExtractedFact(
+                        text=sentence,
+                        confidence=score,
+                        source=result.source,
+                        source_url=result.url,
+                        trust_level=result.trust_level,
+                    )
+                )
 
         return facts
 
-    def _extract_facts_by_keywords(self, content: str, result: SearchResult, query: str) -> List[ExtractedFact]:
+    def _extract_facts_by_keywords(
+        self, content: str, result: SearchResult, query: str
+    ) -> list[ExtractedFact]:
         """
         Extract facts by matching keywords.
 
@@ -221,11 +242,20 @@ class EvidenceExtractor:
 
         # Look for important content
         important_words = {
-            'version', 'release', 'bug', 'issue', 'fix', 'change',
-            'added', 'removed', 'deprecated', 'supported', 'recommended'
+            "version",
+            "release",
+            "bug",
+            "issue",
+            "fix",
+            "change",
+            "added",
+            "removed",
+            "deprecated",
+            "supported",
+            "recommended",
         }
 
-        sentences = re.split(r'[.!?]', content)
+        sentences = re.split(r"[.!?]", content)
 
         for sentence in sentences:
             sentence = sentence.strip()
@@ -237,17 +267,21 @@ class EvidenceExtractor:
             if any(word in important_words for word in sentence_lower.split()):
                 score = 0.5  # High confidence for important words
 
-                facts.append(ExtractedFact(
-                    text=sentence,
-                    confidence=score,
-                    source=result.source,
-                    source_url=result.url,
-                    trust_level=result.trust_level
-                ))
+                facts.append(
+                    ExtractedFact(
+                        text=sentence,
+                        confidence=score,
+                        source=result.source,
+                        source_url=result.url,
+                        trust_level=result.trust_level,
+                    )
+                )
 
         return facts
 
-    def _calculate_relevance_score(self, sentence: str, query: str, result: SearchResult) -> float:
+    def _calculate_relevance_score(
+        self, sentence: str, query: str, result: SearchResult
+    ) -> float:
         """
         Calculate relevance score for a sentence.
 
@@ -273,11 +307,11 @@ class EvidenceExtractor:
 
         # Boost for trusted sources
         trust_scores = {
-            'official': 0.1,
-            'government': 0.1,
-            'github': 0.05,
-            'stackoverflow': 0.05,
-            'wikipedia': 0.03
+            "official": 0.1,
+            "government": 0.1,
+            "github": 0.05,
+            "stackoverflow": 0.05,
+            "wikipedia": 0.03,
         }
 
         trust_level = normalize_trust_level(result.trust_level)
@@ -298,16 +332,26 @@ class EvidenceExtractor:
         """
         # Common boring phrases
         boring_phrases = [
-            'for example', 'in particular', 'in general',
-            'moreover', 'furthermore', 'additionally',
-            'however', 'therefore', 'consequently',
-            'it is important', 'note that', 'it should be noted'
+            "for example",
+            "in particular",
+            "in general",
+            "moreover",
+            "furthermore",
+            "additionally",
+            "however",
+            "therefore",
+            "consequently",
+            "it is important",
+            "note that",
+            "it should be noted",
         ]
 
         sentence_lower = sentence.lower()
         return any(phrase in sentence_lower for phrase in boring_phrases)
 
-    def _remove_duplicate_facts(self, facts: List[ExtractedFact]) -> List[ExtractedFact]:
+    def _remove_duplicate_facts(
+        self, facts: list[ExtractedFact]
+    ) -> list[ExtractedFact]:
         """
         Remove duplicate facts based on text similarity.
 
@@ -357,7 +401,9 @@ class EvidenceExtractor:
         # Similarity threshold
         return overlap / total > 0.7 if total > 0 else False
 
-    def _score_facts(self, facts: List[ExtractedFact], query: str, result: SearchResult) -> List[ExtractedFact]:
+    def _score_facts(
+        self, facts: list[ExtractedFact], query: str, result: SearchResult
+    ) -> list[ExtractedFact]:
         """
         Score and rank facts.
 
@@ -376,8 +422,17 @@ class EvidenceExtractor:
 
             # Boost for important words
             important_words = {
-                'version', 'release', 'bug', 'issue', 'fix', 'change',
-                'security', 'vulnerability', 'cve', 'latest', 'new'
+                "version",
+                "release",
+                "bug",
+                "issue",
+                "fix",
+                "change",
+                "security",
+                "vulnerability",
+                "cve",
+                "latest",
+                "new",
             }
 
             if any(word in fact.text.lower() for word in important_words):
@@ -390,7 +445,7 @@ class EvidenceExtractor:
 
         return facts
 
-    def _extract_tags(self, result: SearchResult, query: str) -> List[str]:
+    def _extract_tags(self, result: SearchResult, query: str) -> list[str]:
         """
         Extract tags for evidence.
 
@@ -405,26 +460,29 @@ class EvidenceExtractor:
 
         # Source-based tags
         trust_level = normalize_trust_level(result.trust_level)
-        if trust_level == 'official':
-            tags.append('official')
-        elif trust_level == 'github':
-            tags.append('github')
-        elif trust_level == 'stackoverflow':
-            tags.append('documentation')
+        if trust_level == "official":
+            tags.append("official")
+        elif trust_level == "github":
+            tags.append("github")
+        elif trust_level == "stackoverflow":
+            tags.append("documentation")
 
         # Content-based tags
-        content_lower = result.snippet.lower() if result.snippet else ''
+        content_lower = result.snippet.lower() if result.snippet else ""
 
         # Version-related
-        if re.search(r'version\s+\d+(\.\d+)*', content_lower):
-            tags.append('version')
+        if re.search(r"version\s+\d+(\.\d+)*", content_lower):
+            tags.append("version")
 
         # Bug/issue related
-        if any(word in content_lower for word in ['bug', 'issue', 'error', 'fix']):
-            tags.append('issue')
+        if any(word in content_lower for word in ["bug", "issue", "error", "fix"]):
+            tags.append("issue")
 
         # Documentation related
-        if any(word in content_lower for word in ['guide', 'tutorial', 'documentation', 'tutorial']):
-            tags.append('documentation')
+        if any(
+            word in content_lower
+            for word in ["guide", "tutorial", "documentation", "tutorial"]
+        ):
+            tags.append("documentation")
 
         return tags

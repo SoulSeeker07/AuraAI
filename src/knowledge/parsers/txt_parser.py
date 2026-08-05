@@ -8,10 +8,9 @@ Supports:
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from pathlib import Path
 
-from ..models import DocumentChunk, DocumentMetadata, ChunkType, SourceType
+from ..models import ChunkType, DocumentChunk, DocumentMetadata, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +19,13 @@ class TxtParser:
     """Parse plain text files into chunks."""
 
     def __init__(self):
-        self.supported_extensions = ['.txt']
+        self.supported_extensions = [".txt"]
 
     def supports(self, file_path: Path) -> bool:
         """Check if file type is supported."""
         return file_path.suffix.lower() in self.supported_extensions
 
-    def parse(self, file_path: Path, chunk_size: int = 1000) -> List[DocumentChunk]:
+    def parse(self, file_path: Path, chunk_size: int = 1000) -> list[DocumentChunk]:
         """
         Parse text file into chunks.
 
@@ -39,7 +38,7 @@ class TxtParser:
         """
         chunks = []
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             if not content:
@@ -49,54 +48,54 @@ class TxtParser:
             file_metadata = self.extract_metadata(file_path)
 
             # Split content into chunks
-            lines = content.split('\n')
+            lines = content.split("\n")
             current_chunk = []
             current_length = 0
             chunk_id = 1
 
             for line in lines:
                 line_length = len(line)
-                
+
                 # Add line to current chunk
                 if current_length + line_length > chunk_size and current_chunk:
                     # Create a chunk if we have content
-                    chunk_content = '\n'.join(current_chunk)
-                    
+                    chunk_content = "\n".join(current_chunk)
+
                     chunk = DocumentChunk(
                         id=f"{file_path.stem}_chunk_{chunk_id}",
                         content=chunk_content,
                         type=ChunkType.TEXT,
                         metadata={
                             **file_metadata,
-                            'chunk_id': chunk_id,
-                            'chunk_index': len(chunks),
-                            'line_count': len(current_chunk),
-                        }
+                            "chunk_id": chunk_id,
+                            "chunk_index": len(chunks),
+                            "line_count": len(current_chunk),
+                        },
                     )
                     chunks.append(chunk)
-                    
+
                     # Reset for next chunk
                     current_chunk = []
                     current_length = 0
                     chunk_id += 1
-                
+
                 current_chunk.append(line)
                 current_length += line_length + 1  # +1 for newline
 
             # Don't forget the last chunk
             if current_chunk:
-                chunk_content = '\n'.join(current_chunk)
-                
+                chunk_content = "\n".join(current_chunk)
+
                 chunk = DocumentChunk(
                     id=f"{file_path.stem}_chunk_{chunk_id}",
                     content=chunk_content,
                     type=ChunkType.TEXT,
                     metadata={
                         **file_metadata,
-                        'chunk_id': chunk_id,
-                        'chunk_index': len(chunks),
-                        'line_count': len(current_chunk),
-                    }
+                        "chunk_id": chunk_id,
+                        "chunk_index": len(chunks),
+                        "line_count": len(current_chunk),
+                    },
                 )
                 chunks.append(chunk)
 
@@ -106,58 +105,58 @@ class TxtParser:
             # Try with UTF-8 fallback
             logger.warning(f"UTF-8 decoding failed for {file_path}, trying latin-1")
             try:
-                with open(file_path, 'r', encoding='latin-1') as f:
+                with open(file_path, encoding="latin-1") as f:
                     content = f.read()
-                
+
                 if not content:
                     return []
 
                 file_metadata = self.extract_metadata(file_path)
-                
-                lines = content.split('\n')
+
+                lines = content.split("\n")
                 current_chunk = []
                 current_length = 0
                 chunk_id = 1
 
                 for line in lines:
                     line_length = len(line)
-                    
+
                     if current_length + line_length > chunk_size and current_chunk:
-                        chunk_content = '\n'.join(current_chunk)
+                        chunk_content = "\n".join(current_chunk)
                         chunk = DocumentChunk(
                             id=f"{file_path.stem}_chunk_{chunk_id}",
                             content=chunk_content,
                             type=ChunkType.TEXT,
                             metadata={
                                 **file_metadata,
-                                'chunk_id': chunk_id,
-                                'chunk_index': len(chunks),
-                                'line_count': len(current_chunk),
-                                'encoding': 'latin-1',
-                            }
+                                "chunk_id": chunk_id,
+                                "chunk_index": len(chunks),
+                                "line_count": len(current_chunk),
+                                "encoding": "latin-1",
+                            },
                         )
                         chunks.append(chunk)
-                        
+
                         current_chunk = []
                         current_length = 0
                         chunk_id += 1
-                    
+
                     current_chunk.append(line)
                     current_length += line_length + 1
 
                 if current_chunk:
-                    chunk_content = '\n'.join(current_chunk)
+                    chunk_content = "\n".join(current_chunk)
                     chunk = DocumentChunk(
                         id=f"{file_path.stem}_chunk_{chunk_id}",
                         content=chunk_content,
                         type=ChunkType.TEXT,
                         metadata={
                             **file_metadata,
-                            'chunk_id': chunk_id,
-                            'chunk_index': len(chunks),
-                            'line_count': len(current_chunk),
-                            'encoding': 'latin-1',
-                        }
+                            "chunk_id": chunk_id,
+                            "chunk_index": len(chunks),
+                            "line_count": len(current_chunk),
+                            "encoding": "latin-1",
+                        },
                     )
                     chunks.append(chunk)
 
@@ -182,11 +181,11 @@ class TxtParser:
 
         # Try to extract first line as title if it looks like a title
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 first_line = f.readline().strip()
                 if first_line and len(first_line) > 10 and len(first_line) < 100:
                     # Check if it doesn't look like a path or absolute path
-                    if '.' not in first_line and not first_line.startswith('/'):
+                    if "." not in first_line and not first_line.startswith("/"):
                         metadata.title = first_line
         except Exception as e:
             logger.debug(f"Could not extract title from {file_path}: {e}")

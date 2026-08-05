@@ -5,10 +5,7 @@ Command-line tool for creating and managing Aura plugins.
 Usage: aura-plugin-cli [command] [options]
 """
 
-
 import sys
-import os
-import shutil
 from pathlib import Path
 
 
@@ -35,32 +32,37 @@ class PluginCLIParser:
             plugin_dir.mkdir(exist_ok=True)
 
             # Create plugin template
-            template_file = Path(__file__).parent.parent.parent.parent / "plugins" / "template.py"
-            template_content = template_file.read_text(encoding='utf-8')
+            template_file = (
+                Path(__file__).parent.parent.parent.parent / "plugins" / "template.py"
+            )
+            template_content = template_file.read_text(encoding="utf-8")
 
             # Create main plugin file
             plugin_file = plugin_dir / f"{plugin_name}.py"
-            plugin_content = template_content.replace(
-                "ExamplePlugin",
-                f"{self._to_pascal_case(plugin_name)}Plugin"
-            ).replace(
-                "Example Aura Plugin.",
-                f"{self._to_pascal_case(plugin_name)} Plugin."
-            ).replace(
-                "Replace this with your plugin's functionality.",
-                f"Replace this with {self._to_pascal_case(plugin_name)}'s functionality."
+            plugin_content = (
+                template_content.replace(
+                    "ExamplePlugin", f"{self._to_pascal_case(plugin_name)}Plugin"
+                )
+                .replace(
+                    "Example Aura Plugin.",
+                    f"{self._to_pascal_case(plugin_name)} Plugin.",
+                )
+                .replace(
+                    "Replace this with your plugin's functionality.",
+                    f"Replace this with {self._to_pascal_case(plugin_name)}'s functionality.",
+                )
             )
 
-            plugin_file.write_text(plugin_content, encoding='utf-8')
+            plugin_file.write_text(plugin_content, encoding="utf-8")
 
             # Create __init__.py
             init_file = plugin_dir / "__init__.py"
             init_content = f'"""{self._to_pascal_case(plugin_name)} Plugin"""'
-            init_file.write_text(init_content, encoding='utf-8')
+            init_file.write_text(init_content, encoding="utf-8")
 
             # Create plugin manifest (inline metadata)
             manifest_file = plugin_dir / "_manifest.json"
-            manifest_content = f'''{{
+            manifest_content = f"""{{
   "name": "{plugin_name}",
   "version": "1.0.0",
   "author": "Your Name",
@@ -77,12 +79,12 @@ class PluginCLIParser:
   "min_aura_version": "1.0.0",
   "is_optional": false,
   "is_system": false
-}}'''
-            manifest_file.write_text(manifest_content, encoding='utf-8')
+}}"""
+            manifest_file.write_text(manifest_content, encoding="utf-8")
 
             # Create README
             readme_file = plugin_dir / "README.md"
-            readme_content = f'''# {self._to_pascal_case(plugin_name)} Plugin
+            readme_content = f"""# {self._to_pascal_case(plugin_name)} Plugin
 
 ## Description
 Your plugin description goes here.
@@ -111,17 +113,17 @@ result = execute_capability(
 
 ## Development
 Edit the plugin file to implement your functionality.
-'''
+"""
 
-            readme_file.write_text(readme_content, encoding='utf-8')
+            readme_file.write_text(readme_content, encoding="utf-8")
 
             print(f"✓ Plugin '{plugin_name}' created successfully!")
             print(f"  Location: {plugin_dir}")
             print(f"  Category: {category}")
-            print(f"\nNext steps:")
-            print(f"  1. Edit the plugin file to implement your functionality")
-            print(f"  2. Update the manifest with your capabilities and permissions")
-            print(f"  3. Restart Aura to load the plugin")
+            print("\nNext steps:")
+            print("  1. Edit the plugin file to implement your functionality")
+            print("  2. Update the manifest with your capabilities and permissions")
+            print("  3. Restart Aura to load the plugin")
 
         except Exception as e:
             print(f"✗ Failed to create plugin: {e}")
@@ -134,15 +136,32 @@ Edit the plugin file to implement your functionality.
                 print("No plugins directory found.")
                 return
 
-            categories = ["desktop", "filesystem", "browser", "terminal", "git",
-                        "networking", "vision", "voice", "office", "email",
-                        "calendar", "knowledge", "docker", "database", "mcp"]
+            categories = [
+                "desktop",
+                "filesystem",
+                "browser",
+                "terminal",
+                "git",
+                "networking",
+                "vision",
+                "voice",
+                "office",
+                "email",
+                "calendar",
+                "knowledge",
+                "docker",
+                "database",
+                "mcp",
+            ]
 
             for category in categories:
                 category_dir = self.plugins_dir / category
                 if category_dir.exists():
-                    plugins = [p.name for p in category_dir.iterdir()
-                            if p.is_dir() and not p.name.startswith("__")]
+                    plugins = [
+                        p.name
+                        for p in category_dir.iterdir()
+                        if p.is_dir() and not p.name.startswith("__")
+                    ]
                     if plugins:
                         print(f"\n{category.upper()} Plugins:")
                         for plugin in plugins:

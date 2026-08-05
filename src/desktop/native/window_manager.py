@@ -2,12 +2,12 @@
 Window Manager
 Manages window operations.
 """
-from typing import Optional, List
+
 import logging
 
+from .native_exceptions import WindowNotFoundError
 from .native_manager import NativeManager
 from .native_models import WindowInfo
-from .native_exceptions import WindowNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class WindowManager:
         self.native_manager = native_manager
         logger.debug("WindowManager initialized")
 
-    def list_windows(self, **kwargs) -> List[WindowInfo]:
+    def list_windows(self, **kwargs) -> list[WindowInfo]:
         """
         List all visible windows.
 
@@ -35,7 +35,7 @@ class WindowManager:
         logger.debug("Listing all windows")
         return self.native_manager._window_manager.list_windows(**kwargs)
 
-    def get_window(self, hwnd: int) -> Optional[WindowInfo]:
+    def get_window(self, hwnd: int) -> WindowInfo | None:
         """
         Get information about a specific window.
 
@@ -143,7 +143,7 @@ class WindowManager:
         logger.debug(f"Resizing window {hwnd} to {width}x{height}")
         return self.native_manager._window_manager.set_window_size(hwnd, width, height)
 
-    def get_window_by_title(self, title: str, exact_match: bool = False) -> Optional[int]:
+    def get_window_by_title(self, title: str, exact_match: bool = False) -> int | None:
         """
         Get window handle by title.
 
@@ -155,17 +155,18 @@ class WindowManager:
             Window handle (hwnd) or None
         """
         from .native_utils import get_window_by_title
+
         logger.debug(f"Finding window by title: {title}, exact_match={exact_match}")
         hwnd = get_window_by_title(title, exact_match)
         if not hwnd:
             raise WindowNotFoundError(
                 f"Window not found with title: {title}",
                 "get_window_by_title",
-                details={"title": title, "exact_match": exact_match}
+                details={"title": title, "exact_match": exact_match},
             )
         return hwnd
 
-    def get_window_by_process_id(self, pid: int) -> Optional[int]:
+    def get_window_by_process_id(self, pid: int) -> int | None:
         """
         Get window handle by process ID.
 
@@ -176,17 +177,18 @@ class WindowManager:
             Window handle (hwnd) or None
         """
         from .native_utils import get_window_by_process_id
+
         logger.debug(f"Finding window by process ID: {pid}")
         hwnd = get_window_by_process_id(pid)
         if not hwnd:
             raise WindowNotFoundError(
                 f"No window found for process ID: {pid}",
                 "get_window_by_process_id",
-                details={"pid": pid}
+                details={"pid": pid},
             )
         return hwnd
 
-    def get_active_window(self) -> Optional[WindowInfo]:
+    def get_active_window(self) -> WindowInfo | None:
         """
         Get information about the active window.
 
@@ -194,5 +196,6 @@ class WindowManager:
             WindowInfo object or None
         """
         from .native_utils import get_active_window
+
         logger.debug("Getting active window")
         return get_active_window()

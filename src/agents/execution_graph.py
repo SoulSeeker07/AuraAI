@@ -4,16 +4,13 @@ Execution Graph
 Represents a Directed Acyclic Graph (DAG) of tasks to be executed.
 """
 
-
 import logging
-from typing import List, Dict, Set, Optional, Tuple, Any
-from datetime import datetime
 from collections import defaultdict
+from typing import Any
 
 from .goal import Goal
-from .task import Task
 from .models import TaskStatus
-
+from .task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +32,14 @@ class ExecutionGraph:
             goal: Parent goal
         """
         self.goal = goal
-        self.tasks: Dict[str, Task] = {}
-        self.adjacency: Dict[str, Set[str]] = defaultdict(set)  # task_id -> dependent task_ids
-        self.reverse_adjacency: Dict[str, Set[str]] = defaultdict(set)  # task_id -> predecessor task_ids
-        self.execution_order: List[str] = []
+        self.tasks: dict[str, Task] = {}
+        self.adjacency: dict[str, set[str]] = defaultdict(
+            set
+        )  # task_id -> dependent task_ids
+        self.reverse_adjacency: dict[str, set[str]] = defaultdict(
+            set
+        )  # task_id -> predecessor task_ids
+        self.execution_order: list[str] = []
         self.execution_time: float = 0.0
 
         logger.debug(f"Created execution graph for goal {goal.goal_id[:8]}")
@@ -102,7 +103,7 @@ class ExecutionGraph:
 
         logger.debug(f"Removed task {task_id[:8]} from graph")
 
-    def get_ready_tasks(self) -> List[Task]:
+    def get_ready_tasks(self) -> list[Task]:
         """
         Get all tasks that are ready to execute.
 
@@ -117,7 +118,7 @@ class ExecutionGraph:
 
         return ready_tasks
 
-    def get_independent_tasks(self) -> List[Task]:
+    def get_independent_tasks(self) -> list[Task]:
         """
         Get all tasks with no dependencies.
 
@@ -132,7 +133,7 @@ class ExecutionGraph:
 
         return independent
 
-    def get_tasks_by_status(self, status: TaskStatus) -> List[Task]:
+    def get_tasks_by_status(self, status: TaskStatus) -> list[Task]:
         """
         Get tasks by status.
 
@@ -144,7 +145,7 @@ class ExecutionGraph:
         """
         return [task for task in self.tasks.values() if task.status == status]
 
-    def get_all_dependencies(self, task_id: str) -> List[str]:
+    def get_all_dependencies(self, task_id: str) -> list[str]:
         """
         Get all direct and indirect dependencies for a task.
 
@@ -203,7 +204,7 @@ class ExecutionGraph:
 
         return False
 
-    def topological_sort(self) -> List[str]:
+    def topological_sort(self) -> list[str]:
         """
         Perform topological sort to get execution order.
 
@@ -237,7 +238,7 @@ class ExecutionGraph:
 
         return result
 
-    def get_parallel_execution_groups(self) -> List[List[Task]]:
+    def get_parallel_execution_groups(self) -> list[list[Task]]:
         """
         Get tasks that can execute in parallel.
 
@@ -261,8 +262,10 @@ class ExecutionGraph:
             # Check if dependent tasks can also execute
             for dependent_id in self.adjacency[task.task_id]:
                 dependent_task = self.tasks[dependent_id]
-                if (not dependent_task.is_complete and
-                    all(dep.task_id in group_ids for dep in self.get_all_dependencies(dependent_id))):
+                if not dependent_task.is_complete and all(
+                    dep.task_id in group_ids
+                    for dep in self.get_all_dependencies(dependent_id)
+                ):
                     group.append(dependent_task)
                     group_ids.add(dependent_id)
 
@@ -272,7 +275,7 @@ class ExecutionGraph:
         logger.debug(f"Found {len(parallel_groups)} parallel execution groups")
         return parallel_groups
 
-    def get_task_dependencies(self, task_id: str) -> List[str]:
+    def get_task_dependencies(self, task_id: str) -> list[str]:
         """
         Get direct dependencies for a task.
 
@@ -284,7 +287,7 @@ class ExecutionGraph:
         """
         return list(self.adjacency[task_id])
 
-    def get_execution_summary(self) -> Dict[str, Any]:
+    def get_execution_summary(self) -> dict[str, Any]:
         """
         Get execution graph summary.
 
@@ -292,17 +295,23 @@ class ExecutionGraph:
             Summary dictionary
         """
         return {
-            'total_tasks': len(self.tasks),
-            'completed_tasks': sum(1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED),
-            'failed_tasks': sum(1 for t in self.tasks.values() if t.status == TaskStatus.FAILED),
-            'running_tasks': sum(1 for t in self.tasks.values() if t.status == TaskStatus.RUNNING),
-            'ready_tasks': len(self.get_ready_tasks()),
-            'parallel_groups': len(self.get_parallel_execution_groups()),
-            'has_cycle': self.has_cycle(),
-            'execution_order': len(self.execution_order)
+            "total_tasks": len(self.tasks),
+            "completed_tasks": sum(
+                1 for t in self.tasks.values() if t.status == TaskStatus.COMPLETED
+            ),
+            "failed_tasks": sum(
+                1 for t in self.tasks.values() if t.status == TaskStatus.FAILED
+            ),
+            "running_tasks": sum(
+                1 for t in self.tasks.values() if t.status == TaskStatus.RUNNING
+            ),
+            "ready_tasks": len(self.get_ready_tasks()),
+            "parallel_groups": len(self.get_parallel_execution_groups()),
+            "has_cycle": self.has_cycle(),
+            "execution_order": len(self.execution_order),
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert graph to dictionary.
 
@@ -310,14 +319,14 @@ class ExecutionGraph:
             Graph as dictionary
         """
         return {
-            'goal_id': self.goal.goal_id,
-            'tasks': [task.to_dict() for task in self.tasks.values()],
-            'execution_order': self.execution_order,
-            'parallel_groups': len(self.get_parallel_execution_groups())
+            "goal_id": self.goal.goal_id,
+            "tasks": [task.to_dict() for task in self.tasks.values()],
+            "execution_order": self.execution_order,
+            "parallel_groups": len(self.get_parallel_execution_groups()),
         }
 
     @classmethod
-    def from_goal(cls, goal: Goal) -> 'ExecutionGraph':
+    def from_goal(cls, goal: Goal) -> "ExecutionGraph":
         """
         Create execution graph from goal and tasks.
 

@@ -6,9 +6,9 @@ Splits documents into chunks with appropriate strategies.
 
 import logging
 import re
-from typing import List, Dict, Any, Optional
-from pathlib import Path
-from .models import DocumentChunk, ChunkType, SourceType
+from typing import Any
+
+from .models import ChunkType, DocumentChunk, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ class Chunker:
         content: str,
         file_path: str,
         file_type: SourceType,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        metadata: dict[str, Any],
+    ) -> list[DocumentChunk]:
         """
         Chunk document based on type and content.
 
@@ -70,11 +70,8 @@ class Chunker:
             return self._chunk_text(content, file_path, metadata)
 
     def _chunk_text(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk plain text by paragraphs.
 
@@ -88,7 +85,7 @@ class Chunker:
         """
         chunks = []
         # Split into paragraphs
-        paragraphs = content.split('\n\n')
+        paragraphs = content.split("\n\n")
         current_chunk = []
         current_content = ""
         chunk_id = 0
@@ -106,13 +103,15 @@ class Chunker:
             else:
                 # Save current chunk
                 if current_chunk:
-                    chunks.append(self._create_chunk(
-                        current_content,
-                        file_path,
-                        ChunkType.PARAGRAPH,
-                        chunk_id,
-                        metadata
-                    ))
+                    chunks.append(
+                        self._create_chunk(
+                            current_content,
+                            file_path,
+                            ChunkType.PARAGRAPH,
+                            chunk_id,
+                            metadata,
+                        )
+                    )
                     chunk_id += 1
 
                 # Start new chunk with this paragraph
@@ -121,22 +120,17 @@ class Chunker:
 
         # Save last chunk
         if current_chunk:
-            chunks.append(self._create_chunk(
-                current_content,
-                file_path,
-                ChunkType.PARAGRAPH,
-                chunk_id,
-                metadata
-            ))
+            chunks.append(
+                self._create_chunk(
+                    current_content, file_path, ChunkType.PARAGRAPH, chunk_id, metadata
+                )
+            )
 
         return chunks
 
     def _chunk_markdown(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk markdown by headings.
 
@@ -149,7 +143,7 @@ class Chunker:
             List of chunks
         """
         chunks = []
-        lines = content.split('\n')
+        lines = content.split("\n")
         current_chunk_lines = []
         current_chunk = ""
         chunk_id = 0
@@ -159,20 +153,22 @@ class Chunker:
 
         for line in lines:
             # Check for heading
-            heading_match = re.match(r'^(#{1,6})\s+(.*)$', line)
+            heading_match = re.match(r"^(#{1,6})\s+(.*)$", line)
 
             if heading_match:
                 # Save previous chunk
                 if current_chunk_lines:
-                    chunks.append(self._create_chunk(
-                        current_chunk,
-                        file_path,
-                        ChunkType.SECTION,
-                        chunk_id,
-                        metadata,
-                        current_section,
-                        current_level
-                    ))
+                    chunks.append(
+                        self._create_chunk(
+                            current_chunk,
+                            file_path,
+                            ChunkType.SECTION,
+                            chunk_id,
+                            metadata,
+                            current_section,
+                            current_level,
+                        )
+                    )
                     chunk_id += 1
 
                 # Start new section
@@ -182,28 +178,27 @@ class Chunker:
                 current_chunk = line
             else:
                 current_chunk_lines.append(line)
-                current_chunk = '\n'.join(current_chunk_lines)
+                current_chunk = "\n".join(current_chunk_lines)
 
         # Save last chunk
         if current_chunk_lines:
-            chunks.append(self._create_chunk(
-                current_chunk,
-                file_path,
-                ChunkType.SECTION,
-                chunk_id,
-                metadata,
-                current_section,
-                current_level
-            ))
+            chunks.append(
+                self._create_chunk(
+                    current_chunk,
+                    file_path,
+                    ChunkType.SECTION,
+                    chunk_id,
+                    metadata,
+                    current_section,
+                    current_level,
+                )
+            )
 
         return chunks
 
     def _chunk_python(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk Python code by functions and classes.
 
@@ -218,14 +213,14 @@ class Chunker:
         chunks = []
 
         # Find all functions and classes
-        class_pattern = re.compile(r'^class\s+(\w+)')
-        function_pattern = re.compile(r'^def\s+(\w+)[\(\:]')
+        class_pattern = re.compile(r"^class\s+(\w+)")
+        function_pattern = re.compile(r"^def\s+(\w+)[\(\:]")
 
         current_block = []
         current_block_type = ChunkType.PARAGRAPH
         current_block_name = ""
 
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             line_stripped = line.strip()
 
             # Check for class definition
@@ -234,12 +229,12 @@ class Chunker:
                 # Save previous block
                 if current_block:
                     chunk = self._create_chunk(
-                        '\n'.join(current_block),
+                        "\n".join(current_block),
                         file_path,
                         current_block_type,
                         len(chunks),
                         metadata,
-                        current_block_name
+                        current_block_name,
                     )
                     chunks.append(chunk)
 
@@ -255,12 +250,12 @@ class Chunker:
                 # Save previous block
                 if current_block:
                     chunk = self._create_chunk(
-                        '\n'.join(current_block),
+                        "\n".join(current_block),
                         file_path,
                         current_block_type,
                         len(chunks),
                         metadata,
-                        current_block_name
+                        current_block_name,
                     )
                     chunks.append(chunk)
 
@@ -276,23 +271,22 @@ class Chunker:
 
         # Save last block
         if current_block:
-            chunks.append(self._create_chunk(
-                '\n'.join(current_block),
-                file_path,
-                current_block_type,
-                len(chunks),
-                metadata,
-                current_block_name
-            ))
+            chunks.append(
+                self._create_chunk(
+                    "\n".join(current_block),
+                    file_path,
+                    current_block_type,
+                    len(chunks),
+                    metadata,
+                    current_block_name,
+                )
+            )
 
         return chunks
 
     def _chunk_html(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk HTML by sections.
 
@@ -305,7 +299,7 @@ class Chunker:
             List of chunks
         """
         chunks = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         current_chunk_lines = []
         current_chunk = ""
@@ -313,20 +307,24 @@ class Chunker:
 
         for line in lines:
             # Check for section tags
-            section_match = re.match(r'^\s*<(h[1-6]|section|article|div)[^>]*>(.*)$', line)
+            section_match = re.match(
+                r"^\s*<(h[1-6]|section|article|div)[^>]*>(.*)$", line
+            )
 
             if section_match:
                 # Save previous chunk
                 if current_chunk_lines:
                     title = section_match.group(2).strip()[:100]
-                    chunks.append(self._create_chunk(
-                        current_chunk,
-                        file_path,
-                        ChunkType.SECTION,
-                        chunk_id,
-                        metadata,
-                        title
-                    ))
+                    chunks.append(
+                        self._create_chunk(
+                            current_chunk,
+                            file_path,
+                            ChunkType.SECTION,
+                            chunk_id,
+                            metadata,
+                            title,
+                        )
+                    )
                     chunk_id += 1
 
                 # Start new chunk with this line
@@ -334,27 +332,26 @@ class Chunker:
                 current_chunk = line
             else:
                 current_chunk_lines.append(line)
-                current_chunk = '\n'.join(current_chunk_lines)
+                current_chunk = "\n".join(current_chunk_lines)
 
         # Save last chunk
         if current_chunk_lines:
-            chunks.append(self._create_chunk(
-                current_chunk,
-                file_path,
-                ChunkType.SECTION,
-                chunk_id,
-                metadata,
-                "HTML Section"
-            ))
+            chunks.append(
+                self._create_chunk(
+                    current_chunk,
+                    file_path,
+                    ChunkType.SECTION,
+                    chunk_id,
+                    metadata,
+                    "HTML Section",
+                )
+            )
 
         return chunks
 
     def _chunk_pdf(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk PDF by pages.
 
@@ -369,7 +366,7 @@ class Chunker:
         chunks = []
 
         # PDF text is often already paginated, split by double newlines
-        pages = content.split('\n\n')
+        pages = content.split("\n\n")
         chunk_id = 0
 
         for i, page in enumerate(pages):
@@ -377,24 +374,18 @@ class Chunker:
             if not page:
                 continue
 
-            chunks.append(self._create_chunk(
-                page,
-                file_path,
-                ChunkType.PAGE,
-                chunk_id,
-                metadata,
-                f"Page {i + 1}"
-            ))
+            chunks.append(
+                self._create_chunk(
+                    page, file_path, ChunkType.PAGE, chunk_id, metadata, f"Page {i + 1}"
+                )
+            )
             chunk_id += 1
 
         return chunks
 
     def _chunk_json(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk JSON by structure.
 
@@ -421,7 +412,7 @@ class Chunker:
                             ChunkType.SECTION,
                             len(chunks),
                             metadata,
-                            f"JSON: {key}"
+                            f"JSON: {key}",
                         )
                         chunks.append(chunk)
                     elif isinstance(value, (list, dict)):
@@ -431,7 +422,7 @@ class Chunker:
                             ChunkType.SECTION,
                             len(chunks),
                             metadata,
-                            f"JSON: {key}"
+                            f"JSON: {key}",
                         )
                         chunks.append(chunk)
             elif isinstance(data, list):
@@ -442,7 +433,7 @@ class Chunker:
                         ChunkType.SECTION,
                         len(chunks),
                         metadata,
-                        f"JSON Item {i + 1}"
+                        f"JSON Item {i + 1}",
                     )
                     chunks.append(chunk)
         except json.JSONDecodeError:
@@ -452,11 +443,8 @@ class Chunker:
         return chunks
 
     def _chunk_yaml(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk YAML by sections.
 
@@ -469,23 +457,25 @@ class Chunker:
             List of chunks
         """
         chunks = []
-        lines = content.split('\n')
+        lines = content.split("\n")
         current_chunk_lines = []
         current_chunk = ""
         chunk_id = 0
 
         for line in lines:
             # Check for section headers
-            if line.strip().startswith('#') or line.strip().startswith('-'):
+            if line.strip().startswith("#") or line.strip().startswith("-"):
                 # Save previous chunk
                 if current_chunk_lines:
-                    chunks.append(self._create_chunk(
-                        current_chunk,
-                        file_path,
-                        ChunkType.SECTION,
-                        chunk_id,
-                        metadata
-                    ))
+                    chunks.append(
+                        self._create_chunk(
+                            current_chunk,
+                            file_path,
+                            ChunkType.SECTION,
+                            chunk_id,
+                            metadata,
+                        )
+                    )
                     chunk_id += 1
 
                 # Start new chunk
@@ -493,26 +483,21 @@ class Chunker:
                 current_chunk = line
             else:
                 current_chunk_lines.append(line)
-                current_chunk = '\n'.join(current_chunk_lines)
+                current_chunk = "\n".join(current_chunk_lines)
 
         # Save last chunk
         if current_chunk_lines:
-            chunks.append(self._create_chunk(
-                current_chunk,
-                file_path,
-                ChunkType.SECTION,
-                chunk_id,
-                metadata
-            ))
+            chunks.append(
+                self._create_chunk(
+                    current_chunk, file_path, ChunkType.SECTION, chunk_id, metadata
+                )
+            )
 
         return chunks
 
     def _chunk_csv(
-        self,
-        content: str,
-        file_path: str,
-        metadata: Dict[str, Any]
-    ) -> List[DocumentChunk]:
+        self, content: str, file_path: str, metadata: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Chunk CSV by rows.
 
@@ -525,7 +510,7 @@ class Chunker:
             List of chunks
         """
         chunks = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         # Skip header row
         start_idx = 1
@@ -538,14 +523,16 @@ class Chunker:
         for i in range(start_idx, len(lines)):
             row = lines[i].strip()
             if row:
-                chunks.append(self._create_chunk(
-                    row,
-                    file_path,
-                    ChunkType.ROW,
-                    chunk_id,
-                    metadata,
-                    f"Row {i - start_idx + 1}"
-                ))
+                chunks.append(
+                    self._create_chunk(
+                        row,
+                        file_path,
+                        ChunkType.ROW,
+                        chunk_id,
+                        metadata,
+                        f"Row {i - start_idx + 1}",
+                    )
+                )
                 chunk_id += 1
 
         return chunks
@@ -556,9 +543,9 @@ class Chunker:
         file_path: str,
         chunk_type: ChunkType,
         chunk_id: int,
-        metadata: Dict[str, Any],
-        title: Optional[str] = None,
-        level: int = 0
+        metadata: dict[str, Any],
+        title: str | None = None,
+        level: int = 0,
     ) -> DocumentChunk:
         """
         Create a document chunk.
@@ -579,16 +566,18 @@ class Chunker:
             id=f"{file_path}#{chunk_id}",
             content=content,
             chunk_type=chunk_type,
-            source_type=metadata.get(SourceType.FILE_TYPE.value, SourceType.MARKDOWN.value),
+            source_type=metadata.get(
+                SourceType.FILE_TYPE.value, SourceType.MARKDOWN.value
+            ),
             source_file=file_path,
-            project=metadata.get('project'),
-            language=metadata.get('language'),
-            language_family=metadata.get('language_family'),
-            tags=metadata.get('tags', []),
-            created_at=metadata.get('created_at', None),
-            modified_at=metadata.get('modified_at', None),
-            page_number=metadata.get('page_number'),
+            project=metadata.get("project"),
+            language=metadata.get("language"),
+            language_family=metadata.get("language_family"),
+            tags=metadata.get("tags", []),
+            created_at=metadata.get("created_at", None),
+            modified_at=metadata.get("modified_at", None),
+            page_number=metadata.get("page_number"),
             line_number=chunk_id,
-            importance=metadata.get('importance', 0.5),
-            metadata=metadata
+            importance=metadata.get("importance", 0.5),
+            metadata=metadata,
         )

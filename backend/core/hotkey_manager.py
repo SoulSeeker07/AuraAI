@@ -1,5 +1,4 @@
 import logging
-from typing import Callable
 
 import keyboard
 
@@ -17,7 +16,9 @@ class HotkeyManager:
 
     def start(self) -> None:
         try:
-            h = keyboard.add_hotkey(self.overlay_hotkey, lambda: self.event_bus.publish("overlay.toggle"))
+            h = keyboard.add_hotkey(
+                self.overlay_hotkey, lambda: self.event_bus.publish("overlay.toggle")
+            )
             self._handles.append(h)
             logger.info("Registered global hotkey: %s", self.overlay_hotkey)
         except Exception as exc:

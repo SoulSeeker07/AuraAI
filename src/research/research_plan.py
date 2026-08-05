@@ -1,14 +1,14 @@
 # Research Planner for Aura AI - Phase 4 of Milestone 14 - Research Intelligence
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Literal
-from enum import Enum
 import time
-from datetime import datetime
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Literal
 
 
 class ResearchMode(Enum):
     """Research modes for different query types"""
+
     QUICK = "quick"
     STANDARD = "standard"
     DEEP = "deep"
@@ -17,6 +17,7 @@ class ResearchMode(Enum):
 
 class StopCondition(Enum):
     """Conditions that can stop research"""
+
     CONFIDENCE_THRESHOLD = "confidence_threshold"  # Reached target confidence
     MAX_ITERATIONS = "max_iterations"  # Reached max planning iterations
     MAX_STEPS = "max_steps"  # Reached max research steps
@@ -28,7 +29,7 @@ class StopCondition(Enum):
 class ResearchStep:
     """
     Represents a single step in the research plan.
-    
+
     Each step contains:
     - The sub-query to search
     - The provider(s) to use
@@ -36,21 +37,22 @@ class ResearchStep:
     - Confidence goal for this step
     - Priorities/weights
     """
+
     step_id: int
     query: str
     query_type: Literal["keyword", "entity", "aspect", "compare", "summary"]
-    providers: List[str] = field(default_factory=list)
+    providers: list[str] = field(default_factory=list)
     expected_content_type: str = "general"
     confidence_goal: float = 0.7
     priority: float = 1.0
     is_primary: bool = False
-    sources: List[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
     evidence_found: int = 0
     confidence_estimate: float = 0.0
     completed: bool = False
     timestamp: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "step_id": self.step_id,
@@ -65,11 +67,11 @@ class ResearchStep:
             "evidence_found": self.evidence_found,
             "confidence_estimate": self.confidence_estimate,
             "completed": self.completed,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ResearchStep':
+    def from_dict(cls, data: dict[str, Any]) -> "ResearchStep":
         """Create from dictionary"""
         return cls(
             step_id=data["step_id"],
@@ -84,7 +86,7 @@ class ResearchStep:
             evidence_found=data.get("evidence_found", 0),
             confidence_estimate=data.get("confidence_estimate", 0.0),
             completed=data.get("completed", False),
-            timestamp=data.get("timestamp", time.time())
+            timestamp=data.get("timestamp", time.time()),
         )
 
 
@@ -93,20 +95,21 @@ class StopReason:
     """
     Reason why research stopped.
     """
+
     condition: StopCondition
     confidence_score: float
     iteration_count: int
     steps_completed: int
     message: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "condition": self.condition.value,
             "confidence_score": self.confidence_score,
             "iteration_count": self.iteration_count,
             "steps_completed": self.steps_completed,
-            "message": self.message
+            "message": self.message,
         }
 
 
@@ -114,7 +117,7 @@ class StopReason:
 class ResearchPlan:
     """
     Main research plan that orchestrates the research process.
-    
+
     A plan contains:
     - Original query and analysis
     - Decomposed sub-queries
@@ -123,29 +126,30 @@ class ResearchPlan:
     - Confidence tracking
     - Stop conditions
     """
+
     plan_id: str
     original_query: str
-    query_analysis: Dict[str, Any] = field(default_factory=dict)
+    query_analysis: dict[str, Any] = field(default_factory=dict)
     research_mode: ResearchMode = ResearchMode.STANDARD
-    
+
     # Planning constraints
     max_iterations: int = 3
     max_steps: int = 10
     confidence_threshold: float = 0.85
     iteration_count: int = 0
-    
+
     # Plan structure
-    steps: List[ResearchStep] = field(default_factory=list)
-    
+    steps: list[ResearchStep] = field(default_factory=list)
+
     # Execution status
     current_step_index: int = 0
     confidence_estimate: float = 0.0
     is_complete: bool = False
-    stop_reason: Optional[StopReason] = None
+    stop_reason: StopReason | None = None
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "plan_id": self.plan_id,
@@ -162,15 +166,19 @@ class ResearchPlan:
             "is_complete": self.is_complete,
             "stop_reason": self.stop_reason.to_dict() if self.stop_reason else None,
             "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "updated_at": self.updated_at,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ResearchPlan':
+    def from_dict(cls, data: dict[str, Any]) -> "ResearchPlan":
         """Create from dictionary"""
         steps = [ResearchStep.from_dict(s) for s in data.get("steps", [])]
-        stop_reason = StopReason.from_dict(data.get("stop_reason")) if data.get("stop_reason") else None
-        
+        stop_reason = (
+            StopReason.from_dict(data.get("stop_reason"))
+            if data.get("stop_reason")
+            else None
+        )
+
         return cls(
             plan_id=data["plan_id"],
             original_query=data["original_query"],
@@ -184,7 +192,7 @@ class ResearchPlan:
             current_step_index=data.get("current_step_index", 0),
             confidence_estimate=data.get("confidence_estimate", 0.0),
             is_complete=data.get("is_complete", False),
-            stop_reason=stop_reason
+            stop_reason=stop_reason,
         )
 
     def add_step(self, step: ResearchStep) -> None:
@@ -192,7 +200,9 @@ class ResearchPlan:
         self.steps.append(step)
         self.updated_at = time.time()
 
-    def update_step_confidence(self, step_id: int, confidence: float, evidence_count: int = 1) -> None:
+    def update_step_confidence(
+        self, step_id: int, confidence: float, evidence_count: int = 1
+    ) -> None:
         """Update confidence for a specific step"""
         for step in self.steps:
             if step.step_id == step_id:
@@ -207,17 +217,21 @@ class ResearchPlan:
         if not self.steps:
             self.confidence_estimate = 0.0
             return
-        
-        weighted_sum = sum(step.confidence_estimate * step.priority for step in self.steps)
+
+        weighted_sum = sum(
+            step.confidence_estimate * step.priority for step in self.steps
+        )
         total_priority = sum(step.priority for step in self.steps)
-        
-        self.confidence_estimate = weighted_sum / total_priority if total_priority > 0 else 0.0
+
+        self.confidence_estimate = (
+            weighted_sum / total_priority if total_priority > 0 else 0.0
+        )
         self.updated_at = time.time()
 
-    def check_stop_conditions(self) -> Optional[StopReason]:
+    def check_stop_conditions(self) -> StopReason | None:
         """
         Check if research should stop.
-        
+
         Returns StopReason if a stop condition is met, None otherwise.
         """
         # Check iteration limit
@@ -227,7 +241,7 @@ class ResearchPlan:
                 confidence_score=self.confidence_estimate,
                 iteration_count=self.iteration_count,
                 steps_completed=sum(1 for step in self.steps if step.completed),
-                message=f"Maximum iterations ({self.max_iterations}) reached"
+                message=f"Maximum iterations ({self.max_iterations}) reached",
             )
 
         # Check confidence threshold
@@ -237,7 +251,7 @@ class ResearchPlan:
                 confidence_score=self.confidence_estimate,
                 iteration_count=self.iteration_count,
                 steps_completed=sum(1 for step in self.steps if step.completed),
-                message=f"Confidence threshold ({self.confidence_threshold}) reached"
+                message=f"Confidence threshold ({self.confidence_threshold}) reached",
             )
 
         # Check if we have enough steps
@@ -248,7 +262,7 @@ class ResearchPlan:
                 confidence_score=self.confidence_estimate,
                 iteration_count=self.iteration_count,
                 steps_completed=completed_steps,
-                message=f"Maximum steps ({self.max_steps}) reached"
+                message=f"Maximum steps ({self.max_steps}) reached",
             )
 
         # Check if query has matured (no significant evidence gain)
@@ -259,9 +273,9 @@ class ResearchPlan:
 
         return None
 
-    def get_next_step(self) -> Optional[ResearchStep]:
+    def get_next_step(self) -> ResearchStep | None:
         """Get the next step to execute.
-        
+
         Returns the next uncompleted step, or None if all steps are done.
         """
         for step in self.steps:

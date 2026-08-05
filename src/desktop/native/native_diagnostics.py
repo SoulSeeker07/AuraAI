@@ -11,16 +11,17 @@ Shows:
 - Total time
 """
 
-from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
-from .native_execution_context import NativeExecutionContext, ExecutionStage
+from .native_execution_context import NativeExecutionContext
 
 
 class DiagnosticsStage(Enum):
     """Stages in the execution pipeline"""
+
     PERMISSION = "permission"
     EXECUTION = "execution"
     VERIFICATION = "verification"
@@ -36,9 +37,10 @@ class StageTiming:
 
     Tracks when the stage started, completed, and duration.
     """
+
     stage: DiagnosticsStage
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     duration_ms: float = 0.0
 
     def start(self) -> None:
@@ -49,7 +51,9 @@ class StageTiming:
         """Complete timing"""
         if self.started_at:
             self.completed_at = datetime.now()
-            self.duration_ms = (self.completed_at - self.started_at).total_seconds() * 1000
+            self.duration_ms = (
+                self.completed_at - self.started_at
+            ).total_seconds() * 1000
 
     def get_formatted_duration(self) -> str:
         """Get duration formatted as readable string"""
@@ -60,14 +64,16 @@ class StageTiming:
         else:
             return f"{self.duration_ms / 60000:.2f}m"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "stage": self.stage.value,
             "duration_ms": self.duration_ms,
             "duration_formatted": self.get_formatted_duration(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
         }
 
 
@@ -80,8 +86,8 @@ class NativeDiagnostics:
 
     def __init__(self):
         """Initialize diagnostics"""
-        self.timings: Dict[DiagnosticsStage, StageTiming] = {}
-        self.operation_started_at: Optional[datetime] = None
+        self.timings: dict[DiagnosticsStage, StageTiming] = {}
+        self.operation_started_at: datetime | None = None
         self.total_duration_ms: float = 0.0
 
     def start_operation(self) -> None:
@@ -136,11 +142,15 @@ class NativeDiagnostics:
         if self.operation_started_at and self.timings:
             last_stage = list(self.timings.values())[-1]
             if last_stage.completed_at:
-                self.total_duration_ms = (last_stage.completed_at - self.operation_started_at).total_seconds() * 1000
+                self.total_duration_ms = (
+                    last_stage.completed_at - self.operation_started_at
+                ).total_seconds() * 1000
             else:
-                self.total_duration_ms = (datetime.now() - self.operation_started_at).total_seconds() * 1000
+                self.total_duration_ms = (
+                    datetime.now() - self.operation_started_at
+                ).total_seconds() * 1000
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert diagnostics to dictionary.
 
@@ -150,10 +160,13 @@ class NativeDiagnostics:
         return {
             "total_duration_ms": self.total_duration_ms,
             "total_duration_formatted": self._format_duration(self.total_duration_ms),
-            "operation_started_at": self.operation_started_at.isoformat() if self.operation_started_at else None,
+            "operation_started_at": (
+                self.operation_started_at.isoformat()
+                if self.operation_started_at
+                else None
+            ),
             "stages": {
-                stage.value: timing.to_dict()
-                for stage, timing in self.timings.items()
+                stage.value: timing.to_dict() for stage, timing in self.timings.items()
             },
             "stage_durations_ms": {
                 stage.value: timing.duration_ms
@@ -175,11 +188,11 @@ class NativeDiagnostics:
         report = f"\n{'='*60}\n"
         report += "NATIVE OPERATION DIAGNOSTICS\n"
         report += f"{'='*60}\n\n"
-        report += f"Operation: N/A\n"
+        report += "Operation: N/A\n"
         report += f"Started: {self.operation_started_at.isoformat() if self.operation_started_at else 'N/A'}\n"
         report += f"Total Duration: {self.total_duration_ms:.2f}ms ({self._format_duration(self.total_duration_ms)})\n\n"
         report += f"{'-'*60}\n"
-        report += f"STAGE TIMINGS:\n"
+        report += "STAGE TIMINGS:\n"
         report += f"{'-'*60}\n\n"
 
         for stage, timing in self.timings.items():
@@ -190,11 +203,15 @@ class NativeDiagnostics:
                 report += f"  Completed: {timing.completed_at.isoformat()}\n"
 
         report += f"\n{'-'*60}\n"
-        report += f"STAGE BREAKDOWN:\n"
+        report += "STAGE BREAKDOWN:\n"
         report += f"{'-'*60}\n\n"
 
         for stage, timing in self.timings.items():
-            percentage = (timing.duration_ms / self.total_duration_ms * 100) if self.total_duration_ms > 0 else 0
+            percentage = (
+                (timing.duration_ms / self.total_duration_ms * 100)
+                if self.total_duration_ms > 0
+                else 0
+            )
             report += f"{stage.value.upper():<15} : {timing.duration_ms:>6.2f}ms ({percentage:>5.1f}%)\n"
 
         report += f"\n{'='*60}\n\n"
@@ -227,7 +244,9 @@ class DiagnosticsReporter:
     """
 
     @staticmethod
-    def generate_execution_diagnostics(context: NativeExecutionContext) -> Dict[str, Any]:
+    def generate_execution_diagnostics(
+        context: NativeExecutionContext,
+    ) -> dict[str, Any]:
         """
         Generate diagnostics from execution context.
 
@@ -263,7 +282,7 @@ class DiagnosticsReporter:
         }
 
     @staticmethod
-    def generate_stage_breakdown(context: NativeExecutionContext) -> Dict[str, Any]:
+    def generate_stage_breakdown(context: NativeExecutionContext) -> dict[str, Any]:
         """
         Generate stage-by-stage breakdown.
 
@@ -283,19 +302,23 @@ class DiagnosticsReporter:
                     "description": "Permission verification",
                 },
                 "execution": {
-                    "estimated_ms": context.get_duration_ms() * 0.8,  # Most time is in execution
+                    "estimated_ms": context.get_duration_ms()
+                    * 0.8,  # Most time is in execution
                     "description": "Capability execution",
                 },
                 "verification": {
-                    "estimated_ms": context.get_duration_ms() * 0.1,  # Verification is usually fast
+                    "estimated_ms": context.get_duration_ms()
+                    * 0.1,  # Verification is usually fast
                     "description": "Result verification",
                 },
                 "events": {
-                    "estimated_ms": context.get_duration_ms() * 0.05,  # Events are quick
+                    "estimated_ms": context.get_duration_ms()
+                    * 0.05,  # Events are quick
                     "description": "Event triggering",
                 },
                 "context": {
-                    "estimated_ms": context.get_duration_ms() * 0.05,  # Context updates are quick
+                    "estimated_ms": context.get_duration_ms()
+                    * 0.05,  # Context updates are quick
                     "description": "Context synchronization",
                 },
             },
@@ -318,11 +341,15 @@ class DiagnosticsReporter:
 
         summary += f"Total Duration: {diagnostics.total_duration_ms:.2f}ms\n\n"
         summary += f"{'-'*60}\n"
-        summary += f"STAGE BREAKDOWN:\n"
+        summary += "STAGE BREAKDOWN:\n"
         summary += f"{'-'*60}\n\n"
 
         for stage, timing in diagnostics.timings.items():
-            percentage = (timing.duration_ms / diagnostics.total_duration_ms * 100) if diagnostics.total_duration_ms > 0 else 0
+            percentage = (
+                (timing.duration_ms / diagnostics.total_duration_ms * 100)
+                if diagnostics.total_duration_ms > 0
+                else 0
+            )
             bar_length = int(percentage / 2)  # Scale for display
             bar = "█" * bar_length
 
@@ -334,7 +361,7 @@ class DiagnosticsReporter:
         return summary
 
     @staticmethod
-    def generate_gui_timeline(diagnostics: NativeDiagnostics) -> Dict[str, Any]:
+    def generate_gui_timeline(diagnostics: NativeDiagnostics) -> dict[str, Any]:
         """
         Generate a GUI timeline for visualization.
 
@@ -347,12 +374,18 @@ class DiagnosticsReporter:
         timeline = []
 
         for stage, timing in diagnostics.timings.items():
-            timeline.append({
-                "stage": stage.value,
-                "duration_ms": timing.duration_ms,
-                "percentage": (timing.duration_ms / diagnostics.total_duration_ms * 100) if diagnostics.total_duration_ms > 0 else 0,
-                "color": _get_stage_color(stage.value),
-            })
+            timeline.append(
+                {
+                    "stage": stage.value,
+                    "duration_ms": timing.duration_ms,
+                    "percentage": (
+                        (timing.duration_ms / diagnostics.total_duration_ms * 100)
+                        if diagnostics.total_duration_ms > 0
+                        else 0
+                    ),
+                    "color": _get_stage_color(stage.value),
+                }
+            )
 
         return {
             "total_duration_ms": diagnostics.total_duration_ms,
@@ -383,7 +416,7 @@ def _get_stage_color(stage: str) -> str:
 
 
 # Singleton instance
-_diagnostics: Optional[NativeDiagnostics] = None
+_diagnostics: NativeDiagnostics | None = None
 
 
 def get_diagnostics() -> NativeDiagnostics:

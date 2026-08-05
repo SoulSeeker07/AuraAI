@@ -11,8 +11,6 @@ Fact extraction and content-based operations are handled by Memory.py.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any, Optional
 
 # Import Memory.py (SQLite backend)
 from Memory import Memory, MemoryFact
@@ -33,7 +31,7 @@ class MemoryManager:
         - Build comprehensive context for LLM
     """
 
-    def __init__(self, memory: Optional[Memory] = None):
+    def __init__(self, memory: Memory | None = None):
         """
         Initialize Memory Manager.
 
@@ -43,7 +41,7 @@ class MemoryManager:
         """
         self.memory = memory or Memory()
         logger.info("Memory Manager initialized (using Memory.py backend)")
-    
+
     def remember(self, category: str, key: str, value: str) -> MemoryFact:
         """
         Store a memory fact using Memory.py backend.
@@ -69,8 +67,8 @@ class MemoryManager:
 
         logger.debug(f"Stored fact: {category}/{key}={value}")
         return fact
-    
-    def retrieve(self, category: str, key: str) -> Optional[MemoryFact]:
+
+    def retrieve(self, category: str, key: str) -> MemoryFact | None:
         """
         Retrieve a specific fact using Memory.py backend.
 
@@ -89,7 +87,7 @@ class MemoryManager:
         # Note: This retrieves facts directly from Memory.py (SQLite)
         # No need to copy or transform
         logger.debug(f"Retrieved fact: {category}/{key}")
-    
+
     def remember_exchange(self, query: str, answer: str, topic: str) -> dict:
         """
         Store a conversation exchange using Memory.py backend.
@@ -126,7 +124,7 @@ class MemoryManager:
             List of facts in category
         """
         return self.memory.values_for_category(category)
-    
+
     def get_context(self) -> str:
         """
         Build memory context string using Memory.py backend.
@@ -142,7 +140,7 @@ class MemoryManager:
 
         logger.debug(f"Built context with {len(self.memory.facts())} facts")
         return context
-    
+
     def get_recent_messages(self, limit: int = 10) -> list[dict]:
         """
         Get recent messages from Memory.py backend.
@@ -161,7 +159,7 @@ class MemoryManager:
 
         logger.debug(f"Retrieved {len(messages)} recent messages from Memory.py")
         return messages
-    
+
     def get_all_categories(self) -> list[str]:
         """
         Get all memory categories using Memory.py backend.

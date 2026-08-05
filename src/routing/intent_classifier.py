@@ -12,7 +12,8 @@ Responsibility:
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
+
 from .capability_types import CapabilityType
 from .routing_result import RoutingResult
 
@@ -74,7 +75,7 @@ Respond in this exact format (JSON only, no additional text):
 {"capability": "capability_type", "confidence": 0.0-1.0, "reasoning": "brief explanation"}
 """
 
-    def classify(self, text: str) -> Optional[RoutingResult]:
+    def classify(self, text: str) -> RoutingResult | None:
         """
         Classify a request using AI.
 
@@ -93,10 +94,10 @@ Respond in this exact format (JSON only, no additional text):
             response = self.provider_manager.generate(
                 messages=[
                     {"role": "system", "content": self._system_prompt},
-                    {"role": "user", "content": text}
+                    {"role": "user", "content": text},
                 ],
                 temperature=0.1,  # Low temperature for consistent classification
-                max_tokens=150
+                max_tokens=150,
             )
 
             # Parse the response
@@ -106,9 +107,11 @@ Respond in this exact format (JSON only, no additional text):
                 routing_result = RoutingResult(
                     capability=result["capability"],
                     confidence=result["confidence"],
-                    priority="medium"  # AI classification is medium confidence
+                    priority="medium",  # AI classification is medium confidence
                 )
-                routing_result.metadata["classification_reason"] = result.get("reasoning", "")
+                routing_result.metadata["classification_reason"] = result.get(
+                    "reasoning", ""
+                )
                 routing_result.metadata["routing_level"] = "level2"  # AI-based routing
 
                 return routing_result
@@ -118,7 +121,7 @@ Respond in this exact format (JSON only, no additional text):
 
         return None
 
-    def _parse_classification_response(self, response: str) -> Optional[Dict[str, Any]]:
+    def _parse_classification_response(self, response: str) -> dict[str, Any] | None:
         """
         Parse the LLM's classification response.
 
@@ -163,11 +166,13 @@ Respond in this exact format (JSON only, no additional text):
                         return {
                             "capability": capability_map[capability_value],
                             "confidence": min(confidence, 1.0),
-                            "reasoning": data.get("reasoning", "")
+                            "reasoning": data.get("reasoning", ""),
                         }
 
             # If parsing fails, return None
-            logger.warning(f"Failed to parse classification response: {response[:100]}...")
+            logger.warning(
+                f"Failed to parse classification response: {response[:100]}..."
+            )
 
         except Exception as e:
             logger.error(f"Error parsing classification response: {e}")

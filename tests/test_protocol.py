@@ -1,8 +1,8 @@
 from aura.shared import (
     AuraMessage,
     MessageType,
-    serialize,
     deserialize,
+    serialize,
 )
 
 
@@ -11,9 +11,7 @@ def test_protocol_roundtrip():
         type=MessageType.WELCOME,
         source="service",
         target="desktop",
-        payload={
-            "message": "Welcome to Aura"
-        },
+        payload={"message": "Welcome to Aura"},
     )
 
     encoded = serialize(message)

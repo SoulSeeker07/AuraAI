@@ -4,7 +4,9 @@ from ai.groq_provider import GroqProvider
 from ai.provider_manager import ProviderManager
 
 
-def build_provider_manager(env: dict[str, str], default_provider: str = "groq") -> ProviderManager:
+def build_provider_manager(
+    env: dict[str, str], default_provider: str = "groq"
+) -> ProviderManager:
     manager = ProviderManager(default_provider=default_provider)
     manager.register(
         "groq",

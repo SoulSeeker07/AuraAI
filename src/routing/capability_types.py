@@ -16,6 +16,7 @@ class CapabilityType(str, Enum):
     Requests are routed to the most appropriate capability based on
     the request's intent and context.
     """
+
     # Local OS capabilities
     DESKTOP = "desktop"
     FILESYSTEM = "filesystem"
@@ -54,6 +55,7 @@ class CapabilityPriority(str, Enum):
     Higher priority capabilities are attempted first.
     This ensures fast responses and avoids unnecessary LLM calls.
     """
+
     HIGHEST = "highest"
     HIGH = "high"
     MEDIUM = "medium"
@@ -65,6 +67,7 @@ class CapabilityCategory(str, Enum):
     """
     High-level categories for grouping capabilities.
     """
+
     LOCAL = "local"  # OS-level operations
     PLUGIN = "plugin"  # Plugin-based operations
     KNOWLEDGE = "knowledge"  # Knowledge retrieval and storage

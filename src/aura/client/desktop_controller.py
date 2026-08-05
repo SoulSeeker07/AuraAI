@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Slot
-from typing import Any, Dict
 import json
 import os
+from typing import Any
+
+from loguru import logger
+from PySide6.QtCore import QObject, Signal, Slot
 
 from .connection_manager import ConnectionManager
 from .protocol import build_message
-from loguru import logger
 
 
 class DesktopController(QObject):
@@ -43,7 +44,9 @@ class DesktopController(QObject):
     def send(self, text: str):
         try:
             payload = {"text": text}
-            msg = build_message("chat.message", payload, source="desktop", target="service")
+            msg = build_message(
+                "chat.message", payload, source="desktop", target="service"
+            )
             self._mgr.send(msg)
             self.status.emit("Sent")
         except Exception as e:
@@ -60,7 +63,7 @@ class DesktopController(QObject):
         self.status.emit("Disconnected")
         self.connected.emit(False)
 
-    def _on_message(self, message: Dict[str, Any]):
+    def _on_message(self, message: dict[str, Any]):
         # forward JSON string to QML
         try:
             s = json.dumps(message)

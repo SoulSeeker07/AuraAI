@@ -27,22 +27,21 @@ Cache levels:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
-import hashlib
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, asdict
 import threading
-
-from .knowledge_db import KnowledgeDB
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any
 
 
 @dataclass
 class CachedSearchResult:
     """A cached search result."""
+
     query: str
-    results: List[Dict[str, Any]]
+    results: list[dict[str, Any]]
     timestamp: str
     category: str
     expires: str
@@ -66,7 +65,7 @@ class CachedSearchResult:
         except (ValueError, AttributeError):
             return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
 
@@ -85,7 +84,7 @@ class CacheManager:
     """
 
     # Default expiry times (in minutes)
-    CACHE_EXPIRY_MAP: Dict[str, int] = {
+    CACHE_EXPIRY_MAP: dict[str, int] = {
         "News": 60,  # 1 hour
         "Weather": 10,  # 10 minutes
         "Technology": 1440,  # 1 day
@@ -96,11 +95,7 @@ class CacheManager:
         "Weather": 10,  # 10 minutes
     }
 
-    def __init__(
-        self,
-        memory_cache_size: int = 1000,
-        cache_db_path: str = "cache.db"
-    ):
+    def __init__(self, memory_cache_size: int = 1000, cache_db_path: str = "cache.db"):
         """
         Initialize cache manager.
 
@@ -113,7 +108,7 @@ class CacheManager:
         self._lock = threading.Lock()
 
         # Initialize memory cache (LRU cache)
-        self._memory_cache: Dict[str, CachedSearchResult] = {}
+        self._memory_cache: dict[str, CachedSearchResult] = {}
 
         # Initialize disk cache
         self._initialize_cache_database()
@@ -175,9 +170,9 @@ class CacheManager:
     def cache_search_result(
         self,
         query: str,
-        results: List[Dict[str, Any]],
+        results: list[dict[str, Any]],
         category: str = "General",
-        source: str = "web"
+        source: str = "web",
     ) -> str:
         """
         Cache a search result.
@@ -197,7 +192,9 @@ class CacheManager:
             category=category,
             source=source,
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            expires=(datetime.now() + timedelta(minutes=self._get_expiry(category))).strftime("%Y-%m-%d %H:%M:%S")
+            expires=(
+                datetime.now() + timedelta(minutes=self._get_expiry(category))
+            ).strftime("%Y-%m-%d %H:%M:%S"),
         )
 
         cache_key = self._get_key(query, category)
@@ -216,7 +213,9 @@ class CacheManager:
 
         return cache_entry.query_hash
 
-    def get_cached_result(self, query: str, category: str = "General") -> Optional[List[Dict[str, Any]]]:
+    def get_cached_result(
+        self, query: str, category: str = "General"
+    ) -> list[dict[str, Any]] | None:
         """
         Get cached search results if available.
 
@@ -239,10 +238,8 @@ class CacheManager:
         return self._get_from_disk_cache(query, category)
 
     def _get_from_disk_cache(
-        self,
-        query: str,
-        category: str
-    ) -> Optional[List[Dict[str, Any]]]:
+        self, query: str, category: str
+    ) -> list[dict[str, Any]] | None:
         """
         Get result from disk cache.
 
@@ -258,10 +255,13 @@ class CacheManager:
                 conn = sqlite3.connect(self.cache_db_path, check_same_thread=False)
                 cursor = conn.cursor()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT results, expires FROM cache
                     WHERE query=? AND category=?
-                """, (query, category))
+                """,
+                    (query, category),
+                )
 
                 row = cursor.fetchone()
                 conn.close()
@@ -292,18 +292,21 @@ class CacheManager:
                 conn = sqlite3.connect(self.cache_db_path, check_same_thread=False)
                 cursor = conn.cursor()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO cache (query_hash, query, category, results, timestamp, expires, source)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    cache_entry.query_hash,
-                    cache_entry.query,
-                    cache_entry.category,
-                    json.dumps(cache_entry.results),
-                    cache_entry.timestamp,
-                    cache_entry.expires,
-                    cache_entry.source
-                ))
+                """,
+                    (
+                        cache_entry.query_hash,
+                        cache_entry.query,
+                        cache_entry.category,
+                        json.dumps(cache_entry.results),
+                        cache_entry.timestamp,
+                        cache_entry.expires,
+                        cache_entry.source,
+                    ),
+                )
 
                 conn.commit()
                 conn.close()
@@ -347,9 +350,12 @@ class CacheManager:
                 conn = sqlite3.connect(self.cache_db_path, check_same_thread=False)
                 cursor = conn.cursor()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     DELETE FROM cache WHERE query=? AND category=?
-                """, (query, category))
+                """,
+                    (query, category),
+                )
 
                 deleted = cursor.rowcount > 0
                 conn.commit()
@@ -404,7 +410,7 @@ class CacheManager:
             except Exception as e:
                 print(f"[CacheManager] Error clearing all cache: {e}")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """
         Get cache statistics.
 
@@ -415,7 +421,7 @@ class CacheManager:
             # Memory cache stats
             memory_stats = {
                 "total_entries": len(self._memory_cache),
-                "memory_cache_size": self.memory_cache_size
+                "memory_cache_size": self.memory_cache_size,
             }
 
             # Disk cache stats
@@ -423,21 +429,20 @@ class CacheManager:
                 conn = sqlite3.connect(self.cache_db_path, check_same_thread=False)
                 cursor = conn.cursor()
 
-                cursor.execute("SELECT COUNT(*), SUM(CASE WHEN expires < CURRENT_TIMESTAMP THEN 1 ELSE 0 END) FROM cache")
+                cursor.execute(
+                    "SELECT COUNT(*), SUM(CASE WHEN expires < CURRENT_TIMESTAMP THEN 1 ELSE 0 END) FROM cache"
+                )
                 total, expired = cursor.fetchone()
                 conn.close()
 
-                disk_stats = {
-                    "total_entries": total,
-                    "expired_entries": expired
-                }
-            except Exception as e:
+                disk_stats = {"total_entries": total, "expired_entries": expired}
+            except Exception:
                 disk_stats = {"total_entries": 0, "expired_entries": 0}
 
             return {
                 "memory_cache": memory_stats,
                 "disk_cache": disk_stats,
-                "cache_levels": "memory + disk"
+                "cache_levels": "memory + disk",
             }
 
     def cleanup_expired_entries(self) -> int:
@@ -464,7 +469,7 @@ class CacheManager:
                 print(f"[CacheManager] Error cleaning up expired entries: {e}")
                 return 0
 
-    def get_most_requested_queries(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_most_requested_queries(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get the most requested queries (from disk cache).
 
@@ -479,30 +484,27 @@ class CacheManager:
                 conn = sqlite3.connect(self.cache_db_path, check_same_thread=False)
                 cursor = conn.cursor()
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT query, COUNT(*) as request_count
                     FROM cache
                     GROUP BY query
                     ORDER BY request_count DESC
                     LIMIT ?
-                """, (limit,))
+                """,
+                    (limit,),
+                )
 
                 rows = cursor.fetchall()
                 conn.close()
 
-                return [
-                    {"query": row[0], "request_count": row[1]}
-                    for row in rows
-                ]
+                return [{"query": row[0], "request_count": row[1]} for row in rows]
 
             except Exception as e:
                 print(f"[CacheManager] Error getting most requested queries: {e}")
                 return []
 
-    def batch_cache_results(
-        self,
-        cache_entries: List[Dict[str, Any]]
-    ) -> int:
+    def batch_cache_results(self, cache_entries: list[dict[str, Any]]) -> int:
         """
         Batch cache multiple search results.
 

@@ -4,15 +4,12 @@ Workflow Manager
 Manages workflow lifecycle: create, edit, delete, version, export, import.
 """
 
-
 import logging
-from typing import Optional, Dict, Any, List
 from datetime import datetime
-import uuid
+from typing import Any
 
+from .models import WorkflowPriority, WorkflowStatus, WorkflowTriggerType
 from .workflow import Workflow
-from .models import WorkflowStatus, WorkflowTriggerType, WorkflowPriority
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +21,10 @@ class WorkflowManager:
 
     def __init__(self):
         """Initialize workflow manager."""
-        self.workflows: Dict[str, Workflow] = {}
-        self.version_history: Dict[str, List[Workflow]] = {}  # workflow_id -> list of versions
+        self.workflows: dict[str, Workflow] = {}
+        self.version_history: dict[str, list[Workflow]] = (
+            {}
+        )  # workflow_id -> list of versions
         logger.info("Workflow Manager initialized")
 
     def create_workflow(
@@ -33,8 +32,8 @@ class WorkflowManager:
         name: str,
         description: str = "",
         trigger_type: WorkflowTriggerType = WorkflowTriggerType.MANUAL,
-        trigger_config: Optional[Dict[str, Any]] = None,
-        priority: WorkflowPriority = WorkflowPriority.NORMAL
+        trigger_config: dict[str, Any] | None = None,
+        priority: WorkflowPriority = WorkflowPriority.NORMAL,
     ) -> Workflow:
         """
         Create a new workflow.
@@ -54,7 +53,7 @@ class WorkflowManager:
             description=description,
             trigger_type=trigger_type,
             trigger_config=trigger_config or {},
-            priority=priority
+            priority=priority,
         )
 
         workflow.status = WorkflowStatus.DRAFT
@@ -64,7 +63,7 @@ class WorkflowManager:
 
         return workflow
 
-    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow(self, workflow_id: str) -> Workflow | None:
         """
         Get workflow by ID.
 
@@ -78,10 +77,10 @@ class WorkflowManager:
 
     def list_workflows(
         self,
-        status: Optional[str] = None,
-        trigger_type: Optional[WorkflowTriggerType] = None,
-        active_only: bool = False
-    ) -> List[Workflow]:
+        status: str | None = None,
+        trigger_type: WorkflowTriggerType | None = None,
+        active_only: bool = False,
+    ) -> list[Workflow]:
         """
         List workflows with optional filters.
 
@@ -106,7 +105,7 @@ class WorkflowManager:
 
         return workflows
 
-    def add_workflow(self, workflow: Workflow) -> 'WorkflowManager':
+    def add_workflow(self, workflow: Workflow) -> "WorkflowManager":
         """
         Add or update workflow.
 
@@ -133,11 +132,11 @@ class WorkflowManager:
     def update_workflow(
         self,
         workflow_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        trigger_type: Optional[WorkflowTriggerType] = None,
-        is_active: Optional[bool] = None
-    ) -> Optional[Workflow]:
+        name: str | None = None,
+        description: str | None = None,
+        trigger_type: WorkflowTriggerType | None = None,
+        is_active: bool | None = None,
+    ) -> Workflow | None:
         """
         Update workflow properties.
 
@@ -200,7 +199,9 @@ class WorkflowManager:
 
         return True
 
-    def duplicate_workflow(self, workflow_id: str, new_name: Optional[str] = None) -> Optional[Workflow]:
+    def duplicate_workflow(
+        self, workflow_id: str, new_name: str | None = None
+    ) -> Workflow | None:
         """
         Duplicate workflow.
 
@@ -223,7 +224,7 @@ class WorkflowManager:
             trigger_type=original.trigger_type,
             trigger_config=original.trigger_config.copy(),
             priority=original.priority,
-            is_active=True
+            is_active=True,
         )
 
         # Copy steps
@@ -240,10 +241,12 @@ class WorkflowManager:
 
         self.add_workflow(new_workflow)
 
-        logger.info(f"Duplicated workflow {workflow_id[:8]} to {new_workflow.workflow_id[:8]}")
+        logger.info(
+            f"Duplicated workflow {workflow_id[:8]} to {new_workflow.workflow_id[:8]}"
+        )
         return new_workflow
 
-    def get_versions(self, workflow_id: str) -> List[Workflow]:
+    def get_versions(self, workflow_id: str) -> list[Workflow]:
         """
         Get workflow version history.
 
@@ -292,12 +295,13 @@ class WorkflowManager:
             Success
         """
         import json
+
         data = {
-            'workflows': [w.to_dict() for w in self.workflows.values()],
-            'exported_at': datetime.now().isoformat()
+            "workflows": [w.to_dict() for w in self.workflows.values()],
+            "exported_at": datetime.now().isoformat(),
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(data, f, indent=2, default=str)
 
         logger.info(f"Exported {len(self.workflows)} workflows to {filepath}")
@@ -314,11 +318,12 @@ class WorkflowManager:
             Number of imported workflows
         """
         import json
-        with open(filepath, 'r') as f:
+
+        with open(filepath) as f:
             data = json.load(f)
 
         count = 0
-        for workflow_data in data.get('workflows', []):
+        for workflow_data in data.get("workflows", []):
             workflow = Workflow.from_dict(workflow_data)
             self.add_workflow(workflow)
             count += 1
@@ -326,7 +331,7 @@ class WorkflowManager:
         logger.info(f"Imported {count} workflows from {filepath}")
         return count
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get workflow manager statistics.
 
@@ -336,24 +341,34 @@ class WorkflowManager:
         workflows = list(self.workflows.values())
 
         return {
-            'total_workflows': len(workflows),
-            'active_workflows': sum(1 for w in workflows if w.is_active),
-            'running_workflows': sum(1 for w in workflows if w.status.value == 'running'),
-            'draft_workflows': sum(1 for w in workflows if w.status.value == 'draft'),
-            'completed_workflows': sum(1 for w in workflows if w.status.value == 'completed'),
-            'failed_workflows': sum(1 for w in workflows if w.status.value == 'failed'),
-            'scheduled_workflows': sum(1 for w in workflows if w.trigger_type.value == 'scheduled'),
-            'trigger_types': {
-                'manual': sum(1 for w in workflows if w.trigger_type.value == 'manual'),
-                'scheduled': sum(1 for w in workflows if w.trigger_type.value == 'scheduled'),
-                'event': sum(1 for w in workflows if w.trigger_type.value == 'event'),
-                'workspace': sum(1 for w in workflows if w.trigger_type.value == 'workspace'),
-                'voice': sum(1 for w in workflows if w.trigger_type.value == 'voice'),
-                'plugin': sum(1 for w in workflows if w.trigger_type.value == 'plugin')
+            "total_workflows": len(workflows),
+            "active_workflows": sum(1 for w in workflows if w.is_active),
+            "running_workflows": sum(
+                1 for w in workflows if w.status.value == "running"
+            ),
+            "draft_workflows": sum(1 for w in workflows if w.status.value == "draft"),
+            "completed_workflows": sum(
+                1 for w in workflows if w.status.value == "completed"
+            ),
+            "failed_workflows": sum(1 for w in workflows if w.status.value == "failed"),
+            "scheduled_workflows": sum(
+                1 for w in workflows if w.trigger_type.value == "scheduled"
+            ),
+            "trigger_types": {
+                "manual": sum(1 for w in workflows if w.trigger_type.value == "manual"),
+                "scheduled": sum(
+                    1 for w in workflows if w.trigger_type.value == "scheduled"
+                ),
+                "event": sum(1 for w in workflows if w.trigger_type.value == "event"),
+                "workspace": sum(
+                    1 for w in workflows if w.trigger_type.value == "workspace"
+                ),
+                "voice": sum(1 for w in workflows if w.trigger_type.value == "voice"),
+                "plugin": sum(1 for w in workflows if w.trigger_type.value == "plugin"),
             },
-            'total_executions': sum(w.execution_count for w in workflows),
-            'total_success': sum(w.success_count for w in workflows),
-            'total_failures': sum(w.failure_count for w in workflows)
+            "total_executions": sum(w.execution_count for w in workflows),
+            "total_success": sum(w.success_count for w in workflows),
+            "total_failures": sum(w.failure_count for w in workflows),
         }
 
     def _save_version(self, workflow_id: str):

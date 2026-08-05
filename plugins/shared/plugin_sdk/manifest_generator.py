@@ -4,11 +4,9 @@ Aura Plugin Manifest Generator
 Tool for generating plugin manifest files programmatically.
 """
 
-
 import json
 from pathlib import Path
-from typing import List, Dict, Any
-from datetime import datetime
+from typing import Any
 
 
 class PluginManifestGenerator:
@@ -27,64 +25,64 @@ class PluginManifestGenerator:
         self.version = "1.0.0"
         self.author = ""
         self.description = ""
-        self.capabilities: List[str] = []
-        self.permissions: List[str] = []
-        self.dependencies: List[str] = []
+        self.capabilities: list[str] = []
+        self.permissions: list[str] = []
+        self.dependencies: list[str] = []
         self.min_aura_version = "1.0.0"
         self.is_optional = False
         self.is_system = False
 
-    def set_author(self, author: str) -> 'PluginManifestGenerator':
+    def set_author(self, author: str) -> "PluginManifestGenerator":
         """Set plugin author."""
         self.author = author
         return self
 
-    def set_description(self, description: str) -> 'PluginManifestGenerator':
+    def set_description(self, description: str) -> "PluginManifestGenerator":
         """Set plugin description."""
         self.description = description
         return self
 
-    def add_capability(self, capability: str) -> 'PluginManifestGenerator':
+    def add_capability(self, capability: str) -> "PluginManifestGenerator":
         """Add a capability."""
         self.capabilities.append(capability)
         return self
 
-    def add_capabilities(self, capabilities: List[str]) -> 'PluginManifestGenerator':
+    def add_capabilities(self, capabilities: list[str]) -> "PluginManifestGenerator":
         """Add multiple capabilities."""
         self.capabilities.extend(capabilities)
         return self
 
-    def add_permission(self, permission: str) -> 'PluginManifestGenerator':
+    def add_permission(self, permission: str) -> "PluginManifestGenerator":
         """Add a permission."""
         self.permissions.append(permission)
         return self
 
-    def add_permissions(self, permissions: List[str]) -> 'PluginManifestGenerator':
+    def add_permissions(self, permissions: list[str]) -> "PluginManifestGenerator":
         """Add multiple permissions."""
         self.permissions.extend(permissions)
         return self
 
-    def add_dependency(self, dependency: str) -> 'PluginManifestGenerator':
+    def add_dependency(self, dependency: str) -> "PluginManifestGenerator":
         """Add a dependency."""
         self.dependencies.append(dependency)
         return self
 
-    def set_min_aura_version(self, version: str) -> 'PluginManifestGenerator':
+    def set_min_aura_version(self, version: str) -> "PluginManifestGenerator":
         """Set minimum Aura version."""
         self.min_aura_version = version
         return self
 
-    def set_version(self, version: str) -> 'PluginManifestGenerator':
+    def set_version(self, version: str) -> "PluginManifestGenerator":
         """Set plugin version."""
         self.version = version
         return self
 
-    def set_optional(self, optional: bool = True) -> 'PluginManifestGenerator':
+    def set_optional(self, optional: bool = True) -> "PluginManifestGenerator":
         """Set if plugin is optional."""
         self.is_optional = optional
         return self
 
-    def generate(self) -> Dict[str, Any]:
+    def generate(self) -> dict[str, Any]:
         """
         Generate the manifest dictionary.
 
@@ -105,7 +103,7 @@ class PluginManifestGenerator:
             "is_optional": self.is_optional,
             "is_system": self.is_system,
             "plugin_path": "",
-            "entry_point": "Plugin"
+            "entry_point": "Plugin",
         }
 
     def save(self, output_path: str = None) -> str:
@@ -124,7 +122,7 @@ class PluginManifestGenerator:
         if not output_path:
             output_path = f"{self.name}_manifest.json"
 
-        Path(output_path).write_text(json_content, encoding='utf-8')
+        Path(output_path).write_text(json_content, encoding="utf-8")
 
         return output_path
 
@@ -132,10 +130,7 @@ class PluginManifestGenerator:
 def create_plugin_example() -> None:
     """Create an example plugin manifest."""
     generator = (
-        PluginManifestGenerator(
-            name="file_search",
-            category="filesystem"
-        )
+        PluginManifestGenerator(name="file_search", category="filesystem")
         .set_author("Your Name")
         .set_description("Search for files in the filesystem")
         .add_capabilities(["search", "filter", "export"])

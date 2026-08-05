@@ -4,14 +4,14 @@ Knowledge Vector Store
 Manages document embeddings in vector database.
 """
 
-import logging
 import json
-from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
+import logging
 import pickle
+from pathlib import Path
+from typing import Any
 
-from .models import DocumentChunk, EmbeddingProvider, SourceType, KnowledgeStats
 from .embedding_manager import EmbeddingManager
+from .models import DocumentChunk, KnowledgeStats
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class VectorStore:
     def __init__(
         self,
         store_path: str = "data/knowledge_store",
-        embedding_manager: Optional[EmbeddingManager] = None
+        embedding_manager: EmbeddingManager | None = None,
     ):
         """
         Initialize vector store.
@@ -40,18 +40,16 @@ class VectorStore:
         self.embedding_manager = embedding_manager or EmbeddingManager()
 
         # Load existing store if available
-        self.embeddings: List[List[float]] = []
-        self.chunks: List[DocumentChunk] = []
-        self.metadata: List[Dict[str, Any]] = []
+        self.embeddings: list[list[float]] = []
+        self.chunks: list[DocumentChunk] = []
+        self.metadata: list[dict[str, Any]] = []
         self._load_store()
 
         logger.info(f"Vector store initialized at {self.store_path}")
 
     def add_chunks(
-        self,
-        chunks: List[DocumentChunk],
-        batch_size: int = 100
-    ) -> Dict[str, Any]:
+        self, chunks: list[DocumentChunk], batch_size: int = 100
+    ) -> dict[str, Any]:
         """
         Add chunks to store with embeddings.
 
@@ -70,7 +68,7 @@ class VectorStore:
 
         # Create embeddings
         for i in range(0, len(chunks), batch_size):
-            batch = chunks[i:i + batch_size]
+            batch = chunks[i : i + batch_size]
             batch_texts = [chunk.content for chunk in batch]
 
             try:
@@ -91,20 +89,17 @@ class VectorStore:
         self._save_store()
 
         stats = {
-            'total_chunks': len(self.chunks),
-            'new_chunks_added': len(new_chunks),
-            'embeddings_generated': len(new_embeddings)
+            "total_chunks": len(self.chunks),
+            "new_chunks_added": len(new_chunks),
+            "embeddings_generated": len(new_embeddings),
         }
 
         logger.info(f"Added {len(new_chunks)} chunks. Total: {len(self.chunks)}")
         return stats
 
     def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Tuple[DocumentChunk, float]]:
+        self, query: str, top_k: int = 5, filters: dict[str, Any] | None = None
+    ) -> list[tuple[DocumentChunk, float]]:
         """
         Search for similar chunks.
 
@@ -150,11 +145,8 @@ class VectorStore:
         return results
 
     def semantic_search(
-        self,
-        query: str,
-        top_k: int = 5,
-        min_similarity: float = 0.7
-    ) -> List[DocumentChunk]:
+        self, query: str, top_k: int = 5, min_similarity: float = 0.7
+    ) -> list[DocumentChunk]:
         """
         Semantic search (filter by minimum similarity).
 
@@ -173,9 +165,9 @@ class VectorStore:
         self,
         query: str,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-        keyword_weight: float = 0.3
-    ) -> List[Tuple[DocumentChunk, float]]:
+        filters: dict[str, Any] | None = None,
+        keyword_weight: float = 0.3,
+    ) -> list[tuple[DocumentChunk, float]]:
         """
         Hybrid search (semantic + keyword).
 
@@ -199,42 +191,40 @@ class VectorStore:
         for chunk, score in semantic_results:
             chunk_id = chunk.id
             combined[chunk_id] = {
-                'chunk': chunk,
-                'semantic_score': score,
-                'keyword_scores': {}
+                "chunk": chunk,
+                "semantic_score": score,
+                "keyword_scores": {},
             }
 
         for chunk, score in keyword_results:
             chunk_id = chunk.id
             if chunk_id in combined:
-                combined[chunk_id]['keyword_scores'][chunk] = score
+                combined[chunk_id]["keyword_scores"][chunk] = score
 
         # Combine scores
         final_results = []
         for chunk_id, data in combined.items():
-            semantic_score = data['semantic_score']
-            keyword_scores = data['keyword_scores']
+            semantic_score = data["semantic_score"]
+            keyword_scores = data["keyword_scores"]
 
             # Weighted combination
             if keyword_scores:
                 max_keyword = max(keyword_scores.values())
-                combined_score = (semantic_score * (1 - keyword_weight) +
-                                max_keyword * keyword_weight)
+                combined_score = (
+                    semantic_score * (1 - keyword_weight) + max_keyword * keyword_weight
+                )
             else:
                 combined_score = semantic_score
 
-            final_results.append((data['chunk'], combined_score))
+            final_results.append((data["chunk"], combined_score))
 
         # Sort and return top_k
         final_results.sort(key=lambda x: x[1], reverse=True)
         return final_results[:top_k]
 
     def _keyword_search(
-        self,
-        query: str,
-        top_k: int = 10,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Tuple[DocumentChunk, float]]:
+        self, query: str, top_k: int = 10, filters: dict[str, Any] | None = None
+    ) -> list[tuple[DocumentChunk, float]]:
         """
         Keyword-based search.
 
@@ -268,10 +258,7 @@ class VectorStore:
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]
 
-    def _apply_filters(
-        self,
-        filters: Dict[str, Any]
-    ) -> List[int]:
+    def _apply_filters(self, filters: dict[str, Any]) -> list[int]:
         """
         Apply filters to get matching indices.
 
@@ -290,9 +277,7 @@ class VectorStore:
         return matching_indices
 
     def _chunk_matches_filters(
-        self,
-        chunk: DocumentChunk,
-        filters: Dict[str, Any]
+        self, chunk: DocumentChunk, filters: dict[str, Any]
     ) -> bool:
         """
         Check if chunk matches filters.
@@ -311,11 +296,7 @@ class VectorStore:
                     return False
         return True
 
-    def _cosine_similarity(
-        self,
-        vec1: List[float],
-        vec2: List[float]
-    ) -> float:
+    def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """
         Compute cosine similarity between two vectors.
 
@@ -344,19 +325,16 @@ class VectorStore:
     def _save_store(self):
         """Save store to disk."""
         try:
-            data = {
-                'embeddings': self.embeddings,
-                'metadata': self.metadata
-            }
+            data = {"embeddings": self.embeddings, "metadata": self.metadata}
 
             # Save chunks separately (they're objects, not dicts)
-            chunks_path = self.store_path / 'chunks.pkl'
-            with open(chunks_path, 'wb') as f:
+            chunks_path = self.store_path / "chunks.pkl"
+            with open(chunks_path, "wb") as f:
                 pickle.dump(self.chunks, f)
 
             # Save embeddings and metadata
-            embeddings_path = self.store_path / 'embeddings.json'
-            with open(embeddings_path, 'w') as f:
+            embeddings_path = self.store_path / "embeddings.json"
+            with open(embeddings_path, "w") as f:
                 json.dump(data, f)
 
         except Exception as e:
@@ -365,24 +343,24 @@ class VectorStore:
     def _load_store(self):
         """Load store from disk."""
         try:
-            chunks_path = self.store_path / 'chunks.pkl'
+            chunks_path = self.store_path / "chunks.pkl"
             if chunks_path.exists():
-                with open(chunks_path, 'rb') as f:
+                with open(chunks_path, "rb") as f:
                     self.chunks = pickle.load(f)
 
-            embeddings_path = self.store_path / 'embeddings.json'
+            embeddings_path = self.store_path / "embeddings.json"
             if embeddings_path.exists():
-                with open(embeddings_path, 'r') as f:
+                with open(embeddings_path) as f:
                     data = json.load(f)
-                    self.embeddings = data.get('embeddings', [])
-                    self.metadata = data.get('metadata', [])
+                    self.embeddings = data.get("embeddings", [])
+                    self.metadata = data.get("metadata", [])
 
             logger.info(f"Loaded {len(self.chunks)} chunks from store")
 
         except Exception as e:
             logger.error(f"Error loading vector store: {e}")
 
-    def delete_chunks(self, chunk_ids: List[str]):
+    def delete_chunks(self, chunk_ids: list[str]):
         """
         Delete chunks from store.
 
@@ -437,7 +415,7 @@ class VectorStore:
             total_edges=0,  # Simplified for now
             by_source_type=by_source_type,
             by_project=by_project,
-            by_chunk_type=by_chunk_type
+            by_chunk_type=by_chunk_type,
         )
 
     def clear(self):

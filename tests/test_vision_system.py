@@ -11,20 +11,24 @@ Tests the complete Vision System pipeline including:
 - Code detection
 """
 
+import os
+import tempfile
+from pathlib import Path
 
-import pytest
 import cv2
 import numpy as np
-import tempfile
-import os
-from pathlib import Path
+import pytest
+
+from src.vision.models import (
+    ImageType,
+    OCRSettings,
+    ScreenshotSettings,
+    VisionContext,
+    VisionProvider,
+)
 
 # Import vision system modules
 from src.vision.vision_manager import VisionManager
-from src.vision.models import (
-    VisionContext, ImageType, VisionProvider,
-    ScreenshotSettings, OCRSettings
-)
 
 
 @pytest.fixture
@@ -80,18 +84,16 @@ def test_vision_manager_context_info(vision_manager):
     """Test getting context info."""
     info = vision_manager.get_context_info()
     assert info is not None
-    assert 'image_type' in info
+    assert "image_type" in info
 
 
 def test_vision_manager_configure_screenshot(vision_manager):
     """Test configuring screenshot settings."""
     vision_manager.configure_screenshot(
-        capture_type='active_window',
-        include_cursor=True,
-        include_timestamp=True
+        capture_type="active_window", include_cursor=True, include_timestamp=True
     )
 
-    assert vision_manager.screenshot_settings.capture_type == 'active_window'
+    assert vision_manager.screenshot_settings.capture_type == "active_window"
     assert vision_manager.screenshot_settings.include_cursor is True
     assert vision_manager.screenshot_settings.include_timestamp is True
 
@@ -99,19 +101,17 @@ def test_vision_manager_configure_screenshot(vision_manager):
 def test_vision_manager_configure_ocr(vision_manager):
     """Test configuring OCR settings."""
     vision_manager.configure_ocr(
-        provider=VisionProvider.OPENAI,
-        language='eng',
-        confidence_threshold=0.8
+        provider=VisionProvider.OPENAI, language="eng", confidence_threshold=0.8
     )
 
     assert vision_manager.ocr_settings.provider == VisionProvider.OPENAI
-    assert vision_manager.ocr_settings.language == 'eng'
+    assert vision_manager.ocr_settings.language == "eng"
 
 
 def test_vision_manager_enable_feature(vision_manager):
     """Test enabling/disabling features."""
-    vision_manager.enable_feature('auto_rotate', enabled=True)
-    vision_manager.enable_feature('deskew', enabled=True)
+    vision_manager.enable_feature("auto_rotate", enabled=True)
+    vision_manager.enable_feature("deskew", enabled=True)
 
     assert vision_manager.ocr_settings.auto_rotate is True
     assert vision_manager.ocr_settings.deskew is True
@@ -141,7 +141,7 @@ def test_vision_context_creation(vision_manager):
         image_path="test.png",
         image_type=ImageType.SCREENSHOT,
         image_width=800,
-        image_height=600
+        image_height=600,
     )
 
     assert context is not None
@@ -155,13 +155,11 @@ def test_vision_context_update_summary(vision_manager):
         image_path="test.png",
         image_type=ImageType.SCREENSHOT,
         image_width=800,
-        image_height=600
+        image_height=600,
     )
 
     context = vision_manager.coordinator.update_with_summary(
-        context,
-        "Test summary",
-        "Test description"
+        context, "Test summary", "Test description"
     )
 
     assert context.summary is not None
@@ -174,13 +172,11 @@ def test_vision_context_finalize(vision_manager):
         image_path="test.png",
         image_type=ImageType.SCREENSHOT,
         image_width=800,
-        image_height=600
+        image_height=600,
     )
 
     vision_manager.coordinator.update_with_summary(
-        context,
-        "Test summary",
-        "Test description"
+        context, "Test summary", "Test description"
     )
 
     finalized_context = vision_manager.coordinator.finalize_context(context)
@@ -195,10 +191,12 @@ def test_vision_manager_last_context_after_analysis(vision_manager, sample_image
 
     last_context = vision_manager.get_last_context()
     assert last_context is not None
-    assert last_context['image_path'] == sample_image_path
+    assert last_context["image_path"] == sample_image_path
 
 
-def test_vision_manager_last_image_path_after_analysis(vision_manager, sample_image_path):
+def test_vision_manager_last_image_path_after_analysis(
+    vision_manager, sample_image_path
+):
     """Test that last image path is updated after analysis."""
     vision_manager.analyze_image(sample_image_path)
 
@@ -207,15 +205,17 @@ def test_vision_manager_last_image_path_after_analysis(vision_manager, sample_im
     assert last_path == sample_image_path
 
 
-def test_vision_manager_get_context_info_after_analysis(vision_manager, sample_image_path):
+def test_vision_manager_get_context_info_after_analysis(
+    vision_manager, sample_image_path
+):
     """Test that context info is updated after analysis."""
     vision_manager.analyze_image(sample_image_path)
 
     info = vision_manager.get_context_info()
     assert info is not None
-    assert 'image_type' in info
-    assert 'image_width' in info
-    assert 'image_height' in info
+    assert "image_type" in info
+    assert "image_width" in info
+    assert "image_height" in info
 
 
 def test_object_detector_detection(vision_manager):
@@ -230,8 +230,8 @@ def test_object_detector_detection(vision_manager):
     result = vision_manager.object_detector.detect_objects(img, ImageType.SCREENSHOT)
 
     assert result is not None
-    assert 'detected_objects' in result
-    assert 'bounding_boxes' in result
+    assert "detected_objects" in result
+    assert "bounding_boxes" in result
 
 
 def test_layout_analyzer_detection(vision_manager):
@@ -242,8 +242,8 @@ def test_layout_analyzer_detection(vision_manager):
     result = vision_manager.layout_analyzer.analyze_layout(img, ImageType.SCREENSHOT)
 
     assert result is not None
-    assert 'layout' in result
-    assert 'elements' in result
+    assert "layout" in result
+    assert "elements" in result
 
 
 def test_ui_analyzer_detection(vision_manager):
@@ -254,8 +254,8 @@ def test_ui_analyzer_detection(vision_manager):
     result = vision_manager.ui_analyzer.analyze_ui(img, ImageType.SCREENSHOT)
 
     assert result is not None
-    assert 'buttons' in result
-    assert 'menus' in result
+    assert "buttons" in result
+    assert "menus" in result
 
 
 def test_diagram_analyzer_detection(vision_manager):
@@ -266,8 +266,8 @@ def test_diagram_analyzer_detection(vision_manager):
     result = vision_manager.diagram_analyzer.analyze_diagram(img, ImageType.DIAGRAM)
 
     assert result is not None
-    assert 'nodes' in result
-    assert 'connections' in result
+    assert "nodes" in result
+    assert "connections" in result
 
 
 def test_code_detector_detection(vision_manager):
@@ -278,8 +278,8 @@ def test_code_detector_detection(vision_manager):
     result = vision_manager.code_detector.detect_code(img, ImageType.CODE)
 
     assert result is not None
-    assert 'language' in result
-    assert 'lines' in result
+    assert "language" in result
+    assert "lines" in result
 
 
 def test_vision_context_types():
@@ -291,19 +291,40 @@ def test_vision_context_types():
         image_path="test.png",
         image_type=ImageType.SCREENSHOT,
         image_width=800,
-        image_height=600
+        image_height=600,
     )
 
     # Check that all expected fields exist
     expected_fields = [
-        'image_path', 'image_type', 'image_width', 'image_height',
-        'detected_text', 'objects', 'bounding_boxes', 'layout',
-        'elements', 'sections', 'tables', 'code_snippets',
-        'diagrams', 'summary', 'analysis', 'description',
-        'buttons', 'menus', 'dialogs', 'forms', 'notifications',
-        'network_devices', 'network_connections', 'ip_addresses',
-        'vlan_ids', 'interface_names', 'errors_detected',
-        'warnings', 'metadata'
+        "image_path",
+        "image_type",
+        "image_width",
+        "image_height",
+        "detected_text",
+        "objects",
+        "bounding_boxes",
+        "layout",
+        "elements",
+        "sections",
+        "tables",
+        "code_snippets",
+        "diagrams",
+        "summary",
+        "analysis",
+        "description",
+        "buttons",
+        "menus",
+        "dialogs",
+        "forms",
+        "notifications",
+        "network_devices",
+        "network_connections",
+        "ip_addresses",
+        "vlan_ids",
+        "interface_names",
+        "errors_detected",
+        "warnings",
+        "metadata",
     ]
 
     for field in expected_fields:
@@ -313,17 +334,17 @@ def test_vision_context_types():
 def test_screenshot_settings_creation():
     """Test creating ScreenshotSettings."""
     settings = ScreenshotSettings(
-        capture_type='full_screen',
+        capture_type="full_screen",
         monitor_index=1,
         selected_region=(100, 100, 500, 500),
-        format='png',
+        format="png",
         quality=95,
         include_cursor=True,
         include_timestamp=True,
-        save_path='output'
+        save_path="output",
     )
 
-    assert settings.capture_type == 'full_screen'
+    assert settings.capture_type == "full_screen"
     assert settings.monitor_index == 1
     assert settings.include_cursor is True
 
@@ -332,13 +353,13 @@ def test_ocr_settings_creation():
     """Test creating OCRSettings."""
     settings = OCRSettings(
         provider=VisionProvider.OPENAI,
-        language='eng',
+        language="eng",
         table_detection=True,
         code_detection=True,
         diagram_detection=True,
         auto_rotate=True,
         deskew=True,
-        confidence_threshold=0.8
+        confidence_threshold=0.8,
     )
 
     assert settings.provider == VisionProvider.OPENAI
@@ -381,5 +402,5 @@ def test_image_type_enum():
     assert ImageType.UI == "ui"
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

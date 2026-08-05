@@ -1,10 +1,13 @@
 """Test script for ProcessManager integration with DesktopAgent"""
+
 import sys
 import uuid
-sys.path.insert(0, 'd:/Sreekanta/VS Code Project/Desktop AI/AuraAI')
+
+sys.path.insert(0, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI")
 
 from src.agents.desktop_agent import DesktopAgent
-from src.agents.task_model import Task, TaskType, TaskInput
+from src.agents.task_model import Task, TaskInput, TaskType
+
 
 def test_process_list():
     """Test PROCESS_LIST task"""
@@ -16,7 +19,7 @@ def test_process_list():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_LIST,
         title="List processes",
-        input=TaskInput(data={"max_results": 5})
+        input=TaskInput(data={"max_results": 5}),
     )
     result = pm.execute_task(task)
     print(f"Status: {'SUCCESS' if result.success else 'FAILED'}")
@@ -26,6 +29,7 @@ def test_process_list():
         print(f"Total CPU: {result.data.get('total_cpu_percent', 0)}%")
         print(f"Total Memory: {result.data.get('total_memory_mb', 0)} MB")
     print()
+
 
 def test_process_search():
     """Test PROCESS_SEARCH task"""
@@ -37,7 +41,7 @@ def test_process_search():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_SEARCH,
         title="Search Python processes",
-        input=TaskInput(data={"name": "python", "max_results": 3})
+        input=TaskInput(data={"name": "python", "max_results": 3}),
     )
     result = pm.execute_task(task)
     print(f"Status: {'SUCCESS' if result.success else 'FAILED'}")
@@ -46,8 +50,11 @@ def test_process_search():
         print(f"Count: {result.data.get('count', 0)}")
         processes = result.data.get("processes", [])
         for p in processes:
-            print(f"  - {p.get('name')} (PID: {p.get('pid')}): {p.get('cpu_percent')}% CPU, {p.get('memory_mb')} MB")
+            print(
+                f"  - {p.get('name')} (PID: {p.get('pid')}): {p.get('cpu_percent')}% CPU, {p.get('memory_mb')} MB"
+            )
     print()
+
 
 def test_process_get():
     """Test PROCESS_GET task"""
@@ -60,7 +67,7 @@ def test_process_get():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_SEARCH,
         title="Find Python process",
-        input=TaskInput(data={"name": "python", "max_results": 1})
+        input=TaskInput(data={"name": "python", "max_results": 1}),
     )
     search_result = pm.execute_task(search_task)
 
@@ -72,7 +79,7 @@ def test_process_get():
             id=str(uuid.uuid4()),
             type=TaskType.PROCESS_GET,
             title="Get process info",
-            input=TaskInput(data={"pid": pid})
+            input=TaskInput(data={"pid": pid}),
         )
         result = pm.execute_task(task)
         print(f"Status: {'SUCCESS' if result.success else 'FAILED'}")
@@ -86,6 +93,7 @@ def test_process_get():
     else:
         print("No Python process found to test PROCESS_GET")
     print()
+
 
 if __name__ == "__main__":
     test_process_list()

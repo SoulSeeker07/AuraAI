@@ -2,13 +2,12 @@
 Registry Manager
 Manages Windows registry operations.
 """
-from typing import List, Optional, Any
+
 import logging
+from typing import Any
 
 from .native_manager import NativeManager
 from .native_models import RegistryKey
-from .native_exceptions import RegistryKeyNotFoundError, RegistryValueNotFoundError
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class RegistryManager:
         self.native_manager = native_manager
         logger.debug("RegistryManager initialized")
 
-    def read_key(self, key_path: str, key_name: Optional[str] = None) -> List[RegistryKey]:
+    def read_key(self, key_path: str, key_name: str | None = None) -> list[RegistryKey]:
         """
         Read registry key or value.
 
@@ -62,11 +61,7 @@ class RegistryManager:
         return self.native_manager._registry_manager.read_value(key_path, value_name)
 
     def write_value(
-        self,
-        key_path: str,
-        value_name: str,
-        value: Any,
-        value_type: str = "REG_SZ"
+        self, key_path: str, value_name: str, value: Any, value_type: str = "REG_SZ"
     ) -> bool:
         """
         Write registry value.
@@ -139,7 +134,7 @@ class RegistryManager:
         logger.debug(f"Checking if registry value exists: {key_path}\\{value_name}")
         return self.native_manager._registry_manager.value_exists(key_path, value_name)
 
-    def list_subkeys(self, key_path: str) -> List[str]:
+    def list_subkeys(self, key_path: str) -> list[str]:
         """
         List subkeys of a registry key.
 

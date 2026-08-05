@@ -46,7 +46,9 @@ class ChatBot:
         self.username = self.env.get("Username", "User")
         self.assistant_name = self.env.get("Assistantname", "Aura")
         self.memory = memory or Memory(db_path=db_path, chat_log_path=chat_log_path)
-        self.provider_manager = build_provider_manager(self.env, default_provider=self.provider_name)
+        self.provider_manager = build_provider_manager(
+            self.env, default_provider=self.provider_name
+        )
         self.web_search = WebSearchClient(
             google_api_key=self.env.get("GOOGLE_SEARCH_API_KEY", ""),
             google_search_engine_id=self.env.get("GOOGLE_SEARCH_ENGINE_ID", ""),
@@ -57,7 +59,10 @@ class ChatBot:
             settings={
                 "provider": self.provider_name,
                 "model": self.model,
-                "web_search_enabled": self.env.get("AURA_WEB_SEARCH_ENABLED", "true").lower() == "true",
+                "web_search_enabled": self.env.get(
+                    "AURA_WEB_SEARCH_ENABLED", "true"
+                ).lower()
+                == "true",
             },
             username=self.username,
             assistant_name=self.assistant_name,

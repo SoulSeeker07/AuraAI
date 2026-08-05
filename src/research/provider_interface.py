@@ -5,8 +5,9 @@ Abstract base class for all research providers.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
-from .models import SearchResult, Document, SearchQuery, SourceTrustLevel
+from typing import Any
+
+from .models import Document, SearchResult, SourceTrustLevel
 
 
 class ResearchProvider(ABC):
@@ -16,7 +17,7 @@ class ResearchProvider(ABC):
     All research providers must implement this interface.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize the provider.
 
@@ -47,7 +48,7 @@ class ResearchProvider(ABC):
         pass
 
     @abstractmethod
-    def search(self, query: str, max_results: int = 10, **kwargs) -> List[SearchResult]:
+    def search(self, query: str, max_results: int = 10, **kwargs) -> list[SearchResult]:
         """
         Perform a search query.
 
@@ -61,7 +62,7 @@ class ResearchProvider(ABC):
         """
         pass
 
-    def fetch_document(self, url: str) -> Optional[Document]:
+    def fetch_document(self, url: str) -> Document | None:
         """
         Fetch and parse a document from a URL.
 
@@ -82,7 +83,7 @@ class ResearchProvider(ABC):
         """
         return True
 
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """
         Get provider capabilities.
 
@@ -117,10 +118,10 @@ class BaseResearchProvider(ResearchProvider):
         "wikipedia": 3,
         "reddit": 3,
         "blog": 2,
-        "unknown": 1
+        "unknown": 1,
     }
 
-    def __init__(self, config: Dict[str, Any], name: str, trust_level: str):
+    def __init__(self, config: dict[str, Any], name: str, trust_level: str):
         """
         Initialize the base provider.
 
@@ -162,7 +163,7 @@ class BaseResearchProvider(ResearchProvider):
         """
         return self.trust_level
 
-    def _parse_search_result(self, raw_data: Dict[str, Any]) -> SearchResult:
+    def _parse_search_result(self, raw_data: dict[str, Any]) -> SearchResult:
         """
         Parse a raw search result.
 
@@ -178,8 +179,10 @@ class BaseResearchProvider(ResearchProvider):
             snippet=raw_data.get("snippet", raw_data.get("description", "")),
             source=self.name,
             score=raw_data.get("score", 50),
-            trust_level=self._map_trust_level(raw_data.get("trust_level", self.trust_level_str)),
-            raw_data=raw_data
+            trust_level=self._map_trust_level(
+                raw_data.get("trust_level", self.trust_level_str)
+            ),
+            raw_data=raw_data,
         )
 
     def _map_trust_level(self, level: str) -> str:
@@ -198,7 +201,7 @@ class BaseResearchProvider(ResearchProvider):
                 return key
         return "unknown"
 
-    def _extract_relevant_facts(self, text: str, query: str) -> List[str]:
+    def _extract_relevant_facts(self, text: str, query: str) -> list[str]:
         """
         Extract relevant facts from text.
 
@@ -212,19 +215,21 @@ class BaseResearchProvider(ResearchProvider):
         # Simple implementation - can be enhanced with NLP
         words = query.lower().split()
         facts = []
-        
+
         for word in words:
             if word in text.lower():
                 # Extract sentence containing the word
-                sentences = text.split('.')
+                sentences = text.split(".")
                 for sentence in sentences:
                     if word in sentence.lower() and len(sentence.strip()) > 20:
                         facts.append(sentence.strip())
                         break
-        
+
         return facts[:5]  # Limit to top 5 facts
 
-    def _create_document_from_html(self, url: str, html: str, title: str = "") -> Document:
+    def _create_document_from_html(
+        self, url: str, html: str, title: str = ""
+    ) -> Document:
         """
         Create a document from HTML content.
 
@@ -237,49 +242,46 @@ class BaseResearchProvider(ResearchProvider):
             Parsed document
         """
         from bs4 import BeautifulSoup
-        
+
         try:
-            soup = BeautifulSoup(html, 'html.parser')
-            
+            soup = BeautifulSoup(html, "html.parser")
+
             # Extract text content
-            text = soup.get_text(separator='\n')
-            text = '\n'.join(line.strip() for line in text.split('\n') if line.strip())
-            
+            text = soup.get_text(separator="\n")
+            text = "\n".join(line.strip() for line in text.split("\n") if line.strip())
+
             # Extract author if available
-            author = soup.find('meta', attrs={'name': 'author'})
-            author = author['content'] if author else None
-            
+            author = soup.find("meta", attrs={"name": "author"})
+            author = author["content"] if author else None
+
             # Extract date if available
-            date_meta = soup.find('meta', attrs={'name': 'date'})
-            date = date_meta['content'] if date_meta else None
-            
+            date_meta = soup.find("meta", attrs={"name": "date"})
+            date = date_meta["content"] if date_meta else None
+
             # Extract metadata
             metadata = {}
-            for meta in soup.find_all('meta'):
-                name = meta.get('name', '')
-                content = meta.get('content', '')
+            for meta in soup.find_all("meta"):
+                name = meta.get("name", "")
+                content = meta.get("content", "")
                 if name and content:
                     metadata[name] = content
-            
+
             document = Document(
                 url=url,
                 title=title or soup.title.string if soup.title else url,
                 content=text[:10000],  # Limit to first 10k chars
                 author=author,
                 raw_html=html[:5000],  # Limit HTML for storage
-                metadata=metadata
+                metadata=metadata,
             )
-            
+
             # Generate summary
             document.summary = text[:300] + "..." if len(text) > 300 else text
-            
+
             return document
-            
+
         except Exception as e:
             from core import logger
+
             logger.warning(f"Failed to parse HTML from {url}: {e}")
-            return Document(
-                url=url,
-                title=title or url,
-                content=""
-            )
+            return Document(url=url, title=title or url, content="")

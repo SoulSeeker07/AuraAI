@@ -4,13 +4,13 @@ Code Detector
 Detects and analyzes code snippets in images.
 """
 
-
 import logging
-from typing import List, Dict, Any
+from typing import Any
+
 import cv2
 import numpy as np
-from .models import ImageType
 
+from .models import ImageType
 
 logger = logging.getLogger(__name__)
 
@@ -32,26 +32,70 @@ class CodeDetector:
         self.min_code_line_size = 50
         self.max_code_line_size = 1000
         self.language_patterns = {
-            'python': ['def ', 'import ', 'from ', 'class ', 'if __name__', 'print(', 'return '],
-            'javascript': ['function ', 'const ', 'let ', 'var ', 'return ', 'if (', 'console.log'],
-            'typescript': ['function ', 'const ', 'let ', 'var ', 'interface ', 'type ', 'export '],
-            'java': ['public class ', 'private ', 'public static void', 'import ', 'class '],
-            'cpp': ['#include', 'int main(', 'using namespace', 'class ', 'struct '],
-            'c': ['#include', 'int main(', 'struct ', 'typedef ', '#define '],
-            'go': ['func ', 'package ', 'import ', 'var ', 'const ', 'go '],
-            'rust': ['fn ', 'pub ', 'use ', 'let ', 'const ', 'struct ', 'enum '],
-            'php': ['<?php', 'function ', 'class ', 'if (', 'echo '],
-            'ruby': ['def ', 'class ', 'module ', 'if ', 'puts '],
-            'sql': ['SELECT', 'FROM ', 'WHERE ', 'INSERT INTO', 'UPDATE ', 'CREATE TABLE'],
-            'html': ['<div', '<span', '<p>', '<h1>', '<br>', '</div>'],
-            'css': ['.', '#', '{', '}', '@keyframes', 'background:', 'color:', 'font-size:'],
-            'json': ['{', '"', ':', '}', '[', ']']
+            "python": [
+                "def ",
+                "import ",
+                "from ",
+                "class ",
+                "if __name__",
+                "print(",
+                "return ",
+            ],
+            "javascript": [
+                "function ",
+                "const ",
+                "let ",
+                "var ",
+                "return ",
+                "if (",
+                "console.log",
+            ],
+            "typescript": [
+                "function ",
+                "const ",
+                "let ",
+                "var ",
+                "interface ",
+                "type ",
+                "export ",
+            ],
+            "java": [
+                "public class ",
+                "private ",
+                "public static void",
+                "import ",
+                "class ",
+            ],
+            "cpp": ["#include", "int main(", "using namespace", "class ", "struct "],
+            "c": ["#include", "int main(", "struct ", "typedef ", "#define "],
+            "go": ["func ", "package ", "import ", "var ", "const ", "go "],
+            "rust": ["fn ", "pub ", "use ", "let ", "const ", "struct ", "enum "],
+            "php": ["<?php", "function ", "class ", "if (", "echo "],
+            "ruby": ["def ", "class ", "module ", "if ", "puts "],
+            "sql": [
+                "SELECT",
+                "FROM ",
+                "WHERE ",
+                "INSERT INTO",
+                "UPDATE ",
+                "CREATE TABLE",
+            ],
+            "html": ["<div", "<span", "<p>", "<h1>", "<br>", "</div>"],
+            "css": [
+                ".",
+                "#",
+                "{",
+                "}",
+                "@keyframes",
+                "background:",
+                "color:",
+                "font-size:",
+            ],
+            "json": ["{", '"', ":", "}", "[", "]"],
         }
 
     def detect_code(
-        self,
-        image: np.ndarray,
-        image_type: ImageType = ImageType.CODE
+        self, image: np.ndarray, image_type: ImageType = ImageType.CODE
     ) -> dict:
         """
         Detect code in image.
@@ -100,12 +144,12 @@ class CodeDetector:
         lines_of_code = len(code_lines)
 
         result = {
-            'language': language,
-            'lines': code_lines,
-            'snippets': snippets,
-            'line_count': lines_of_code,
-            'has_syntax_highlighting': self._detect_syntax_highlighting(image),
-            'complexity': self._calculate_complexity(snippets, language)
+            "language": language,
+            "lines": code_lines,
+            "snippets": snippets,
+            "line_count": lines_of_code,
+            "has_syntax_highlighting": self._detect_syntax_highlighting(image),
+            "complexity": self._calculate_complexity(snippets, language),
         }
 
         logger.info(f"Code analysis: {language}, {lines_of_code} lines")
@@ -131,10 +175,10 @@ class CodeDetector:
         results = []
         for region in code_regions:
             image_copy = image.copy()
-            x, y, w, h = region['position'].values()
+            x, y, w, h = region["position"].values()
 
             # Extract region
-            roi = image_copy[y:y+h, x:x+w]
+            roi = image_copy[y : y + h, x : x + w]
 
             # Detect language
             language = self._detect_programming_language(roi, [])
@@ -142,18 +186,20 @@ class CodeDetector:
             # Detect lines
             lines = self._detect_code_lines(gray, image, region)
 
-            results.append({
-                'position': region['position'],
-                'language': language,
-                'lines': lines,
-                'line_count': len(lines)
-            })
+            results.append(
+                {
+                    "position": region["position"],
+                    "language": language,
+                    "lines": lines,
+                    "line_count": len(lines),
+                }
+            )
 
         result = {
-            'code_regions': results,
-            'total_regions': len(results),
-            'total_lines': sum(r['line_count'] for r in results),
-            'complexity': 'medium' if len(results) > 0 else 'simple'
+            "code_regions": results,
+            "total_regions": len(results),
+            "total_lines": sum(r["line_count"] for r in results),
+            "complexity": "medium" if len(results) > 0 else "simple",
         }
 
         logger.info(f"Code in screenshot: {len(results)} regions")
@@ -178,24 +224,26 @@ class CodeDetector:
         # Analyze each block
         results = []
         for block in code_blocks:
-            x, y, w, h = block['position'].values()
+            x, y, w, h = block["position"].values()
 
             # Extract block
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
 
             # Detect language
             language = self._detect_programming_language(roi, [])
 
-            results.append({
-                'position': block['position'],
-                'language': language,
-                'line_count': block['line_count']
-            })
+            results.append(
+                {
+                    "position": block["position"],
+                    "language": language,
+                    "line_count": block["line_count"],
+                }
+            )
 
         result = {
-            'code_blocks': results,
-            'total_blocks': len(results),
-            'total_lines': sum(b['line_count'] for b in results)
+            "code_blocks": results,
+            "total_blocks": len(results),
+            "total_lines": sum(b["line_count"] for b in results),
         }
 
         logger.info(f"Code in document: {len(results)} blocks")
@@ -221,16 +269,18 @@ class CodeDetector:
         language = self._detect_programming_language(image, code_lines)
 
         result = {
-            'language': language,
-            'lines': code_lines,
-            'line_count': len(code_lines)
+            "language": language,
+            "lines": code_lines,
+            "line_count": len(code_lines),
         }
 
         logger.info(f"Generic code detection: {language}, {len(code_lines)} lines")
 
         return result
 
-    def _detect_code_lines(self, gray: np.ndarray, image: np.ndarray, region: Dict = None) -> List[Dict[str, Any]]:
+    def _detect_code_lines(
+        self, gray: np.ndarray, image: np.ndarray, region: dict = None
+    ) -> list[dict[str, Any]]:
         """
         Detect individual lines of code.
 
@@ -245,22 +295,20 @@ class CodeDetector:
         code_lines = []
 
         if region:
-            x, y, w, h = region['position'].values()
-            roi_gray = gray[y:y+h, x:x+w]
-            roi_image = image[y:y+h, x:x+w]
+            x, y, w, h = region["position"].values()
+            roi_gray = gray[y : y + h, x : x + w]
+            roi_image = image[y : y + h, x : x + w]
         else:
             roi_gray = gray
             roi_image = image
 
         # Detect horizontal lines (code lines)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 10))
-        horizontal_lines = cv2.morphologyEx(
-            roi_gray,
-            cv2.MORPH_OPEN,
-            kernel
-        )
+        horizontal_lines = cv2.morphologyEx(roi_gray, cv2.MORPH_OPEN, kernel)
 
-        _, binary = cv2.threshold(horizontal_lines, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, binary = cv2.threshold(
+            horizontal_lines, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
         contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         for contour in contours:
@@ -271,20 +319,24 @@ class CodeDetector:
                 continue
 
             # Get line content
-            line_roi = roi_image[y:y+h, x:x+w]
+            line_roi = roi_image[y : y + h, x : x + w]
 
-            code_lines.append({
-                'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                'length': w,
-                'height': h
-            })
+            code_lines.append(
+                {
+                    "position": {"x": x, "y": y, "width": w, "height": h},
+                    "length": w,
+                    "height": h,
+                }
+            )
 
         # Sort lines by y-coordinate
-        code_lines.sort(key=lambda l: l['position']['y'])
+        code_lines.sort(key=lambda l: l["position"]["y"])
 
         return code_lines
 
-    def _detect_code_regions(self, gray: np.ndarray, image: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_code_regions(
+        self, gray: np.ndarray, image: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect regions containing code.
 
@@ -302,7 +354,9 @@ class CodeDetector:
         dilated = cv2.dilate(gray, kernel, iterations=3)
 
         _, binary = cv2.threshold(dilated, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         min_region_size = 5000
         max_region_size = 500000
@@ -315,20 +369,24 @@ class CodeDetector:
             x, y, w, h = cv2.boundingRect(contour)
 
             # Check if region has code-like characteristics
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._has_code_characteristics(roi):
-                code_regions.append({
-                    'type': 'code_region',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area
-                })
+                code_regions.append(
+                    {
+                        "type": "code_region",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                    }
+                )
 
         # Sort regions by size (largest first)
-        code_regions.sort(key=lambda r: r['area'], reverse=True)
+        code_regions.sort(key=lambda r: r["area"], reverse=True)
 
         return code_regions
 
-    def _detect_code_blocks(self, gray: np.ndarray, image: np.ndarray) -> List[Dict[str, Any]]:
+    def _detect_code_blocks(
+        self, gray: np.ndarray, image: np.ndarray
+    ) -> list[dict[str, Any]]:
         """
         Detect code blocks in document.
 
@@ -343,7 +401,9 @@ class CodeDetector:
 
         # Detect rectangular regions
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for contour in contours:
             area = cv2.contourArea(contour)
@@ -355,24 +415,28 @@ class CodeDetector:
             x, y, w, h = cv2.boundingRect(contour)
 
             # Check if block has code-like characteristics
-            roi = image[y:y+h, x:x+w]
+            roi = image[y : y + h, x : x + w]
             if self._has_code_characteristics(roi):
                 # Count lines
                 lines = self._detect_code_lines(gray, image)
 
-                code_blocks.append({
-                    'type': 'code_block',
-                    'position': {'x': x, 'y': y, 'width': w, 'height': h},
-                    'area': area,
-                    'line_count': len(lines)
-                })
+                code_blocks.append(
+                    {
+                        "type": "code_block",
+                        "position": {"x": x, "y": y, "width": w, "height": h},
+                        "area": area,
+                        "line_count": len(lines),
+                    }
+                )
 
         # Sort blocks by y-coordinate
-        code_blocks.sort(key=lambda b: b['position']['y'])
+        code_blocks.sort(key=lambda b: b["position"]["y"])
 
         return code_blocks
 
-    def _detect_programming_language(self, image: np.ndarray, code_lines: List[Dict[str, Any]]) -> str:
+    def _detect_programming_language(
+        self, image: np.ndarray, code_lines: list[dict[str, Any]]
+    ) -> str:
         """
         Detect programming language from image or code lines.
 
@@ -397,7 +461,7 @@ class CodeDetector:
             # Count colored regions
             colored_regions = self._count_colored_regions(image)
             language = self._infer_language_from_patterns(colored_regions, image)
-            if language != 'unknown':
+            if language != "unknown":
                 return language
 
         # Check for language-specific patterns in code lines
@@ -411,7 +475,7 @@ class CodeDetector:
             if self._has_language_patterns_in_image(gray, patterns):
                 return lang
 
-        return 'unknown'
+        return "unknown"
 
     def _detect_syntax_highlighting(self, image: np.ndarray) -> bool:
         """
@@ -449,12 +513,16 @@ class CodeDetector:
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         # Find contours
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         # Count regions
         return len(contours)
 
-    def _infer_language_from_patterns(self, region_count: int, image: np.ndarray) -> str:
+    def _infer_language_from_patterns(
+        self, region_count: int, image: np.ndarray
+    ) -> str:
         """
         Infer programming language from colored region count.
 
@@ -469,15 +537,15 @@ class CodeDetector:
         # Different languages have different highlighting patterns
 
         if region_count < 10:
-            return 'unknown'
+            return "unknown"
 
         # Check for specific patterns
         if self._has_python_patterns(image):
-            return 'python'
+            return "python"
 
-        return 'unknown'
+        return "unknown"
 
-    def _has_language_patterns(self, line: Dict[str, Any], patterns: List[str]) -> bool:
+    def _has_language_patterns(self, line: dict[str, Any], patterns: list[str]) -> bool:
         """
         Check if line contains language patterns.
 
@@ -492,7 +560,9 @@ class CodeDetector:
         # For now, just return False
         return False
 
-    def _has_language_patterns_in_image(self, gray: np.ndarray, patterns: List[str]) -> bool:
+    def _has_language_patterns_in_image(
+        self, gray: np.ndarray, patterns: list[str]
+    ) -> bool:
         """
         Check if image contains language patterns.
 
@@ -530,7 +600,9 @@ class CodeDetector:
         brightness = np.mean(gray)
         return brightness > 50
 
-    def _extract_code_snippets(self, image: np.ndarray, code_lines: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_code_snippets(
+        self, image: np.ndarray, code_lines: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Extract code snippets from code lines.
 
@@ -544,19 +616,23 @@ class CodeDetector:
         snippets = []
 
         for line in code_lines:
-            x, y, w, h = line['position'].values()
-            roi = image[y:y+h, x:x+w]
+            x, y, w, h = line["position"].values()
+            roi = image[y : y + h, x : x + w]
 
-            snippets.append({
-                'type': 'code_line',
-                'position': line['position'],
-                'height': h,
-                'length': w
-            })
+            snippets.append(
+                {
+                    "type": "code_line",
+                    "position": line["position"],
+                    "height": h,
+                    "length": w,
+                }
+            )
 
         return snippets
 
-    def _calculate_complexity(self, snippets: List[Dict[str, Any]], language: str) -> str:
+    def _calculate_complexity(
+        self, snippets: list[dict[str, Any]], language: str
+    ) -> str:
         """
         Calculate code complexity.
 
@@ -568,19 +644,19 @@ class CodeDetector:
             Complexity level
         """
         if not snippets:
-            return 'simple'
+            return "simple"
 
         # Count snippets
         snippet_count = len(snippets)
 
         if snippet_count < 10:
-            return 'simple'
+            return "simple"
         elif snippet_count < 50:
-            return 'medium'
+            return "medium"
         elif snippet_count < 100:
-            return 'complex'
+            return "complex"
         else:
-            return 'very_complex'
+            return "very_complex"
 
     def _has_python_patterns(self, image: np.ndarray) -> bool:
         """Check if image shows Python patterns."""

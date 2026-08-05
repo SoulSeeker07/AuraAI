@@ -5,14 +5,17 @@ Monitors directories for file changes and triggers re-indexing.
 """
 
 import logging
-import os
-import time
 import threading
-from typing import List, Set, Dict, Any, Optional
 from pathlib import Path
-from datetime import datetime
+from typing import Any
+
+from watchdog.events import (
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent, FileDeletedEvent
 
 from .indexer import Indexer
 
@@ -60,10 +63,7 @@ class KnowledgeFileWatcher:
     """
 
     def __init__(
-        self,
-        indexer: Indexer,
-        directories: List[str],
-        recursive: bool = True
+        self, indexer: Indexer, directories: list[str], recursive: bool = True
     ):
         """
         Initialize file watcher.
@@ -76,15 +76,17 @@ class KnowledgeFileWatcher:
         self.indexer = indexer
         self.directories = [Path(d) for d in directories]
         self.recursive = recursive
-        self.watched_files: Set[Path] = set()
-        self.exclude_patterns: List[str] = []
-        self.file_hashes: Dict[str, str] = {}
+        self.watched_files: set[Path] = set()
+        self.exclude_patterns: list[str] = []
+        self.file_hashes: dict[str, str] = {}
 
-        self.observer: Optional[Observer] = None
+        self.observer: Observer | None = None
         self.is_running = False
         self.lock = threading.Lock()
 
-        logger.info(f"Knowledge file watcher initialized for {len(directories)} directories")
+        logger.info(
+            f"Knowledge file watcher initialized for {len(directories)} directories"
+        )
 
     def start(self):
         """Start watching directories."""
@@ -103,7 +105,9 @@ class KnowledgeFileWatcher:
         # Create and start observer
         self.observer = Observer()
         event_handler = FileEventHandler(self.indexer)
-        self.observer.schedule(event_handler, str(directory.parent), recursive=self.recursive)
+        self.observer.schedule(
+            event_handler, str(directory.parent), recursive=self.recursive
+        )
 
         self.observer.start()
         self.is_running = True
@@ -142,7 +146,9 @@ class KnowledgeFileWatcher:
         # Update observer schedule
         if self.observer and self.is_running:
             event_handler = FileEventHandler(self.indexer)
-            self.observer.schedule(event_handler, str(directory_path.parent), recursive=recursive)
+            self.observer.schedule(
+                event_handler, str(directory_path.parent), recursive=recursive
+            )
 
         logger.info(f"Added directory to watch: {directory}")
 
@@ -160,7 +166,8 @@ class KnowledgeFileWatcher:
 
             # Remove files from watch
             self.watched_files = {
-                f for f in self.watched_files
+                f
+                for f in self.watched_files
                 if not str(f).startswith(str(directory_path))
             }
 
@@ -204,7 +211,7 @@ class KnowledgeFileWatcher:
 
         logger.info(f"Scan complete. New/modified files: {len(new_files)}")
 
-    def set_exclude_patterns(self, patterns: List[str]):
+    def set_exclude_patterns(self, patterns: list[str]):
         """
         Set file exclusion patterns.
 
@@ -236,7 +243,7 @@ class KnowledgeFileWatcher:
             self.exclude_patterns.remove(pattern)
             logger.info(f"Removed exclude pattern: {pattern}")
 
-    def get_watched_files(self) -> List[str]:
+    def get_watched_files(self) -> list[str]:
         """
         Get list of watched files.
 
@@ -246,7 +253,7 @@ class KnowledgeFileWatcher:
         with self.lock:
             return [str(f) for f in self.watched_files]
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get watcher statistics.
 
@@ -254,10 +261,10 @@ class KnowledgeFileWatcher:
             Statistics dictionary
         """
         return {
-            'directories_watched': len(self.directories),
-            'files_watched': len(self.watched_files),
-            'is_running': self.is_running,
-            'exclude_patterns': self.exclude_patterns
+            "directories_watched": len(self.directories),
+            "files_watched": len(self.watched_files),
+            "is_running": self.is_running,
+            "exclude_patterns": self.exclude_patterns,
         }
 
     def _discover_files(self, directory: Path, recursive: bool = True):
@@ -272,10 +279,10 @@ class KnowledgeFileWatcher:
         files = []
 
         if recursive:
-            for ext in ['.py', '.md', '.txt', '.json', '.yaml', '.yml', '.csv']:
-                files.extend(directory.rglob(f'*{ext}'))
+            for ext in [".py", ".md", ".txt", ".json", ".yaml", ".yml", ".csv"]:
+                files.extend(directory.rglob(f"*{ext}"))
         else:
-            files.extend(directory.glob('*'))
+            files.extend(directory.glob("*"))
 
         # Apply exclude patterns
         filtered_files = []
@@ -295,7 +302,7 @@ class KnowledgeFileWatcher:
         # Update watched files
         self.watched_files.update(filtered_files)
 
-    def _get_files_in_directory(self, directory: Path) -> Set[Path]:
+    def _get_files_in_directory(self, directory: Path) -> set[Path]:
         """
         Get all files in directory.
 
@@ -308,10 +315,10 @@ class KnowledgeFileWatcher:
         files = set()
 
         if recursive:
-            for ext in ['.py', '.md', '.txt', '.json', '.yaml', '.yml', '.csv']:
-                files.update(directory.rglob(f'*{ext}'))
+            for ext in [".py", ".md", ".txt", ".json", ".yaml", ".yml", ".csv"]:
+                files.update(directory.rglob(f"*{ext}"))
         else:
-            files.update(directory.glob('*'))
+            files.update(directory.glob("*"))
 
         return files
 
@@ -355,8 +362,8 @@ class KnowledgeFileWatcher:
         import hashlib
 
         hasher = hashlib.md5()
-        with open(file_path, 'rb') as f:
-            for chunk in iter(lambda: f.read(8192), b''):
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
                 hasher.update(chunk)
 
         return hasher.hexdigest()

@@ -32,120 +32,124 @@ Layer 3: Infrastructure
 - CapabilityRouter: Intermediate routing between Planner and NativeManager
 """
 
-from .native_manager import NativeManager, NativeCapability
+from .capability_discovery import (
+    CapabilityDiscovery,
+    CapabilityMatchScore,
+    GoalIntent,
+)
 from .capability_registry import (
-    CapabilityRegistry,
     CapabilityDescriptor,
+    CapabilityRegistry,
     PermissionRequired,
     RiskLevel,
-)
-from .native_result import NativeResult, ResultStatus, ActionCategory
-from .metrics import (
-    MetricsRecorder,
-    NativeOperationMetrics,
-    MetricsLevel,
-    get_metrics_recorder,
-    reset_metrics_recorder,
-)
-from .desktop_context import (
-    DesktopContext,
-    ContextScope,
-    get_desktop_context,
-    reset_desktop_context,
 )
 from .capability_router import (
     CapabilityRouter,
     RoutingStrategy,
-    get_capability_router,
-    reset_capability_router,
-    get_native_manager,
     get_capability_registry,
+    get_capability_router,
+    get_native_manager,
+    reset_capability_router,
 )
-from .native_events import (
-    EventType,
-    NativeEventBus,
-    EventListener,
+from .desktop_context import (
+    ContextScope,
+    DesktopContext,
+    get_desktop_context,
+    reset_desktop_context,
 )
-from .native_execution_context import (
-    NativeExecutionContext,
-    ExecutionStage,
-    ExecutionStatus,
-    ExecutionContextFactory,
-)
-from .verification_layer import (
-    VerificationLayer,
-    VerificationResult,
-    VerificationMode,
-)
-from .middleware import (
-    NativeMiddleware,
-    MiddlewareType,
-    MiddlewareResult,
-    ExecutionResult,
-    PermissionMiddleware,
-    LoggingMiddleware,
-    MetricsMiddleware,
-    ContextMiddleware,
-    DiagnosticsMiddleware,
-    NativePipeline,
-)
-from .rollback_framework import (
-    RollbackManager,
-    RollbackFunctions,
-    RollbackContext,
-    RollbackAction,
-    create_rollback_context,
-)
-from .capability_discovery import (
-    CapabilityDiscovery,
-    GoalIntent,
-    CapabilityMatchScore,
-)
-from .native_diagnostics import (
-    NativeDiagnostics,
-    DiagnosticsStage,
-    StageTiming,
-    DiagnosticsReporter,
-    get_diagnostics,
-    reset_diagnostics,
+from .desktop_execution_engine import (
+    DesktopExecutionEngine,
+    get_desktop_execution_engine,
 )
 from .managers import (
     BaseNativeManager,
-    WindowManager,
     ClipboardManager,
+    WindowManager,
 )
-
-# Export models
-from .native_models import (
-    WindowInfo,
-    ProcessInfo,
-    ClipboardData,
-    DisplayInfo,
-    AudioDevice,
-    NetworkInterface,
-    RegistryKey,
-    ServiceInfo,
-    Rect,
+from .metrics import (
+    MetricsLevel,
+    MetricsRecorder,
+    NativeOperationMetrics,
+    get_metrics_recorder,
+    reset_metrics_recorder,
+)
+from .middleware import (
+    ContextMiddleware,
+    DiagnosticsMiddleware,
+    ExecutionResult,
+    LoggingMiddleware,
+    MetricsMiddleware,
+    MiddlewareResult,
+    MiddlewareType,
+    NativeMiddleware,
+    NativePipeline,
+    PermissionMiddleware,
+)
+from .native_diagnostics import (
+    DiagnosticsReporter,
+    DiagnosticsStage,
+    NativeDiagnostics,
+    StageTiming,
+    get_diagnostics,
+    reset_diagnostics,
+)
+from .native_events import (
+    EventListener,
+    EventType,
+    NativeEventBus,
 )
 
 # Export exceptions
 from .native_exceptions import (
-    NativeError,
-    WindowError,
-    ProcessError,
+    AudioError,
+    CapabilityNotFoundError,
     ClipboardError,
     DisplayError,
-    PowerError,
-    AudioError,
+    NativeError,
     NetworkError,
-    RegistryError,
-    ServiceError,
-    CapabilityNotFoundError,
-    PermissionDeniedError,
-    OperationTimeoutError,
     OperationCancelledError,
-    VerificationError,
+    OperationTimeoutError,
+    PermissionDeniedError,
+    PowerError,
+    ProcessError,
+    RegistryError,
     RollbackError,
+    ServiceError,
+    VerificationError,
+    WindowError,
+)
+from .native_execution_context import (
+    ExecutionContextFactory,
+    ExecutionStage,
+    ExecutionStatus,
+    NativeExecutionContext,
+)
+from .native_manager import NativeCapability, NativeManager
+
+# Export models
+from .native_models import (
+    AudioDevice,
+    ClipboardData,
+    DisplayInfo,
+    NetworkInterface,
+    ProcessInfo,
+    Rect,
+    RegistryKey,
+    ServiceInfo,
+    WindowInfo,
+)
+from .native_result import ActionCategory, NativeResult, ResultStatus
+from .rollback_framework import (
+    RollbackAction,
+    RollbackContext,
+    RollbackFunctions,
+    RollbackManager,
+    create_rollback_context,
+)
+from .verification_layer import (
+    VerificationLayer,
+    VerificationMode,
+    VerificationResult,
 )
 
 __version__ = "1.0.0"
@@ -154,6 +158,9 @@ __all__ = [
     # Main facade
     "NativeManager",
     "NativeCapability",
+    # Desktop Execution Engine
+    "DesktopExecutionEngine",
+    "get_desktop_execution_engine",
     # Pipeline and Execution ⭐ NEW
     "NativePipeline",
     "NativeExecutionContext",

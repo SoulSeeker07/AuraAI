@@ -6,6 +6,7 @@ Run this suite before any major refactors to prevent regressions.
 """
 
 import pytest
+
 from core.memory.memory_manager import MemoryManager
 
 
@@ -15,8 +16,9 @@ class TestContextRegression:
     @pytest.fixture
     def memory_manager(self):
         """Create a MemoryManager instance for testing."""
-        from core.memory.memory_manager import MemoryManager
         from core.memory.memory import Memory
+
+        from core.memory.memory_manager import MemoryManager
 
         # Create a temporary memory instance
         temp_db = "test_context_memory.db"
@@ -28,20 +30,15 @@ class TestContextRegression:
         """Verify context includes conversation history."""
         # Add conversation
         memory_manager.remember_exchange(
-            query="Hello",
-            answer="Hi there!",
-            topic="general"
+            query="Hello", answer="Hi there!", topic="general"
         )
         memory_manager.remember_exchange(
-            query="How are you?",
-            answer="I'm doing great!",
-            topic="general"
+            query="How are you?", answer="I'm doing great!", topic="general"
         )
 
         # Build context
         context = memory_manager.build_context(
-            user_input="What was our first conversation?",
-            topic="general"
+            user_input="What was our first conversation?", topic="general"
         )
 
         # Verify context contains conversation
@@ -56,8 +53,7 @@ class TestContextRegression:
 
         # Build context
         context = memory_manager.build_context(
-            user_input="Who are you?",
-            topic="personal"
+            user_input="Who are you?", topic="personal"
         )
 
         # Verify context contains facts
@@ -68,8 +64,7 @@ class TestContextRegression:
         """Verify context includes current topic."""
         # Build context with specific topic
         context = memory_manager.build_context(
-            user_input="Tell me about Python",
-            topic="python"
+            user_input="Tell me about Python", topic="python"
         )
 
         # Verify context contains topic information
@@ -80,14 +75,10 @@ class TestContextRegression:
         """Verify recent messages include topic field."""
         # Add conversation with different topics
         memory_manager.remember_exchange(
-            query="Network question",
-            answer="Network answer",
-            topic="networking"
+            query="Network question", answer="Network answer", topic="networking"
         )
         memory_manager.remember_exchange(
-            query="Python question",
-            answer="Python answer",
-            topic="python"
+            query="Python question", answer="Python answer", topic="python"
         )
 
         # Get recent messages
@@ -105,16 +96,11 @@ class TestContextRegression:
         # Add many messages
         for i in range(20):
             memory_manager.remember_exchange(
-                query=f"Question {i}",
-                answer=f"Answer {i}",
-                topic="general"
+                query=f"Question {i}", answer=f"Answer {i}", topic="general"
             )
 
         # Build context with limit
-        context = memory_manager.build_context(
-            user_input="Hello",
-            topic="general"
-        )
+        context = memory_manager.build_context(user_input="Hello", topic="general")
 
         # Verify context size is reasonable
         assert 100 >= len(context) >= 0
@@ -137,15 +123,12 @@ class TestContextRegression:
         # Add many old messages
         for i in range(100):
             memory_manager.remember_exchange(
-                query=f"Old question {i}",
-                answer=f"Old answer {i}",
-                topic="general"
+                query=f"Old question {i}", answer=f"Old answer {i}", topic="general"
             )
 
         # Build context with limit
         context = memory_manager.build_context(
-            user_input="Current question",
-            topic="general"
+            user_input="Current question", topic="general"
         )
 
         # Verify context is limited

@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.getcwd())
 
 from core.memory.memory_manager import MemoryManager
@@ -20,10 +21,12 @@ messages = manager.get_recent_messages(limit=10)
 
 print(f"\nTotal messages: {len(messages)}")
 for i, msg in enumerate(messages):
-    print(f"Message {i}: role={msg.get('role')}, topic={msg.get('topic')[:20] if msg.get('topic') else 'None'}")
+    print(
+        f"Message {i}: role={msg.get('role')}, topic={msg.get('topic')[:20] if msg.get('topic') else 'None'}"
+    )
 
-print(f"\nFinding Python messages...")
-python_messages = [m for m in messages if m.get('topic') == 'Python']
+print("\nFinding Python messages...")
+python_messages = [m for m in messages if m.get("topic") == "Python"]
 print(f"Python messages found: {len(python_messages)}")
 
 if python_messages:

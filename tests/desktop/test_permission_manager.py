@@ -1,13 +1,17 @@
 """Test script for PermissionManager integration with ProcessManager"""
+
 import sys
 import uuid
-sys.path.insert(0, 'd:/Sreekanta/VS Code Project/Desktop AI/AuraAI')
-sys.path.insert(1, 'd:/Sreekanta/VS Code Project/Desktop AI/AuraAI/src')
 
-from src.agents.permission_manager import PermissionManager, PermissionLevel
-from src.agents.process_manager import ProcessManager
-from src.agents.task_model import Task, TaskType, TaskInput
+sys.path.insert(0, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI")
+sys.path.insert(1, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI/src")
+
 import time
+
+from src.agents.permission_manager import PermissionLevel, PermissionManager
+from src.agents.process_manager import ProcessManager
+from src.agents.task_model import Task, TaskInput, TaskType
+
 
 def test_permission_manager_basic():
     """Test basic permission manager functionality"""
@@ -19,14 +23,18 @@ def test_permission_manager_basic():
 
     # Test safe operation (should not ask)
     print("\nTest 1a: Safe operation should not ask for permission")
-    can_execute = pm.can_execute_operation("list_processes", "PID 123", PermissionLevel.MODERATE)
+    can_execute = pm.can_execute_operation(
+        "list_processes", "PID 123", PermissionLevel.MODERATE
+    )
     print(f"  can_execute(list_processes): {can_execute}")
     assert can_execute == True, "Safe operation should not require permission"
     print("  ✓ Safe operation returns True")
 
     # Test dangerous operation (should ask)
     print("\nTest 1b: Dangerous operation should require permission")
-    can_execute = pm.can_execute_operation("kill_process", "PID 123", PermissionLevel.MODERATE)
+    can_execute = pm.can_execute_operation(
+        "kill_process", "PID 123", PermissionLevel.MODERATE
+    )
     print(f"  can_execute(kill_process): {can_execute}")
     assert can_execute == False, "Dangerous operation should require permission"
     print("  ✓ Dangerous operation returns False")
@@ -37,7 +45,7 @@ def test_permission_manager_basic():
         operation="test_operation",
         target="PID 123",
         details="Test operation",
-        level=PermissionLevel.MODERATE
+        level=PermissionLevel.MODERATE,
     )
     print(f"  Permission approved: {approved}")
     print("  ✓ Permission requested successfully")
@@ -82,7 +90,7 @@ def test_permission_manager_with_process_manager():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_SEARCH,
         title="Find Python process",
-        input=TaskInput(data={"name": "python", "max_results": 1})
+        input=TaskInput(data={"name": "python", "max_results": 1}),
     )
     result = pm.execute_task(search_task)
 
@@ -104,7 +112,7 @@ def test_permission_manager_with_process_manager():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_STOP,
         title="Stop process",
-        input=TaskInput(data={"pid": pid, "timeout": 3})
+        input=TaskInput(data={"pid": pid, "timeout": 3}),
     )
     stop_result = pm.execute_task(stop_task)
 
@@ -148,7 +156,7 @@ def test_permission_manager_log():
         target="all processes",
         details="List all running processes",
         level=PermissionLevel.SAFE,
-        requester="Test"
+        requester="Test",
     )
     print(f"  Permission 1 (safe): {perm1}")
     assert perm1 == True, "Safe permission should be approved"
@@ -158,7 +166,7 @@ def test_permission_manager_log():
         target="PID 123",
         details="Kill process 123",
         level=PermissionLevel.DANGEROUS,
-        requester="Test"
+        requester="Test",
     )
     print(f"  Permission 2 (dangerous): {perm2}")
     assert perm2 == False, "Should default to denying dangerous operation"
@@ -168,7 +176,7 @@ def test_permission_manager_log():
         target="PID 456",
         details="Stop process 456",
         level=PermissionLevel.MODERATE,
-        requester="Test"
+        requester="Test",
     )
     print(f"  Permission 3 (moderate): {perm3}")
     assert perm3 == False, "Should default to denying moderate operation"
@@ -200,7 +208,7 @@ def test_permission_manager_custom_handler():
 
     def custom_handler(request: PermissionManager.PermissionRequest) -> bool:
         """Custom handler that always approves after showing details"""
-        print(f"\n  Custom handler received:")
+        print("\n  Custom handler received:")
         print(f"    Operation: {request.operation}")
         print(f"    Target: {request.target}")
         print(f"    Details: {request.details[:100]}...")
@@ -214,7 +222,7 @@ def test_permission_manager_custom_handler():
         operation="custom_test",
         target="PID 789",
         details="Test operation with custom handler",
-        level=PermissionLevel.MODERATE
+        level=PermissionLevel.MODERATE,
     )
     print(f"  Permission approved: {approved}")
     assert approved == True, "Custom handler should approve"
@@ -223,7 +231,7 @@ def test_permission_manager_custom_handler():
     # Test that handler can also deny
     def deny_handler(request: PermissionManager.PermissionRequest) -> bool:
         """Handler that always denies"""
-        print(f"\n  Deny handler received")
+        print("\n  Deny handler received")
         return False
 
     perm_mgr.set_confirmation_handler(deny_handler)
@@ -233,7 +241,7 @@ def test_permission_manager_custom_handler():
         operation="custom_test",
         target="PID 789",
         details="Test operation with deny handler",
-        level=PermissionLevel.MODERATE
+        level=PermissionLevel.MODERATE,
     )
     print(f"  Permission approved: {approved}")
     assert approved == False, "Deny handler should deny"
@@ -257,6 +265,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n✗ Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         print()

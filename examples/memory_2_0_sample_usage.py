@@ -19,12 +19,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from core.memory import (
-    MemoryManagerV2,
-    MemoryLayer,
     CategoryType,
     ImportanceLevel,
     MemoryAnalyzer,
     MemoryFact,
+    MemoryLayer,
+    MemoryManagerV2,
 )
 
 
@@ -37,14 +37,12 @@ async def sample_usage():
 
     # Create a memory manager
     import tempfile
+
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
     temp_file.close()
     data_path = Path(temp_file.name)
 
-    manager = MemoryManagerV2(
-        data_path=data_path,
-        secret_key="sample_secret_key_123"
-    )
+    manager = MemoryManagerV2(data_path=data_path, secret_key="sample_secret_key_123")
 
     # Initialize analyzer
     analyzer = MemoryAnalyzer()
@@ -63,7 +61,9 @@ async def sample_usage():
     print(f"  → Key: {analysis.key}")
 
     fact = await manager.analyze_and_remember(text1, layer=MemoryLayer.LONG_TERM)
-    print(f"  → Stored with encrypted: {fact.encrypted if hasattr(fact, 'encrypted') else 'N/A'}")
+    print(
+        f"  → Stored with encrypted: {fact.encrypted if hasattr(fact, 'encrypted') else 'N/A'}"
+    )
     print()
 
     # Manual storage
@@ -72,15 +72,14 @@ async def sample_usage():
         value="Python",
         category=CategoryType.PREFERENCES,
         layer=MemoryLayer.LONG_TERM,
-        importance=ImportanceLevel.HIGH
+        importance=ImportanceLevel.HIGH,
     )
     print("Manually stored: favorite programming language = Python")
     print()
 
     # Retrieve
     result = manager.retrieve(
-        category=CategoryType.PREFERENCES,
-        layer=MemoryLayer.LONG_TERM
+        category=CategoryType.PREFERENCES, layer=MemoryLayer.LONG_TERM
     )
     print(f"Retrieved {len(result)} preference(s):")
     for fact in result[:5]:  # Show first 5
@@ -96,7 +95,7 @@ async def sample_usage():
         key="favorite color",
         value="blue",
         category=CategoryType.PREFERENCES,
-        layer=MemoryLayer.LONG_TERM
+        layer=MemoryLayer.LONG_TERM,
     )
 
     await manager.remember(
@@ -104,23 +103,22 @@ async def sample_usage():
         value="pizza",
         category=CategoryType.PREFERENCES,
         layer=MemoryLayer.LONG_TERM,
-        importance=ImportanceLevel.HIGH
+        importance=ImportanceLevel.HIGH,
     )
 
     await manager.remember(
         key="favorite music",
         value="jazz",
         category=CategoryType.PREFERENCES,
-        layer=MemoryLayer.LONG_TERM
+        layer=MemoryLayer.LONG_TERM,
     )
 
     # Retrieve with query
     retrieval_result = await manager.retrieve_with_reranking(
-        query="favorite things",
-        limit=5
+        query="favorite things", limit=5
     )
 
-    print(f"Query: 'favorite things'")
+    print("Query: 'favorite things'")
     print(f"Retrieved {len(retrieval_result.memories)} memory(ies)")
     print(f"Overall score: {retrieval_result.score:.2f}")
     print(f"Relevance: {retrieval_result.relevance}")
@@ -138,7 +136,7 @@ async def sample_usage():
     test_texts = [
         "I need to fix the import error in the main.py file",
         "The report is saved to documents/quarterly_report.pdf",
-        "The project deadline is next week"
+        "The project deadline is next week",
     ]
 
     for text in test_texts:
@@ -157,18 +155,25 @@ async def sample_usage():
 
     sensitive_analysis = await analyzer.analyze(sensitive_text)
     print(f"  → Category: {sensitive_analysis.category.value}")
-    print(f"  → Contains sensitive: {sensitive_analysis.metadata.get('contains_sensitive', False)}")
-
-    sensitive_fact = await manager.analyze_and_remember(
-        sensitive_text,
-        layer=MemoryLayer.LONG_TERM
+    print(
+        f"  → Contains sensitive: {sensitive_analysis.metadata.get('contains_sensitive', False)}"
     )
 
-    if sensitive_fact and hasattr(sensitive_fact, 'encrypted') and sensitive_fact.encrypted:
+    sensitive_fact = await manager.analyze_and_remember(
+        sensitive_text, layer=MemoryLayer.LONG_TERM
+    )
+
+    if (
+        sensitive_fact
+        and hasattr(sensitive_fact, "encrypted")
+        and sensitive_fact.encrypted
+    ):
         decrypted = sensitive_fact.decrypt(manager.secret_key)
-        print(f"  → Encrypted: Yes")
+        print("  → Encrypted: Yes")
         print(f"  → Decrypted value: {decrypted}")
-        print(f"  → Original value found in decrypted: {'sk-test123456789' in decrypted}")
+        print(
+            f"  → Original value found in decrypted: {'sk-test123456789' in decrypted}"
+        )
     print()
 
     # --- Example 5: Conflict Resolution ---
@@ -180,19 +185,17 @@ async def sample_usage():
         key="my favorite ide",
         value="VS Code",
         category=CategoryType.PREFERENCES,
-        layer=MemoryLayer.LONG_TERM
+        layer=MemoryLayer.LONG_TERM,
     )
 
     print("Stored: my favorite ide = VS Code")
 
     # Try to resolve conflict with new value
     conflict_result = manager.resolve_conflict(
-        key="my favorite ide",
-        new_value="Cursor",
-        layer=MemoryLayer.LONG_TERM
+        key="my favorite ide", new_value="Cursor", layer=MemoryLayer.LONG_TERM
     )
 
-    print(f"\nConflict resolution result:")
+    print("\nConflict resolution result:")
     print(f"  → Resolved: {conflict_result.resolved}")
     print(f"  → Resolution: {conflict_result.resolution}")
 
@@ -203,7 +206,7 @@ async def sample_usage():
     retrieved = manager.retrieve(
         category=CategoryType.PREFERENCES,
         key="my_favorite_ide",
-        layer=MemoryLayer.LONG_TERM
+        layer=MemoryLayer.LONG_TERM,
     )
 
     if retrieved:
@@ -216,14 +219,13 @@ async def sample_usage():
 
     # Working layer (cleared on restart)
     await manager.analyze_and_remember(
-        text="Current task: fixing bug #123",
-        layer=MemoryLayer.WORKING
+        text="Current task: fixing bug #123", layer=MemoryLayer.WORKING
     )
 
     # Session layer (cleared at end of session)
     await manager.analyze_and_remember(
         text="Remember this for this session: important meeting at 3pm",
-        layer=MemoryLayer.SESSION
+        layer=MemoryLayer.SESSION,
     )
 
     working_results = manager.retrieve(layer=MemoryLayer.WORKING)
@@ -245,16 +247,16 @@ async def sample_usage():
 
     summary = manager.get_summary()
     print(f"Total facts: {summary.total_facts}")
-    print(f"\nBy layer:")
+    print("\nBy layer:")
     for layer, count in summary.by_layer.items():
         print(f"  - {layer}: {count}")
-    print(f"\nBy category:")
+    print("\nBy category:")
     for category, count in summary.by_category.items():
         print(f"  - {category}: {count}")
-    print(f"\nBy importance:")
+    print("\nBy importance:")
     for importance, count in summary.by_importance.items():
         print(f"  - {importance}: {count}")
-    print(f"\nRecent activity:")
+    print("\nRecent activity:")
     for fact in summary.recent_activity[:5]:
         print(f"  - {fact.key}: {fact.value[:50]}...")
     print()
@@ -264,7 +266,7 @@ async def sample_usage():
     print("-" * 80)
 
     # Store some old memories
-    from datetime import timedelta, datetime
+    from datetime import datetime, timedelta
 
     old_fact = MemoryFact(
         layer=MemoryLayer.LONG_TERM,
@@ -272,17 +274,16 @@ async def sample_usage():
         key="old task",
         value="This is an old task from 50 days ago",
         created_at=datetime.now() - timedelta(days=50),
-        importance=ImportanceLevel.LOW
+        importance=ImportanceLevel.LOW,
     )
     manager.layers[MemoryLayer.LONG_TERM].add_fact(old_fact)
 
     # Forget old memories
     forgetting_result = await manager.forget_old_memories(
-        days=30,
-        importance_threshold=ImportanceLevel.MEDIUM
+        days=30, importance_threshold=ImportanceLevel.MEDIUM
     )
 
-    print(f"Forgetting result:")
+    print("Forgetting result:")
     print(f"  → Deleted: {forgetting_result.deleted} memory(ies)")
     print(f"  → Reasons: {len(forgetting_result.reasons)}")
     for reason in forgetting_result.reasons[:3]:
@@ -295,7 +296,7 @@ async def sample_usage():
 
     context = manager.get_context(limit=10)
     print(f"Context (first 200 chars): {context[:200]}...")
-    print(f"Full context:")
+    print("Full context:")
     print(context)
     print()
 
@@ -309,14 +310,14 @@ async def sample_usage():
         value="sk-test123",
         category=CategoryType.PERSONAL,
         layer=MemoryLayer.LONG_TERM,
-        encrypt=True
+        encrypt=True,
     )
 
     # Retrieve with spaces (should work due to normalization)
     result = manager.retrieve(key="api key", layer=MemoryLayer.LONG_TERM)
 
-    print(f"Stored with key: 'api key'")
-    print(f"Retrieved with key: 'api key' (with spaces)")
+    print("Stored with key: 'api key'")
+    print("Retrieved with key: 'api key' (with spaces)")
     print(f"→ Found: {len(result) == 1}")
     if result:
         print(f"→ Value: {result[0].value}")

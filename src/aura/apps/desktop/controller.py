@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from typing import List
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
-
-from ...client import ConnectionManager
 from ...shared import AuraMessage, MessageType
 
 
@@ -17,7 +14,7 @@ class DesktopController(QObject):
 
     def __init__(self) -> None:
         super().__init__()
-        self._messages: List[dict] = [
+        self._messages: list[dict] = [
             {"role": "assistant", "text": "Welcome to Aura\nYour AI desktop assistant."}
         ]
         self._connection_state = "Disconnected"
@@ -27,7 +24,7 @@ class DesktopController(QObject):
         return self._connection_state
 
     @Property(object)
-    def messages(self) -> List[dict]:
+    def messages(self) -> list[dict]:
         return self._messages
 
     @Slot(str)
@@ -49,7 +46,9 @@ class DesktopController(QObject):
     @Slot()
     def clear_chat(self) -> None:
         self._messages.clear()
-        self._messages.append({"role": "assistant", "text": "Welcome to Aura\nYour AI desktop assistant."})
+        self._messages.append(
+            {"role": "assistant", "text": "Welcome to Aura\nYour AI desktop assistant."}
+        )
 
     def set_connection_state(self, state: str) -> None:
         if self._connection_state == state:

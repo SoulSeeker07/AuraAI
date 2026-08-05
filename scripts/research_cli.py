@@ -4,25 +4,19 @@ Research CLI
 Command-line interface for testing the Research Engine.
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
 
 # Add src to path
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from research import (
-    ResearchEngine,
-    SearchQuery,
-    SearchMode,
-    ResearchConfig
-)
+from research import ResearchConfig, ResearchEngine, SearchMode
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -39,14 +33,11 @@ def main():
         "latest NVIDIA driver",
         "best AI coding assistant",
         "how to configure Palo Alto VPN",
-        "what is OSPF routing"
+        "what is OSPF routing",
     ]
 
     engine = ResearchEngine(
-        config=ResearchConfig(
-            enabled=True,
-            default_mode=SearchMode.STANDARD
-        )
+        config=ResearchConfig(enabled=True, default_mode=SearchMode.STANDARD)
     )
 
     for query in research_queries:
@@ -63,7 +54,7 @@ def main():
                 report = engine.research(query, mode=SearchMode.STANDARD)
 
                 # Display results
-                print(f"\n📊 Research Results:")
+                print("\n📊 Research Results:")
                 print(f"  Total sources: {len(report.results)}")
                 print(f"  Confidence score: {report.get_confidence_score():.1f}/100")
                 print(f"  Duration: {report.duration:.2f}s")
@@ -72,14 +63,18 @@ def main():
                 if report.citations:
                     print(f"\n📚 Sources ({len(report.citations)}):")
                     for i, citation in enumerate(report.citations[:5], 1):
-                        print(f"  {i}. [{citation.trust_level.value.upper()}] {citation.title}")
+                        print(
+                            f"  {i}. [{citation.trust_level.value.upper()}] {citation.title}"
+                        )
                         print(f"     URL: {citation.url}")
                         print(f"     Score: {citation.score}")
 
                 if report.conflicts:
-                    print(f"\n⚠️  Conflicts detected:")
+                    print("\n⚠️  Conflicts detected:")
                     for conflict in report.conflicts:
-                        print(f"  - {conflict['word']} appears in {conflict['sources']} sources")
+                        print(
+                            f"  - {conflict['word']} appears in {conflict['sources']} sources"
+                        )
 
             except Exception as e:
                 print(f"❌ Error: {e}")

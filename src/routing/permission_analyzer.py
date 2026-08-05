@@ -8,8 +8,9 @@ explicit user confirmation.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-from .risk_levels import RiskLevel, get_risk_level, needs_confirmation
+from typing import Any
+
+from .risk_levels import get_risk_level, needs_confirmation
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,9 @@ class PermissionAnalyzer:
         """Initialize permission analyzer."""
         pass
 
-    def analyze_request(self, text: str, operation_type: str = None, **details) -> Dict[str, Any]:
+    def analyze_request(
+        self, text: str, operation_type: str = None, **details
+    ) -> dict[str, Any]:
         """
         Analyze a request and determine what permissions are required.
 
@@ -52,7 +55,7 @@ class PermissionAnalyzer:
 
         return result
 
-    def check_desktop_operation(self, text: str) -> Dict[str, Any]:
+    def check_desktop_operation(self, text: str) -> dict[str, Any]:
         """
         Analyze desktop-related operations.
 
@@ -70,18 +73,26 @@ class PermissionAnalyzer:
         text_lower = text.lower()
 
         critical_ops = [
-            "shutdown", "power off", "restart", "reboot", "hibernate",
-            "sleep", "lock", "logout"
+            "shutdown",
+            "power off",
+            "restart",
+            "reboot",
+            "hibernate",
+            "sleep",
+            "lock",
+            "logout",
         ]
 
         high_ops = [
-            "force quit", "terminate", "kill", "close all",
-            "minimize all", "maximize all"
+            "force quit",
+            "terminate",
+            "kill",
+            "close all",
+            "minimize all",
+            "maximize all",
         ]
 
-        medium_ops = [
-            "open", "start", "launch", "run"
-        ]
+        medium_ops = ["open", "start", "launch", "run"]
 
         if any(op in text_lower for op in critical_ops):
             return self.analyze_request(text, "desktop_operation", risk="critical")
@@ -92,7 +103,7 @@ class PermissionAnalyzer:
 
         return self.analyze_request(text, "desktop_operation", risk="low")
 
-    def check_file_operation(self, text: str) -> Dict[str, Any]:
+    def check_file_operation(self, text: str) -> dict[str, Any]:
         """
         Analyze file-related operations.
 
@@ -111,25 +122,46 @@ class PermissionAnalyzer:
         text_lower = text.lower()
 
         critical_ops = [
-            "delete system", "delete windows", "format", "wipe",
-            "destroy", "remove completely"
+            "delete system",
+            "delete windows",
+            "format",
+            "wipe",
+            "destroy",
+            "remove completely",
         ]
 
         high_ops = [
-            "delete file", "delete folder", "remove file", "delete everything",
-            "trash", "recycle bin"
+            "delete file",
+            "delete folder",
+            "remove file",
+            "delete everything",
+            "trash",
+            "recycle bin",
         ]
 
         medium_ops = [
-            "rename", "move", "copy", "compress", "archive",
-            "read", "write", "edit"
+            "rename",
+            "move",
+            "copy",
+            "compress",
+            "archive",
+            "read",
+            "write",
+            "edit",
         ]
 
         if any(op in text_lower for op in critical_ops):
             return self.analyze_request(text, "file_operation", risk="critical")
 
         # Check for system paths
-        system_paths = ["/system", "\\system", "\\windows", "/windows", "\\program files", "/program files"]
+        system_paths = [
+            "/system",
+            "\\system",
+            "\\windows",
+            "/windows",
+            "\\program files",
+            "/program files",
+        ]
         for path in system_paths:
             if path in text_lower:
                 return self.analyze_request(text, "file_operation", risk="high")
@@ -141,7 +173,7 @@ class PermissionAnalyzer:
 
         return self.analyze_request(text, "file_operation", risk="low")
 
-    def check_network_operation(self, text: str) -> Dict[str, Any]:
+    def check_network_operation(self, text: str) -> dict[str, Any]:
         """
         Analyze network-related operations.
 
@@ -159,19 +191,22 @@ class PermissionAnalyzer:
         text_lower = text.lower()
 
         critical_ops = [
-            "block all", "deny all", "disable firewall",
-            "stop all connections", "kill network"
+            "block all",
+            "deny all",
+            "disable firewall",
+            "stop all connections",
+            "kill network",
         ]
 
         high_ops = [
-            "block port", "block website", "block ip",
-            "delete firewall rule", "block network"
+            "block port",
+            "block website",
+            "block ip",
+            "delete firewall rule",
+            "block network",
         ]
 
-        medium_ops = [
-            "check connection", "ping", "trace route",
-            "find network devices"
-        ]
+        medium_ops = ["check connection", "ping", "trace route", "find network devices"]
 
         if any(op in text_lower for op in critical_ops):
             return self.analyze_request(text, "network_operation", risk="critical")
@@ -182,7 +217,7 @@ class PermissionAnalyzer:
 
         return self.analyze_request(text, "network_operation", risk="low")
 
-    def check_plugin_operation(self, text: str) -> Dict[str, Any]:
+    def check_plugin_operation(self, text: str) -> dict[str, Any]:
         """
         Analyze plugin-based operations.
 
@@ -197,7 +232,7 @@ class PermissionAnalyzer:
         """
         return self.analyze_request(text, "plugin_operation", risk="medium")
 
-    def check_ai_operation(self, text: str) -> Dict[str, Any]:
+    def check_ai_operation(self, text: str) -> dict[str, Any]:
         """
         Analyze AI/LLM-based operations.
 
@@ -211,7 +246,7 @@ class PermissionAnalyzer:
         """
         return self.analyze_request(text, "ai_operation", risk="low")
 
-    def check_for_sensitivity(self, text: str) -> List[str]:
+    def check_for_sensitivity(self, text: str) -> list[str]:
         """
         Check if request contains sensitive information.
 
@@ -226,9 +261,17 @@ class PermissionAnalyzer:
         text_lower = text.lower()
 
         sensitive_keywords = [
-            "password", "api key", "secret", "token", "credential",
-            "social security", "credit card", "ssn",
-            "personal information", "private", "confidential"
+            "password",
+            "api key",
+            "secret",
+            "token",
+            "credential",
+            "social security",
+            "credit card",
+            "ssn",
+            "personal information",
+            "private",
+            "confidential",
         ]
 
         sensitive_topics = []

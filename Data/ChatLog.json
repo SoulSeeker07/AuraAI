@@ -1,53 +1,223 @@
 [
   {
     "role": "user",
-    "content": "Should I invest in BEL?",
-    "timestamp": null
+    "content": "I'm interested in sockets.",
+    "topic": "networking"
   },
   {
     "role": "assistant",
-    "content": "As a developer at AuraAI and considering your preference for Python, I'll provide a neutral and informative response. Investing in Bharat Electronics Limited (BEL) or any other stock involves risks and considerations.\nGiven your background in development, you might want to evaluate BEL's financials, industry trends, and market conditions before making a decision. It's essential to consult with a financial advisor or conduct your own research to determine if investing in BEL aligns with your investment goals and risk tolerance.\nPlease keep in mind that I'm not a financial advisor, and my response is not a recommendation to buy or sell BEL stocks.",
-    "timestamp": null
+    "content": "Sockets are a fundamental concept in networking.",
+    "topic": "networking"
   },
   {
     "role": "user",
-    "content": "exit",
-    "topic": "Exit"
+    "content": "Let's discuss investing.",
+    "topic": "investing"
   },
   {
     "role": "assistant",
-    "content": "Goodbye, Sreekanta. It was a pleasure assisting you. Have a great day and enjoy your favorite pizza.",
-    "topic": "Exit"
+    "content": "Investing can be complex. What type of investing interests you?",
+    "topic": "investing"
   },
   {
     "role": "user",
-    "content": "exit",
-    "topic": "Exit"
+    "content": "Stocks and bonds.",
+    "topic": "investing"
   },
   {
     "role": "assistant",
-    "content": "Goodbye, Sreekanta. It was a pleasure assisting you. Have a great day and enjoy your favorite pizza.",
-    "topic": "Exit"
+    "content": "Stocks and bonds are common investment vehicles.",
+    "topic": "investing"
   },
   {
     "role": "user",
-    "content": "exit",
-    "topic": "Exit"
+    "content": "test",
+    "topic": "test_topic"
   },
   {
     "role": "assistant",
-    "content": "Goodbye, Sreekanta.",
-    "topic": "Exit"
+    "content": "test",
+    "topic": "test_topic"
   },
   {
     "role": "user",
-    "content": "exit",
-    "topic": "Exit"
+    "content": "session_test",
+    "topic": "test_topic"
   },
   {
     "role": "assistant",
-    "content": "Goodbye, Sreekanta.",
-    "topic": "Exit"
+    "content": "test data",
+    "topic": "test_topic"
+  },
+  {
+    "role": "user",
+    "content": "Hello",
+    "topic": "greeting"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi there! How can I help you today?",
+    "topic": "greeting"
+  },
+  {
+    "role": "user",
+    "content": "I need help with Python",
+    "topic": "help"
+  },
+  {
+    "role": "assistant",
+    "content": "I can help you with Python programming.",
+    "topic": "help"
+  },
+  {
+    "role": "user",
+    "content": "Thanks!",
+    "topic": "closing"
+  },
+  {
+    "role": "assistant",
+    "content": "You're welcome!",
+    "topic": "closing"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss networking.",
+    "topic": "networking"
+  },
+  {
+    "role": "assistant",
+    "content": "Great! What aspect of networking would you like to cover?",
+    "topic": "networking"
+  },
+  {
+    "role": "user",
+    "content": "I'm interested in sockets.",
+    "topic": "networking"
+  },
+  {
+    "role": "assistant",
+    "content": "Sockets are a fundamental concept in networking.",
+    "topic": "networking"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss investing.",
+    "topic": "investing"
+  },
+  {
+    "role": "assistant",
+    "content": "Investing can be complex. What type of investing interests you?",
+    "topic": "investing"
+  },
+  {
+    "role": "user",
+    "content": "Stocks and bonds.",
+    "topic": "investing"
+  },
+  {
+    "role": "assistant",
+    "content": "Stocks and bonds are common investment vehicles.",
+    "topic": "investing"
+  },
+  {
+    "role": "user",
+    "content": "test",
+    "topic": "test_topic"
+  },
+  {
+    "role": "assistant",
+    "content": "test",
+    "topic": "test_topic"
+  },
+  {
+    "role": "user",
+    "content": "session_test",
+    "topic": "test_topic"
+  },
+  {
+    "role": "assistant",
+    "content": "test data",
+    "topic": "test_topic"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss networking.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "Sure! What would you like to know?",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "What protocol elects DR and BDR?",
+    "topic": "Networking"
+  },
+  {
+    "role": "assistant",
+    "content": "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
+    "topic": "Networking"
+  },
+  {
+    "role": "user",
+    "content": "Switch topic.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "What's next?",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss Python.",
+    "topic": "Python"
+  },
+  {
+    "role": "assistant",
+    "content": "Great choice! Python is versatile.",
+    "topic": "Python"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss networking.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "Sure!",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "Question 1",
+    "topic": "Networking"
+  },
+  {
+    "role": "assistant",
+    "content": "Answer 1",
+    "topic": "Networking"
+  },
+  {
+    "role": "user",
+    "content": "Switch topic.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "What's next?",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss Python.",
+    "topic": "Python"
+  },
+  {
+    "role": "assistant",
+    "content": "Great!",
+    "topic": "Python"
   },
   {
     "role": "user",

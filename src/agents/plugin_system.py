@@ -11,13 +11,14 @@ The Plugin System provides:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Type, Callable
 import importlib
 import importlib.util
-from pathlib import Path
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
-from .task_model import Task, TaskOutput, TaskType
+from .task_model import Task, TaskOutput
 
 
 class PluginBase(ABC):
@@ -43,7 +44,7 @@ class PluginBase(ABC):
         pass
 
     @abstractmethod
-    def get_plugin_capabilities(self) -> List[str]:
+    def get_plugin_capabilities(self) -> list[str]:
         """Get list of capabilities provided by this plugin."""
         pass
 
@@ -84,7 +85,7 @@ class PluginRegistry:
         """Initialize the plugin registry."""
         self._plugins: Dict[str, PluginBase] = {}
         self._contexts: Dict[str, PluginContext] = {}
-        self._callbacks: List[Callable] = []
+        self._callbacks: list[Callable] = []
 
     def register_callback(self, callback: Callable):
         """Register a callback for plugin events."""
@@ -134,7 +135,9 @@ class PluginRegistry:
             return True
 
         except Exception as e:
-            self._notify_callback("load", {"file_path": file_path, "status": "failed", "error": str(e)})
+            self._notify_callback(
+                "load", {"file_path": file_path, "status": "failed", "error": str(e)}
+            )
             return False
 
     def load_plugin_directory(self, directory: str) -> int:
@@ -179,11 +182,14 @@ class PluginRegistry:
             plugin.on_load()
 
             self._plugins[plugin_name] = plugin
-            self._notify_callback("register", {
-                "plugin_name": plugin_name,
-                "version": plugin.get_plugin_version(),
-                "capabilities": plugin.get_plugin_capabilities()
-            })
+            self._notify_callback(
+                "register",
+                {
+                    "plugin_name": plugin_name,
+                    "version": plugin.get_plugin_version(),
+                    "capabilities": plugin.get_plugin_capabilities(),
+                },
+            )
 
             return True
 
@@ -216,23 +222,23 @@ class PluginRegistry:
         except Exception:
             return False
 
-    def get_plugin(self, plugin_name: str) -> Optional[PluginBase]:
+    def get_plugin(self, plugin_name: str) -> PluginBase | None:
         """Get plugin by name."""
         return self._plugins.get(plugin_name)
 
-    def list_plugins(self) -> List[dict[str, Any]]:
+    def list_plugins(self) -> list[dict[str, Any]]:
         """List all registered plugins."""
         return [
             {
                 "name": name,
                 "version": plugin.get_plugin_version(),
                 "description": plugin.get_plugin_description(),
-                "capabilities": plugin.get_plugin_capabilities()
+                "capabilities": plugin.get_plugin_capabilities(),
             }
             for name, plugin in self._plugins.items()
         ]
 
-    def get_plugins_by_capability(self, capability: str) -> List[PluginBase]:
+    def get_plugins_by_capability(self, capability: str) -> list[PluginBase]:
         """Get plugins that provide a specific capability."""
         return [
             plugin
@@ -241,10 +247,7 @@ class PluginRegistry:
         ]
 
     def execute_plugin(
-        self,
-        plugin_name: str,
-        task: Task,
-        context: PluginContext
+        self, plugin_name: str, task: Task, context: PluginContext
     ) -> TaskOutput:
         """
         Execute a plugin.
@@ -263,7 +266,7 @@ class PluginRegistry:
             return TaskOutput(
                 success=False,
                 message=f"Plugin not found: {plugin_name}",
-                error=f"No plugin registered with name '{plugin_name}'"
+                error=f"No plugin registered with name '{plugin_name}'",
             )
 
         try:
@@ -274,21 +277,18 @@ class PluginRegistry:
                 success=result.success,
                 message=result.message,
                 data=result.data,
-                error=result.error
+                error=result.error,
             )
 
         except Exception as e:
             return TaskOutput(
                 success=False,
                 message=f"Plugin execution failed: {plugin_name}",
-                error=str(e)
+                error=str(e),
             )
 
     def _execute_plugin_impl(
-        self,
-        plugin: PluginBase,
-        task: Task,
-        context: PluginContext
+        self, plugin: PluginBase, task: Task, context: PluginContext
     ) -> TaskOutput:
         """
         Execute plugin implementation.
@@ -309,8 +309,8 @@ class PluginRegistry:
             data={
                 "plugin": plugin.get_plugin_name(),
                 "task_type": task.type.value,
-                "version": plugin.get_plugin_version()
-            }
+                "version": plugin.get_plugin_version(),
+            },
         )
 
 

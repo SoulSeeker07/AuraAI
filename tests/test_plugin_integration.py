@@ -4,12 +4,11 @@ Plugin Ecosystem Integration Tests
 Tests for the Aura Plugin System.
 """
 
-
-import sys
 import os
+import sys
 
 # Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 print("=" * 80)
 print("Aura Plugin Ecosystem - Integration Test")
@@ -19,7 +18,14 @@ try:
     # Test 1: Import plugin system modules
     print("\n[Test 1] Importing plugin system modules...")
 
-    from plugins import Plugin, PluginManifest, PluginState, PluginCategory, PluginRegistry, PluginManager
+    from plugins import (
+        Plugin,
+        PluginCategory,
+        PluginManager,
+        PluginManifest,
+        PluginRegistry,
+        PluginState,
+    )
 
     print("✓ All plugin system modules imported successfully")
 
@@ -35,7 +41,7 @@ try:
     results = registry.scan_and_load_plugins()
     loaded_count = sum(1 for success in results.values() if success)
 
-    print(f"✓ Plugin registry scanning complete")
+    print("✓ Plugin registry scanning complete")
     print(f"  - Scanned for plugins: {len(results)}")
     print(f"  - Successfully loaded: {loaded_count}")
 
@@ -44,7 +50,7 @@ try:
 
     if loaded_count > 0:
         info = registry.get_registry_info()
-        print(f"✓ Plugin registry information:")
+        print("✓ Plugin registry information:")
         print(f"  - Total plugins: {info['total_plugins']}")
         print(f"  - Enabled plugins: {info['enabled_plugins']}")
         print(f"  - Disabled plugins: {info['disabled_plugins']}")
@@ -111,10 +117,10 @@ try:
     print("\n[Test 10] Checking all plugin health...")
 
     all_health = registry.check_all_health()
-    healthy_count = sum(1 for h in all_health.values() if h['healthy'])
-    not_found_count = sum(1 for h in all_health.values() if h['state'] == 'not_found')
+    healthy_count = sum(1 for h in all_health.values() if h["healthy"])
+    not_found_count = sum(1 for h in all_health.values() if h["state"] == "not_found")
 
-    print(f"✓ Health check complete:")
+    print("✓ Health check complete:")
     print(f"  - Healthy plugins: {healthy_count}")
     print(f"  - Not found: {not_found_count}")
 
@@ -136,11 +142,11 @@ try:
         category=PluginCategory.FILESYSTEM,
         capabilities=["read", "write"],
         permissions=["read_file", "write_file"],
-        author="Test Author"
+        author="Test Author",
     )
 
     manifest_dict = manifest.to_dict()
-    print(f"✓ PluginManifest created and converted to dict:")
+    print("✓ PluginManifest created and converted to dict:")
     print(f"  - Name: {manifest_dict['name']}")
     print(f"  - Version: {manifest_dict['version']}")
     print(f"  - Category: {manifest_dict['category']}")
@@ -158,7 +164,7 @@ try:
 
         # Get stats
         stats = manager.get_stats()
-        print(f"✓ PluginManager statistics:")
+        print("✓ PluginManager statistics:")
         print(f"  - Total plugins: {stats['total_plugins']}")
         print(f"  - Enabled plugins: {stats['enabled_plugins']}")
         print(f"  - Disabled plugins: {stats['disabled_plugins']}")
@@ -174,10 +180,13 @@ try:
 
 except ImportError as e:
     print(f"\n✗ Import error: {e}")
-    print("Make sure you've installed all dependencies and the plugin system is set up correctly.")
+    print(
+        "Make sure you've installed all dependencies and the plugin system is set up correctly."
+    )
 
 except Exception as e:
     print(f"\n✗ Test failed: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)

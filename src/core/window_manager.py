@@ -17,7 +17,9 @@ class WindowManager:
         self.settings = settings
         self.main_window = MainWindow()
         self.overlay_window = OverlayWindow()
-        self.tray_icon = AuraTrayIcon(self.main_window, self.overlay_window, self.app, self.settings)
+        self.tray_icon = AuraTrayIcon(
+            self.main_window, self.overlay_window, self.app, self.settings
+        )
         self._connect_qt_signals()
         self._subscribe_events()
 
@@ -31,13 +33,19 @@ class WindowManager:
             lambda: self.event_bus.publish("overlay.show")
         )
         self.overlay_window.submitted.connect(
-            lambda prompt: self.event_bus.publish("overlay.prompt_submitted", prompt=prompt)
+            lambda prompt: self.event_bus.publish(
+                "overlay.prompt_submitted", prompt=prompt
+            )
         )
         self.overlay_window.live_screen_toggled.connect(
-            lambda enabled: self.event_bus.publish("live_screen.set_enabled", enabled=enabled)
+            lambda enabled: self.event_bus.publish(
+                "live_screen.set_enabled", enabled=enabled
+            )
         )
         self.tray_icon.live_screen_toggled.connect(
-            lambda enabled: self.event_bus.publish("live_screen.set_enabled", enabled=enabled)
+            lambda enabled: self.event_bus.publish(
+                "live_screen.set_enabled", enabled=enabled
+            )
         )
         self.tray_icon.show_overlay_requested.connect(
             lambda: self.event_bus.publish("overlay.show")
@@ -48,8 +56,12 @@ class WindowManager:
         self.event_bus.subscribe("overlay.show", self._show_overlay)
         self.event_bus.subscribe("overlay.toggle", self._toggle_overlay)
         self.event_bus.subscribe("overlay.response", self._set_overlay_response)
-        self.event_bus.subscribe("live_screen.state_changed", self._set_live_screen_state)
-        self.event_bus.subscribe("live_screen.frame_captured", self._set_live_screen_frame)
+        self.event_bus.subscribe(
+            "live_screen.state_changed", self._set_live_screen_state
+        )
+        self.event_bus.subscribe(
+            "live_screen.frame_captured", self._set_live_screen_frame
+        )
 
     def _show_overlay(self, event: Event) -> None:
         self.overlay_window.show_overlay()

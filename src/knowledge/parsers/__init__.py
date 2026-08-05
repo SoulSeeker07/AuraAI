@@ -5,9 +5,9 @@ This module provides a central registry for all document parsers and
 a unified interface for parsing documents of any type.
 """
 
-from typing import List, Optional, Type
-from pathlib import Path
 from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import List, Optional, Type
 
 from ..models import DocumentChunk, DocumentMetadata
 
@@ -21,7 +21,7 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def parse(self, file_path: Path) -> List[DocumentChunk]:
+    def parse(self, file_path: Path) -> list[DocumentChunk]:
         """Parse document into chunks."""
         pass
 
@@ -32,28 +32,28 @@ class Parser(ABC):
 
 
 # Import all parsers
-from .pdf_parser import PDFParser
-from .markdown_parser import MarkdownParser
-from .python_parser import PythonParser
+from .csv_parser import CSVParser
 from .docx_parser import DOCXParser
-from .pptx_parser import PPTXParser
 from .html_parser import HTMLParser
 from .json_parser import JSONParser
-from .yaml_parser import YAMLParser
-from .csv_parser import CSVParser
 from .log_parser import LogParser
+from .markdown_parser import MarkdownParser
+from .pdf_parser import PDFParser
+from .pptx_parser import PPTXParser
+from .python_parser import PythonParser
 from .toml_parser import TomlParser
 from .txt_parser import TxtParser
+from .yaml_parser import YAMLParser
 
 
 class ParserRegistry:
     """Registry for all document parsers."""
 
     def __init__(self):
-        self._parsers: List[Type[Parser]] = []
-        self._name_map: Dict[str, Type[Parser]] = {}
+        self._parsers: list[type[Parser]] = []
+        self._name_map: Dict[str, type[Parser]] = {}
 
-    def register(self, parser_class: Type[Parser]):
+    def register(self, parser_class: type[Parser]):
         """
         Register a parser class.
 
@@ -61,7 +61,7 @@ class ParserRegistry:
             parser_class: The parser class to register
         """
         parser_instance = parser_class()
-        parser_name = parser_instance.__class__.__name__.replace('Parser', '').lower()
+        parser_name = parser_instance.__class__.__name__.replace("Parser", "").lower()
 
         self._parsers.append(parser_class)
         self._name_map[parser_name] = parser_class
@@ -73,7 +73,7 @@ class ParserRegistry:
             self._parsers.remove(parser_class)
             del self._name_map[parser_name]
 
-    def get_parser(self, file_path: Path) -> Optional[Type[Parser]]:
+    def get_parser(self, file_path: Path) -> type[Parser] | None:
         """
         Get the appropriate parser for a file.
 
@@ -94,7 +94,7 @@ class ParserRegistry:
                 return parser_class
         return None
 
-    def parse(self, file_path: Path) -> List[DocumentChunk]:
+    def parse(self, file_path: Path) -> list[DocumentChunk]:
         """
         Parse a file using the appropriate parser.
 
@@ -113,7 +113,9 @@ class ParserRegistry:
             return parser_instance.parse(file_path)
         else:
             suffix = file_path.suffix if file_path.suffix else "no extension"
-            raise ValueError(f"No parser supports file type: '{suffix}' for file: {file_path}")
+            raise ValueError(
+                f"No parser supports file type: '{suffix}' for file: {file_path}"
+            )
 
     def extract_metadata(self, file_path: Path) -> DocumentMetadata:
         """
@@ -134,9 +136,11 @@ class ParserRegistry:
             return parser_instance.extract_metadata(file_path)
         else:
             suffix = file_path.suffix if file_path.suffix else "no extension"
-            raise ValueError(f"No parser supports file type: '{suffix}' for file: {file_path}")
+            raise ValueError(
+                f"No parser supports file type: '{suffix}' for file: {file_path}"
+            )
 
-    def list_supported_extensions(self) -> List[str]:
+    def list_supported_extensions(self) -> list[str]:
         """Get list of all supported file extensions."""
         extensions = set()
         for parser_class in self._parsers:
@@ -144,7 +148,7 @@ class ParserRegistry:
             extensions.update(parser_instance.supported_extensions)
         return sorted(list(extensions))
 
-    def list_parsers(self) -> List[str]:
+    def list_parsers(self) -> list[str]:
         """Get list of all registered parser names."""
         return sorted(self._name_map.keys())
 

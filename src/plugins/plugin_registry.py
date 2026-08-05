@@ -6,20 +6,14 @@ It handles discovery, registration, lifecycle management, and communication
 between plugins and the Brain.
 """
 
-
-import os
 import importlib
 import importlib.util
 import logging
-from typing import Dict, List, Optional, Callable, Set, Any
-from datetime import datetime
-from .plugin_interface import (
-    Plugin,
-    PluginManifest,
-    PluginCategory,
-    PluginState
-)
+import os
+from collections.abc import Callable
+from typing import Any
 
+from .plugin_interface import Plugin, PluginCategory, PluginManifest
 
 logger = logging.getLogger(__name__)
 
@@ -44,20 +38,33 @@ class PluginRegistry:
             plugins_dir: Directory to scan for plugins
         """
         self.plugins_dir = plugins_dir
-        self._plugins: Dict[str, Plugin] = {}  # plugin_name -> Plugin instance
-        self._manifests: Dict[str, PluginManifest] = {}  # plugin_name -> PluginManifest
-        self._capabilities: Dict[str, List[str]] = {}  # capability -> [plugin_names]
-        self._enabled: Set[str] = set()
-        self._disabled: Set[str] = set()
-        self._dependencies: Dict[str, List[str]] = {}  # plugin_name -> [dependency_names]
-        self._version_cache: Dict[str, str] = {}  # plugin_name -> version
-        self._health_checks: List[Callable] = []
-        self._callbacks: Dict[str, List[Callable]] = {}
-        self._lock = logging.getLogger("plugin_registry").__class__(type("PluginLock", (), {"acquire": lambda self: None, "release": lambda self: None, "__enter__": lambda self: self, "__exit__": lambda self, *args: None}))  # Mock lock
+        self._plugins: dict[str, Plugin] = {}  # plugin_name -> Plugin instance
+        self._manifests: dict[str, PluginManifest] = {}  # plugin_name -> PluginManifest
+        self._capabilities: dict[str, list[str]] = {}  # capability -> [plugin_names]
+        self._enabled: set[str] = set()
+        self._disabled: set[str] = set()
+        self._dependencies: dict[str, list[str]] = (
+            {}
+        )  # plugin_name -> [dependency_names]
+        self._version_cache: dict[str, str] = {}  # plugin_name -> version
+        self._health_checks: list[Callable] = []
+        self._callbacks: dict[str, list[Callable]] = {}
+        self._lock = logging.getLogger("plugin_registry").__class__(
+            type(
+                "PluginLock",
+                (),
+                {
+                    "acquire": lambda self: None,
+                    "release": lambda self: None,
+                    "__enter__": lambda self: self,
+                    "__exit__": lambda self, *args: None,
+                },
+            )
+        )  # Mock lock
 
         logger.info(f"PluginRegistry initialized with plugins_dir={plugins_dir}")
 
-    def scan_and_load_plugins(self) -> Dict[str, bool]:
+    def scan_and_load_plugins(self) -> dict[str, bool]:
         """
         Scan the plugins directory and load all plugins.
 
@@ -71,9 +78,21 @@ class PluginRegistry:
         try:
             # Scan plugin categories
             categories = [
-                "desktop", "filesystem", "browser", "terminal", "git",
-                "networking", "vision", "voice", "office", "email",
-                "calendar", "knowledge", "docker", "database", "mcp"
+                "desktop",
+                "filesystem",
+                "browser",
+                "terminal",
+                "git",
+                "networking",
+                "vision",
+                "voice",
+                "office",
+                "email",
+                "calendar",
+                "knowledge",
+                "docker",
+                "database",
+                "mcp",
             ]
 
             for category in categories:
@@ -145,14 +164,18 @@ class PluginRegistry:
             if manifest.dependencies:
                 self._dependencies[plugin_name] = manifest.dependencies
 
-            logger.info(f"Plugin loaded: {plugin_name} v{manifest.version} [{manifest.category.value}]")
+            logger.info(
+                f"Plugin loaded: {plugin_name} v{manifest.version} [{manifest.category.value}]"
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Failed to load plugin from {plugin_path}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to load plugin from {plugin_path}: {e}", exc_info=True
+            )
             return False
 
-    def _create_manifest(self, plugin_path: str) -> Optional[PluginManifest]:
+    def _create_manifest(self, plugin_path: str) -> PluginManifest | None:
         """
         Create a plugin manifest from a plugin file.
 
@@ -160,7 +183,7 @@ class PluginRegistry:
         a PluginManifest instance.
         """
         try:
-            with open(plugin_path, 'r', encoding='utf-8') as f:
+            with open(plugin_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Extract metadata from docstring
@@ -176,7 +199,7 @@ class PluginRegistry:
                 version="1.0.0",
                 category=PluginCategory.GENERAL,
                 plugin_path=plugin_path,
-                entry_point="Plugin"
+                entry_point="Plugin",
             )
 
             return manifest
@@ -206,7 +229,7 @@ class PluginRegistry:
             logger.error(f"Error loading module from {plugin_path}: {e}")
             return None
 
-    def _instantiate_plugin(self, module, manifest: PluginManifest) -> Optional[Plugin]:
+    def _instantiate_plugin(self, module, manifest: PluginManifest) -> Plugin | None:
         """
         Instantiate a plugin from a loaded module.
 
@@ -239,8 +262,10 @@ class PluginRegistry:
 
             # Check for common naming patterns
             for attr_name in dir(module):
-                if attr_name.endswith("Plugin") or attr_name.endswith("Plugin") and isinstance(
-                    getattr(module, attr_name), type
+                if (
+                    attr_name.endswith("Plugin")
+                    or attr_name.endswith("Plugin")
+                    and isinstance(getattr(module, attr_name), type)
                 ):
                     plugin_class = getattr(module, attr_name)
                     plugin = plugin_class(manifest)
@@ -259,7 +284,7 @@ class PluginRegistry:
             logger.error(f"Error instantiating plugin {manifest.name}: {e}")
             return None
 
-    def get_plugin(self, name: str) -> Optional[Plugin]:
+    def get_plugin(self, name: str) -> Plugin | None:
         """
         Get a plugin instance by name.
 
@@ -271,7 +296,7 @@ class PluginRegistry:
         """
         return self._plugins.get(name)
 
-    def get_manifest(self, name: str) -> Optional[PluginManifest]:
+    def get_manifest(self, name: str) -> PluginManifest | None:
         """
         Get a plugin manifest by name.
 
@@ -283,7 +308,7 @@ class PluginRegistry:
         """
         return self._manifests.get(name)
 
-    def get_plugins_by_category(self, category: PluginCategory) -> List[Plugin]:
+    def get_plugins_by_category(self, category: PluginCategory) -> list[Plugin]:
         """
         Get all plugins in a category.
 
@@ -294,11 +319,12 @@ class PluginRegistry:
             List of plugins
         """
         return [
-            plugin for name, plugin in self._plugins.items()
+            plugin
+            for name, plugin in self._plugins.items()
             if self._manifests[name].category == category
         ]
 
-    def get_enabled_plugins(self) -> List[Plugin]:
+    def get_enabled_plugins(self) -> list[Plugin]:
         """
         Get all enabled plugins.
 
@@ -306,11 +332,12 @@ class PluginRegistry:
             List of enabled plugins
         """
         return [
-            plugin for name, plugin in self._plugins.items()
+            plugin
+            for name, plugin in self._plugins.items()
             if name in self._enabled and plugin.get_status()["enabled"]
         ]
 
-    def get_disabled_plugins(self) -> List[Plugin]:
+    def get_disabled_plugins(self) -> list[Plugin]:
         """
         Get all disabled plugins.
 
@@ -318,11 +345,10 @@ class PluginRegistry:
             List of disabled plugins
         """
         return [
-            plugin for name, plugin in self._plugins.items()
-            if name in self._disabled
+            plugin for name, plugin in self._plugins.items() if name in self._disabled
         ]
 
-    def get_all_capabilities(self) -> Dict[str, List[str]]:
+    def get_all_capabilities(self) -> dict[str, list[str]]:
         """
         Get all capabilities and their associated plugins.
 
@@ -331,7 +357,7 @@ class PluginRegistry:
         """
         return self._capabilities.copy()
 
-    def get_capabilities_for_plugin(self, plugin_name: str) -> List[str]:
+    def get_capabilities_for_plugin(self, plugin_name: str) -> list[str]:
         """
         Get capabilities provided by a plugin.
 
@@ -346,7 +372,7 @@ class PluginRegistry:
             return manifest.capabilities
         return []
 
-    def get_plugins_with_capability(self, capability: str) -> List[Plugin]:
+    def get_plugins_with_capability(self, capability: str) -> list[Plugin]:
         """
         Get all plugins that provide a specific capability.
 
@@ -432,7 +458,7 @@ class PluginRegistry:
         # Load fresh copy
         return self.load_plugin(plugin_path)
 
-    def check_health(self, plugin_name: str) -> Dict[str, Any]:
+    def check_health(self, plugin_name: str) -> dict[str, Any]:
         """
         Check health status of a plugin.
 
@@ -445,11 +471,7 @@ class PluginRegistry:
         plugin = self.get_plugin(plugin_name)
 
         if not plugin:
-            return {
-                "name": plugin_name,
-                "state": "not_found",
-                "healthy": False
-            }
+            return {"name": plugin_name, "state": "not_found", "healthy": False}
 
         status = plugin.get_status()
 
@@ -458,22 +480,19 @@ class PluginRegistry:
             "state": status["state"],
             "enabled": status["enabled"],
             "capabilities": status["capabilities"],
-            "healthy": status["state"] in ["ready", "running", "initialized", "loaded"]
+            "healthy": status["state"] in ["ready", "running", "initialized", "loaded"],
         }
 
-    def check_all_health(self) -> Dict[str, Dict[str, Any]]:
+    def check_all_health(self) -> dict[str, dict[str, Any]]:
         """
         Check health of all plugins.
 
         Returns:
             Dictionary mapping plugin names to health status
         """
-        return {
-            name: self.check_health(name)
-            for name in self._plugins.keys()
-        }
+        return {name: self.check_health(name) for name in self._plugins.keys()}
 
-    def get_plugin_dependencies(self, name: str) -> List[str]:
+    def get_plugin_dependencies(self, name: str) -> list[str]:
         """
         Get dependencies for a plugin.
 
@@ -485,7 +504,7 @@ class PluginRegistry:
         """
         return self._dependencies.get(name, [])
 
-    def resolve_dependencies(self) -> Dict[str, bool]:
+    def resolve_dependencies(self) -> dict[str, bool]:
         """
         Resolve all plugin dependencies.
 
@@ -499,7 +518,9 @@ class PluginRegistry:
 
             for dep_name in dependencies:
                 if dep_name not in self._enabled:
-                    logger.warning(f"Plugin {plugin_name} requires {dep_name} but it's not enabled")
+                    logger.warning(
+                        f"Plugin {plugin_name} requires {dep_name} but it's not enabled"
+                    )
                     results[plugin_name] = False
                 else:
                     results[plugin_name] = True
@@ -536,7 +557,7 @@ class PluginRegistry:
                 except Exception as e:
                     logger.error(f"Error in event callback for {event}: {e}")
 
-    def get_registry_info(self) -> Dict[str, Any]:
+    def get_registry_info(self) -> dict[str, Any]:
         """
         Get registry information.
 
@@ -548,7 +569,9 @@ class PluginRegistry:
             "enabled_plugins": len(self._enabled),
             "disabled_plugins": len(self._disabled),
             "capabilities": len(self._capabilities),
-            "plugin_categories": list(set(m.category.value for m in self._manifests.values()))
+            "plugin_categories": list(
+                set(m.category.value for m in self._manifests.values())
+            ),
         }
 
     def shutdown(self) -> None:

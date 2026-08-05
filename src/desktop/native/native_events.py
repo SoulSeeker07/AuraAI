@@ -2,16 +2,19 @@
 Native Windows Layer Events
 Event system for desktop operations.
 """
-from dataclasses import dataclass, field
-from typing import Optional, Any, List, Callable
-from .native_exceptions import EventPublishError
-from enum import Enum
+
 import json
 import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+from .native_exceptions import EventPublishError
 
 
 class EventType(Enum):
     """Native event types"""
+
     # Window events
     WINDOW_ACTIVATED = "window_activated"
     WINDOW_DEACTIVATED = "window_deactivated"
@@ -72,6 +75,7 @@ class EventType(Enum):
 @dataclass
 class NativeEvent:
     """Native event data"""
+
     event_type: EventType
     timestamp: float = field(default_factory=time.time)
     source: str = "native"
@@ -98,6 +102,7 @@ class NativeEvent:
 
 class EventListener:
     """Base class for event listeners"""
+
     def on_event(self, event: NativeEvent) -> None:
         """Handle incoming events"""
         pass
@@ -108,12 +113,13 @@ class NativeEventBus:
     Centralized event bus for native operations.
     All managers publish events through this bus.
     """
-    _instance: Optional['NativeEventBus'] = None
-    _listeners: List[EventListener] = []
-    _event_history: List[NativeEvent] = []
+
+    _instance: Optional["NativeEventBus"] = None
+    _listeners: list[EventListener] = []
+    _event_history: list[NativeEvent] = []
     _max_history: int = 1000
 
-    def __new__(cls) -> 'NativeEventBus':
+    def __new__(cls) -> "NativeEventBus":
         """Singleton pattern"""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -121,7 +127,7 @@ class NativeEventBus:
 
     def __init__(self) -> None:
         """Initialize the event bus"""
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._initialized = True
             self._initialized_listeners: set[EventListener] = set()
             self._lock = False
@@ -130,9 +136,7 @@ class NativeEventBus:
         """Publish an event to all listeners"""
         if self._lock:
             raise EventPublishError(
-                "Event bus is locked for publication",
-                "event_publish",
-                details=event
+                "Event bus is locked for publication", "event_publish", details=event
             )
 
         # Add to history
@@ -161,10 +165,8 @@ class NativeEventBus:
             self._initialized_listeners.remove(listener)
 
     def get_recent_events(
-        self,
-        event_type: Optional[EventType] = None,
-        limit: int = 10
-    ) -> List[NativeEvent]:
+        self, event_type: EventType | None = None, limit: int = 10
+    ) -> list[NativeEvent]:
         """Get recent events, optionally filtered by type"""
         events = self._event_history
 

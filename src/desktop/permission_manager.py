@@ -20,14 +20,16 @@ that NativeManager already uses.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class RiskLevel(str, Enum):
     """Risk level for a native capability."""
+
     SAFE = "safe"
     MODERATE = "moderate"
     DANGEROUS = "dangerous"
@@ -35,7 +37,7 @@ class RiskLevel(str, Enum):
 
 # Default risk classification, keyed by NativeCapability.value (a plain string).
 # Anything not listed here falls back to MODERATE.
-DEFAULT_CAPABILITY_RISK: Dict[str, RiskLevel] = {
+DEFAULT_CAPABILITY_RISK: dict[str, RiskLevel] = {
     # Window management - read-only
     "list_windows": RiskLevel.SAFE,
     "get_window": RiskLevel.SAFE,
@@ -95,7 +97,7 @@ class PermissionManager:
     def __init__(
         self,
         allow_all: bool = False,
-        confirmation_handler: Optional[Callable[[str, Any, RiskLevel], bool]] = None,
+        confirmation_handler: Callable[[str, Any, RiskLevel], bool] | None = None,
     ) -> None:
         """
         Args:
@@ -109,7 +111,7 @@ class PermissionManager:
         """
         self.allow_all = allow_all
         self._confirmation_handler = confirmation_handler
-        self._listeners: List[Callable[[Any], None]] = []
+        self._listeners: list[Callable[[Any], None]] = []
 
         logger.info("Desktop PermissionManager initialized (allow_all=%s)", allow_all)
 
@@ -125,7 +127,7 @@ class PermissionManager:
         if listener in self._listeners:
             self._listeners.remove(listener)
 
-    def _notify(self, event: Dict[str, Any]) -> None:
+    def _notify(self, event: dict[str, Any]) -> None:
         for listener in self._listeners:
             try:
                 listener(event)
@@ -142,7 +144,7 @@ class PermissionManager:
         self,
         operation: str,
         capability: Any = None,
-        resource: Optional[str] = None,
+        resource: str | None = None,
     ) -> bool:
         """
         Check whether an operation is permitted to proceed.
@@ -175,12 +177,14 @@ class PermissionManager:
                     else False
                 )
 
-        self._notify({
-            "operation": operation,
-            "capability": capability,
-            "resource": resource,
-            "granted": granted,
-        })
+        self._notify(
+            {
+                "operation": operation,
+                "capability": capability,
+                "resource": resource,
+                "granted": granted,
+            }
+        )
 
         if not granted:
             logger.info("Permission denied: %s", operation)

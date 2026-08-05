@@ -4,15 +4,15 @@ Image Loader
 Handles loading and validation of images for the Vision System.
 """
 
-
 import logging
 from pathlib import Path
-from typing import Tuple, Optional, Union
+from typing import Union
+
 import cv2
 import numpy as np
-from PIL import Image, ImageOps
-from .models import ImageType
+from PIL import Image
 
+from .models import ImageType
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +29,11 @@ class ImageLoader:
 
     def __init__(self):
         """Initialize the image loader."""
-        self.supported_formats = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif'}
+        self.supported_formats = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif"}
 
     def load_image(
-        self,
-        image_path: Union[str, Path],
-        return_format: str = 'cv2'
-    ) -> Tuple[np.ndarray, ImageType]:
+        self, image_path: Union[str, Path], return_format: str = "cv2"
+    ) -> tuple[np.ndarray, ImageType]:
         """
         Load an image from a file.
 
@@ -59,27 +57,27 @@ class ImageLoader:
         # Load image using PIL first (more reliable)
         with Image.open(image_path) as pil_img:
             # Convert to RGB if necessary
-            if pil_img.mode in ('RGBA', 'LA', 'P'):
-                pil_img = pil_img.convert('RGB')
+            if pil_img.mode in ("RGBA", "LA", "P"):
+                pil_img = pil_img.convert("RGB")
 
             # Get image type based on extension
             image_type = self._detect_image_type(image_path.suffix)
 
             # Convert to requested format
-            if return_format == 'pil':
+            if return_format == "pil":
                 return pil_img, image_type
-            elif return_format == 'numpy':
+            elif return_format == "numpy":
                 img_array = np.array(pil_img)
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                 return img_array, image_type
-            elif return_format == 'cv2':
+            elif return_format == "cv2":
                 img_array = np.array(pil_img)
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                 return img_array, image_type
             else:
                 raise ValueError(f"Unsupported return format: {return_format}")
 
-    def load_from_cv2(self, image_array: np.ndarray) -> Tuple[np.ndarray, ImageType]:
+    def load_from_cv2(self, image_array: np.ndarray) -> tuple[np.ndarray, ImageType]:
         """
         Load image from numpy array (already in OpenCV format).
 
@@ -97,7 +95,7 @@ class ImageLoader:
 
         return image_array, image_type
 
-    def load_from_pil(self, pil_image: Image.Image) -> Tuple[np.ndarray, ImageType]:
+    def load_from_pil(self, pil_image: Image.Image) -> tuple[np.ndarray, ImageType]:
         """
         Load image from PIL Image object.
 
@@ -108,8 +106,8 @@ class ImageLoader:
             Tuple of (cv2 image array, image_type)
         """
         # Convert to RGB if necessary
-        if pil_image.mode in ('RGBA', 'LA', 'P'):
-            pil_image = pil_image.convert('RGB')
+        if pil_image.mode in ("RGBA", "LA", "P"):
+            pil_image = pil_image.convert("RGB")
 
         # Convert to numpy array
         img_array = np.array(pil_image)
@@ -123,10 +121,8 @@ class ImageLoader:
         return img_array, image_type
 
     def load_from_bytes(
-        self,
-        image_bytes: bytes,
-        return_format: str = 'cv2'
-    ) -> Tuple[np.ndarray, ImageType]:
+        self, image_bytes: bytes, return_format: str = "cv2"
+    ) -> tuple[np.ndarray, ImageType]:
         """
         Load image from bytes.
 
@@ -141,20 +137,20 @@ class ImageLoader:
         pil_img = Image.open(image_bytes)
 
         # Convert to RGB if necessary
-        if pil_img.mode in ('RGBA', 'LA', 'P'):
-            pil_img = pil_img.convert('RGB')
+        if pil_img.mode in ("RGBA", "LA", "P"):
+            pil_img = pil_img.convert("RGB")
 
         # Get image type
         image_type = self._detect_image_type_from_pil(pil_img)
 
         # Convert to requested format
-        if return_format == 'pil':
+        if return_format == "pil":
             return pil_img, image_type
-        elif return_format == 'numpy':
+        elif return_format == "numpy":
             img_array = np.array(pil_img)
             img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             return img_array, image_type
-        elif return_format == 'cv2':
+        elif return_format == "cv2":
             img_array = np.array(pil_img)
             img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
             return img_array, image_type
@@ -162,10 +158,8 @@ class ImageLoader:
             raise ValueError(f"Unsupported return format: {return_format}")
 
     def load_from_base64(
-        self,
-        base64_str: str,
-        return_format: str = 'cv2'
-    ) -> Tuple[np.ndarray, ImageType]:
+        self, base64_str: str, return_format: str = "cv2"
+    ) -> tuple[np.ndarray, ImageType]:
         """
         Load image from base64 encoded string.
 
@@ -177,7 +171,6 @@ class ImageLoader:
             Tuple of (image, image_type)
         """
         import base64
-        import io
 
         # Decode base64
         image_bytes = base64.b64decode(base64_str)
@@ -214,8 +207,8 @@ class ImageLoader:
         if image is None:
             return False
 
-        if image.mode in ('RGBA', 'LA', 'P'):
-            image = image.convert('RGB')
+        if image.mode in ("RGBA", "LA", "P"):
+            image = image.convert("RGB")
 
         width, height = image.size
         return width > 0 and height > 0
@@ -232,7 +225,7 @@ class ImageLoader:
         """
         suffix_lower = suffix.lower()
 
-        if suffix_lower in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.gif'):
+        if suffix_lower in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif"):
             # Try to detect more specifically
             # This is a heuristic based on file characteristics
             return ImageType.UNKNOWN
@@ -275,20 +268,15 @@ class ImageLoader:
             height, width = image.shape[:2]
             channels = image.shape[2] if len(image.shape) == 3 else 1
             return {
-                'width': width,
-                'height': height,
-                'channels': channels,
-                'dtype': str(image.dtype),
-                'type': 'cv2'
+                "width": width,
+                "height": height,
+                "channels": channels,
+                "dtype": str(image.dtype),
+                "type": "cv2",
             }
         elif isinstance(image, Image.Image):
             width, height = image.size
-            return {
-                'width': width,
-                'height': height,
-                'mode': image.mode,
-                'type': 'pil'
-            }
+            return {"width": width, "height": height, "mode": image.mode, "type": "pil"}
         else:
             return {}
 
@@ -296,8 +284,8 @@ class ImageLoader:
         self,
         image: Union[np.ndarray, Image.Image],
         max_width: int = 2048,
-        max_height: int = 2048
-    ) -> Tuple[Union[np.ndarray, Image.Image], Tuple[int, int]]:
+        max_height: int = 2048,
+    ) -> tuple[Union[np.ndarray, Image.Image], tuple[int, int]]:
         """
         Resize image while maintaining aspect ratio.
 
@@ -317,11 +305,8 @@ class ImageLoader:
             raise ValueError("Unsupported image type")
 
     def _resize_cv2_image(
-        self,
-        image: np.ndarray,
-        max_width: int,
-        max_height: int
-    ) -> Tuple[np.ndarray, Tuple[int, int]]:
+        self, image: np.ndarray, max_width: int, max_height: int
+    ) -> tuple[np.ndarray, tuple[int, int]]:
         """Resize a CV2 image."""
         height, width = image.shape[:2]
 
@@ -336,16 +321,15 @@ class ImageLoader:
         new_width = int(width * scale)
         new_height = int(height * scale)
 
-        resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(
+            image, (new_width, new_height), interpolation=cv2.INTER_AREA
+        )
 
         return resized, (new_width, new_height)
 
     def _resize_pil_image(
-        self,
-        image: Image.Image,
-        max_width: int,
-        max_height: int
-    ) -> Tuple[Image.Image, Tuple[int, int]]:
+        self, image: Image.Image, max_width: int, max_height: int
+    ) -> tuple[Image.Image, tuple[int, int]]:
         """Resize a PIL Image."""
         width, height = image.size
 
@@ -365,9 +349,7 @@ class ImageLoader:
         return resized, (new_width, new_height)
 
     def convert_format(
-        self,
-        image: Union[np.ndarray, Image.Image],
-        target_format: str = 'cv2'
+        self, image: Union[np.ndarray, Image.Image], target_format: str = "cv2"
     ) -> Union[np.ndarray, Image.Image]:
         """
         Convert image to target format.
@@ -380,17 +362,17 @@ class ImageLoader:
             Converted image
         """
         if isinstance(image, np.ndarray):
-            if target_format == 'pil':
+            if target_format == "pil":
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 return Image.fromarray(image_rgb)
-            elif target_format == 'cv2':
+            elif target_format == "cv2":
                 return image
             else:
                 raise ValueError(f"Unsupported target format: {target_format}")
         elif isinstance(image, Image.Image):
-            if target_format == 'pil':
+            if target_format == "pil":
                 return image
-            elif target_format == 'cv2':
+            elif target_format == "cv2":
                 img_array = np.array(image)
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                 return img_array

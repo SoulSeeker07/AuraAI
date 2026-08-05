@@ -4,18 +4,20 @@ Workflow Data Model
 Defines the structure of a workflow, including steps, triggers, variables, and conditions.
 """
 
-
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, Callable
-from datetime import datetime
-from enum import Enum, auto
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Optional
+
+from .workflow_step import WorkflowStep
 
 logger = logging.getLogger(__name__)
 
 
 class WorkflowStatus(Enum):
     """Workflow status states."""
+
     CREATED = "created"
     DRAFT = "draft"
     ACTIVE = "active"
@@ -27,6 +29,7 @@ class WorkflowStatus(Enum):
 
 class WorkflowType(Enum):
     """Workflow type categorization."""
+
     SCRIPTED = "scripted"
     AUTOMATED = "automated"
     SCHEDULED = "scheduled"
@@ -37,6 +40,7 @@ class WorkflowType(Enum):
 
 class TriggerType(Enum):
     """Trigger type enumeration."""
+
     MANUAL = "manual"
     SCHEDULE = "scheduled"
     EVENT = "event"
@@ -71,22 +75,22 @@ class Workflow:
     # Workflow metadata
     type: WorkflowType = WorkflowType.SCRIPTED
     status: WorkflowStatus = WorkflowStatus.CREATED
-    tags: List[str] = field(default_factory=list)
-    category: Optional[str] = None
-    author: Optional[str] = None
-    icon: Optional[str] = None
+    tags: list[str] = field(default_factory=list)
+    category: str | None = None
+    author: str | None = None
+    icon: str | None = None
     is_public: bool = False
 
     # Trigger configuration
     trigger_type: TriggerType = TriggerType.MANUAL
-    trigger_config: Optional[Dict[str, Any]] = None
+    trigger_config: dict[str, Any] | None = None
 
     # Variables
-    variables: Dict[str, Any] = field(default_factory=dict)
-    variable_schema: Optional[Dict[str, Dict[str, Any]]] = None
+    variables: dict[str, Any] = field(default_factory=dict)
+    variable_schema: dict[str, dict[str, Any]] | None = None
 
     # Steps
-    steps: List['WorkflowStep'] = field(default_factory=list)
+    steps: list["WorkflowStep"] = field(default_factory=list)
 
     # Error handling
     on_error: str = "stop"  # stop, continue, retry, ask_user
@@ -94,14 +98,14 @@ class Workflow:
     retry_delay: int = 0  # seconds
 
     # Metadata
-    tags: List[str] = field(default_factory=list)
-    notes: Optional[str] = None
-    parameters: Optional[Dict[str, Any]] = None
+    tags: list[str] = field(default_factory=list)
+    notes: str | None = None
+    parameters: dict[str, Any] | None = None
 
     # Execution context
-    execution_context: Optional[Dict[str, Any]] = None
+    execution_context: dict[str, Any] | None = None
 
-    def add_step(self, step: 'WorkflowStep'):
+    def add_step(self, step: "WorkflowStep"):
         """Add a step to the workflow."""
         step.step_id = f"step_{len(self.steps)}_{datetime.now().timestamp()}"
         self.steps.append(step)
@@ -114,7 +118,9 @@ class Workflow:
             if step.step_id == step_id:
                 self.steps.pop(i)
                 self.updated_at = datetime.now()
-                logger.info(f"Removed step {step_id[:8]} from workflow {self.workflow_id[:8]}")
+                logger.info(
+                    f"Removed step {step_id[:8]} from workflow {self.workflow_id[:8]}"
+                )
                 return True
         return False
 
@@ -125,18 +131,22 @@ class Workflow:
                 for key, value in kwargs.items():
                     setattr(step, key, value)
                 self.updated_at = datetime.now()
-                logger.info(f"Updated step {step_id[:8]} in workflow {self.workflow_id[:8]}")
+                logger.info(
+                    f"Updated step {step_id[:8]} in workflow {self.workflow_id[:8]}"
+                )
                 return
-        logger.warning(f"Step {step_id[:8]} not found in workflow {self.workflow_id[:8]}")
+        logger.warning(
+            f"Step {step_id[:8]} not found in workflow {self.workflow_id[:8]}"
+        )
 
-    def get_step(self, step_id: str) -> Optional['WorkflowStep']:
+    def get_step(self, step_id: str) -> Optional["WorkflowStep"]:
         """Get a step by ID."""
         for step in self.steps:
             if step.step_id == step_id:
                 return step
         return None
 
-    def get_next_step_id(self, current_step_id: Optional[str] = None) -> Optional[str]:
+    def get_next_step_id(self, current_step_id: str | None = None) -> str | None:
         """Get the ID of the next step after the current step."""
         if not self.steps:
             return None
@@ -153,7 +163,7 @@ class Workflow:
 
         return None
 
-    def get_previous_step_id(self, current_step_id: str) -> Optional[str]:
+    def get_previous_step_id(self, current_step_id: str) -> str | None:
         """Get the ID of the previous step."""
         for i, step in enumerate(self.steps):
             if step.step_id == current_step_id:
@@ -164,7 +174,7 @@ class Workflow:
 
         return None
 
-    def get_step_dependencies(self, step_id: str) -> List[str]:
+    def get_step_dependencies(self, step_id: str) -> list[str]:
         """Get IDs of steps this step depends on."""
         step = self.get_step(step_id)
         if step:
@@ -214,75 +224,85 @@ class Workflow:
         """Increment workflow version."""
         self.version += 1
         self.updated_at = datetime.now()
-        logger.info(f"Incremented workflow {self.workflow_id[:8]} to version {self.version}")
+        logger.info(
+            f"Incremented workflow {self.workflow_id[:8]} to version {self.version}"
+        )
 
-    def export_to_dict(self) -> Dict[str, Any]:
+    def export_to_dict(self) -> dict[str, Any]:
         """Export workflow to dictionary."""
         return {
-            'name': self.name,
-            'description': self.description,
-            'workflow_id': self.workflow_id,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-            'version': self.version,
-            'type': self.type.value,
-            'status': self.status.value,
-            'tags': self.tags,
-            'category': self.category,
-            'author': self.author,
-            'icon': self.icon,
-            'is_public': self.is_public,
-            'trigger_type': self.trigger_type.value,
-            'trigger_config': self.trigger_config,
-            'variables': self.variables,
-            'variable_schema': self.variable_schema,
-            'steps': [step.export_to_dict() for step in self.steps],
-            'on_error': self.on_error,
-            'max_retries': self.max_retries,
-            'retry_delay': self.retry_delay,
-            'notes': self.notes,
-            'parameters': self.parameters
+            "name": self.name,
+            "description": self.description,
+            "workflow_id": self.workflow_id,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "version": self.version,
+            "type": self.type.value,
+            "status": self.status.value,
+            "tags": self.tags,
+            "category": self.category,
+            "author": self.author,
+            "icon": self.icon,
+            "is_public": self.is_public,
+            "trigger_type": self.trigger_type.value,
+            "trigger_config": self.trigger_config,
+            "variables": self.variables,
+            "variable_schema": self.variable_schema,
+            "steps": [step.export_to_dict() for step in self.steps],
+            "on_error": self.on_error,
+            "max_retries": self.max_retries,
+            "retry_delay": self.retry_delay,
+            "notes": self.notes,
+            "parameters": self.parameters,
         }
 
     @classmethod
-    def import_from_dict(cls, data: Dict[str, Any]) -> 'Workflow':
+    def import_from_dict(cls, data: dict[str, Any]) -> "Workflow":
         """Import workflow from dictionary."""
         # Import step class
         from .workflow_step import WorkflowStep
 
         # Parse steps
         steps = []
-        for step_data in data.get('steps', []):
+        for step_data in data.get("steps", []):
             steps.append(WorkflowStep.import_from_dict(step_data))
 
         # Parse datetime
-        created_at = datetime.fromisoformat(data['created_at']) if 'created_at' in data else datetime.now()
-        updated_at = datetime.fromisoformat(data['updated_at']) if 'updated_at' in data else datetime.now()
+        created_at = (
+            datetime.fromisoformat(data["created_at"])
+            if "created_at" in data
+            else datetime.now()
+        )
+        updated_at = (
+            datetime.fromisoformat(data["updated_at"])
+            if "updated_at" in data
+            else datetime.now()
+        )
 
         return cls(
-            name=data['name'],
-            description=data['description'],
-            workflow_id=data['workflow_id'],
+            name=data["name"],
+            description=data["description"],
+            workflow_id=data["workflow_id"],
             created_at=created_at,
             updated_at=updated_at,
-            version=data.get('version', 1),
-            type=WorkflowType(data.get('type', 'scripted')),
-            status=WorkflowStatus(data.get('status', 'created')),
-            tags=data.get('tags', []),
-            category=data.get('category'),
-            author=data.get('author'),
-            icon=data.get('icon'),
-            is_public=data.get('is_public', False),
-            trigger_type=TriggerType(data.get('trigger_type', 'manual')),
-            trigger_config=data.get('trigger_config'),
-            variables=data.get('variables', {}),
-            variable_schema=data.get('variable_schema'),
+            version=data.get("version", 1),
+            type=WorkflowType(data.get("type", "scripted")),
+            status=WorkflowStatus(data.get("status", "created")),
+            tags=data.get("tags", []),
+            category=data.get("category"),
+            author=data.get("author"),
+            icon=data.get("icon"),
+            is_public=data.get("is_public", False),
+            trigger_type=TriggerType(data.get("trigger_type", "manual")),
+            trigger_config=data.get("trigger_config"),
+            variables=data.get("variables", {}),
+            variable_schema=data.get("variable_schema"),
             steps=steps,
-            on_error=data.get('on_error', 'stop'),
-            max_retries=data.get('max_retries', 3),
-            retry_delay=data.get('retry_delay', 0),
-            notes=data.get('notes'),
-            parameters=data.get('parameters')
+            on_error=data.get("on_error", "stop"),
+            max_retries=data.get("max_retries", 3),
+            retry_delay=data.get("retry_delay", 0),
+            notes=data.get("notes"),
+            parameters=data.get("parameters"),
         )
 
     def __repr__(self):

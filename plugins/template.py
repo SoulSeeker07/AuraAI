@@ -5,11 +5,10 @@ This is a template for creating Aura plugins.
 Follow this pattern to create new plugins.
 """
 
-
 import logging
-from typing import Any, Dict, Optional
-from src.plugins.plugin_interface import Plugin, PluginManifest, PluginCategory
+from typing import Any
 
+from src.plugins.plugin_interface import Plugin, PluginManifest
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +119,9 @@ class ExamplePlugin(Plugin):
             return handler(**kwargs)
 
         except Exception as e:
-            logger.error(f"Error executing capability '{capability}' in plugin {self.manifest.name}: {e}")
+            logger.error(
+                f"Error executing capability '{capability}' in plugin {self.manifest.name}: {e}"
+            )
             self.set_error(e)
             raise
 
@@ -141,10 +142,7 @@ class ExamplePlugin(Plugin):
         logger.info(f"Handling capability: {kwargs.get('capability_name', 'unknown')}")
 
         # Return the result
-        return {
-            "status": "success",
-            "message": f"Capability executed successfully"
-        }
+        return {"status": "success", "message": "Capability executed successfully"}
 
     def shutdown(self) -> bool:
         """

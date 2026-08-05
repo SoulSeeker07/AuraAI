@@ -6,19 +6,21 @@ Routes capability requests to appropriate managers and provides
 unified interface for Aura Brain.
 """
 
-from typing import Optional, Dict, Any, List
 from enum import Enum
+from typing import Any
 
-from .native_models import WindowInfo, ProcessInfo, ClipboardData, DisplayInfo, AudioDevice, NetworkInterface
-from .native_exceptions import CapabilityNotFoundError
-from .native_manager import NativeManager, NativeCapability
 from .capability_registry import CapabilityRegistry, PermissionRequired
-from .desktop_context import get_desktop_context, ContextScope
-from .native_events import EventType
+from .desktop_context import ContextScope, get_desktop_context
+from .native_exceptions import CapabilityNotFoundError
+from .native_manager import NativeCapability, NativeManager
+from .native_models import (
+    ClipboardData,
+)
 
 
 class RoutingStrategy(Enum):
     """Strategy for routing capability requests"""
+
     DIRECT = "direct"  # Direct routing to manager
     FALLBACK = "fallback"  # Try primary, fall back to alternatives
     RISK_BASED = "risk_based"  # Choose based on risk level
@@ -41,9 +43,9 @@ class CapabilityRouter:
 
     def __init__(
         self,
-        native_manager: Optional[NativeManager] = None,
-        registry: Optional[CapabilityRegistry] = None,
-        router_strategy: RoutingStrategy = RoutingStrategy.DIRECT
+        native_manager: NativeManager | None = None,
+        registry: CapabilityRegistry | None = None,
+        router_strategy: RoutingStrategy = RoutingStrategy.DIRECT,
     ):
         """
         Initialize capability router.
@@ -57,11 +59,7 @@ class CapabilityRouter:
         self.registry = registry or get_capability_registry()
         self.router_strategy = router_strategy
 
-    def route_capability(
-        self,
-        capability: NativeCapability,
-        **kwargs
-    ) -> Any:
+    def route_capability(self, capability: NativeCapability, **kwargs) -> Any:
         """
         Route a capability request to the appropriate manager.
 
@@ -96,10 +94,7 @@ class CapabilityRouter:
         return self._route_direct(capability, descriptor, **kwargs)
 
     def _route_direct(
-        self,
-        capability: NativeCapability,
-        descriptor: Any,
-        **kwargs
+        self, capability: NativeCapability, descriptor: Any, **kwargs
     ) -> Any:
         """
         Direct routing strategy.
@@ -117,10 +112,7 @@ class CapabilityRouter:
         return manager_method(**kwargs)
 
     def _route_fallback(
-        self,
-        capability: NativeCapability,
-        descriptor: Any,
-        **kwargs
+        self, capability: NativeCapability, descriptor: Any, **kwargs
     ) -> Any:
         """
         Fallback routing strategy.
@@ -138,14 +130,18 @@ class CapabilityRouter:
         # Try primary capability
         try:
             return self._route_direct(capability, descriptor, **kwargs)
-        except Exception as e:
+        except Exception:
             # Try fallback capability if defined
             if descriptor.fallback_capability:
                 try:
                     fallback_cap = NativeCapability(descriptor.fallback_capability)
-                    fallback_descriptor = self.registry.get(descriptor.fallback_capability)
+                    fallback_descriptor = self.registry.get(
+                        descriptor.fallback_capability
+                    )
                     if fallback_descriptor:
-                        return self._route_direct(fallback_cap, fallback_descriptor, **kwargs)
+                        return self._route_direct(
+                            fallback_cap, fallback_descriptor, **kwargs
+                        )
                 except Exception:
                     pass
 
@@ -163,10 +159,7 @@ class CapabilityRouter:
             raise
 
     def _route_risk_based(
-        self,
-        capability: NativeCapability,
-        descriptor: Any,
-        **kwargs
+        self, capability: NativeCapability, descriptor: Any, **kwargs
     ) -> Any:
         """
         Risk-based routing strategy.
@@ -197,10 +190,7 @@ class CapabilityRouter:
         return self._route_direct(capability, descriptor, **kwargs)
 
     def _route_cache_preferred(
-        self,
-        capability: NativeCapability,
-        descriptor: Any,
-        **kwargs
+        self, capability: NativeCapability, descriptor: Any, **kwargs
     ) -> Any:
         """
         Cache-preferred routing strategy.
@@ -222,11 +212,7 @@ class CapabilityRouter:
             # For write/modify operations, call native manager
             return self._route_direct(capability, descriptor, **kwargs)
 
-    def _get_from_cache(
-        self,
-        capability: NativeCapability,
-        **kwargs
-    ) -> Any:
+    def _get_from_cache(self, capability: NativeCapability, **kwargs) -> Any:
         """
         Get data from cache.
 
@@ -264,7 +250,9 @@ class CapabilityRouter:
         # Not a cacheable operation
         return None
 
-    def get_capability_metadata(self, capability: NativeCapability) -> Optional[Dict[str, Any]]:
+    def get_capability_metadata(
+        self, capability: NativeCapability
+    ) -> dict[str, Any] | None:
         """
         Get metadata for a capability.
 
@@ -293,7 +281,7 @@ class CapabilityRouter:
             }
         return None
 
-    def get_all_capabilities(self) -> List[Dict[str, Any]]:
+    def get_all_capabilities(self) -> list[dict[str, Any]]:
         """
         Get metadata for all capabilities.
 
@@ -305,7 +293,7 @@ class CapabilityRouter:
             for cap_name in self.registry.list_all()
         ]
 
-    def get_capabilities_by_category(self, category: str) -> List[Dict[str, Any]]:
+    def get_capabilities_by_category(self, category: str) -> list[dict[str, Any]]:
         """
         Get all capabilities in a category.
 
@@ -316,9 +304,14 @@ class CapabilityRouter:
             List of capability metadata dictionaries
         """
         descriptors = self.registry.get_by_category(category)
-        return [self.get_capability_metadata(NativeCapability(desc.name)) for desc in descriptors]
+        return [
+            self.get_capability_metadata(NativeCapability(desc.name))
+            for desc in descriptors
+        ]
 
-    def get_capabilities_by_permission(self, permission: PermissionRequired) -> List[Dict[str, Any]]:
+    def get_capabilities_by_permission(
+        self, permission: PermissionRequired
+    ) -> list[dict[str, Any]]:
         """
         Get all capabilities requiring a specific permission.
 
@@ -329,9 +322,12 @@ class CapabilityRouter:
             List of capability metadata dictionaries
         """
         descriptors = self.registry.list_by_permission(permission)
-        return [self.get_capability_metadata(NativeCapability(desc.name)) for desc in descriptors]
+        return [
+            self.get_capability_metadata(NativeCapability(desc.name))
+            for desc in descriptors
+        ]
 
-    def get_capabilities_by_risk(self, risk_level: str) -> List[Dict[str, Any]]:
+    def get_capabilities_by_risk(self, risk_level: str) -> list[dict[str, Any]]:
         """
         Get all capabilities with a specific risk level.
 
@@ -342,14 +338,18 @@ class CapabilityRouter:
             List of capability metadata dictionaries
         """
         from .capability_registry import RiskLevel
+
         try:
             risk_enum = RiskLevel(risk_level)
             descriptors = self.registry.list_by_risk(risk_enum)
-            return [self.get_capability_metadata(NativeCapability(desc.name)) for desc in descriptors]
+            return [
+                self.get_capability_metadata(NativeCapability(desc.name))
+                for desc in descriptors
+            ]
         except ValueError:
             return []
 
-    def list_by_category(self) -> Dict[str, List[Dict[str, Any]]]:
+    def list_by_category(self) -> dict[str, list[dict[str, Any]]]:
         """
         List all capabilities organized by category.
 
@@ -399,10 +399,7 @@ class CapabilityRouter:
         return None
 
     def update_context(
-        self,
-        context_type: str,
-        data: Any,
-        scope: ContextScope = ContextScope.LOCAL
+        self, context_type: str, data: Any, scope: ContextScope = ContextScope.LOCAL
     ) -> None:
         """
         Update desktop context.
@@ -464,13 +461,13 @@ class CapabilityRouter:
 
 
 # Singleton instance
-_router: Optional[CapabilityRouter] = None
+_router: CapabilityRouter | None = None
 
 
 def get_capability_router(
-    native_manager: Optional[NativeManager] = None,
-    registry: Optional[CapabilityRegistry] = None,
-    router_strategy: RoutingStrategy = RoutingStrategy.DIRECT
+    native_manager: NativeManager | None = None,
+    registry: CapabilityRegistry | None = None,
+    router_strategy: RoutingStrategy = RoutingStrategy.DIRECT,
 ) -> CapabilityRouter:
     """
     Get or create the global capability router singleton.
@@ -488,7 +485,7 @@ def get_capability_router(
         _router = CapabilityRouter(
             native_manager=native_manager,
             registry=registry,
-            router_strategy=router_strategy
+            router_strategy=router_strategy,
         )
     return _router
 
@@ -502,10 +499,12 @@ def reset_capability_router() -> None:
 def get_native_manager() -> NativeManager:
     """Get NativeManager singleton (for internal use)"""
     from .native_manager import NativeManager
+
     return NativeManager()
 
 
 def get_capability_registry() -> CapabilityRegistry:
     """Get CapabilityRegistry singleton (for internal use)"""
     from .capability_registry import CapabilityRegistry
+
     return CapabilityRegistry()

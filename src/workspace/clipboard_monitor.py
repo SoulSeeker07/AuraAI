@@ -10,13 +10,15 @@ Features:
 - Set clipboard manually
 """
 
+import ctypes
 import logging
-from ctypes import wintypes
-from typing import Optional, List
-from pathlib import Path
 import re
 import threading
 import time
+from ctypes import wintypes
+from datetime import datetime
+from pathlib import Path
+
 import psutil
 
 from .models import ClipboardContext
@@ -41,23 +43,51 @@ class ClipboardMonitor:
     CF_OEMTEXT = 4
 
     # Clipboard formats
-    CODE_EXTENSIONS = {'.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.cs', '.go', '.rs', '.cpp', '.c', '.h', '.html', '.css', '.json', '.xml', '.yaml', '.yml', '.toml', '.ini', '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd'}
+    CODE_EXTENSIONS = {
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".java",
+        ".cs",
+        ".go",
+        ".rs",
+        ".cpp",
+        ".c",
+        ".h",
+        ".html",
+        ".css",
+        ".json",
+        ".xml",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".fish",
+        ".ps1",
+        ".bat",
+        ".cmd",
+    }
 
     # Python code patterns
     PYTHON_PATTERNS = [
-        r'^import\s+[\w.]+\s*$',
-        r'^from\s+[\w.]+\s+import\s+.*$',
-        r'^def\s+\w+.*:$',
-        r'^class\s+\w+.*:$',
-        r'^if\s+__name__.*:$',
+        r"^import\s+[\w.]+\s*$",
+        r"^from\s+[\w.]+\s+import\s+.*$",
+        r"^def\s+\w+.*:$",
+        r"^class\s+\w+.*:$",
+        r"^if\s+__name__.*:$",
     ]
 
     # Code extension patterns
     CODE_PATTERNS = [
-        r'^\s*(import|from)\s+.*$',
-        r'^\s*(def|class|function|struct)\s+.*$',
-        r'^\s*(if|while|for|switch|case)\s+.*$',
-        r'^\s*(var|let|const|let\s+.*\s*=\s*{|function|return)',
+        r"^\s*(import|from)\s+.*$",
+        r"^\s*(def|class|function|struct)\s+.*$",
+        r"^\s*(if|while|for|switch|case)\s+.*$",
+        r"^\s*(var|let|const|let\s+.*\s*=\s*{|function|return)",
     ]
 
     def __init__(self, poll_interval: int = 2, enable_detection: bool = True):
@@ -70,17 +100,19 @@ class ClipboardMonitor:
         """
         self.poll_interval = poll_interval
         self.enable_detection = enable_detection
-        self._last_content: Optional[str] = None
-        self._last_hash: Optional[str] = None
+        self._last_content: str | None = None
+        self._last_hash: str | None = None
         self._clipboard_events = []
         self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self._content_cache: Optional[ClipboardContext] = None
+        self._thread: threading.Thread | None = None
+        self._content_cache: ClipboardContext | None = None
 
         # Register clipboard formats
-        self._code_format = self._register_format('AuraAI_Code')
+        self._code_format = self._register_format("AuraAI_Code")
 
-        logger.info(f"Clipboard monitor initialized (poll_interval={poll_interval}s, code_detection={enable_detection})")
+        logger.info(
+            f"Clipboard monitor initialized (poll_interval={poll_interval}s, code_detection={enable_detection})"
+        )
 
     def _register_format(self, name: str) -> int:
         """
@@ -93,13 +125,12 @@ class ClipboardMonitor:
             Format ID
         """
         try:
-            # Register custom format
-            return wintypes.UINT(registerClipboardFormatW(name))
+            return ctypes.windll.user32.RegisterClipboardFormatW(name)
         except Exception as e:
             logger.warning(f"Failed to register format {name}: {e}")
-            return CF_UNICODETEXT
+            return 13  # CF_UNICODETEXT
 
-    async def get_clipboard(self) -> Optional[ClipboardContext]:
+    async def get_clipboard(self) -> ClipboardContext | None:
         """
         Get current clipboard content.
 
@@ -129,10 +160,7 @@ class ClipboardMonitor:
 
             # Create clipboard context
             clipboard = ClipboardContext(
-                text=text,
-                code=text if is_code else None,
-                is_code=is_code,
-                is_text=True
+                text=text, code=text if is_code else None, is_code=is_code, is_text=True
             )
 
             self._content_cache = clipboard
@@ -147,7 +175,7 @@ class ClipboardMonitor:
             logger.error(f"Failed to get clipboard: {e}")
             return None
 
-    def _get_clipboard_text(self) -> Optional[str]:
+    def _get_clipboard_text(self) -> str | None:
         """
         Get text from clipboard.
 
@@ -229,7 +257,7 @@ class ClipboardMonitor:
                 return True
 
         # Check for code patterns
-        lines = text.split('\n')
+        lines = text.split("\n")
         code_lines = 0
         total_lines = len(lines)
 
@@ -264,7 +292,7 @@ class ClipboardMonitor:
 
         return False
 
-    def _detect_code_type(self, text: str) -> Optional[str]:
+    def _detect_code_type(self, text: str) -> str | None:
         """
         Detect programming language from code snippet.
 
@@ -276,28 +304,28 @@ class ClipboardMonitor:
         """
         text_lower = text.lower()
 
-        if re.search(r'import\s+[\w.]+$', text_lower):
-            return 'python'
-        if re.search(r'(import|from)\s+[\w.]+.*\s+import', text_lower):
-            return 'python'
+        if re.search(r"import\s+[\w.]+$", text_lower):
+            return "python"
+        if re.search(r"(import|from)\s+[\w.]+.*\s+import", text_lower):
+            return "python"
 
-        if re.search(r'^import\s+[\w.]+\s*$', text_lower):
-            return 'javascript'
+        if re.search(r"^import\s+[\w.]+\s*$", text_lower):
+            return "javascript"
 
-        if re.search(r'^(import|export)\s+', text_lower):
-            return 'typescript'
+        if re.search(r"^(import|export)\s+", text_lower):
+            return "typescript"
 
-        if re.search(r'import\s+[\w.]+\s*$', text_lower):
-            return 'java'
+        if re.search(r"import\s+[\w.]+\s*$", text_lower):
+            return "java"
 
-        if re.search(r'^import\s+', text_lower):
-            return 'csharp'
+        if re.search(r"^import\s+", text_lower):
+            return "csharp"
 
-        if re.search(r'^package\s+[\w.]+\s*$', text_lower):
-            return 'go'
+        if re.search(r"^package\s+[\w.]+\s*$", text_lower):
+            return "go"
 
-        if re.search(r'^use\s+[\w.]+\s*$', text_lower):
-            return 'rust'
+        if re.search(r"^use\s+[\w.]+\s*$", text_lower):
+            return "rust"
 
         return None
 
@@ -315,7 +343,15 @@ class ClipboardMonitor:
             # Check if parent process is an editor
             parent = current_process.parent()
             while parent:
-                if parent.name().lower() in ['code', 'cursor', 'atom', 'sublime_text', 'pycharm', 'idea', 'visual_studio']:
+                if parent.name().lower() in [
+                    "code",
+                    "cursor",
+                    "atom",
+                    "sublime_text",
+                    "pycharm",
+                    "idea",
+                    "visual_studio",
+                ]:
                     return True
                 parent = parent.parent()
 
@@ -351,13 +387,15 @@ class ClipboardMonitor:
                 text=content,
                 code=content if is_code else None,
                 is_code=is_code,
-                is_text=True
+                is_text=True,
             )
 
             self._last_content = content
             self._last_hash = self._hash_content(content)
 
-            logger.debug(f"Clipboard set manually: {len(content)} chars, code={is_code}")
+            logger.debug(
+                f"Clipboard set manually: {len(content)} chars, code={is_code}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to set clipboard: {e}")
@@ -377,7 +415,9 @@ class ClipboardMonitor:
                     ctypes.windll.user32.EmptyClipboard()
 
                     # Convert to bytes
-                    text_bytes = text.encode('utf-16le') if isinstance(text, str) else text
+                    text_bytes = (
+                        text.encode("utf-16le") if isinstance(text, str) else text
+                    )
 
                     # Create buffer
                     buffer = ctypes.create_string_buffer(text_bytes)
@@ -401,7 +441,7 @@ class ClipboardMonitor:
     async def clear_clipboard(self):
         """Clear clipboard"""
         try:
-            self._set_clipboard_text('')
+            self._set_clipboard_text("")
             self._content_cache = None
             self._last_content = None
             self._last_hash = None
@@ -440,15 +480,21 @@ class ClipboardMonitor:
                         self._last_hash = new_hash
 
                         # Update cache
-                        is_code = self._is_code_snippet(content) if self.enable_detection else False
+                        is_code = (
+                            self._is_code_snippet(content)
+                            if self.enable_detection
+                            else False
+                        )
                         self._content_cache = ClipboardContext(
                             text=content,
                             code=content if is_code else None,
                             is_code=is_code,
-                            is_text=True
+                            is_text=True,
                         )
 
-                        logger.info(f"Clipboard changed: {len(content)} chars, code={is_code}")
+                        logger.info(
+                            f"Clipboard changed: {len(content)} chars, code={is_code}"
+                        )
 
             except Exception as e:
                 logger.error(f"Error in clipboard monitor loop: {e}")

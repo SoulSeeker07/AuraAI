@@ -1,5 +1,4 @@
-from typing import Optional
-from PySide6.QtCore import QObject, QPoint
+from PySide6.QtCore import QObject
 from PySide6.QtGui import QCursor
 
 from backend.core.event_bus import EventBus

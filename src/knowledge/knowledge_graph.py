@@ -26,13 +26,12 @@ Now asking "Explain Area 0" will naturally lead to OSPF.
 
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional, Set, Tuple
-from collections import defaultdict
-import networkx as nx
 from dataclasses import dataclass, field
+from typing import Any
 
-from .knowledge_db import KnowledgeFact, KnowledgeDB
+import networkx as nx
+
+from .knowledge_db import KnowledgeDB, KnowledgeFact
 
 
 @dataclass
@@ -40,15 +39,16 @@ class KnowledgeNode:
     """
     A node in the knowledge graph.
     """
+
     id: str
     name: str
     topic: str
-    facts: List[KnowledgeFact] = field(default_factory=list)
-    connections: List[str] = field(default_factory=list)
+    facts: list[KnowledgeFact] = field(default_factory=list)
+    connections: list[str] = field(default_factory=list)
     category: str = "General"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -57,7 +57,7 @@ class KnowledgeNode:
             "category": self.category,
             "fact_count": len(self.facts),
             "connections": self.connections,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
@@ -83,7 +83,7 @@ class KnowledgeGraph:
         """
         self.knowledge_db = knowledge_db or KnowledgeDB()
         self.graph: nx.DiGraph = nx.DiGraph()
-        self.nodes: Dict[str, KnowledgeNode] = {}
+        self.nodes: dict[str, KnowledgeNode] = {}
         self._initialize_graph()
 
     def _initialize_graph(self):
@@ -95,7 +95,7 @@ class KnowledgeGraph:
             facts = self.knowledge_db.get_facts_by_topic(topic)
             self._add_topic_to_graph(topic, facts)
 
-    def _add_topic_to_graph(self, topic: str, facts: List[KnowledgeFact]) -> None:
+    def _add_topic_to_graph(self, topic: str, facts: list[KnowledgeFact]) -> None:
         """
         Add a topic and its facts to the graph.
 
@@ -107,10 +107,7 @@ class KnowledgeGraph:
         node_id = f"topic:{topic}"
         if node_id not in self.nodes:
             self.nodes[node_id] = KnowledgeNode(
-                id=node_id,
-                name=topic,
-                topic=topic,
-                category="Topic"
+                id=node_id, name=topic, topic=topic, category="Topic"
             )
             self.graph.add_node(node_id, **self.nodes[node_id].to_dict())
 
@@ -125,7 +122,7 @@ class KnowledgeGraph:
                     name=fact.fact[:50] + "..." if len(fact.fact) > 50 else fact.fact,
                     topic=topic,
                     category=fact.category,
-                    metadata={"source": fact.source, "confidence": fact.confidence}
+                    metadata={"source": fact.source, "confidence": fact.confidence},
                 )
                 self.graph.add_node(fact_node_id, **self.nodes[fact_node_id].to_dict())
 
@@ -144,7 +141,7 @@ class KnowledgeGraph:
         # Connect topic to related topics
         self._connect_related_topics(topic)
 
-    def _infer_connections(self, fact: KnowledgeFact) -> List[str]:
+    def _infer_connections(self, fact: KnowledgeFact) -> list[str]:
         """
         Infer connections based on fact content.
 
@@ -171,9 +168,11 @@ class KnowledgeGraph:
                         id=connected_id,
                         name=related_topic,
                         topic=related_topic,
-                        category="Topic"
+                        category="Topic",
                     )
-                    self.graph.add_node(connected_id, **self.nodes[connected_id].to_dict())
+                    self.graph.add_node(
+                        connected_id, **self.nodes[connected_id].to_dict()
+                    )
                 connections.append(connected_id)
 
         return connections
@@ -215,7 +214,7 @@ class KnowledgeGraph:
                 related_node_id = f"topic:{related_topic}"
                 self.graph.add_edge(topic_node_id, related_node_id)
 
-    def _extract_keywords(self, text: str) -> Set[str]:
+    def _extract_keywords(self, text: str) -> set[str]:
         """
         Extract keywords from text.
 
@@ -229,13 +228,68 @@ class KnowledgeGraph:
 
         # Remove common stop words
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "can", "of", "in", "on", "at", "to",
-            "for", "with", "by", "from", "as", "this", "that", "these", "those",
-            "it", "its", "they", "them", "their", "we", "our", "you", "your",
-            "what", "which", "who", "whom", "where", "when", "why", "how",
-            "new", "version", "latest", "update", "release", "feature", "update"
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "can",
+            "of",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "with",
+            "by",
+            "from",
+            "as",
+            "this",
+            "that",
+            "these",
+            "those",
+            "it",
+            "its",
+            "they",
+            "them",
+            "their",
+            "we",
+            "our",
+            "you",
+            "your",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "where",
+            "when",
+            "why",
+            "how",
+            "new",
+            "version",
+            "latest",
+            "update",
+            "release",
+            "feature",
+            "update",
         }
 
         words = text.lower().split()
@@ -245,7 +299,7 @@ class KnowledgeGraph:
 
         return keywords
 
-    def get_node(self, node_id: str) -> Optional[KnowledgeNode]:
+    def get_node(self, node_id: str) -> KnowledgeNode | None:
         """
         Get a node by ID.
 
@@ -257,11 +311,7 @@ class KnowledgeGraph:
         """
         return self.nodes.get(node_id)
 
-    def get_related_nodes(
-        self,
-        node_id: str,
-        depth: int = 2
-    ) -> List[KnowledgeNode]:
+    def get_related_nodes(self, node_id: str, depth: int = 2) -> list[KnowledgeNode]:
         """
         Get related nodes at a certain depth.
 
@@ -291,7 +341,7 @@ class KnowledgeGraph:
 
         return [self.nodes[nid] for nid in neighbors if nid in self.nodes]
 
-    def get_topic_neighbors(self, topic: str, depth: int = 2) -> List[str]:
+    def get_topic_neighbors(self, topic: str, depth: int = 2) -> list[str]:
         """
         Get related topics for a given topic.
 
@@ -314,11 +364,8 @@ class KnowledgeGraph:
         return list(set(related_topics))
 
     def find_path(
-        self,
-        start_topic: str,
-        end_topic: str,
-        max_depth: int = 5
-    ) -> List[str]:
+        self, start_topic: str, end_topic: str, max_depth: int = 5
+    ) -> list[str]:
         """
         Find the shortest path between two topics.
 
@@ -342,7 +389,7 @@ class KnowledgeGraph:
         except nx.NetworkXNoPath:
             return []
 
-    def get_knowledge_summary(self, topic: str) -> Dict[str, Any]:
+    def get_knowledge_summary(self, topic: str) -> dict[str, Any]:
         """
         Get a summary of knowledge for a topic.
 
@@ -357,7 +404,7 @@ class KnowledgeGraph:
                 "topic": topic,
                 "exists": False,
                 "fact_count": 0,
-                "related_topics": []
+                "related_topics": [],
             }
 
         # Get topic facts
@@ -377,7 +424,7 @@ class KnowledgeGraph:
             "fact_count": len(facts),
             "categories": list(categories),
             "related_topics": related_topics,
-            "connections": len(self.graph.edges(f"topic:{topic}"))
+            "connections": len(self.graph.edges(f"topic:{topic}")),
         }
 
     def add_fact(self, fact: KnowledgeFact) -> None:
@@ -394,12 +441,12 @@ class KnowledgeGraph:
         topic_facts = self.knowledge_db.get_facts_by_topic(fact.topic)
         self._add_topic_to_graph(fact.topic, topic_facts)
 
-    def add_facts(self, facts: List[KnowledgeFact]) -> None:
+    def add_facts(self, facts: list[KnowledgeFact]) -> None:
         """Add multiple facts at once."""
         for fact in facts:
             self.add_fact(fact)
 
-    def get_concept_hierarchy(self, topic: str, max_depth: int = 3) -> Dict[str, Any]:
+    def get_concept_hierarchy(self, topic: str, max_depth: int = 3) -> dict[str, Any]:
         """
         Get hierarchical structure of concepts for a topic.
 
@@ -413,13 +460,13 @@ class KnowledgeGraph:
         if topic not in self.knowledge_db.get_topics():
             return {}
 
-        def build_hierarchy(node_id: str, depth: int) -> Dict[str, Any]:
+        def build_hierarchy(node_id: str, depth: int) -> dict[str, Any]:
             if depth >= max_depth:
                 node = self.nodes.get(node_id, KnowledgeNode(id=node_id, name=node_id))
                 return {
                     "name": node.name,
                     "type": node.id.split(":")[0],
-                    "fact_count": len(node.facts)
+                    "fact_count": len(node.facts),
                 }
 
             children = {}
@@ -433,12 +480,12 @@ class KnowledgeGraph:
                 "name": node.name,
                 "type": node.id.split(":")[0],
                 "fact_count": len(node.facts),
-                "children": children
+                "children": children,
             }
 
         return build_hierarchy(f"topic:{topic}", 0)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get graph statistics.
 
@@ -450,7 +497,7 @@ class KnowledgeGraph:
             "total_edges": len(self.graph.edges()),
             "total_topics": len([n for n in self.nodes if n.startswith("topic:")]),
             "connected_components": nx.number_weakly_connected_components(self.graph),
-            "density": nx.density(self.graph)
+            "density": nx.density(self.graph),
         }
 
     def visualize(self, output_file: str = "knowledge_graph.html") -> None:
@@ -460,9 +507,10 @@ class KnowledgeGraph:
         Args:
             output_file: Output file path
         """
-        import matplotlib.pyplot as plt
         import matplotlib
-        matplotlib.use('Agg')  # Non-interactive backend
+        import matplotlib.pyplot as plt
+
+        matplotlib.use("Agg")  # Non-interactive backend
 
         plt.figure(figsize=(20, 15))
 
@@ -471,35 +519,23 @@ class KnowledgeGraph:
 
         # Draw nodes
         nx.draw_networkx_nodes(
-            self.graph, pos,
-            node_size=500,
-            node_color='lightblue',
-            alpha=0.7
+            self.graph, pos, node_size=500, node_color="lightblue", alpha=0.7
         )
 
         # Draw edges
-        nx.draw_networkx_edges(
-            self.graph, pos,
-            width=1.0,
-            alpha=0.5,
-            edge_color='gray'
-        )
+        nx.draw_networkx_edges(self.graph, pos, width=1.0, alpha=0.5, edge_color="gray")
 
         # Draw labels for topic nodes
         topic_nodes = [n for n in self.nodes if n.startswith("topic:")]
         topic_labels = {n: self.nodes[n].name for n in topic_nodes}
 
-        nx.draw_networkx_labels(
-            self.graph, pos,
-            labels=topic_labels,
-            font_size=8
-        )
+        nx.draw_networkx_labels(self.graph, pos, labels=topic_labels, font_size=8)
 
         plt.title("Aura Knowledge Graph", fontsize=16)
-        plt.axis('off')
+        plt.axis("off")
         plt.tight_layout()
 
-        plt.savefig(output_file, dpi=300, bbox_inches='tight')
+        plt.savefig(output_file, dpi=300, bbox_inches="tight")
         plt.close()
 
         print(f"Knowledge graph visualization saved to {output_file}")

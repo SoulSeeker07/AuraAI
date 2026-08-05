@@ -10,22 +10,30 @@ Tests:
 """
 
 import pytest
+
 from src.desktop.native.adapters.network_adapter import (
+    DummyNetworkAdapter,
+    NetshNetworkAdapter,
     NetworkAdapter,
     NetworkAdapterFactory,
-    WMINetworkAdapter,
-    NetshNetworkAdapter,
     PsutilNetworkAdapter,
-    DummyNetworkAdapter,
+    WMINetworkAdapter,
 )
-from src.desktop.native.managers.network_manager import NetworkManager
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry, HealthStatus
-from src.desktop.native.capability_registry import CapabilityRegistry, RiskLevel, PermissionRequired
+from src.desktop.native.capability_registry import (
+    CapabilityRegistry,
+    PermissionRequired,
+    RiskLevel,
+)
 from src.desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     reset_desktop_execution_engine,
 )
+from src.desktop.native.managers.native_manager_registry import (
+    HealthStatus,
+    NativeManagerRegistry,
+)
+from src.desktop.native.managers.network_manager import NetworkManager
 
 
 @pytest.fixture
@@ -119,6 +127,7 @@ def test_network_manager_health_check(dummy_network_manager):
 def test_network_manager_no_cross_cutting_concerns():
     nm = NetworkManager(adapter=DummyNetworkAdapter())
     import inspect
+
     src = inspect.getsource(NetworkManager)
     # Pure native manager rule: no direct metrics or permissions inside manager
     assert "metrics_recorder" not in src
@@ -185,16 +194,22 @@ def test_network_information_capabilities(dummy_network_manager):
 
 
 def test_network_diagnostic_capabilities(dummy_network_manager):
-    res_ping = dummy_network_manager.execute("network.ping", arguments={"host": "8.8.8.8"})
+    res_ping = dummy_network_manager.execute(
+        "network.ping", arguments={"host": "8.8.8.8"}
+    )
     assert res_ping.success is True
     assert res_ping.data["host"] == "8.8.8.8"
     assert res_ping.data["success"] is True
 
-    res_tr = dummy_network_manager.execute("network.traceroute", arguments={"host": "8.8.8.8"})
+    res_tr = dummy_network_manager.execute(
+        "network.traceroute", arguments={"host": "8.8.8.8"}
+    )
     assert res_tr.success is True
     assert "total_hops" in res_tr.data
 
-    res_lk = dummy_network_manager.execute("network.lookup", arguments={"domain": "google.com"})
+    res_lk = dummy_network_manager.execute(
+        "network.lookup", arguments={"domain": "google.com"}
+    )
     assert res_lk.success is True
     assert "addresses" in res_lk.data
 
@@ -217,7 +232,9 @@ def test_network_control_capabilities(dummy_network_manager):
     assert res_dis.success is True
     assert res_dis.data["status"] == "wifi_disconnected"
 
-    res_con = dummy_network_manager.execute("network.connect_wifi", arguments={"ssid": "Home-5G"})
+    res_con = dummy_network_manager.execute(
+        "network.connect_wifi", arguments={"ssid": "Home-5G"}
+    )
     assert res_con.success is True
     assert res_con.data["ssid"] == "Home-5G"
 
@@ -238,7 +255,11 @@ def test_network_engine_execution(engine):
 
 def test_engine_simulation_mode_for_destructive_actions(engine):
     # Destructive network action in simulation mode
-    res_dis = engine.execute(goal="disable wifi adapter", capability="network.disable_adapter", adapter_name="Wi-Fi")
+    res_dis = engine.execute(
+        goal="disable wifi adapter",
+        capability="network.disable_adapter",
+        adapter_name="Wi-Fi",
+    )
     assert res_dis.success is True
     assert res_dis.data.get("simulated") is True
     assert res_dis.data.get("status") == "simulated_execution"

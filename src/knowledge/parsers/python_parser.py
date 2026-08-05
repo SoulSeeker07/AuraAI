@@ -8,13 +8,12 @@ Supports:
 - Imports and dependencies
 """
 
-import logging
 import ast
-from typing import List, Dict, Any, Optional
-from pathlib import Path
+import logging
 import re
+from pathlib import Path
 
-from ..models import DocumentChunk, DocumentMetadata, ChunkType, SourceType
+from ..models import ChunkType, DocumentChunk, DocumentMetadata, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +22,18 @@ class PythonParser:
     """Parse Python code into structured chunks."""
 
     def __init__(self):
-        self.supported_extensions = ['.py', '.pyi']
+        self.supported_extensions = [".py", ".pyi"]
 
     def supports(self, file_path: Path) -> bool:
         """Check if file type is supported."""
         return file_path.suffix.lower() in self.supported_extensions
 
-    def parse(self, file_path: Path) -> List[DocumentChunk]:
+    def parse(self, file_path: Path) -> list[DocumentChunk]:
         """Parse Python file into code chunks."""
         chunks = []
         content = ""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Build AST
@@ -48,7 +47,9 @@ class PythonParser:
                     func_end = node.end_lineno
 
                     # Get function body
-                    func_source = self._extract_code_block(content, func_start, func_end)
+                    func_source = self._extract_code_block(
+                        content, func_start, func_end
+                    )
 
                     # Extract docstring
                     docstring = ast.get_docstring(node)
@@ -69,7 +70,7 @@ class PythonParser:
                             docstring=docstring,
                             function_name=func_name,
                             has_imports=self._has_imports(func_source),
-                            is_class_method=self._is_class_method(tree, node)
+                            is_class_method=self._is_class_method(tree, node),
                         ),
                     )
                     chunks.append(chunk)
@@ -80,13 +81,19 @@ class PythonParser:
                     class_end = node.end_lineno
 
                     # Get class body
-                    class_source = self._extract_code_block(content, class_start, class_end)
+                    class_source = self._extract_code_block(
+                        content, class_start, class_end
+                    )
 
                     # Extract docstring
                     docstring = ast.get_docstring(node)
 
                     # Extract methods
-                    methods = [n.name for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                    methods = [
+                        n.name
+                        for n in node.body
+                        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    ]
 
                     chunk = DocumentChunk(
                         id=f"{file_path.stem}_{class_name}_{class_start}",
@@ -104,7 +111,7 @@ class PythonParser:
                             docstring=docstring,
                             class_name=class_name,
                             methods=methods,
-                            num_methods=len(methods)
+                            num_methods=len(methods),
                         ),
                     )
                     chunks.append(chunk)
@@ -123,8 +130,8 @@ class PythonParser:
                         chunk_type="file",
                         chunk_id=file_path.stem,
                         line_start=1,
-                        line_end=len(content.split('\n')),
-                        docstring=None
+                        line_end=len(content.split("\n")),
+                        docstring=None,
                     ),
                 )
                 chunks.append(chunk)
@@ -139,7 +146,7 @@ class PythonParser:
     def extract_metadata(self, file_path: Path) -> DocumentMetadata:
         """Extract metadata from Python file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content)
@@ -148,11 +155,17 @@ class PythonParser:
             imports = []
             for node in ast.walk(tree):
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
-                    for alias in (node.names if isinstance(node, ast.Import) else node.names):
+                    for alias in (
+                        node.names if isinstance(node, ast.Import) else node.names
+                    ):
                         imports.append(alias.name)
 
             # Get function count
-            function_count = sum(1 for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
+            function_count = sum(
+                1
+                for n in ast.walk(tree)
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+            )
 
             # Get class count
             class_count = sum(1 for n in ast.walk(tree) if isinstance(n, ast.ClassDef))
@@ -163,11 +176,11 @@ class PythonParser:
                 chunk_type="file",
                 chunk_id=file_path.stem,
                 line_start=1,
-                line_end=len(content.split('\n')),
+                line_end=len(content.split("\n")),
                 function_count=function_count,
                 class_count=class_count,
                 import_count=len(imports),
-                imports=imports
+                imports=imports,
             )
         except Exception as e:
             logger.error(f"Error extracting metadata from Python file {file_path}: {e}")
@@ -177,18 +190,20 @@ class PythonParser:
                 chunk_type="file",
                 chunk_id=file_path.stem,
                 line_start=1,
-                line_end=len(content.split('\n'))
+                line_end=len(content.split("\n")),
             )
 
     def _extract_code_block(self, content: str, start_line: int, end_line: int) -> str:
         """Extract code block from content."""
-        lines = content.split('\n')
-        return '\n'.join(lines[start_line - 1:end_line])
+        lines = content.split("\n")
+        return "\n".join(lines[start_line - 1 : end_line])
 
     def _has_imports(self, code: str) -> bool:
         """Check if code has imports."""
-        return bool(re.search(r'^\s*import\s+', code, re.MULTILINE) or
-                   re.search(r'^\s*from\s+', code, re.MULTILINE))
+        return bool(
+            re.search(r"^\s*import\s+", code, re.MULTILINE)
+            or re.search(r"^\s*from\s+", code, re.MULTILINE)
+        )
 
     def _is_class_method(self, tree: ast.Module, func_node: ast.FunctionDef) -> bool:
         """Check if function is a class method."""
@@ -199,7 +214,7 @@ class PythonParser:
                         return True
         return False
 
-    def _fallback_parse(self, content: str, file_path: Path) -> List[DocumentChunk]:
+    def _fallback_parse(self, content: str, file_path: Path) -> list[DocumentChunk]:
         """
         Fallback simple text parsing.
 
@@ -208,7 +223,7 @@ class PythonParser:
             file_path: Path to the source file, needed to satisfy DocumentChunk's
                        required fields (chunk_type, source_type, source_file)
         """
-        lines = content.split('\n') if content else ['']
+        lines = content.split("\n") if content else [""]
 
         if len(lines) > 50:
             # Split into 50-line chunks
@@ -216,7 +231,7 @@ class PythonParser:
             for i in range(0, len(lines), 50):
                 chunk = DocumentChunk(
                     id=f"{file_path.stem}_fallback_{i}",
-                    content='\n'.join(lines[i:i + 50]),
+                    content="\n".join(lines[i : i + 50]),
                     chunk_type=ChunkType.CODE_BLOCK,
                     source_type=SourceType.PYTHON,
                     source_file=str(file_path),
@@ -226,7 +241,7 @@ class PythonParser:
                         chunk_type="fallback",
                         chunk_id=f"chunk_{i}",
                         line_start=i + 1,
-                        line_end=min(i + 50, len(lines))
+                        line_end=min(i + 50, len(lines)),
                     ),
                 )
                 chunks.append(chunk)
@@ -245,7 +260,7 @@ class PythonParser:
                         chunk_type="fallback",
                         chunk_id="chunk_1",
                         line_start=1,
-                        line_end=len(lines)
+                        line_end=len(lines),
                     ),
                 )
             ]

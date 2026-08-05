@@ -2,10 +2,10 @@
 Native Adapters Subsystem
 """
 
-from .base_adapter import BaseNativeAdapter
 from .audio_adapter import AudioAdapter, AudioAdapterFactory
-from .power_adapter import PowerAdapter, PowerAdapterFactory
+from .base_adapter import BaseNativeAdapter
 from .network_adapter import NetworkAdapter, NetworkAdapterFactory
+from .power_adapter import PowerAdapter, PowerAdapterFactory
 
 __all__ = [
     "BaseNativeAdapter",
@@ -16,4 +16,3 @@ __all__ = [
     "NetworkAdapter",
     "NetworkAdapterFactory",
 ]
-

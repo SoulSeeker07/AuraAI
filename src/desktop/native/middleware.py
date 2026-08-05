@@ -5,19 +5,23 @@ Middleware chain for permission, logging, metrics, verification, and context.
 New middleware becomes easy to add.
 """
 
-from typing import Callable, Optional, Any, List
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from .native_execution_context import NativeExecutionContext, ExecutionStage
 from .native_exceptions import PermissionDeniedError
-
+from .native_execution_context import (
+    ExecutionStage,
+    ExecutionStatus,
+    NativeExecutionContext,
+)
 from .native_result import NativeResult, ResultStatus
-from .native_execution_context import ExecutionStatus
 
 
 class MiddlewareType(Enum):
     """Type of middleware"""
+
     PERMISSION = "permission"
     LOGGING = "logging"
     METRICS = "metrics"
@@ -29,6 +33,7 @@ class MiddlewareType(Enum):
 
 class ExecutionResult(Enum):
     """Result of middleware execution"""
+
     CONTINUE = "continue"
     SKIP = "skip"
     HALT = "halt"  # Stop execution
@@ -42,10 +47,11 @@ class MiddlewareResult:
 
     Contains whether to continue execution and any messages.
     """
+
     action: ExecutionResult = ExecutionResult.CONTINUE
-    message: Optional[str] = None
-    error: Optional[Exception] = None
-    context_update: Optional[dict] = None
+    message: str | None = None
+    error: Exception | None = None
+    context_update: dict | None = None
 
 
 class NativeMiddleware:
@@ -108,7 +114,7 @@ class PermissionMiddleware(NativeMiddleware):
     Checks if permission is granted before allowing execution.
     """
 
-    def __init__(self, permission_manager: Optional[Any] = None):
+    def __init__(self, permission_manager: Any | None = None):
         """
         Initialize permission middleware.
 
@@ -145,9 +151,9 @@ class PermissionMiddleware(NativeMiddleware):
             action=ExecutionResult.ABORT,
             error=PermissionDeniedError(
                 f"Permission denied: {context.permission.value}",
-                permission=context.permission
+                permission=context.permission,
             ),
-            message=f"Permission '{context.permission.value}' denied"
+            message=f"Permission '{context.permission.value}' denied",
         )
 
 
@@ -158,7 +164,7 @@ class LoggingMiddleware(NativeMiddleware):
     Logs execution stages and important events.
     """
 
-    def __init__(self, log_function: Optional[Callable] = None):
+    def __init__(self, log_function: Callable | None = None):
         """
         Initialize logging middleware.
 
@@ -238,7 +244,7 @@ class ContextMiddleware(NativeMiddleware):
 
         # If the result contains window info, update context
         if context.result and context.result.data:
-            if hasattr(context.result.data, 'title'):
+            if hasattr(context.result.data, "title"):
                 # Window info
                 window = context.result.data
                 context.desktop_context.update_windows([window])
@@ -267,12 +273,19 @@ class DiagnosticsMiddleware(NativeMiddleware):
         Returns:
             MiddlewareResult
         """
-        if context.stage == ExecutionStage.COMPLETE or context.stage == ExecutionStatus.FAILED:
+        if (
+            context.stage == ExecutionStage.COMPLETE
+            or context.stage == ExecutionStatus.FAILED
+        ):
             diagnostics = context.to_diagnostics()
             self.log(f"[Diagnostics] Capability: {diagnostics['capability']}")
-            self.log(f"[Diagnostics] Duration: {diagnostics['timing']['duration_ms']:.2f}ms")
+            self.log(
+                f"[Diagnostics] Duration: {diagnostics['timing']['duration_ms']:.2f}ms"
+            )
             self.log(f"[Diagnostics] Status: {diagnostics['status']}")
-            self.log(f"[Diagnostics] Verification: {diagnostics['verification']['passed']}")
+            self.log(
+                f"[Diagnostics] Verification: {diagnostics['verification']['passed']}"
+            )
             self.log(f"[Diagnostics] Events: {diagnostics['events']}")
 
         return MiddlewareResult(action=ExecutionResult.CONTINUE)
@@ -286,7 +299,7 @@ class NativePipeline:
     then verification.
     """
 
-    def __init__(self, middlewares: Optional[List[NativeMiddleware]] = None):
+    def __init__(self, middlewares: list[NativeMiddleware] | None = None):
         """
         Initialize pipeline.
 
@@ -296,7 +309,7 @@ class NativePipeline:
         self.middlewares = middlewares or []
         self.default_middlewares = self._create_default_middlewares()
 
-    def _create_default_middlewares(self) -> List[NativeMiddleware]:
+    def _create_default_middlewares(self) -> list[NativeMiddleware]:
         """Create default middleware chain"""
         return [
             LoggingMiddleware(),
@@ -318,7 +331,7 @@ class NativePipeline:
     def execute(
         self,
         context: NativeExecutionContext,
-        execution_callback: Callable[[NativeExecutionContext], Any]
+        execution_callback: Callable[[NativeExecutionContext], Any],
     ) -> NativeResult:
         """
         Execute the pipeline.
@@ -341,7 +354,10 @@ class NativePipeline:
                     result = middleware.process(context)
                     if result.action in [ExecutionResult.ABORT, ExecutionResult.HALT]:
                         # Middleware aborted execution
-                        return self._create_failure_result(context, result.error or Exception("Middleware halted execution"))
+                        return self._create_failure_result(
+                            context,
+                            result.error or Exception("Middleware halted execution"),
+                        )
 
             # Execute the capability
             context.set_stage(ExecutionStage.EXECUTE)
@@ -349,14 +365,19 @@ class NativePipeline:
 
             # Check if execution was aborted
             if context.aborted:
-                return self._create_failure_result(context, Exception(context.abort_reason or "Execution aborted"))
+                return self._create_failure_result(
+                    context, Exception(context.abort_reason or "Execution aborted")
+                )
 
             # Execute post-execution middleware
             for middleware in self.middlewares:
                 if middleware.should_execute(context):
                     result = middleware.process(context)
                     if result.action in [ExecutionResult.ABORT, ExecutionResult.HALT]:
-                        return self._create_failure_result(context, result.error or Exception("Middleware halted execution"))
+                        return self._create_failure_result(
+                            context,
+                            result.error or Exception("Middleware halted execution"),
+                        )
 
             # Complete timing
             context.complete_metrics()
@@ -366,7 +387,9 @@ class NativePipeline:
             if context.result:
                 return context.result
             else:
-                return self._create_failure_result(context, Exception("No result returned"))
+                return self._create_failure_result(
+                    context, Exception("No result returned")
+                )
 
         except Exception as e:
             # Handle exceptions
@@ -375,7 +398,9 @@ class NativePipeline:
             context.set_stage(ExecutionStage.COMPLETE)
             return self._create_failure_result(context, e)
 
-    def _create_failure_result(self, context: NativeExecutionContext, error: Exception) -> NativeResult:
+    def _create_failure_result(
+        self, context: NativeExecutionContext, error: Exception
+    ) -> NativeResult:
         """
         Create a failure result.
 
@@ -395,7 +420,7 @@ class NativePipeline:
                 capability=context.capability,
                 manager=context.manager_name,
                 action=context.action_name,
-                undo_available=False
+                undo_available=False,
             )
         else:
             return NativeResult(
@@ -404,7 +429,7 @@ class NativePipeline:
                 capability=context.capability,
                 manager=context.manager_name,
                 action=context.action_name,
-                undo_available=False
+                undo_available=False,
             )
 
     def cleanup(self, context: NativeExecutionContext) -> None:

@@ -4,19 +4,18 @@ Trigger Manager
 Manages workflow triggers: manual, scheduled, event, workspace, voice, plugin.
 """
 
-
-import logging
-from typing import Optional, Dict, Any, List, Callable, TYPE_CHECKING
-from datetime import datetime, timedelta
-import threading
 import json
+import logging
 import os
-
-from .models import WorkflowTriggerType
+import threading
+import time
+from collections.abc import Callable
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
 # Avoid circular import - use TYPE_CHECKING for type hints only
 if TYPE_CHECKING:
-    from .workflow_engine import WorkflowEngine
+    pass
 
 
 logger = logging.getLogger(__name__)
@@ -28,9 +27,7 @@ class TriggerManager:
     """
 
     def __init__(
-        self,
-        on_trigger_fire: Callable[[str, Dict[str, Any]], None],
-        agent_runtime=None
+        self, on_trigger_fire: Callable[[str, dict[str, Any]], None], agent_runtime=None
     ):
         """
         Initialize trigger manager.
@@ -43,23 +40,23 @@ class TriggerManager:
         self.agent_runtime = agent_runtime
 
         # Schedules: workflow_id -> (schedule, last_run)
-        self.schedules: Dict[str, Dict[str, Any]] = {}
+        self.schedules: dict[str, dict[str, Any]] = {}
 
         # Event handlers: event_name -> [workflow_ids]
-        self.event_handlers: Dict[str, List[str]] = {}
+        self.event_handlers: dict[str, list[str]] = {}
 
         # Workspace watchers: [workflow_ids]
-        self.workspace_watchers: List[str] = []
+        self.workspace_watchers: list[str] = []
 
         # Voice trigger listener (placeholder)
         self.voice_listener_active = False
 
         # Plugin triggers (placeholder)
-        self.plugin_triggers: Dict[str, List[str]] = {}  # plugin_id -> [workflow_ids]
+        self.plugin_triggers: dict[str, list[str]] = {}  # plugin_id -> [workflow_ids]
 
         # Scheduler thread
         self.scheduler_running = False
-        self.scheduler_thread: Optional[threading.Thread] = None
+        self.scheduler_thread: threading.Thread | None = None
 
         # Load saved schedules
         self._load_schedules()
@@ -67,10 +64,7 @@ class TriggerManager:
         logger.info("Trigger Manager initialized")
 
     def add_schedule(
-        self,
-        workflow_id: str,
-        schedule: str,
-        timezone: str = "UTC"
+        self, workflow_id: str, schedule: str, timezone: str = "UTC"
     ) -> bool:
         """
         Add scheduled trigger for workflow.
@@ -85,10 +79,10 @@ class TriggerManager:
         """
         if workflow_id not in self.schedules:
             self.schedules[workflow_id] = {
-                'schedule': schedule,
-                'timezone': timezone,
-                'last_run': None,
-                'next_run': self._calculate_next_run(schedule, timezone)
+                "schedule": schedule,
+                "timezone": timezone,
+                "last_run": None,
+                "next_run": self._calculate_next_run(schedule, timezone),
             }
             logger.info(f"Added schedule for workflow {workflow_id[:8]}: {schedule}")
             return True
@@ -127,7 +121,9 @@ class TriggerManager:
         if workflow_id not in self.event_handlers[event_name]:
             self.event_handlers[event_name].append(workflow_id)
 
-        logger.info(f"Added event handler for {event_name} in workflow {workflow_id[:8]}")
+        logger.info(
+            f"Added event handler for {event_name} in workflow {workflow_id[:8]}"
+        )
         return True
 
     def remove_event_handler(self, event_name: str, workflow_id: str) -> bool:
@@ -141,13 +137,18 @@ class TriggerManager:
         Returns:
             Success
         """
-        if event_name in self.event_handlers and workflow_id in self.event_handlers[event_name]:
+        if (
+            event_name in self.event_handlers
+            and workflow_id in self.event_handlers[event_name]
+        ):
             self.event_handlers[event_name].remove(workflow_id)
 
             if not self.event_handlers[event_name]:
                 del self.event_handlers[event_name]
 
-            logger.info(f"Removed event handler for {event_name} in workflow {workflow_id[:8]}")
+            logger.info(
+                f"Removed event handler for {event_name} in workflow {workflow_id[:8]}"
+            )
             return True
         return False
 
@@ -190,7 +191,9 @@ class TriggerManager:
         """Start trigger manager."""
         if not self.scheduler_running:
             self.scheduler_running = True
-            self.scheduler_thread = threading.Thread(target=self._scheduler_loop, daemon=True)
+            self.scheduler_thread = threading.Thread(
+                target=self._scheduler_loop, daemon=True
+            )
             self.scheduler_thread.start()
 
             # Start workspace watcher
@@ -210,7 +213,7 @@ class TriggerManager:
 
         logger.info("Trigger Manager stopped")
 
-    def fire_event(self, event_name: str, data: Optional[Dict[str, Any]] = None):
+    def fire_event(self, event_name: str, data: dict[str, Any] | None = None):
         """
         Fire an event.
 
@@ -241,10 +244,10 @@ class TriggerManager:
         """
         if workflow_id not in self.schedules:
             self.schedules[workflow_id] = {
-                'schedule': 'voice',
-                'timezone': 'user',
-                'last_run': None,
-                'next_run': None
+                "schedule": "voice",
+                "timezone": "user",
+                "last_run": None,
+                "next_run": None,
             }
 
         self.voice_listener_active = True
@@ -284,7 +287,9 @@ class TriggerManager:
         if workflow_id not in self.plugin_triggers[plugin_id]:
             self.plugin_triggers[plugin_id].append(workflow_id)
 
-        logger.info(f"Enabled plugin trigger {plugin_id} for workflow {workflow_id[:8]}")
+        logger.info(
+            f"Enabled plugin trigger {plugin_id} for workflow {workflow_id[:8]}"
+        )
         return True
 
     def disable_plugin_trigger(self, plugin_id: str, workflow_id: str) -> bool:
@@ -298,13 +303,18 @@ class TriggerManager:
         Returns:
             Success
         """
-        if plugin_id in self.plugin_triggers and workflow_id in self.plugin_triggers[plugin_id]:
+        if (
+            plugin_id in self.plugin_triggers
+            and workflow_id in self.plugin_triggers[plugin_id]
+        ):
             self.plugin_triggers[plugin_id].remove(workflow_id)
 
             if not self.plugin_triggers[plugin_id]:
                 del self.plugin_triggers[plugin_id]
 
-            logger.info(f"Disabled plugin trigger {plugin_id} for workflow {workflow_id[:8]}")
+            logger.info(
+                f"Disabled plugin trigger {plugin_id} for workflow {workflow_id[:8]}"
+            )
             return True
         return False
 
@@ -316,22 +326,21 @@ class TriggerManager:
             now = datetime.now()
 
             for workflow_id, schedule_data in self.schedules.items():
-                schedule = schedule_data['schedule']
+                schedule = schedule_data["schedule"]
 
                 # Check if it's time to run
                 if self._is_time_to_run(schedule, now, schedule_data):
                     # Check if enabled
-                    if not schedule_data.get('enabled', True):
+                    if not schedule_data.get("enabled", True):
                         continue
 
                     # Update last run
-                    schedule_data['last_run'] = now.isoformat()
+                    schedule_data["last_run"] = now.isoformat()
 
                     # Fire trigger
-                    self._on_trigger_fire(workflow_id, {
-                        'trigger': 'scheduled',
-                        'schedule': schedule
-                    })
+                    self._on_trigger_fire(
+                        workflow_id, {"trigger": "scheduled", "schedule": schedule}
+                    )
 
                     # Save schedule
                     self._save_schedules()
@@ -341,10 +350,16 @@ class TriggerManager:
 
     def _start_workspace_watcher(self):
         """Start workspace watcher thread."""
-        if hasattr(self, '_workspace_watcher_thread') and self._workspace_watcher_thread and self._workspace_watcher_thread.is_alive():
+        if (
+            hasattr(self, "_workspace_watcher_thread")
+            and self._workspace_watcher_thread
+            and self._workspace_watcher_thread.is_alive()
+        ):
             return
 
-        self._workspace_watcher_thread = threading.Thread(target=self._workspace_watcher_loop, daemon=True)
+        self._workspace_watcher_thread = threading.Thread(
+            target=self._workspace_watcher_loop, daemon=True
+        )
         self._workspace_watcher_thread.start()
         logger.info("Workspace watcher started")
 
@@ -360,7 +375,9 @@ class TriggerManager:
             try:
                 # Watch each workflow's workspace
                 for workflow_id in self.workspace_watchers:
-                    workspace = self.schedules.get(workflow_id, {}).get('workspace_path', '')
+                    workspace = self.schedules.get(workflow_id, {}).get(
+                        "workspace_path", ""
+                    )
 
                     if workspace and os.path.exists(workspace):
                         for dirpath, dirnames, filenames in os.walk(workspace):
@@ -376,11 +393,14 @@ class TriggerManager:
                                     # File was modified
                                     logger.info(f"File modified: {filepath}")
 
-                                    self._on_trigger_fire(workflow_id, {
-                                        'trigger': 'workspace',
-                                        'event': 'file_modified',
-                                        'filepath': filepath
-                                    })
+                                    self._on_trigger_fire(
+                                        workflow_id,
+                                        {
+                                            "trigger": "workspace",
+                                            "event": "file_modified",
+                                            "filepath": filepath,
+                                        },
+                                    )
 
                                     last_modified[key] = mtime
 
@@ -393,7 +413,7 @@ class TriggerManager:
         """Start voice listener (placeholder)."""
         logger.info("Voice listener started")
 
-    def _on_trigger_fire(self, workflow_id: str, trigger_data: Dict[str, Any]):
+    def _on_trigger_fire(self, workflow_id: str, trigger_data: dict[str, Any]):
         """
         Callback when trigger fires.
 
@@ -404,7 +424,9 @@ class TriggerManager:
         if self.on_trigger_fire:
             self.on_trigger_fire(workflow_id, trigger_data)
 
-    def _is_time_to_run(self, schedule: str, now: datetime, schedule_data: Dict[str, Any]) -> bool:
+    def _is_time_to_run(
+        self, schedule: str, now: datetime, schedule_data: dict[str, Any]
+    ) -> bool:
         """
         Check if it's time to run.
 
@@ -416,15 +438,15 @@ class TriggerManager:
         Returns:
             True if time to run
         """
-        last_run = schedule_data.get('last_run')
+        last_run = schedule_data.get("last_run")
 
         if not last_run:
             return True
 
         # Simple check for daily schedules
-        if 'daily' in schedule:
+        if "daily" in schedule:
             return now.time() >= self._parse_time(schedule)
-        elif 'hourly' in schedule:
+        elif "hourly" in schedule:
             return now.minute == 0
 
         return False
@@ -442,10 +464,12 @@ class TriggerManager:
         """
         now = datetime.now()
 
-        if 'daily' in schedule:
+        if "daily" in schedule:
             time = self._parse_time(schedule)
-            return now.replace(hour=time.hour, minute=time.minute, second=0, microsecond=0)
-        elif 'hourly' in schedule:
+            return now.replace(
+                hour=time.hour, minute=time.minute, second=0, microsecond=0
+            )
+        elif "hourly" in schedule:
             return now.replace(minute=0, second=0, microsecond=0)
 
         return now
@@ -461,7 +485,7 @@ class TriggerManager:
             Time datetime
         """
         # Simple format: "HH:MM"
-        parts = schedule.split(':')
+        parts = schedule.split(":")
         hour = int(parts[0])
         minute = int(parts[1])
 
@@ -470,17 +494,19 @@ class TriggerManager:
     def _save_schedules(self):
         """Save schedules to file."""
         try:
-            schedule_file = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'schedules.json')
+            schedule_file = os.path.join(
+                os.path.dirname(__file__), "..", "..", "data", "schedules.json"
+            )
             os.makedirs(os.path.dirname(schedule_file), exist_ok=True)
 
             data = {
-                'schedules': self.schedules,
-                'event_handlers': self.event_handlers,
-                'workspace_watchers': self.workspace_watchers,
-                'plugin_triggers': self.plugin_triggers
+                "schedules": self.schedules,
+                "event_handlers": self.event_handlers,
+                "workspace_watchers": self.workspace_watchers,
+                "plugin_triggers": self.plugin_triggers,
             }
 
-            with open(schedule_file, 'w') as f:
+            with open(schedule_file, "w") as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save schedules: {e}")
@@ -488,22 +514,24 @@ class TriggerManager:
     def _load_schedules(self):
         """Load schedules from file."""
         try:
-            schedule_file = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'schedules.json')
+            schedule_file = os.path.join(
+                os.path.dirname(__file__), "..", "..", "data", "schedules.json"
+            )
 
             if os.path.exists(schedule_file):
-                with open(schedule_file, 'r') as f:
+                with open(schedule_file) as f:
                     data = json.load(f)
 
-                self.schedules = data.get('schedules', {})
-                self.event_handlers = data.get('event_handlers', {})
-                self.workspace_watchers = data.get('workspace_watchers', [])
-                self.plugin_triggers = data.get('plugin_triggers', {})
+                self.schedules = data.get("schedules", {})
+                self.event_handlers = data.get("event_handlers", {})
+                self.workspace_watchers = data.get("workspace_watchers", [])
+                self.plugin_triggers = data.get("plugin_triggers", {})
 
                 logger.info(f"Loaded {len(self.schedules)} schedules from file")
         except Exception as e:
             logger.error(f"Failed to load schedules: {e}")
 
-    def get_schedules(self) -> Dict[str, Dict[str, Any]]:
+    def get_schedules(self) -> dict[str, dict[str, Any]]:
         """
         Get all schedules.
 

@@ -10,20 +10,30 @@ Validates:
 6. DesktopExecutionEngine integration using NativeManagerRegistry.
 """
 
-import sys
-import os
 import inspect
+import os
+import sys
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-from src.desktop.native.managers.base_manager import BaseNativeManager, HealthStatus, HealthCheckResult
+from src.desktop.native.capability_registry import CapabilityRegistry
+from src.desktop.native.capability_validator import (
+    CapabilityValidationReport,
+    CapabilityValidator,
+)
+from src.desktop.native.desktop_execution_engine import (
+    DesktopExecutionEngine,
+    ExecutionConfig,
+)
+from src.desktop.native.managers.base_manager import (
+    BaseNativeManager,
+    HealthCheckResult,
+    HealthStatus,
+)
+from src.desktop.native.managers.clipboard_manager import ClipboardManager
 from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
 from src.desktop.native.managers.window_manager import WindowManager
-from src.desktop.native.managers.clipboard_manager import ClipboardManager
-from src.desktop.native.capability_validator import CapabilityValidator, CapabilityValidationReport
-from src.desktop.native.capability_registry import CapabilityRegistry
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine, ExecutionConfig
 
 
 def setup_function():
@@ -117,7 +127,10 @@ def test_manager_health_aggregation():
     health_summary = registry.health()
     assert "window" in health_summary
     assert "clipboard" in health_summary
-    assert health_summary["window"]["status"] in [HealthStatus.HEALTHY.value, HealthStatus.DEGRADED.value]
+    assert health_summary["window"]["status"] in [
+        HealthStatus.HEALTHY.value,
+        HealthStatus.DEGRADED.value,
+    ]
 
     diag = registry.diagnostics()
     assert diag["total_managers"] >= 2
@@ -142,9 +155,13 @@ def test_capability_validation_pass():
     assert isinstance(report, CapabilityValidationReport)
     assert report.total_capabilities > 0
     assert report.validated_capabilities > 0
-    assert report.valid is True, f"Capability validation failed with errors: {report.errors}"
+    assert (
+        report.valid is True
+    ), f"Capability validation failed with errors: {report.errors}"
 
-    print(f"[OK] Pre-flight capability validation passed ({report.validated_capabilities}/{report.total_capabilities} capabilities validated)")
+    print(
+        f"[OK] Pre-flight capability validation passed ({report.validated_capabilities}/{report.total_capabilities} capabilities validated)"
+    )
 
 
 def test_execution_engine_registry_integration():
@@ -155,12 +172,16 @@ def test_execution_engine_registry_integration():
     engine = DesktopExecutionEngine(manager_registry=manager_registry)
 
     # Execute window capability
-    result_window = engine.execute(goal="list all open windows", capability="list_windows")
+    result_window = engine.execute(
+        goal="list all open windows", capability="list_windows"
+    )
     assert result_window.success is True
     assert result_window.manager == "window"
 
     # Execute clipboard capability
-    result_clipboard = engine.execute(goal="write hello to clipboard", capability="clipboard.write_text", text="hello")
+    result_clipboard = engine.execute(
+        goal="write hello to clipboard", capability="clipboard.write_text", text="hello"
+    )
     assert result_clipboard.success is True
     assert result_clipboard.manager == "clipboard"
 
@@ -178,9 +199,9 @@ def test_boot_report():
     assert "Desktop Ready" in report
 
 
-
 def test_custom_manager_lifecycle():
     """Test full lifecycle of a custom mock manager."""
+
     class CustomTestManager(BaseNativeManager):
         NAME = "custom_test"
         VERSION = "1.0"

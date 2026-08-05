@@ -5,11 +5,11 @@ Builds structured context for LLM from knowledge retrieval results.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any
 
-from .models import RetrievalResult, RetrievalMode, SourceType
 from .citation_engine import CitationEngine
+from .models import RetrievalMode, RetrievalResult, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +25,11 @@ class KnowledgeContext:
 
     def build_context(
         self,
-        results: List[RetrievalResult],
+        results: list[RetrievalResult],
         mode: RetrievalMode = RetrievalMode.HYBRID,
         include_citations: bool = True,
-        include_summary: bool = True
-    ) -> Dict[str, Any]:
+        include_summary: bool = True,
+    ) -> dict[str, Any]:
         """
         Build LLM context from retrieval results.
 
@@ -43,52 +43,56 @@ class KnowledgeContext:
             Dictionary with structured context
         """
         context = {
-            'mode': mode.value,
-            'timestamp': datetime.now().isoformat(),
-            'total_results': len(results),
-            'results': []
+            "mode": mode.value,
+            "timestamp": datetime.now().isoformat(),
+            "total_results": len(results),
+            "results": [],
         }
 
         # Build summary
         if include_summary:
-            context['summary'] = self._build_summary(results)
+            context["summary"] = self._build_summary(results)
 
         # Build results with citations
         if include_citations:
             for result in results:
                 result_dict = {
-                    'id': result.chunk.id,
-                    'title': result.chunk.title,
-                    'content': result.chunk.content[:1000] + "..." if len(result.chunk.content) > 1000 else result.chunk.content,
-                    'summary': result.chunk.summary,
-                    'score': result.score,
-                    'rank': result.rank,
-                    'source': {
-                        'file': result.chunk.source_file,
-                        'type': result.chunk.source_type.value,
-                        'project': result.chunk.project,
-                        'page': result.chunk.page,
-                        'line': result.chunk.line
-                    }
+                    "id": result.chunk.id,
+                    "title": result.chunk.title,
+                    "content": (
+                        result.chunk.content[:1000] + "..."
+                        if len(result.chunk.content) > 1000
+                        else result.chunk.content
+                    ),
+                    "summary": result.chunk.summary,
+                    "score": result.score,
+                    "rank": result.rank,
+                    "source": {
+                        "file": result.chunk.source_file,
+                        "type": result.chunk.source_type.value,
+                        "project": result.chunk.project,
+                        "page": result.chunk.page,
+                        "line": result.chunk.line,
+                    },
                 }
 
                 if result.citation:
-                    result_dict['citation'] = self._format_citation(result.citation)
+                    result_dict["citation"] = self._format_citation(result.citation)
 
-                context['results'].append(result_dict)
+                context["results"].append(result_dict)
 
             # Add citations
-            context['citations'] = self._format_citations(results)
+            context["citations"] = self._format_citations(results)
 
         return context
 
     def build_conversation_context(
         self,
         query: str,
-        results: List[RetrievalResult],
-        conversation_history: List[str],
-        top_k: int = 5
-    ) -> Dict[str, Any]:
+        results: list[RetrievalResult],
+        conversation_history: list[str],
+        top_k: int = 5,
+    ) -> dict[str, Any]:
         """
         Build context for conversation.
 
@@ -106,26 +110,22 @@ class KnowledgeContext:
             results,
             mode=RetrievalMode.HYBRID,
             include_citations=True,
-            include_summary=True
+            include_summary=True,
         )
 
         # Add conversation-specific elements
-        context['query'] = query
-        context['conversation_length'] = len(conversation_history)
-        context['recent_conversation'] = conversation_history[-3:]
+        context["query"] = query
+        context["conversation_length"] = len(conversation_history)
+        context["recent_conversation"] = conversation_history[-3:]
 
         # Add reasoning
-        context['reasoning'] = self._build_reasoning(query, results)
+        context["reasoning"] = self._build_reasoning(query, results)
 
         return context
 
     def build_workspace_context(
-        self,
-        query: str,
-        project: str,
-        results: List[RetrievalResult],
-        top_k: int = 5
-    ) -> Dict[str, Any]:
+        self, query: str, project: str, results: list[RetrievalResult], top_k: int = 5
+    ) -> dict[str, Any]:
         """
         Build context filtered by project.
 
@@ -146,12 +146,12 @@ class KnowledgeContext:
             project_results,
             mode=RetrievalMode.HYBRID,
             include_citations=True,
-            include_summary=True
+            include_summary=True,
         )
 
-        context['query'] = query
-        context['project'] = project
-        context['filtered_results'] = len(project_results)
+        context["query"] = query
+        context["project"] = project
+        context["filtered_results"] = len(project_results)
 
         return context
 
@@ -159,9 +159,9 @@ class KnowledgeContext:
         self,
         query: str,
         context_type: str,
-        results: List[RetrievalResult],
-        top_k: int = 5
-    ) -> Dict[str, Any]:
+        results: list[RetrievalResult],
+        top_k: int = 5,
+    ) -> dict[str, Any]:
         """
         Build specialized context (code, documentation, etc.).
 
@@ -179,31 +179,29 @@ class KnowledgeContext:
             results,
             mode=RetrievalMode.HYBRID,
             include_citations=True,
-            include_summary=True
+            include_summary=True,
         )
 
-        context['query'] = query
-        context['context_type'] = context_type
+        context["query"] = query
+        context["context_type"] = context_type
 
         # Filter by source type based on context type
-        if context_type == 'CODE':
-            context['source_type'] = SourceType.PYTHON.value
-        elif context_type == 'DOCUMENTATION':
-            context['source_type'] = SourceType.MARKDOWN.value
-        elif context_type == 'NOTICES':
-            context['source_type'] = SourceType.PDF.value
-        elif context_type == 'WELCOME':
-            context['source_type'] = SourceType.MARKDOWN.value
-        elif context_type == 'ERROR':
-            context['source_type'] = SourceType.MARKDOWN.value
+        if context_type == "CODE":
+            context["source_type"] = SourceType.PYTHON.value
+        elif context_type == "DOCUMENTATION":
+            context["source_type"] = SourceType.MARKDOWN.value
+        elif context_type == "NOTICES":
+            context["source_type"] = SourceType.PDF.value
+        elif context_type == "WELCOME":
+            context["source_type"] = SourceType.MARKDOWN.value
+        elif context_type == "ERROR":
+            context["source_type"] = SourceType.MARKDOWN.value
 
         return context
 
     def build_chunk_context(
-        self,
-        results: List[RetrievalResult],
-        top_k: int = 10
-    ) -> Dict[str, Any]:
+        self, results: list[RetrievalResult], top_k: int = 10
+    ) -> dict[str, Any]:
         """
         Build context focused on content chunks.
 
@@ -215,35 +213,35 @@ class KnowledgeContext:
             Dictionary with chunk-focused context
         """
         context = {
-            'mode': 'hybrid',
-            'timestamp': datetime.now().isoformat(),
-            'total_results': len(results),
-            'chunks': []
+            "mode": "hybrid",
+            "timestamp": datetime.now().isoformat(),
+            "total_results": len(results),
+            "chunks": [],
         }
 
         for result in results[:top_k]:
             chunk_context = {
-                'id': result.chunk.id,
-                'title': result.chunk.title,
-                'content': result.chunk.content,
-                'summary': result.chunk.summary,
-                'score': result.score,
-                'rank': result.rank,
-                'source': {
-                    'file': result.chunk.source_file,
-                    'type': result.chunk.source_type.value,
-                    'project': result.chunk.project,
-                    'page': result.chunk.page,
-                    'line': result.chunk.line
+                "id": result.chunk.id,
+                "title": result.chunk.title,
+                "content": result.chunk.content,
+                "summary": result.chunk.summary,
+                "score": result.score,
+                "rank": result.rank,
+                "source": {
+                    "file": result.chunk.source_file,
+                    "type": result.chunk.source_type.value,
+                    "project": result.chunk.project,
+                    "page": result.chunk.page,
+                    "line": result.chunk.line,
                 },
-                'tags': result.chunk.tags
+                "tags": result.chunk.tags,
             }
 
-            context['chunks'].append(chunk_context)
+            context["chunks"].append(chunk_context)
 
         return context
 
-    def _build_summary(self, results: List[RetrievalResult]) -> str:
+    def _build_summary(self, results: list[RetrievalResult]) -> str:
         """
         Build a text summary of results.
 
@@ -279,7 +277,7 @@ class KnowledgeContext:
 
         return "; ".join(summary_parts)
 
-    def _build_reasoning(self, query: str, results: List[RetrievalResult]) -> str:
+    def _build_reasoning(self, query: str, results: list[RetrievalResult]) -> str:
         """
         Build reasoning about retrieval.
 
@@ -331,7 +329,7 @@ class KnowledgeContext:
         """
         return self.citation_engine.format_citation_simple(citation)
 
-    def _format_citations(self, results: List[RetrievalResult]) -> List[str]:
+    def _format_citations(self, results: list[RetrievalResult]) -> list[str]:
         """
         Format all citations.
 
@@ -350,9 +348,9 @@ class KnowledgeContext:
 
     def format_for_llm(
         self,
-        results: List[RetrievalResult],
+        results: list[RetrievalResult],
         include_citations: bool = True,
-        format: str = "structured"
+        format: str = "structured",
     ) -> str:
         """
         Format results for LLM input.
@@ -375,9 +373,7 @@ class KnowledgeContext:
             return self._format_structured(results, include_citations)
 
     def _format_structured(
-        self,
-        results: List[RetrievalResult],
-        include_citations: bool
+        self, results: list[RetrievalResult], include_citations: bool
     ) -> str:
         """
         Format results in structured format.
@@ -404,9 +400,7 @@ class KnowledgeContext:
         return output
 
     def _format_conversational(
-        self,
-        results: List[RetrievalResult],
-        include_citations: bool
+        self, results: list[RetrievalResult], include_citations: bool
     ) -> str:
         """
         Format results in conversational format.
@@ -433,7 +427,7 @@ class KnowledgeContext:
 
         return "\n".join(output)
 
-    def _format_simple(self, results: List[RetrievalResult]) -> str:
+    def _format_simple(self, results: list[RetrievalResult]) -> str:
         """
         Format results in simple format.
 
@@ -448,7 +442,7 @@ class KnowledgeContext:
 
         return "\n".join([r.chunk.content for r in results])
 
-    def get_context_stats(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def get_context_stats(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         Get statistics about the built context.
 
@@ -459,14 +453,14 @@ class KnowledgeContext:
             Statistics dictionary
         """
         return {
-            'total_results': context.get('total_results', 0),
-            'total_chunks': len(context.get('results', [])),
-            'total_citations': len(context.get('citations', [])),
-            'mode': context.get('mode'),
-            'timestamp': context.get('timestamp')
+            "total_results": context.get("total_results", 0),
+            "total_chunks": len(context.get("results", [])),
+            "total_citations": len(context.get("citations", [])),
+            "mode": context.get("mode"),
+            "timestamp": context.get("timestamp"),
         }
 
-    def extract_sources(self, context: Dict[str, Any]) -> List[str]:
+    def extract_sources(self, context: dict[str, Any]) -> list[str]:
         """
         Extract unique sources from context.
 
@@ -478,17 +472,15 @@ class KnowledgeContext:
         """
         sources = set()
 
-        for result in context.get('results', []):
-            source = result.get('source', {})
-            sources.add(source.get('file'))
+        for result in context.get("results", []):
+            source = result.get("source", {})
+            sources.add(source.get("file"))
 
         return sorted(list(sources))
 
     def filter_by_threshold(
-        self,
-        results: List[RetrievalResult],
-        min_score: float = 0.5
-    ) -> List[RetrievalResult]:
+        self, results: list[RetrievalResult], min_score: float = 0.5
+    ) -> list[RetrievalResult]:
         """
         Filter results below score threshold.
 
@@ -501,6 +493,8 @@ class KnowledgeContext:
         """
         filtered = [r for r in results if r.score >= min_score]
 
-        logger.info(f"Filtered {len(results) - len(filtered)} results below score {min_score}")
+        logger.info(
+            f"Filtered {len(results) - len(filtered)} results below score {min_score}"
+        )
 
         return filtered

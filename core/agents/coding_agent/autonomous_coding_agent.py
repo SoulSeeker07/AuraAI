@@ -5,13 +5,11 @@ An agent that can autonomously generate, save, execute, and debug Python code.
 Works like Codex - takes a requirement and executes it automatically without user prompts.
 """
 
-import sys
+import asyncio
 import re
 import time
-import asyncio
 from pathlib import Path
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Any
 
 from core import logger
 from core.tools.code_execution.code_execution_tool import CodeExecutionTool
@@ -30,12 +28,7 @@ class AutonomousCodingAgent:
         - Report results
     """
 
-    def __init__(
-        self,
-        aura_core,
-        max_attempts: int = 3,
-        timeout: int = 60
-    ):
+    def __init__(self, aura_core, max_attempts: int = 3, timeout: int = 60):
         """
         Initialize autonomous coding agent.
 
@@ -49,7 +42,7 @@ class AutonomousCodingAgent:
         self.timeout = timeout
 
         # Get workspace root from aura_core and convert to Path if needed
-        workspace = getattr(aura_core, 'workspace', None)
+        workspace = getattr(aura_core, "workspace", None)
         if workspace is None:
             workspace = Path.cwd()
         elif isinstance(workspace, str):
@@ -62,7 +55,7 @@ class AutonomousCodingAgent:
 
         logger.info("Autonomous Coding Agent initialized")
 
-    async def execute_task(self, requirement: str) -> Dict[str, Any]:
+    async def execute_task(self, requirement: str) -> dict[str, Any]:
         """
         Execute a coding task autonomously.
 
@@ -85,46 +78,48 @@ class AutonomousCodingAgent:
         logger.info(f"Starting autonomous task: {requirement[:100]}...")
 
         result = {
-            'success': False,
-            'output': '',
-            'error': '',
-            'attempts': 0,
-            'final_code': '',
-            'filename': '',
-            'execution_time': 0.0,
-            'message': ''
+            "success": False,
+            "output": "",
+            "error": "",
+            "attempts": 0,
+            "final_code": "",
+            "filename": "",
+            "execution_time": 0.0,
+            "message": "",
         }
 
         for attempt in range(1, self.max_attempts + 1):
-            result['attempts'] = attempt
+            result["attempts"] = attempt
             logger.info(f"Attempt {attempt}/{self.max_attempts}")
 
             # Generate code from requirement
             generated_code = await self._generate_code(requirement)
 
             if not generated_code:
-                result['message'] = f"Failed to generate code (attempt {attempt})"
-                logger.error(result['message'])
+                result["message"] = f"Failed to generate code (attempt {attempt})"
+                logger.error(result["message"])
                 continue
 
-            result['final_code'] = generated_code
+            result["final_code"] = generated_code
 
             # Save and execute the code
             execution_result = await self._save_and_execute_code(generated_code)
 
-            if execution_result['success']:
+            if execution_result["success"]:
                 # Success!
-                result['success'] = True
-                result['output'] = execution_result['output']
-                result['filename'] = execution_result['filename']
-                result['execution_time'] = execution_result['execution_time']
-                result['message'] = f"Successfully executed in {attempt} attempt(s)"
+                result["success"] = True
+                result["output"] = execution_result["output"]
+                result["filename"] = execution_result["filename"]
+                result["execution_time"] = execution_result["execution_time"]
+                result["message"] = f"Successfully executed in {attempt} attempt(s)"
                 logger.info(f"Task completed successfully in {attempt} attempt(s)")
                 break
             else:
                 # Code failed - record the error regardless of whether we can retry
-                logger.warning(f"Code execution failed (attempt {attempt}): {execution_result['error']}")
-                result['error'] = execution_result['error']
+                logger.warning(
+                    f"Code execution failed (attempt {attempt}): {execution_result['error']}"
+                )
+                result["error"] = execution_result["error"]
 
                 if attempt < self.max_attempts:
                     # Ask LLM to fix the error
@@ -132,32 +127,32 @@ class AutonomousCodingAgent:
                     logger.info(f"Requesting fix (attempt {fix_attempt})...")
 
                     fixed_code = await self._fix_code(
-                        generated_code,
-                        execution_result['error'],
-                        requirement
+                        generated_code, execution_result["error"], requirement
                     )
 
                     if not fixed_code:
-                        result['message'] = f"Failed to fix code (attempt {fix_attempt})"
-                        logger.error(result['message'])
+                        result["message"] = (
+                            f"Failed to fix code (attempt {fix_attempt})"
+                        )
+                        logger.error(result["message"])
                         break
 
-                    result['final_code'] = fixed_code
-                    result['error'] = ''  # Clear error for next attempt
+                    result["final_code"] = fixed_code
+                    result["error"] = ""  # Clear error for next attempt
                 else:
                     # Out of attempts — record a real failure message instead of
                     # leaving result['message'] blank, so callers always know why
                     # the task ultimately failed.
-                    result['message'] = (
+                    result["message"] = (
                         f"Failed after {attempt} attempt(s). "
                         f"Last error: {execution_result['error']}"
                     )
-                    result['output'] = execution_result.get('output', '')
-                    logger.error(result['message'])
+                    result["output"] = execution_result.get("output", "")
+                    logger.error(result["message"])
 
         return result
 
-    async def _call_llm(self, system_prompt: str, user_message: str) -> Optional[str]:
+    async def _call_llm(self, system_prompt: str, user_message: str) -> str | None:
         """
         Call the LLM directly for code generation, bypassing ConversationEngine's
         intent classification entirely.
@@ -177,12 +172,15 @@ class AutonomousCodingAgent:
         Returns:
             Raw text response from the model, or None on failure
         """
-        if not getattr(self.aura_core, 'llm_enabled', False) or self.aura_core.groq_client is None:
+        if (
+            not getattr(self.aura_core, "llm_enabled", False)
+            or self.aura_core.groq_client is None
+        ):
             logger.error("Cannot call LLM directly: Groq client not available/enabled")
             return None
 
         try:
-            model = getattr(self.aura_core, 'groq_model', 'llama-3.3-70b-versatile')
+            model = getattr(self.aura_core, "groq_model", "llama-3.3-70b-versatile")
 
             # Run the blocking Groq SDK call in a thread so we don't block the event loop
             response = await asyncio.to_thread(
@@ -201,7 +199,7 @@ class AutonomousCodingAgent:
             logger.error(f"Direct LLM call failed: {e}", exc_info=True)
             return None
 
-    async def _generate_code(self, requirement: str) -> Optional[str]:
+    async def _generate_code(self, requirement: str) -> str | None:
         """
         Generate Python code from a requirement using LLM.
 
@@ -237,7 +235,9 @@ class AutonomousCodingAgent:
 
             user_message = f"Task: {requirement}"
             if recent_context:
-                user_message = f"Recent conversation context:\n{recent_context}\n\n{user_message}"
+                user_message = (
+                    f"Recent conversation context:\n{recent_context}\n\n{user_message}"
+                )
 
             # Get AI response directly from the model (no intent routing)
             response = await self._call_llm(system_prompt, user_message)
@@ -263,7 +263,9 @@ class AutonomousCodingAgent:
             logger.error(f"Error generating code: {e}", exc_info=True)
             return None
 
-    async def _fix_code(self, original_code: str, error: str, requirement: str) -> Optional[str]:
+    async def _fix_code(
+        self, original_code: str, error: str, requirement: str
+    ) -> str | None:
         """
         Ask LLM to fix code that failed.
 
@@ -325,7 +327,7 @@ class AutonomousCodingAgent:
             logger.error(f"Error fixing code: {e}", exc_info=True)
             return None
 
-    async def _save_and_execute_code(self, code: str) -> Dict[str, Any]:
+    async def _save_and_execute_code(self, code: str) -> dict[str, Any]:
         """
         Save code to file and execute it.
 
@@ -335,7 +337,6 @@ class AutonomousCodingAgent:
         Returns:
             Dict with execution results
         """
-        import time
 
         start_time = time.time()
 
@@ -344,16 +345,15 @@ class AutonomousCodingAgent:
 
         execution_time = time.time() - start_time
 
-        if not filename['success']:
+        if not filename["success"]:
             return filename  # Error already in the result dict
 
         # Execute the code
         return self.code_executor._execute_code(
-            self.code_executor.code_dir / filename['filename'],
-            self.timeout
+            self.code_executor.code_dir / filename["filename"], self.timeout
         )
 
-    def _extract_code_block(self, text: str) -> Optional[str]:
+    def _extract_code_block(self, text: str) -> str | None:
         """
         Extract Python code block from text.
 
@@ -367,7 +367,7 @@ class AutonomousCodingAgent:
             return None
 
         # Primary pattern: ```python ... ``` or ``` ... ```
-        code_pattern = r'```(?:python)?\s*([\s\S]*?)```'
+        code_pattern = r"```(?:python)?\s*([\s\S]*?)```"
         matches = list(re.finditer(code_pattern, text))
 
         if matches:
@@ -380,14 +380,25 @@ class AutonomousCodingAgent:
         # 'def ', 'print(' etc. and no prose-like sentence structure), just
         # use the whole response rather than failing outright.
         stripped = text.strip()
-        code_indicators = ('import ', 'def ', 'class ', 'print(', '#!/usr/bin/env python')
-        if any(stripped.startswith(ind) or f"\n{ind}" in stripped for ind in code_indicators):
-            logger.warning("No fenced code block found; falling back to raw response as code")
+        code_indicators = (
+            "import ",
+            "def ",
+            "class ",
+            "print(",
+            "#!/usr/bin/env python",
+        )
+        if any(
+            stripped.startswith(ind) or f"\n{ind}" in stripped
+            for ind in code_indicators
+        ):
+            logger.warning(
+                "No fenced code block found; falling back to raw response as code"
+            )
             return stripped
 
         return None
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get agent status.
 
@@ -395,10 +406,10 @@ class AutonomousCodingAgent:
             Status dictionary
         """
         return {
-            'agent': 'AutonomousCodingAgent',
-            'max_attempts': self.max_attempts,
-            'timeout': self.timeout,
-            'workspace_root': str(self.workspace_root),
-            'code_directory': str(self.code_executor.code_dir),
-            'initialized': self.code_executor is not None
+            "agent": "AutonomousCodingAgent",
+            "max_attempts": self.max_attempts,
+            "timeout": self.timeout,
+            "workspace_root": str(self.workspace_root),
+            "code_directory": str(self.code_executor.code_dir),
+            "initialized": self.code_executor is not None,
         }

@@ -2,12 +2,12 @@
 Display Manager
 Manages display operations.
 """
-from typing import List
+
 import logging
 
+from .native_exceptions import DisplayNotFoundError
 from .native_manager import NativeManager
 from .native_models import DisplayInfo
-from .native_exceptions import DisplayNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class DisplayManager:
         self.native_manager = native_manager
         logger.debug("DisplayManager initialized")
 
-    def list_displays(self) -> List[DisplayInfo]:
+    def list_displays(self) -> list[DisplayInfo]:
         """
         List all displays.
 
@@ -81,7 +81,7 @@ class DisplayManager:
         raise DisplayNotFoundError(
             f"Display not found with name: {name}",
             "get_display_by_name",
-            details={"name": name}
+            details={"name": name},
         )
 
     def get_primary_display_index(self) -> int:

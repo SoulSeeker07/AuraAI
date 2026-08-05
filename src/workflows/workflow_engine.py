@@ -5,18 +5,16 @@ Main orchestrator for the Workflow Engine.
 Orchestrates workflows, triggers, and execution.
 """
 
-
 import logging
-from typing import Optional, Dict, Any, List, Callable
-from datetime import datetime, timedelta
 import threading
+from collections.abc import Callable
+from typing import Any, Optional
 
-from .workflow_manager import WorkflowManager
+from .models import Workflow, WorkflowPriority, WorkflowStatus, WorkflowTriggerType
 from .trigger_manager import TriggerManager
 from .workflow_executor import WorkflowExecutor
 from .workflow_history import WorkflowHistory
-from .models import WorkflowTriggerType, WorkflowPriority
-
+from .workflow_manager import WorkflowManager
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +29,17 @@ class WorkflowEngine:
 
     def __init__(
         self,
-        on_workflow_start: Optional[Callable[['WorkflowEngine', 'Workflow'], None]] = None,
-        on_workflow_complete: Optional[Callable[['WorkflowEngine', 'Workflow', bool], None]] = None,
-        on_workflow_fail: Optional[Callable[['WorkflowEngine', 'Workflow', str], None]] = None,
-        on_trigger_fire: Optional[Callable[['WorkflowEngine', 'Workflow', Dict[str, Any]], None]] = None,
-        agent_runtime=None
+        on_workflow_start: Callable[["WorkflowEngine", "Workflow"], None] | None = None,
+        on_workflow_complete: (
+            Callable[["WorkflowEngine", "Workflow", bool], None] | None
+        ) = None,
+        on_workflow_fail: (
+            Callable[["WorkflowEngine", "Workflow", str], None] | None
+        ) = None,
+        on_trigger_fire: (
+            Callable[["WorkflowEngine", "Workflow", dict[str, Any]], None] | None
+        ) = None,
+        agent_runtime=None,
     ):
         """
         Initialize Workflow Engine.
@@ -56,8 +60,7 @@ class WorkflowEngine:
         # Core components
         self.workflow_manager = WorkflowManager()
         self.trigger_manager = TriggerManager(
-            on_trigger_fire=self._on_trigger_fire,
-            agent_runtime=agent_runtime
+            on_trigger_fire=self._on_trigger_fire, agent_runtime=agent_runtime
         )
         self.executor = WorkflowExecutor(
             on_step_start=self._on_step_start,
@@ -65,13 +68,13 @@ class WorkflowEngine:
             on_step_fail=self._on_step_fail,
             on_workflow_start=self.on_workflow_start,
             on_workflow_complete=self.on_workflow_complete,
-            on_workflow_fail=self.on_workflow_fail
+            on_workflow_fail=self.on_workflow_fail,
         )
         self.history = WorkflowHistory()
 
         # State
         self.is_running = False
-        self.execution_thread: Optional[threading.Thread] = None
+        self.execution_thread: threading.Thread | None = None
 
         logger.info("Workflow Engine initialized")
 
@@ -80,8 +83,8 @@ class WorkflowEngine:
         name: str,
         description: str = "",
         trigger_type: WorkflowTriggerType = WorkflowTriggerType.MANUAL,
-        trigger_config: Optional[Dict[str, Any]] = None,
-        priority: WorkflowPriority = WorkflowPriority.NORMAL
+        trigger_config: dict[str, Any] | None = None,
+        priority: WorkflowPriority = WorkflowPriority.NORMAL,
     ) -> str:
         """
         Create a new workflow.
@@ -101,11 +104,11 @@ class WorkflowEngine:
             description=description,
             trigger_type=trigger_type,
             trigger_config=trigger_config or {},
-            priority=priority
+            priority=priority,
         )
         return workflow.workflow_id
 
-    def get_workflow(self, workflow_id: str) -> Optional['Workflow']:
+    def get_workflow(self, workflow_id: str) -> Optional["Workflow"]:
         """
         Get workflow by ID.
 
@@ -119,10 +122,10 @@ class WorkflowEngine:
 
     def list_workflows(
         self,
-        status: Optional[str] = None,
-        trigger_type: Optional[WorkflowTriggerType] = None,
-        active_only: bool = False
-    ) -> List['Workflow']:
+        status: str | None = None,
+        trigger_type: WorkflowTriggerType | None = None,
+        active_only: bool = False,
+    ) -> list["Workflow"]:
         """
         List workflows.
 
@@ -139,8 +142,8 @@ class WorkflowEngine:
     def run_workflow(
         self,
         workflow_id: str,
-        context: Optional[Dict[str, Any]] = None,
-        wait_for_completion: bool = True
+        context: dict[str, Any] | None = None,
+        wait_for_completion: bool = True,
     ) -> bool:
         """
         Run a workflow.
@@ -164,7 +167,7 @@ class WorkflowEngine:
 
         # Set context
         if context:
-            workflow.set_context('run_context', context)
+            workflow.set_context("run_context", context)
 
         # Execute workflow
         self.executor.execute_workflow(workflow_id, wait_for_completion)
@@ -237,7 +240,7 @@ class WorkflowEngine:
         workflow_id: str,
         schedule: str,
         timezone: str = "UTC",
-        enabled: bool = True
+        enabled: bool = True,
     ) -> bool:
         """
         Schedule a workflow.
@@ -255,9 +258,9 @@ class WorkflowEngine:
         if not workflow:
             return False
 
-        workflow.trigger_config['schedule'] = schedule
-        workflow.trigger_config['timezone'] = timezone
-        workflow.trigger_config['enabled'] = enabled
+        workflow.trigger_config["schedule"] = schedule
+        workflow.trigger_config["timezone"] = timezone
+        workflow.trigger_config["enabled"] = enabled
 
         if enabled:
             workflow.trigger_type = WorkflowTriggerType.SCHEDULED
@@ -269,9 +272,7 @@ class WorkflowEngine:
         return True
 
     def trigger_workflow(
-        self,
-        workflow_id: str,
-        trigger_data: Optional[Dict[str, Any]] = None
+        self, workflow_id: str, trigger_data: dict[str, Any] | None = None
     ) -> bool:
         """
         Manually trigger a workflow.
@@ -290,7 +291,7 @@ class WorkflowEngine:
 
         # Set trigger data in context
         if trigger_data:
-            workflow.set_context('trigger_data', trigger_data)
+            workflow.set_context("trigger_data", trigger_data)
 
         # Execute workflow
         return self.run_workflow(workflow_id, wait_for_completion=False)
@@ -311,13 +312,14 @@ class WorkflowEngine:
             return False
 
         import json
-        with open(filepath, 'w') as f:
+
+        with open(filepath, "w") as f:
             json.dump(workflow.to_dict(), f, indent=2, default=str)
 
         logger.info(f"Exported workflow {workflow_id[:8]} to {filepath}")
         return True
 
-    def import_workflow(self, filepath: str) -> Optional['Workflow']:
+    def import_workflow(self, filepath: str) -> Optional["Workflow"]:
         """
         Import workflow from file.
 
@@ -328,7 +330,8 @@ class WorkflowEngine:
             Workflow or None
         """
         import json
-        with open(filepath, 'r') as f:
+
+        with open(filepath) as f:
             data = json.load(f)
 
         workflow = Workflow.from_dict(data)
@@ -337,7 +340,7 @@ class WorkflowEngine:
         logger.info(f"Imported workflow {workflow.workflow_id[:8]} from {filepath}")
         return workflow
 
-    def get_history(self, workflow_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_history(self, workflow_id: str | None = None) -> list[dict[str, Any]]:
         """
         Get workflow execution history.
 
@@ -349,7 +352,7 @@ class WorkflowEngine:
         """
         return self.history.get_history(workflow_id)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get workflow engine statistics.
 
@@ -359,18 +362,27 @@ class WorkflowEngine:
         workflows = self.workflow_manager.list_workflows()
 
         return {
-            'total_workflows': len(workflows),
-            'active_workflows': sum(1 for w in workflows if w.is_active),
-            'running_workflows': sum(1 for w in workflows if w.status == WorkflowStatus.RUNNING),
-            'scheduled_workflows': sum(1 for w in workflows if w.trigger_type == WorkflowTriggerType.SCHEDULED),
-            'total_executions': sum(w.execution_count for w in workflows),
-            'total_success': sum(w.success_count for w in workflows),
-            'total_failures': sum(w.failure_count for w in workflows),
-            'success_rate': sum(w.success_count for w in workflows) / sum(w.execution_count for w in workflows) if any(w.execution_count for w in workflows) else 0
+            "total_workflows": len(workflows),
+            "active_workflows": sum(1 for w in workflows if w.is_active),
+            "running_workflows": sum(
+                1 for w in workflows if w.status == WorkflowStatus.RUNNING
+            ),
+            "scheduled_workflows": sum(
+                1 for w in workflows if w.trigger_type == WorkflowTriggerType.SCHEDULED
+            ),
+            "total_executions": sum(w.execution_count for w in workflows),
+            "total_success": sum(w.success_count for w in workflows),
+            "total_failures": sum(w.failure_count for w in workflows),
+            "success_rate": (
+                sum(w.success_count for w in workflows)
+                / sum(w.execution_count for w in workflows)
+                if any(w.execution_count for w in workflows)
+                else 0
+            ),
         }
 
     # Callback methods
-    def _on_trigger_fire(self, workflow_id: str, trigger_data: Dict[str, Any]):
+    def _on_trigger_fire(self, workflow_id: str, trigger_data: dict[str, Any]):
         """Called when trigger fires."""
         logger.info(f"Trigger fired for workflow {workflow_id[:8]}")
 
@@ -382,10 +394,16 @@ class WorkflowEngine:
         """Called when step starts."""
         logger.debug(f"Step {step_id[:8]} started in workflow {workflow_id[:8]}")
 
-    def _on_step_complete(self, workflow_id: str, step_id: str, success: bool, output: Any):
+    def _on_step_complete(
+        self, workflow_id: str, step_id: str, success: bool, output: Any
+    ):
         """Called when step completes."""
-        logger.debug(f"Step {step_id[:8]} completed in workflow {workflow_id[:8]}: {'success' if success else 'failed'}")
+        logger.debug(
+            f"Step {step_id[:8]} completed in workflow {workflow_id[:8]}: {'success' if success else 'failed'}"
+        )
 
     def _on_step_fail(self, workflow_id: str, step_id: str, error: str):
         """Called when step fails."""
-        logger.error(f"Step {step_id[:8]} failed in workflow {workflow_id[:8]}: {error}")
+        logger.error(
+            f"Step {step_id[:8]} failed in workflow {workflow_id[:8]}: {error}"
+        )

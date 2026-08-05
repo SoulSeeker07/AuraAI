@@ -9,15 +9,6 @@ Tests:
 
 import pytest
 
-from src.desktop.planner import (
-    DesktopGoal,
-    DesktopStep,
-    StepType,
-    StepStatus,
-    DesktopPlan,
-    DependencyResolver,
-    DesktopPlanner,
-)
 from src.desktop.native.capability_registry import CapabilityRegistry
 from src.desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
@@ -25,6 +16,15 @@ from src.desktop.native.desktop_execution_engine import (
     reset_desktop_execution_engine,
 )
 from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from src.desktop.planner import (
+    DependencyResolver,
+    DesktopGoal,
+    DesktopPlan,
+    DesktopPlanner,
+    DesktopStep,
+    StepStatus,
+    StepType,
+)
 
 
 @pytest.fixture
@@ -107,7 +107,6 @@ def test_planner_plan_creation_and_execution(planner):
     assert executed_plan.is_successful is True
     assert executed_plan.completed_at is not None
     assert all(s.status == StepStatus.SUCCESS for s in executed_plan.steps)
-
 
 
 def test_planner_plan_and_execute_shortcut(planner):

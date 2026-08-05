@@ -2,12 +2,11 @@
 Service Manager
 Manages Windows service operations.
 """
-from typing import List, Optional
+
 import logging
 
 from .native_manager import NativeManager
 from .native_models import ServiceInfo
-from .native_exceptions import ServiceNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class ServiceManager:
         self.native_manager = native_manager
         logger.debug("ServiceManager initialized")
 
-    def list_services(self) -> List[ServiceInfo]:
+    def list_services(self) -> list[ServiceInfo]:
         """
         List all services.
 
@@ -65,7 +64,9 @@ class ServiceManager:
             ServiceNotFoundError: If service not found
         """
         logger.debug(f"Getting service by display name: {display_name}")
-        return self.native_manager._service_manager.get_service_by_display_name(display_name)
+        return self.native_manager._service_manager.get_service_by_display_name(
+            display_name
+        )
 
     def start_service(self, service_name: str) -> bool:
         """
@@ -106,7 +107,7 @@ class ServiceManager:
         logger.debug(f"Restarting service: {service_name}")
         return self.native_manager._service_manager.restart_service(service_name)
 
-    def get_service_status(self, service_name: str) -> Optional[str]:
+    def get_service_status(self, service_name: str) -> str | None:
         """
         Get service status.
 
@@ -119,7 +120,7 @@ class ServiceManager:
         logger.debug(f"Getting status for service: {service_name}")
         return self.native_manager._service_manager.get_service_status(service_name)
 
-    def get_service_description(self, service_name: str) -> Optional[str]:
+    def get_service_description(self, service_name: str) -> str | None:
         """
         Get service description.
 
@@ -130,9 +131,11 @@ class ServiceManager:
             Service description, or None if not found
         """
         logger.debug(f"Getting description for service: {service_name}")
-        return self.native_manager._service_manager.get_service_description(service_name)
+        return self.native_manager._service_manager.get_service_description(
+            service_name
+        )
 
-    def get_service_start_type(self, service_name: str) -> Optional[str]:
+    def get_service_start_type(self, service_name: str) -> str | None:
         """
         Get service start type.
 
@@ -145,7 +148,7 @@ class ServiceManager:
         logger.debug(f"Getting start type for service: {service_name}")
         return self.native_manager._service_manager.get_service_start_type(service_name)
 
-    def get_service_process_id(self, service_name: str) -> Optional[int]:
+    def get_service_process_id(self, service_name: str) -> int | None:
         """
         Get service process ID.
 

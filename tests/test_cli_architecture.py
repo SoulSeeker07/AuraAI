@@ -4,8 +4,8 @@ Test script for CLI/GUI Architecture
 Tests the basic functionality of the new architecture.
 """
 
-import sys
 import asyncio
+import sys
 from pathlib import Path
 
 # Add paths in correct order: project root first (to find core/__init__.py), then src
@@ -14,8 +14,8 @@ SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(PROJECT_ROOT))  # project root first
 sys.path.insert(1, str(SRC_DIR))  # src second to find logger
 
-from core.aura_core import AuraCore
 from clients.gui_client import GUIClient
+from core.aura_core import AuraCore
 
 
 def test_aura_core_initialization():
@@ -72,11 +72,11 @@ def test_component_status():
 
         # Test getting status
         status = gui_client.get_status()
-        components = status['components']
+        components = status["components"]
 
         print(f"\n  Found {len(components)} components:")
         for name, info in components.items():
-            loaded = "✓" if info['loaded'] else "✗"
+            loaded = "✓" if info["loaded"] else "✗"
             print(f"    {loaded} {name}: {info['status']}")
 
         return True
@@ -125,7 +125,7 @@ def test_health_report():
         report = gui_client.get_health_report()
         print("\n  Component Status:")
         for name, status in report.items():
-            if name in ['overall', 'percentage']:
+            if name in ["overall", "percentage"]:
                 print(f"    {name}: {status}")
             else:
                 print(f"    {name}: {status}")
@@ -147,8 +147,8 @@ def test_conversation_history():
         gui_client = GUIClient(aura_core)
 
         # Test adding to conversation
-        gui_client.add_conversation_entry('user', 'Hello')
-        gui_client.add_conversation_entry('assistant', 'Hi there!')
+        gui_client.add_conversation_entry("user", "Hello")
+        gui_client.add_conversation_entry("assistant", "Hi there!")
 
         # Test getting history
         history = gui_client.get_conversation_history()
@@ -177,7 +177,7 @@ def test_workspace_analysis():
         # Test scanning workspace
         scan_result = gui_client.scan_workspace()
 
-        if scan_result['success']:
+        if scan_result["success"]:
             print(f"\n  Files: {scan_result['files']}")
             print(f"  Folders: {scan_result['folders']}")
             print(f"  Path: {scan_result['path']}")
@@ -206,7 +206,7 @@ def test_code_analysis():
         if test_file.exists():
             result = gui_client.analyze_code(str(test_file))
 
-            if result['success']:
+            if result["success"]:
                 print(f"\n  Analyzed: {result['file']}")
                 print(f"  Lines: {result['lines']}")
                 print(f"  Characters: {result['characters']}")
@@ -287,6 +287,7 @@ def main():
     except Exception as e:
         print(f"\n✗ Test suite failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

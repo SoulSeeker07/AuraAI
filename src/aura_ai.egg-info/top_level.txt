@@ -5,11 +5,11 @@ assets
 aura
 brain
 core
+desktop
 engineering
 execution
 gui
 knowledge
-main
 memory
 plugins
 research

@@ -6,12 +6,13 @@ Core data structures for desktop context awareness.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from pathlib import Path
 
 
 class PlatformType(str, Enum):
     """Platform type enumeration"""
+
     WINDOWS = "windows"
     MACOS = "macos"
     LINUX = "linux"
@@ -19,6 +20,7 @@ class PlatformType(str, Enum):
 
 class TerminalType(str, Enum):
     """Terminal type enumeration"""
+
     POWERSHELL = "powershell"
     CMD = "cmd"
     WSL = "wsl"
@@ -28,6 +30,7 @@ class TerminalType(str, Enum):
 
 class ProjectType(str, Enum):
     """Project type enumeration"""
+
     PYTHON = "python"
     NODE = "node"
     DOTNET = "dotnet"
@@ -41,11 +44,12 @@ class ProjectType(str, Enum):
 @dataclass
 class OpenFile:
     """Represents an open file"""
+
     path: str
     name: str
     modified: bool = False
-    line_number: Optional[int] = None
-    cursor_position: Optional[int] = None
+    line_number: int | None = None
+    cursor_position: int | None = None
     last_accessed: datetime = field(default_factory=datetime.now)
 
     def __hash__(self):
@@ -55,11 +59,12 @@ class OpenFile:
 @dataclass
 class GitRepository:
     """Represents a git repository"""
+
     path: str
     branch: str
-    remote_url: Optional[str] = None
-    commit_hash: Optional[str] = None
-    modified_files: List[str] = field(default_factory=list)
+    remote_url: str | None = None
+    commit_hash: str | None = None
+    modified_files: list[str] = field(default_factory=list)
     uncommitted_changes: int = 0
     is_dirty: bool = False
 
@@ -72,11 +77,12 @@ class GitRepository:
 @dataclass
 class CurrentProject:
     """Represents the current active project"""
+
     path: str
     name: str
     type: ProjectType = ProjectType.UNKNOWN
-    git_repo: Optional[GitRepository] = None
-    workspace_folder: Optional[str] = None
+    git_repo: GitRepository | None = None
+    workspace_folder: str | None = None
     detected_at: datetime = field(default_factory=datetime.now)
 
     @property
@@ -93,11 +99,12 @@ class CurrentProject:
 @dataclass
 class ActiveWindow:
     """Represents the currently active window"""
+
     title: str
     app_name: str
     process_name: str
-    window_id: Optional[int] = None
-    rect: Optional[Dict[str, int]] = None  # x, y, width, height
+    window_id: int | None = None
+    rect: dict[str, int] | None = None  # x, y, width, height
     is_minimized: bool = False
     is_maximized: bool = False
 
@@ -107,43 +114,45 @@ class ActiveWindow:
         if self.rect is None:
             return True
         return (
-            self.rect.get('x', 0) >= 0 and
-            self.rect.get('y', 0) >= 0 and
-            self.rect.get('width', 100) > 0 and
-            self.rect.get('height', 100) > 0
+            self.rect.get("x", 0) >= 0
+            and self.rect.get("y", 0) >= 0
+            and self.rect.get("width", 100) > 0
+            and self.rect.get("height", 100) > 0
         )
 
 
 @dataclass
 class RunningApplication:
     """Represents a running application"""
+
     name: str
     process_name: str
     window_title: str = ""
     is_foreground: bool = False
-    pid: Optional[int] = None
+    pid: int | None = None
 
     @property
     def is_editor(self) -> bool:
         """Check if app is a code editor"""
-        editor_apps = {'vscode', 'cursor', 'code', 'sublime', 'atom', 'idea'}
+        editor_apps = {"vscode", "cursor", "code", "sublime", "atom", "idea"}
         return self.process_name.lower() in editor_apps
 
     @property
     def is_browser(self) -> bool:
         """Check if app is a browser"""
-        browser_apps = {'chrome', 'edge', 'firefox', 'safari', 'brave'}
+        browser_apps = {"chrome", "edge", "firefox", "safari", "brave"}
         return self.process_name.lower() in browser_apps
 
 
 @dataclass
 class TerminalContext:
     """Represents terminal state"""
+
     type: TerminalType
     working_directory: str
-    running_commands: List[str] = field(default_factory=list)
-    current_command: Optional[str] = None
-    last_command_output: Optional[str] = None
+    running_commands: list[str] = field(default_factory=list)
+    current_command: str | None = None
+    last_command_output: str | None = None
 
     @property
     def is_wsl(self) -> bool:
@@ -154,9 +163,10 @@ class TerminalContext:
 @dataclass
 class ClipboardContext:
     """Represents clipboard state"""
-    text: Optional[str] = None
-    code: Optional[str] = None
-    image: Optional[str] = None  # Path to image if copied
+
+    text: str | None = None
+    code: str | None = None
+    image: str | None = None  # Path to image if copied
     is_text: bool = False
     is_code: bool = False
     timestamp: datetime = field(default_factory=datetime.now)
@@ -170,12 +180,13 @@ class ClipboardContext:
 @dataclass
 class BrowserContext:
     """Represents browser state"""
-    current_url: Optional[str] = None
-    current_title: Optional[str] = None
-    selected_text: Optional[str] = None
+
+    current_url: str | None = None
+    current_title: str | None = None
+    selected_text: str | None = None
     active_tab: int = 0
     total_tabs: int = 1
-    downloads: List[str] = field(default_factory=list)
+    downloads: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -185,38 +196,39 @@ class WorkspaceState:
 
     Contains all information about the user's current desktop state.
     """
+
     # Core desktop info
     platform: PlatformType = PlatformType.WINDOWS
-    active_window: Optional[ActiveWindow] = None
+    active_window: ActiveWindow | None = None
 
     # Project info
-    current_project: Optional[CurrentProject] = None
-    workspace_folder: Optional[str] = None
+    current_project: CurrentProject | None = None
+    workspace_folder: str | None = None
 
     # File context
-    open_files: List[OpenFile] = field(default_factory=list)
-    recent_files: List[str] = field(default_factory=list)
-    pinned_files: List[str] = field(default_factory=list)
-    modified_files: List[str] = field(default_factory=list)
+    open_files: list[OpenFile] = field(default_factory=list)
+    recent_files: list[str] = field(default_factory=list)
+    pinned_files: list[str] = field(default_factory=list)
+    modified_files: list[str] = field(default_factory=list)
 
     # Git awareness
-    git_repo: Optional[GitRepository] = None
+    git_repo: GitRepository | None = None
 
     # Terminal
-    terminal: Optional[TerminalContext] = None
+    terminal: TerminalContext | None = None
 
     # Clipboard
-    clipboard: Optional[ClipboardContext] = None
+    clipboard: ClipboardContext | None = None
 
     # Running applications
-    running_apps: List[RunningApplication] = field(default_factory=list)
+    running_apps: list[RunningApplication] = field(default_factory=list)
 
     # Browser (optional)
-    browser: Optional[BrowserContext] = None
+    browser: BrowserContext | None = None
 
     # Metadata
     last_updated: datetime = field(default_factory=datetime.now)
-    workspace_folder_path: Optional[str] = None
+    workspace_folder_path: str | None = None
 
     def __post_init__(self):
         """Post-initialization setup"""
@@ -244,9 +256,26 @@ class WorkspaceState:
         return self.current_project is not None and self.current_project.is_dirty
 
     @property
-    def open_editor_files(self) -> List[OpenFile]:
+    def open_editor_files(self) -> list[OpenFile]:
         """Get open files from editors"""
-        return [f for f in self.open_files if f.path.endswith(('.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.cs', '.go', '.rs', '.md'))]
+        return [
+            f
+            for f in self.open_files
+            if f.path.endswith(
+                (
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".jsx",
+                    ".tsx",
+                    ".java",
+                    ".cs",
+                    ".go",
+                    ".rs",
+                    ".md",
+                )
+            )
+        ]
 
     @property
     def code_files_modified(self) -> int:
@@ -267,6 +296,7 @@ class WorkspaceState:
 
 # Utility functions for workspace state
 
+
 def get_context_summary(state: WorkspaceState) -> str:
     """
     Generate a human-readable summary of workspace state.
@@ -281,7 +311,9 @@ def get_context_summary(state: WorkspaceState) -> str:
 
     # Active window
     if state.active_window:
-        summary_parts.append(f"Window: {state.active_window.title} ({state.active_window.app_name})")
+        summary_parts.append(
+            f"Window: {state.active_window.title} ({state.active_window.app_name})"
+        )
 
     # Current project
     if state.current_project:
@@ -289,7 +321,9 @@ def get_context_summary(state: WorkspaceState) -> str:
         if state.current_project.git_repo:
             summary_parts.append(f"  - Branch: {state.current_project.git_repo.branch}")
             if state.current_project.git_repo.is_dirty:
-                summary_parts.append(f"  - Modified files: {state.current_project.git_repo.modified_files}")
+                summary_parts.append(
+                    f"  - Modified files: {state.current_project.git_repo.modified_files}"
+                )
 
     # Open files
     if state.open_files:
@@ -300,6 +334,8 @@ def get_context_summary(state: WorkspaceState) -> str:
     if state.running_apps:
         editor_apps = [app for app in state.running_apps if app.is_editor]
         if editor_apps:
-            summary_parts.append(f"Active editor: {', '.join(set(app.name for app in editor_apps))}")
+            summary_parts.append(
+                f"Active editor: {', '.join(set(app.name for app in editor_apps))}"
+            )
 
     return " | ".join(summary_parts)

@@ -5,11 +5,10 @@ Manages multiple search providers and merges their results.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
+from typing import Any
 
-from .models import SearchResult, SearchQuery, SourceTrustLevel, SourceRanking
+from .models import SearchQuery, SearchResult, SourceRanking, SourceTrustLevel
 from .provider_interface import ResearchProvider
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,7 @@ class SearchManager:
     Coordinates searches across multiple providers to provide comprehensive results.
     """
 
-    def __init__(self, providers: List[ResearchProvider]):
+    def __init__(self, providers: list[ResearchProvider]):
         """
         Initialize the search manager.
 
@@ -31,14 +30,13 @@ class SearchManager:
         """
         self.providers = providers
         self.enabled_providers = [p for p in providers if p.is_available()]
-        logger.info(f"SearchManager initialized with {len(self.enabled_providers)} providers")
+        logger.info(
+            f"SearchManager initialized with {len(self.enabled_providers)} providers"
+        )
 
     def search_all(
-        self,
-        query: str,
-        query_obj: Optional[SearchQuery] = None,
-        **kwargs
-    ) -> List[SearchResult]:
+        self, query: str, query_obj: SearchQuery | None = None, **kwargs
+    ) -> list[SearchResult]:
         """
         Search across all enabled providers.
 
@@ -54,11 +52,13 @@ class SearchManager:
             query_obj = SearchQuery(query_text=query, **kwargs)
 
         logger.info(f"Starting research for: {query}")
-        logger.info(f"Search mode: {query_obj.mode.value}, Max results: {query_obj.max_results}")
+        logger.info(
+            f"Search mode: {query_obj.mode.value}, Max results: {query_obj.max_results}"
+        )
 
         # Distribute queries among providers based on mode
         results = []
-        
+
         # For quick mode, use fewer providers
         if query_obj.mode.value == "quick":
             providers_to_use = self._select_providers_for_mode("quick")
@@ -68,23 +68,22 @@ class SearchManager:
         # Execute searches in parallel
         with ThreadPoolExecutor(max_workers=max(1, len(providers_to_use))) as executor:
             future_to_provider = {}
-            
+
             for provider in providers_to_use:
                 future = executor.submit(
-                    self._search_provider,
-                    provider,
-                    query,
-                    query_obj.max_results
+                    self._search_provider, provider, query, query_obj.max_results
                 )
                 future_to_provider[future] = provider
-            
+
             # Collect results
             for future in as_completed(future_to_provider):
                 provider = future_to_provider[future]
                 try:
                     provider_results = future.result()
                     results.extend(provider_results)
-                    logger.info(f"{provider.name} returned {len(provider_results)} results")
+                    logger.info(
+                        f"{provider.name} returned {len(provider_results)} results"
+                    )
                 except Exception as e:
                     logger.error(f"Error searching with {provider.name}: {e}")
 
@@ -97,7 +96,7 @@ class SearchManager:
         logger.info(f"Research complete: {len(results)} results returned")
         return results
 
-    def _select_providers_for_mode(self, mode: str) -> List[ResearchProvider]:
+    def _select_providers_for_mode(self, mode: str) -> list[ResearchProvider]:
         """
         Select providers based on search mode.
 
@@ -118,11 +117,8 @@ class SearchManager:
             return self.enabled_providers[:3]
 
     def _search_provider(
-        self,
-        provider: ResearchProvider,
-        query: str,
-        max_results: int
-    ) -> List[SearchResult]:
+        self, provider: ResearchProvider, query: str, max_results: int
+    ) -> list[SearchResult]:
         """
         Search using a single provider.
 
@@ -143,7 +139,9 @@ class SearchManager:
                 result.source = provider.name
                 trust_level_str = provider._get_trust_level()
                 result.trust_level = SourceTrustLevel(trust_level_str)
-                logger.info(f"[SearchManager] {provider.name} trust_level set: {result.trust_level}, value: {result.trust_level.value}")
+                logger.info(
+                    f"[SearchManager] {provider.name} trust_level set: {result.trust_level}, value: {result.trust_level.value}"
+                )
 
             return results
         except Exception as e:
@@ -151,10 +149,8 @@ class SearchManager:
             return []
 
     def _rank_and_merge(
-        self,
-        results: List[SearchResult],
-        query: str
-    ) -> List[SearchResult]:
+        self, results: list[SearchResult], query: str
+    ) -> list[SearchResult]:
         """
         Rank and merge results from all providers.
 
@@ -171,7 +167,7 @@ class SearchManager:
         # Combine all results and remove duplicates
         seen_urls = set()
         unique_results = []
-        
+
         for result in results:
             if result.url not in seen_urls:
                 seen_urls.add(result.url)
@@ -179,17 +175,18 @@ class SearchManager:
 
         # Sort by trust weight, then by relevance score
         unique_results.sort(
-            key=lambda r: (r.score * SourceRanking.ALL_WEIGHTS.get(r.trust_level, 1.0), r.score),
-            reverse=True
+            key=lambda r: (
+                r.score * SourceRanking.ALL_WEIGHTS.get(r.trust_level, 1.0),
+                r.score,
+            ),
+            reverse=True,
         )
 
         return unique_results[:50]  # Limit to top 50 results
 
     def _apply_filters(
-        self,
-        results: List[SearchResult],
-        query_obj: SearchQuery
-    ) -> List[SearchResult]:
+        self, results: list[SearchResult], query_obj: SearchQuery
+    ) -> list[SearchResult]:
         """
         Apply filters to results.
 
@@ -231,23 +228,20 @@ class SearchManager:
             return any(lang in snippet for lang in [language, language.upper()])
         return True
 
-    def get_provider_stats(self) -> Dict[str, Any]:
+    def get_provider_stats(self) -> dict[str, Any]:
         """
         Get statistics about enabled providers.
 
         Returns:
             Dictionary with provider statistics
         """
-        stats = {
-            "total_providers": len(self.enabled_providers),
-            "providers": []
-        }
+        stats = {"total_providers": len(self.enabled_providers), "providers": []}
 
         for provider in self.enabled_providers:
             provider_stats = {
                 "name": provider.name,
                 "capabilities": provider.get_capabilities(),
-                "is_available": provider.is_available()
+                "is_available": provider.is_available(),
             }
             stats["providers"].append(provider_stats)
 
@@ -280,7 +274,7 @@ class SearchManager:
         logger.info(f"Removed provider: {provider_name}")
         return True
 
-    def get_enabled_provider_names(self) -> List[str]:
+    def get_enabled_provider_names(self) -> list[str]:
         """
         Get names of all enabled providers.
 
@@ -289,7 +283,7 @@ class SearchManager:
         """
         return [p.name for p in self.enabled_providers]
 
-    def get_best_source(self, results: List[SearchResult]) -> Optional[SearchResult]:
+    def get_best_source(self, results: list[SearchResult]) -> SearchResult | None:
         """
         Get the best source from results.
 
@@ -303,7 +297,9 @@ class SearchManager:
             return None
         return results[0]
 
-    def get_top_sources(self, results: List[SearchResult], count: int = 5) -> List[SearchResult]:
+    def get_top_sources(
+        self, results: list[SearchResult], count: int = 5
+    ) -> list[SearchResult]:
         """
         Get top sources from results.
 

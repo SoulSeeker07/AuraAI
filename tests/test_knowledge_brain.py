@@ -11,54 +11,60 @@ Tests all 7 modules of the knowledge brain:
 7. KnowledgeManager - Orchestrates everything
 """
 
-import sys
 import os
+import sys
 
 # Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from knowledge.knowledge_db import KnowledgeDB, KnowledgeFact
-from knowledge.topic_memory import TopicMemory, TopicNode
+from knowledge.cache_manager import CachedSearchResult, CacheManager
 from knowledge.freshness_checker import FreshnessChecker
+from knowledge.knowledge_db import KnowledgeDB, KnowledgeFact
 from knowledge.knowledge_graph import KnowledgeGraph, KnowledgeNode
-from knowledge.learning_engine import LearningEngine, LearnedFact
-from knowledge.cache_manager import CacheManager, CachedSearchResult
 from knowledge.knowledge_manager import KnowledgeManager, KnowledgeRetrievalResult
+from knowledge.learning_engine import LearnedFact, LearningEngine
+from knowledge.topic_memory import TopicMemory, TopicNode
 
 
 def test_knowledge_db():
     """Test KnowledgeDB module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 1: KnowledgeDB")
-    print("="*60)
+    print("=" * 60)
 
     db = KnowledgeDB()
 
     # Add facts
     print("\n1. Adding facts...")
-    db.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python 3.11 was released in October 2022",
-        source="official.python.org",
-        confidence=0.95,
-        category="Programming"
-    ))
+    db.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python 3.11 was released in October 2022",
+            source="official.python.org",
+            confidence=0.95,
+            category="Programming",
+        )
+    )
 
-    db.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python supports async/await syntax",
-        source="docs.python.org",
-        confidence=0.95,
-        category="Programming"
-    ))
+    db.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python supports async/await syntax",
+            source="docs.python.org",
+            confidence=0.95,
+            category="Programming",
+        )
+    )
 
-    db.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python uses duck typing",
-        source="python.org",
-        confidence=0.9,
-        category="Programming"
-    ))
+    db.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python uses duck typing",
+            source="python.org",
+            confidence=0.9,
+            category="Programming",
+        )
+    )
 
     # Retrieve facts
     print("\n2. Retrieving facts...")
@@ -91,38 +97,44 @@ def test_knowledge_db():
 
 def test_topic_memory():
     """Test TopicMemory module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 2: TopicMemory")
-    print("="*60)
+    print("=" * 60)
 
     db = KnowledgeDB()
     topic_mem = TopicMemory(db)
 
     # Add facts
     print("\n1. Adding facts...")
-    topic_mem.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python is a high-level programming language",
-        source="python.org",
-        confidence=0.95,
-        category="Programming"
-    ))
+    topic_mem.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python is a high-level programming language",
+            source="python.org",
+            confidence=0.95,
+            category="Programming",
+        )
+    )
 
-    topic_mem.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python supports multiple programming paradigms",
-        source="python.org",
-        confidence=0.9,
-        category="Programming"
-    ))
+    topic_mem.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python supports multiple programming paradigms",
+            source="python.org",
+            confidence=0.9,
+            category="Programming",
+        )
+    )
 
-    topic_mem.add_fact(KnowledgeFact(
-        topic="JavaScript",
-        fact="JavaScript is a web scripting language",
-        source="developer.mozilla.org",
-        confidence=0.95,
-        category="Programming"
-    ))
+    topic_mem.add_fact(
+        KnowledgeFact(
+            topic="JavaScript",
+            fact="JavaScript is a web scripting language",
+            source="developer.mozilla.org",
+            confidence=0.95,
+            category="Programming",
+        )
+    )
 
     # Build topic hierarchy
     print("\n2. Building topic hierarchy...")
@@ -132,7 +144,7 @@ def test_topic_memory():
     # Get topic hierarchy
     print("\n3. Getting topic hierarchy...")
     hierarchy = topic_mem.get_topic_hierarchy("Python")
-    print(f"   Hierarchy for Python:")
+    print("   Hierarchy for Python:")
     print(f"   - Topic: {hierarchy.get('topic')}")
     print(f"   - Subtopics: {len(hierarchy.get('subtopics', []))}")
     print(f"   - Facts: {len(hierarchy.get('facts', []))}")
@@ -145,7 +157,7 @@ def test_topic_memory():
     # Get topic statistics
     print("\n5. Topic statistics...")
     stats = topic_mem.get_topic_stats("Python")
-    print(f"   Stats for Python:")
+    print("   Stats for Python:")
     print(f"   - Total facts: {stats['total_facts']}")
     print(f"   - Last updated: {stats.get('last_updated', 'N/A')}")
 
@@ -154,9 +166,9 @@ def test_topic_memory():
 
 def test_freshness_checker():
     """Test FreshnessChecker module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 3: FreshnessChecker")
-    print("="*60)
+    print("=" * 60)
 
     db = KnowledgeDB()
     checker = FreshnessChecker(db)
@@ -165,31 +177,37 @@ def test_freshness_checker():
     print("\n1. Adding facts with different categories...")
 
     # Programming (30 days)
-    db.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python 3.12 is the latest version",
-        source="python.org",
-        confidence=0.95,
-        category="Programming"
-    ))
+    db.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python 3.12 is the latest version",
+            source="python.org",
+            confidence=0.95,
+            category="Programming",
+        )
+    )
 
     # News (1 day)
-    db.add_fact(KnowledgeFact(
-        topic="OpenAI",
-        fact="OpenAI released GPT-4 Turbo",
-        source="openai.com",
-        confidence=0.75,
-        category="News"
-    ))
+    db.add_fact(
+        KnowledgeFact(
+            topic="OpenAI",
+            fact="OpenAI released GPT-4 Turbo",
+            source="openai.com",
+            confidence=0.75,
+            category="News",
+        )
+    )
 
     # Weather (0 days)
-    db.add_fact(KnowledgeFact(
-        topic="Weather",
-        fact="Today's temperature is 25°C",
-        source="weather.com",
-        confidence=0.8,
-        category="Weather"
-    ))
+    db.add_fact(
+        KnowledgeFact(
+            topic="Weather",
+            fact="Today's temperature is 25°C",
+            source="weather.com",
+            confidence=0.8,
+            category="Weather",
+        )
+    )
 
     # Check freshness
     print("\n2. Checking freshness...")
@@ -198,7 +216,9 @@ def test_freshness_checker():
         age = checker.get_age_days(fact)
         lifetime = checker.get_category_lifetime(fact.category)
         fresh = age < lifetime
-        print(f"   - {fact.topic}: Fresh? {fresh} (age: {age:.1f} days, lifetime: {lifetime} days)")
+        print(
+            f"   - {fact.topic}: Fresh? {fresh} (age: {age:.1f} days, lifetime: {lifetime} days)"
+        )
 
     # Get statistics
     print("\n3. Statistics...")
@@ -218,38 +238,44 @@ def test_freshness_checker():
 
 def test_knowledge_graph():
     """Test KnowledgeGraph module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 4: KnowledgeGraph")
-    print("="*60)
+    print("=" * 60)
 
     db = KnowledgeDB()
     graph = KnowledgeGraph(db)
 
     # Add facts
     print("\n1. Adding facts...")
-    graph.add_fact(KnowledgeFact(
-        topic="Python",
-        fact="Python is a programming language",
-        source="python.org",
-        confidence=0.95,
-        category="Programming"
-    ))
+    graph.add_fact(
+        KnowledgeFact(
+            topic="Python",
+            fact="Python is a programming language",
+            source="python.org",
+            confidence=0.95,
+            category="Programming",
+        )
+    )
 
-    graph.add_fact(KnowledgeFact(
-        topic="Programming",
-        fact="Programming involves writing code",
-        source="wikipedia.org",
-        confidence=0.9,
-        category="Programming"
-    ))
+    graph.add_fact(
+        KnowledgeFact(
+            topic="Programming",
+            fact="Programming involves writing code",
+            source="wikipedia.org",
+            confidence=0.9,
+            category="Programming",
+        )
+    )
 
-    graph.add_fact(KnowledgeFact(
-        topic="Web",
-        fact="Web development uses HTML, CSS, JavaScript",
-        source="developer.mozilla.org",
-        confidence=0.9,
-        category="Programming"
-    ))
+    graph.add_fact(
+        KnowledgeFact(
+            topic="Web",
+            fact="Web development uses HTML, CSS, JavaScript",
+            source="developer.mozilla.org",
+            confidence=0.9,
+            category="Programming",
+        )
+    )
 
     # Find related concepts
     print("\n2. Finding related concepts...")
@@ -292,9 +318,9 @@ def test_knowledge_graph():
 
 def test_learning_engine():
     """Test LearningEngine module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 5: LearningEngine")
-    print("="*60)
+    print("=" * 60)
 
     db = KnowledgeDB()
     engine = LearningEngine(db)
@@ -306,31 +332,35 @@ def test_learning_engine():
             "title": "Python 3.12 Released",
             "snippet": "Python 3.12 is the latest version of Python, released in October 2023. It includes many new features and improvements.",
             "url": "https://python.org/news/python-312-released",
-            "source": "official"
+            "source": "official",
         },
         {
             "title": "Python 3.12 New Features",
             "snippet": "Python 3.12 introduces type parameter syntax, positional-only parameters, and more performance improvements.",
             "url": "https://docs.python.org/whatsnew/3.12.html",
-            "source": "official"
+            "source": "official",
         },
         {
             "title": "Why Use Python 3.12?",
             "snippet": "Python 3.12 offers better performance, new features, and improved error messages.",
             "url": "https://realpython.com/python-312-new-features",
-            "source": "blog"
-        }
+            "source": "blog",
+        },
     ]
 
     # Learn from search results
     print("\n2. Learning from search results...")
-    learned_facts = engine.learn_from_web_search("Python", search_results, "Latest Python version")
+    learned_facts = engine.learn_from_web_search(
+        "Python", search_results, "Latest Python version"
+    )
     print(f"   Learned {len(learned_facts)} facts")
 
     # Show learned facts
     print("\n3. Learned facts:")
     for fact in learned_facts[:3]:
-        print(f"   - {fact.topic}: {fact.fact[:60]}... (confidence: {fact.confidence:.2f})")
+        print(
+            f"   - {fact.topic}: {fact.fact[:60]}... (confidence: {fact.confidence:.2f})"
+        )
 
     # Get statistics
     print("\n4. Learning statistics...")
@@ -350,14 +380,14 @@ def test_learning_engine():
             "title": "New Programming Language",
             "snippet": "Rust is a systems programming language focused on safety and performance.",
             "url": "https://rust-lang.org",
-            "source": "official"
+            "source": "official",
         },
         {
             "title": "Rust vs C++",
             "snippet": "Rust offers better memory safety without garbage collection.",
             "url": "https://blog.rust-lang.org",
-            "source": "blog"
-        }
+            "source": "blog",
+        },
     ]
     learned = engine.batch_learn(batch_learnings, "Rust")
     print(f"   Learned {len(learned)} facts from batch")
@@ -367,9 +397,9 @@ def test_learning_engine():
 
 def test_cache_manager():
     """Test CacheManager module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 6: CacheManager")
-    print("="*60)
+    print("=" * 60)
 
     cache = CacheManager()
 
@@ -380,11 +410,13 @@ def test_cache_manager():
             "title": "Python Tutorial",
             "snippet": "Learn Python programming with this tutorial.",
             "url": "https://python.org/tutorial",
-            "source": "web"
+            "source": "web",
         }
     ]
 
-    cache_key = cache.cache_search_result("Python tutorial", search_results, category="General", source="web")
+    cache_key = cache.cache_search_result(
+        "Python tutorial", search_results, category="General", source="web"
+    )
     print(f"   Cached with key: {cache_key[:16]}...")
 
     # Retrieve from cache
@@ -422,8 +454,16 @@ def test_cache_manager():
     # Test batch caching
     print("\n7. Testing batch caching...")
     cache_entries = [
-        {"query": "Web development", "results": [{"title": "Web dev guide"}], "category": "Programming"},
-        {"query": "Python basics", "results": [{"title": "Python intro"}], "category": "Programming"}
+        {
+            "query": "Web development",
+            "results": [{"title": "Web dev guide"}],
+            "category": "Programming",
+        },
+        {
+            "query": "Python basics",
+            "results": [{"title": "Python intro"}],
+            "category": "Programming",
+        },
     ]
     cached = cache.batch_cache_results(cache_entries)
     print(f"   Cached {cached} entries in batch")
@@ -433,9 +473,9 @@ def test_cache_manager():
 
 def test_knowledge_manager():
     """Test KnowledgeManager module."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TEST 7: KnowledgeManager")
-    print("="*60)
+    print("=" * 60)
 
     manager = KnowledgeManager()
 
@@ -458,7 +498,7 @@ def test_knowledge_manager():
         fact="JavaScript is the programming language of the web",
         source="developer.mozilla.org",
         confidence=0.95,
-        category="Programming"
+        category="Programming",
     )
     print(f"   Added fact: {success}")
 
@@ -498,9 +538,9 @@ def test_knowledge_manager():
 
 def main():
     """Run all tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(" KNOWLEDGE BRAIN (Milestone 3) VERIFICATION TESTS")
-    print("="*70)
+    print("=" * 70)
 
     tests = [
         ("KnowledgeDB", test_knowledge_db),
@@ -509,7 +549,7 @@ def main():
         ("KnowledgeGraph", test_knowledge_graph),
         ("LearningEngine", test_learning_engine),
         ("CacheManager", test_cache_manager),
-        ("KnowledgeManager", test_knowledge_manager)
+        ("KnowledgeManager", test_knowledge_manager),
     ]
 
     passed = 0
@@ -525,12 +565,13 @@ def main():
         except Exception as e:
             print(f"\n✗ {name} tests FAILED with exception: {e}")
             import traceback
+
             traceback.print_exc()
             failed += 1
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(" SUMMARY")
-    print("="*70)
+    print("=" * 70)
     print(f" Passed: {passed}/{len(tests)}")
     print(f" Failed: {failed}/{len(tests)}")
 
@@ -540,7 +581,7 @@ def main():
     else:
         print(f"\n✗✗✗ {failed} TEST(S) FAILED ✗✗✗")
 
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     return failed == 0
 

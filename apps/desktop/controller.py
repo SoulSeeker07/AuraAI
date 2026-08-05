@@ -1,8 +1,9 @@
-from PySide6.QtCore import QObject, Signal, Slot, QThread
 import asyncio
-import threading
-import os
 import json
+import os
+import threading
+
+from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 try:
     import websockets
@@ -55,7 +56,7 @@ class WebSocketWorker(QThread):
                         if msg is None:
                             continue
                         self.message_received.emit(msg)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         continue
                     except websockets.ConnectionClosed:
                         break

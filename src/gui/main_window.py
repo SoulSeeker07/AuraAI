@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QColor, QCloseEvent, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QCloseEvent, QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from gui.theme import PALETTE
 from gui.titlebar import TitleBar
 
 
@@ -48,7 +47,9 @@ class MainWindow(QMainWindow):
 
     def set_live_screen_status(self, is_active: bool, frame_count: int = 0) -> None:
         if is_active:
-            self.status_label.setText(f"Live screen mode active. Frames captured: {frame_count}.")
+            self.status_label.setText(
+                f"Live screen mode active. Frames captured: {frame_count}."
+            )
             return
         self.status_label.setText("Live screen mode stopped.")
 
@@ -133,7 +134,9 @@ class MainWindow(QMainWindow):
             sidebar_layout.addWidget(item)
 
         sidebar_layout.addStretch(1)
-        hint = QLabel("Alt + Space opens Aura from anywhere when global hotkeys are available.")
+        hint = QLabel(
+            "Alt + Space opens Aura from anywhere when global hotkeys are available."
+        )
         hint.setObjectName("hint")
         hint.setWordWrap(True)
         sidebar_layout.addWidget(hint)
@@ -147,16 +150,26 @@ class MainWindow(QMainWindow):
         header.setObjectName("pageTitle")
         content_layout.addWidget(header)
 
-        self.status_label = QLabel("Aura brain ready. Open the overlay to chat with memory.")
+        self.status_label = QLabel(
+            "Aura brain ready. Open the overlay to chat with memory."
+        )
         self.status_label.setObjectName("status")
         self.status_label.setWordWrap(True)
         content_layout.addWidget(self.status_label)
 
         cards = QHBoxLayout()
         cards.setSpacing(14)
-        cards.addWidget(self._metric_card("Main Window", "Frameless", "Custom title bar and rounded frame"))
-        cards.addWidget(self._metric_card("Overlay", "Alt + Space", "Instant prompt surface"))
-        cards.addWidget(self._metric_card("Tray", "Enabled", "Close keeps Aura running"))
+        cards.addWidget(
+            self._metric_card(
+                "Main Window", "Frameless", "Custom title bar and rounded frame"
+            )
+        )
+        cards.addWidget(
+            self._metric_card("Overlay", "Alt + Space", "Instant prompt surface")
+        )
+        cards.addWidget(
+            self._metric_card("Tray", "Enabled", "Close keeps Aura running")
+        )
         content_layout.addLayout(cards)
 
         history_title = QLabel("Recent Activity")
@@ -165,7 +178,9 @@ class MainWindow(QMainWindow):
 
         self.history_list = QListWidget()
         self.history_list.setAlternatingRowColors(True)
-        self.history_list.addItem("Aura started. Open the overlay to capture your first prompt.")
+        self.history_list.addItem(
+            "Aura started. Open the overlay to capture your first prompt."
+        )
         content_layout.addWidget(self.history_list, 1)
 
         shell.addWidget(sidebar)

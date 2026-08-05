@@ -5,17 +5,18 @@ Builds citations from evidence and research results.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from .models import Evidence, SourceTrustLevel, normalize_trust_level
+from .models import Evidence, normalize_trust_level
 
 logger = logging.getLogger(__name__)
 
 
 class CitationStyle(Enum):
     """Citation formatting styles."""
+
     APA = "apa"
     MLA = "mla"
     Chicago = "chicago"
@@ -27,7 +28,7 @@ class CitationStyle(Enum):
 class Citation:
     """
     A citation to a source.
-    
+
     Example:
         Citation(
             source="python.org",
@@ -37,14 +38,17 @@ class Citation:
             evidence_ids=[1,4,6]
         )
     """
+
     id: int  # Unique citation ID
     source: str  # Source name (e.g., "python.org", "github.com")
-    title: Optional[str] = None  # Title of the document
+    title: str | None = None  # Title of the document
     url: str = ""  # URL to source
     trust_level: str = "unknown"  # Trust level of source
     confidence: float = 0.5  # Confidence in this citation
-    evidence_ids: List[int] = None  # IDs of evidence items this citation supports
-    citation_style: CitationStyle = CitationStyle.APA  # Formatting style for this citation
+    evidence_ids: list[int] = None  # IDs of evidence items this citation supports
+    citation_style: CitationStyle = (
+        CitationStyle.APA
+    )  # Formatting style for this citation
 
     def __post_init__(self):
         if self.evidence_ids is None:
@@ -54,10 +58,11 @@ class Citation:
 class CitationBuilder:
     """
     Builds citations from evidence and research results.
-    
+
     Creates structured citations that can be used in reports and responses.
     """
-    def __init__(self, config: Dict[str, Any] = None):
+
+    def __init__(self, config: dict[str, Any] = None):
         """
         Initialize citation builder.
 
@@ -65,10 +70,10 @@ class CitationBuilder:
             config: Configuration dictionary
         """
         self.config = config or {}
-        self.style = CitationStyle(self.config.get('style', 'apa'))
+        self.style = CitationStyle(self.config.get("style", "apa"))
         self.next_id = 1
 
-    def build_citations(self, evidence_list: List[Evidence]) -> List[Citation]:
+    def build_citations(self, evidence_list: list[Evidence]) -> list[Citation]:
         """
         Build citations from evidence list.
 
@@ -88,7 +93,7 @@ class CitationBuilder:
         self.next_id = 1  # Reset ID counter
         return citations
 
-    def _create_citation_from_evidence(self, evidence: Evidence) -> Optional[Citation]:
+    def _create_citation_from_evidence(self, evidence: Evidence) -> Citation | None:
         """
         Create a citation from an evidence object.
 
@@ -128,8 +133,9 @@ class CitationBuilder:
         """
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(url)
-            domain = parsed.netloc.replace('www.', '')
+            domain = parsed.netloc.replace("www.", "")
             return domain
         except:
             return url
@@ -146,14 +152,14 @@ class CitationBuilder:
         """
         # Base confidence on trust level
         trust_scores = {
-            'official': 0.95,
-            'government': 0.95,
-            'github': 0.90,
-            'stackoverflow': 0.85,
-            'wikipedia': 0.75,
-            'reddit': 0.70,
-            'blog': 0.60,
-            'unknown': 0.50
+            "official": 0.95,
+            "government": 0.95,
+            "github": 0.90,
+            "stackoverflow": 0.85,
+            "wikipedia": 0.75,
+            "reddit": 0.70,
+            "blog": 0.60,
+            "unknown": 0.50,
         }
 
         # Get trust level as lowercase string for matching
@@ -278,7 +284,7 @@ class CitationBuilder:
         """
         return f"[{citation.id}] {citation.source}"
 
-    def format_citations(self, citations: List[Citation]) -> str:
+    def format_citations(self, citations: list[Citation]) -> str:
         """
         Format all citations.
 
@@ -297,7 +303,7 @@ class CitationBuilder:
 
         return "\n".join(lines)
 
-    def generate_citation_list(self, citations: List[Citation]) -> str:
+    def generate_citation_list(self, citations: list[Citation]) -> str:
         """
         Generate a formatted citation list.
 
@@ -311,7 +317,7 @@ class CitationBuilder:
 
         return formatted if formatted else "No sources available."
 
-    def create_bibliography(self, citations: List[Citation]) -> str:
+    def create_bibliography(self, citations: list[Citation]) -> str:
         """
         Create a full bibliography section.
 
@@ -342,7 +348,9 @@ class CitationBuilder:
             return f"[{citation.id}] {context}: {citation_text}"
         return citation_text
 
-    def get_citation_by_id(self, citations: List[Citation], citation_id: int) -> Optional[Citation]:
+    def get_citation_by_id(
+        self, citations: list[Citation], citation_id: int
+    ) -> Citation | None:
         """
         Get a citation by its ID.
 
@@ -358,7 +366,9 @@ class CitationBuilder:
                 return citation
         return None
 
-    def get_citations_by_source(self, citations: List[Citation], source: str) -> List[Citation]:
+    def get_citations_by_source(
+        self, citations: list[Citation], source: str
+    ) -> list[Citation]:
         """
         Get all citations from a specific source.
 
@@ -371,7 +381,9 @@ class CitationBuilder:
         """
         return [c for c in citations if c.source == source]
 
-    def filter_by_trust_level(self, citations: List[Citation], trust_level: str) -> List[Citation]:
+    def filter_by_trust_level(
+        self, citations: list[Citation], trust_level: str
+    ) -> list[Citation]:
         """
         Filter citations by trust level.
 
@@ -384,7 +396,7 @@ class CitationBuilder:
         """
         return [c for c in citations if c.trust_level == trust_level]
 
-    def _extract_author(self, title: str) -> Optional[str]:
+    def _extract_author(self, title: str) -> str | None:
         """
         Extract author from title string.
 
@@ -399,21 +411,22 @@ class CitationBuilder:
         if " - " in title:
             parts = title.split(" - ")
             return parts[0].strip()
-        
+
         # e.g., "by Author"
         if " by " in title.lower():
             parts = title.lower().split(" by ")
             return parts[1].strip()
-        
+
         # e.g., "Author (Year)"
         import re
-        match = re.search(r'^(.+?)\s*\((\d{4})\)', title)
+
+        match = re.search(r"^(.+?)\s*\((\d{4})\)", title)
         if match:
             return match.group(1).strip()
-        
+
         return None
 
-    def _extract_year(self, url: str) -> Optional[str]:
+    def _extract_year(self, url: str) -> str | None:
         """
         Extract publication year from URL.
 
@@ -424,22 +437,22 @@ class CitationBuilder:
             Year string or None
         """
         import re
-        
+
         # Look for year patterns in URL
         year_patterns = [
-            r'/(\d{4})/',
-            r'-(\d{4})',
-            r'/(\d{4})/.*',
+            r"/(\d{4})/",
+            r"-(\d{4})",
+            r"/(\d{4})/.*",
         ]
-        
+
         for pattern in year_patterns:
             match = re.search(pattern, url)
             if match:
                 return match.group(1)
-        
+
         return None
 
-    def create_footnotes(self, citations: List[Citation]) -> List[str]:
+    def create_footnotes(self, citations: list[Citation]) -> list[str]:
         """
         Create footnotes with full citations.
 
@@ -450,16 +463,16 @@ class CitationBuilder:
             List of footnote strings
         """
         footnotes = []
-        
+
         for citation in citations:
             footnote = f"[{citation.id}] {citation.url}"
             if citation.title:
                 footnote += f" {citation.title}"
             footnotes.append(footnote)
-        
+
         return footnotes
 
-    def validate_citations(self, citations: List[Citation]) -> Dict[str, Any]:
+    def validate_citations(self, citations: list[Citation]) -> dict[str, Any]:
         """
         Validate citations.
 
@@ -470,7 +483,7 @@ class CitationBuilder:
             Validation results
         """
         issues = []
-        
+
         for citation in citations:
             if not citation.url:
                 issues.append(f"Citation {citation.id}: Missing URL")
@@ -478,11 +491,11 @@ class CitationBuilder:
                 issues.append(f"Citation {citation.id}: Missing title")
             if citation.confidence < 0.2:
                 issues.append(f"Citation {citation.id}: Low confidence")
-        
+
         return {
             "total_citations": len(citations),
             "valid": len(issues) == 0,
-            "issues": issues
+            "issues": issues,
         }
 
     def build_citation(self, evidence: Evidence) -> Citation:

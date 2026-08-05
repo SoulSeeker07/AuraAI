@@ -6,9 +6,9 @@ Handles result ranking with multiple scoring strategies.
 
 import logging
 import math
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from .models import RetrievalResult, SourceType
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RankConfig:
     """Configuration for ranking strategy."""
+
     enable_relevance_score: bool = True
     relevance_weight: float = 0.4
 
@@ -30,7 +31,7 @@ class RankConfig:
     enable_importance_score: bool = True
     importance_weight: float = 0.2
 
-    workspace_importance_map: Optional[Dict[str, float]] = None
+    workspace_importance_map: dict[str, float] | None = None
     recency_decay_days: int = 30
     importance_decay_days: int = 90
 
@@ -40,10 +41,7 @@ class RankingEngine:
     Engine for ranking retrieval results with multiple strategies.
     """
 
-    def __init__(
-        self,
-        config: Optional[RankConfig] = None
-    ):
+    def __init__(self, config: RankConfig | None = None):
         """
         Initialize ranking engine.
 
@@ -55,10 +53,7 @@ class RankingEngine:
 
         logger.info("Ranking engine initialized")
 
-    def rank_results(
-        self,
-        results: List[RetrievalResult]
-    ) -> List[RetrievalResult]:
+    def rank_results(self, results: list[RetrievalResult]) -> list[RetrievalResult]:
         """
         Rank results using multiple scoring strategies.
 
@@ -221,16 +216,16 @@ class RankingEngine:
         # Base importance by chunk type
         chunk_type = result.chunk.chunk_type.value
         type_importance = {
-            'SECTION': 0.5,
-            'FUNCTION': 0.8,
-            'CLASS': 0.9,
-            'MODULE': 0.85,
-            'DOCUMENTATION': 0.7,
-            'EXAMPLE': 0.6,
-            'CONCEPT': 0.7,
-            'NOTICE': 0.4,
-            'WELCOME': 0.3,
-            'ERROR': 0.8,
+            "SECTION": 0.5,
+            "FUNCTION": 0.8,
+            "CLASS": 0.9,
+            "MODULE": 0.85,
+            "DOCUMENTATION": 0.7,
+            "EXAMPLE": 0.6,
+            "CONCEPT": 0.7,
+            "NOTICE": 0.4,
+            "WELCOME": 0.3,
+            "ERROR": 0.8,
         }
 
         score = type_importance.get(chunk_type, 0.5)
@@ -238,11 +233,11 @@ class RankingEngine:
         # Boost by tags
         for tag in result.chunk.tags:
             tag_importance = {
-                'important': 0.2,
-                'critical': 0.3,
-                'reference': 0.15,
-                'archived': -0.2,
-                'deprecated': -0.15,
+                "important": 0.2,
+                "critical": 0.3,
+                "reference": 0.15,
+                "archived": -0.2,
+                "deprecated": -0.15,
             }
 
             if tag in tag_importance:
@@ -253,9 +248,9 @@ class RankingEngine:
 
     def rank_by_workspace(
         self,
-        results: List[RetrievalResult],
-        project_weights: Optional[Dict[str, float]] = None
-    ) -> List[RetrievalResult]:
+        results: list[RetrievalResult],
+        project_weights: dict[str, float] | None = None,
+    ) -> list[RetrievalResult]:
         """
         Rank results by workspace (project) importance.
 
@@ -274,10 +269,8 @@ class RankingEngine:
         return self.rank_results(results)
 
     def rank_by_recency(
-        self,
-        results: List[RetrievalResult],
-        recency_decay_days: int = 30
-    ) -> List[RetrievalResult]:
+        self, results: list[RetrievalResult], recency_decay_days: int = 30
+    ) -> list[RetrievalResult]:
         """
         Rank results by recency.
 
@@ -294,9 +287,8 @@ class RankingEngine:
         return self.rank_results(results)
 
     def rank_by_importance(
-        self,
-        results: List[RetrievalResult]
-    ) -> List[RetrievalResult]:
+        self, results: list[RetrievalResult]
+    ) -> list[RetrievalResult]:
         """
         Rank results by importance (chunk type and tags).
 
@@ -308,10 +300,7 @@ class RankingEngine:
         """
         return self.rank_results(results)
 
-    def get_ranking_stats(
-        self,
-        results: List[RetrievalResult]
-    ) -> Dict[str, Any]:
+    def get_ranking_stats(self, results: list[RetrievalResult]) -> dict[str, Any]:
         """
         Get statistics about ranking.
 
@@ -322,10 +311,7 @@ class RankingEngine:
             Dictionary with ranking statistics
         """
         if not results:
-            return {
-                'total_results': 0,
-                'average_final_score': 0.0
-            }
+            return {"total_results": 0, "average_final_score": 0.0}
 
         scores = [r.final_score for r in results]
         avg_score = sum(scores) / len(scores)
@@ -339,17 +325,14 @@ class RankingEngine:
             distribution[bucket] = distribution.get(bucket, 0) + 1
 
         return {
-            'total_results': len(results),
-            'average_final_score': avg_score,
-            'min_score': min_score,
-            'max_score': max_score,
-            'score_distribution': distribution
+            "total_results": len(results),
+            "average_final_score": avg_score,
+            "min_score": min_score,
+            "max_score": max_score,
+            "score_distribution": distribution,
         }
 
-    def set_workspace_importance(
-        self,
-        project_weights: Dict[str, float]
-    ):
+    def set_workspace_importance(self, project_weights: dict[str, float]):
         """
         Set workspace (project) importance weights.
 
@@ -364,7 +347,7 @@ class RankingEngine:
         self.workspace_importance = self.config.workspace_importance_map or {}
         logger.info("Reset workspace importance weights")
 
-    def get_workspace_importance(self) -> Dict[str, float]:
+    def get_workspace_importance(self) -> dict[str, float]:
         """
         Get current workspace importance weights.
 
@@ -384,9 +367,8 @@ class RankingEngine:
         logger.info(f"Set recency decay to {decay_days} days")
 
     def get_scores_by_component(
-        self,
-        results: List[RetrievalResult]
-    ) -> Dict[str, List[float]]:
+        self, results: list[RetrievalResult]
+    ) -> dict[str, list[float]]:
         """
         Get scores broken down by component.
 
@@ -397,10 +379,10 @@ class RankingEngine:
             Dictionary with scores for each component
         """
         component_scores = {
-            'relevance': [],
-            'workspace': [],
-            'recency': [],
-            'importance': []
+            "relevance": [],
+            "workspace": [],
+            "recency": [],
+            "importance": [],
         }
 
         for result in results:
@@ -410,18 +392,16 @@ class RankingEngine:
             recency = self._calculate_recency_score(result)
             importance = self._calculate_importance_score(result)
 
-            component_scores['relevance'].append(relevance)
-            component_scores['workspace'].append(workspace)
-            component_scores['recency'].append(recency)
-            component_scores['importance'].append(importance)
+            component_scores["relevance"].append(relevance)
+            component_scores["workspace"].append(workspace)
+            component_scores["recency"].append(recency)
+            component_scores["importance"].append(importance)
 
         return component_scores
 
     def filter_by_min_score(
-        self,
-        results: List[RetrievalResult],
-        min_score: float = 0.5
-    ) -> List[RetrievalResult]:
+        self, results: list[RetrievalResult], min_score: float = 0.5
+    ) -> list[RetrievalResult]:
         """
         Filter results below minimum score.
 
@@ -433,14 +413,14 @@ class RankingEngine:
             Filtered list of results
         """
         filtered = [r for r in results if r.final_score >= min_score]
-        logger.info(f"Filtered {len(results) - len(filtered)} results below score {min_score}")
+        logger.info(
+            f"Filtered {len(results) - len(filtered)} results below score {min_score}"
+        )
         return filtered
 
     def select_top_results(
-        self,
-        results: List[RetrievalResult],
-        n: int = 5
-    ) -> List[RetrievalResult]:
+        self, results: list[RetrievalResult], n: int = 5
+    ) -> list[RetrievalResult]:
         """
         Select top N results.
 

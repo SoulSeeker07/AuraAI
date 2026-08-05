@@ -12,22 +12,18 @@ The Integration Framework handles:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Dict
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskType,
-    TaskPriority
-)
-from .agent_registry import AgentRegistry, AgentCapability
+from .agent_registry import AgentRegistry
+from .task_model import Task
 
 
 class CoordinationStrategy(Enum):
     """Strategies for coordinating agents."""
+
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
     HYBRID = "hybrid"
@@ -36,10 +32,11 @@ class CoordinationStrategy(Enum):
 @dataclass
 class AgentCoordination:
     """Represents coordination of agents."""
-    agents: List[Any]
-    tasks: List[Task]
+
+    agents: list[Any]
+    tasks: list[Task]
     strategy: CoordinationStrategy
-    dependencies: List[tuple[int, int]]  # List of (task_index, depends_on_task_index)
+    dependencies: list[tuple[int, int]]  # List of (task_index, depends_on_task_index)
     timeout: int = 300
 
 
@@ -77,7 +74,9 @@ class AgentCoordinator:
             except Exception:
                 pass
 
-    async def coordinate_agents(self, coordination: AgentCoordination) -> Dict[str, Any]:
+    async def coordinate_agents(
+        self, coordination: AgentCoordination
+    ) -> dict[str, Any]:
         """
         Coordinate multiple agents to complete tasks.
 
@@ -88,12 +87,15 @@ class AgentCoordinator:
             Coordination results
         """
         try:
-            self._notify_callback("start", {
-                "strategy": coordination.strategy.value,
-                "agent_count": len(coordination.agents),
-                "task_count": len(coordination.tasks),
-                "dependencies": len(coordination.dependencies)
-            })
+            self._notify_callback(
+                "start",
+                {
+                    "strategy": coordination.strategy.value,
+                    "agent_count": len(coordination.agents),
+                    "task_count": len(coordination.tasks),
+                    "dependencies": len(coordination.dependencies),
+                },
+            )
 
             if coordination.strategy == CoordinationStrategy.SEQUENTIAL:
                 return await self._execute_sequential(coordination)
@@ -108,10 +110,12 @@ class AgentCoordinator:
                 "success": False,
                 "error": str(e),
                 "tasks_completed": 0,
-                "tasks_failed": 0
+                "tasks_failed": 0,
             }
 
-    async def _execute_sequential(self, coordination: AgentCoordination) -> Dict[str, Any]:
+    async def _execute_sequential(
+        self, coordination: AgentCoordination
+    ) -> dict[str, Any]:
         """Execute tasks sequentially."""
         results = []
         failed_tasks = []
@@ -128,11 +132,9 @@ class AgentCoordinator:
                         break
 
             if i in failed_tasks:
-                results.append({
-                    "success": False,
-                    "task_index": i,
-                    "error": "Dependency failed"
-                })
+                results.append(
+                    {"success": False, "task_index": i, "error": "Dependency failed"}
+                )
                 continue
 
             # Execute task
@@ -142,20 +144,21 @@ class AgentCoordinator:
             if not result["success"]:
                 failed_tasks.append(i)
 
-            self._notify_callback("task_complete", {
-                "task_index": i,
-                "success": result["success"]
-            })
+            self._notify_callback(
+                "task_complete", {"task_index": i, "success": result["success"]}
+            )
 
         return {
             "success": len(failed_tasks) == 0,
             "strategy": "sequential",
             "tasks_completed": len(results) - len(failed_tasks),
             "tasks_failed": len(failed_tasks),
-            "results": results
+            "results": results,
         }
 
-    async def _execute_parallel(self, coordination: AgentCoordination) -> Dict[str, Any]:
+    async def _execute_parallel(
+        self, coordination: AgentCoordination
+    ) -> dict[str, Any]:
         """Execute tasks in parallel."""
         results = {}
         failed_tasks = set()
@@ -168,10 +171,7 @@ class AgentCoordinator:
 
         # Execute all tasks concurrently
         try:
-            completed = await asyncio.gather(
-                *async_tasks,
-                return_exceptions=True
-            )
+            completed = await asyncio.gather(*async_tasks, return_exceptions=True)
 
             for i, result in enumerate(completed):
                 if isinstance(result, Exception):
@@ -186,7 +186,7 @@ class AgentCoordinator:
                 "strategy": "parallel",
                 "error": str(e),
                 "tasks_completed": len(results),
-                "tasks_failed": len(failed_tasks)
+                "tasks_failed": len(failed_tasks),
             }
 
         return {
@@ -194,10 +194,10 @@ class AgentCoordinator:
             "strategy": "parallel",
             "tasks_completed": len(results) - len(failed_tasks),
             "tasks_failed": len(failed_tasks),
-            "results": results
+            "results": results,
         }
 
-    async def _execute_hybrid(self, coordination: AgentCoordination) -> Dict[str, Any]:
+    async def _execute_hybrid(self, coordination: AgentCoordination) -> dict[str, Any]:
         """Execute tasks using hybrid strategy."""
         # Group tasks by dependency
         task_groups = self._group_tasks_by_dependencies(coordination)
@@ -212,7 +212,7 @@ class AgentCoordinator:
                     agents=coordination.agents,
                     tasks=group_tasks,
                     strategy=CoordinationStrategy.SEQUENTIAL,
-                    timeout=coordination.timeout
+                    timeout=coordination.timeout,
                 )
             )
 
@@ -229,10 +229,12 @@ class AgentCoordinator:
             "groups_executed": len(task_groups),
             "tasks_completed": len(coordination.tasks) - len(failed_tasks),
             "tasks_failed": len(failed_tasks),
-            "results": all_results
+            "results": all_results,
         }
 
-    def _group_tasks_by_dependencies(self, coordination: AgentCoordination) -> List[List[int]]:
+    def _group_tasks_by_dependencies(
+        self, coordination: AgentCoordination
+    ) -> list[list[int]]:
         """Group tasks by dependencies."""
         if not coordination.dependencies:
             # No dependencies, all in one group
@@ -260,7 +262,7 @@ class AgentCoordinator:
 
         return groups
 
-    async def _execute_task(self, task_index: int, task: Task) -> Dict[str, Any]:
+    async def _execute_task(self, task_index: int, task: Task) -> dict[str, Any]:
         """Execute a single task."""
         try:
             # Find suitable agent
@@ -270,7 +272,7 @@ class AgentCoordinator:
                 return {
                     "success": False,
                     "task_index": task_index,
-                    "error": "No suitable agent found for task"
+                    "error": "No suitable agent found for task",
                 }
 
             # Instantiate agent
@@ -284,17 +286,13 @@ class AgentCoordinator:
                 "task_index": task_index,
                 "message": result.message,
                 "data": result.data,
-                "error": result.error
+                "error": result.error,
             }
 
         except Exception as e:
-            return {
-                "success": False,
-                "task_index": task_index,
-                "error": str(e)
-            }
+            return {"success": False, "task_index": task_index, "error": str(e)}
 
-    def aggregate_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def aggregate_results(self, results: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Aggregate results from multiple agent executions.
 
@@ -312,10 +310,12 @@ class AgentCoordinator:
             "total_tasks": len(results),
             "successful_tasks": successful,
             "failed_tasks": failed,
-            "task_results": results
+            "task_results": results,
         }
 
-    def resolve_dependencies(self, tasks: List[Task], dependencies: List[tuple[int, int]]) -> List[List[Task]]:
+    def resolve_dependencies(
+        self, tasks: list[Task], dependencies: list[tuple[int, int]]
+    ) -> list[list[Task]]:
         """
         Resolve task dependencies into execution order.
 
@@ -331,7 +331,7 @@ class AgentCoordinator:
                 agents=[],
                 tasks=tasks,
                 strategy=CoordinationStrategy.SEQUENTIAL,
-                dependencies=dependencies
+                dependencies=dependencies,
             )
         )
 
@@ -341,8 +341,8 @@ async def execute_multi_agent_task(
     task: Task,
     registry: AgentRegistry,
     coordination_strategy: CoordinationStrategy = CoordinationStrategy.SEQUENTIAL,
-    timeout: int = 300
-) -> Dict[str, Any]:
+    timeout: int = 300,
+) -> dict[str, Any]:
     """
     Execute a task using a coordinated multi-agent approach.
 
@@ -358,10 +358,7 @@ async def execute_multi_agent_task(
     coordinator = AgentCoordinator(registry)
 
     coordination = AgentCoordination(
-        agents=[],
-        tasks=[task],
-        strategy=coordination_strategy,
-        timeout=timeout
+        agents=[], tasks=[task], strategy=coordination_strategy, timeout=timeout
     )
 
     return await coordinator.coordinate_agents(coordination)

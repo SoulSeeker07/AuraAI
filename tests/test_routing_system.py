@@ -5,15 +5,16 @@ Tests the complete Capability Router system with all three routing levels.
 """
 
 import pytest
+
 from src.routing.capability_router import CapabilityRouter
-from src.routing.keyword_router import KeywordRouter
-from src.routing.intent_classifier import IntentClassifier
-from src.routing.workflow_orchestrator import WorkflowOrchestrator
 from src.routing.capability_types import CapabilityType
-from src.routing.routing_result import RoutingResult
+from src.routing.intent_classifier import IntentClassifier
+from src.routing.keyword_router import KeywordRouter
 from src.routing.permission_analyzer import PermissionAnalyzer
+from src.routing.plugin_registry import PluginCapability, PluginRegistry
 from src.routing.risk_levels import RiskLevel
-from src.routing.plugin_registry import PluginRegistry, PluginCapability
+from src.routing.routing_result import RoutingResult
+from src.routing.workflow_orchestrator import WorkflowOrchestrator
 
 
 class TestKeywordRouter:
@@ -132,13 +133,9 @@ class TestWorkflowOrchestrator:
         orchestrator = WorkflowOrchestrator()
 
         # Test with explicit connectors
-        assert orchestrator.can_orchestrate(
-            "Find all Python files and summarize them"
-        )
+        assert orchestrator.can_orchestrate("Find all Python files and summarize them")
 
-        assert orchestrator.can_orchestrate(
-            "Open VS Code and then clone repository"
-        )
+        assert orchestrator.can_orchestrate("Open VS Code and then clone repository")
 
         # Test with comma separation
         assert orchestrator.can_orchestrate(
@@ -163,9 +160,21 @@ class TestWorkflowOrchestrator:
         orchestrator = WorkflowOrchestrator()
 
         operations = [
-            {"capability": CapabilityType.FILESYSTEM, "step_type": "execute", "description": "Find files"},
-            {"capability": CapabilityType.PROVIDER, "step_type": "execute", "description": "Generate output"},
-            {"capability": CapabilityType.FILESYSTEM, "step_type": "execute", "description": "Save output"},
+            {
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Find files",
+            },
+            {
+                "capability": CapabilityType.PROVIDER,
+                "step_type": "execute",
+                "description": "Generate output",
+            },
+            {
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Save output",
+            },
         ]
 
         ordered = orchestrator._order_operations(operations)
@@ -257,7 +266,7 @@ class TestRoutingResult:
             capability=CapabilityType.DESKTOP,
             confidence=0.95,
             priority=CapabilityPriority.HIGH,
-            requires_permission=False
+            requires_permission=False,
         )
 
         assert result.capability == CapabilityType.DESKTOP
@@ -318,7 +327,7 @@ class TestRoutingResult:
         result = RoutingResult(
             capability=CapabilityType.DESKTOP,
             confidence=0.95,
-            priority=CapabilityPriority.HIGH
+            priority=CapabilityPriority.HIGH,
         )
         result.add_step("Open Chrome")
         result.add_plugin("desktop_plugin")
@@ -403,7 +412,7 @@ class TestPluginRegistry:
                         "capability_type": "desktop",
                         "description": "Test capability",
                         "supported_operations": ["open", "close"],
-                        "priority": "high"
+                        "priority": "high",
                     }
                 ]
 
@@ -424,7 +433,7 @@ class TestPluginRegistry:
                         "name": "test_cap",
                         "capability_type": "filesystem",
                         "description": "Test",
-                        "supported_operations": ["read", "write"]
+                        "supported_operations": ["read", "write"],
                     }
                 ]
 
@@ -445,7 +454,7 @@ class TestPluginRegistry:
                         "name": "file_op",
                         "capability_type": "filesystem",
                         "description": "File operations",
-                        "supported_operations": ["read", "write", "delete"]
+                        "supported_operations": ["read", "write", "delete"],
                     }
                 ]
 
@@ -469,8 +478,16 @@ class TestPluginRegistry:
         class MockPlugin:
             def get_capabilities(self):
                 return [
-                    {"name": "cap1", "capability_type": "desktop", "description": "Test"},
-                    {"name": "cap2", "capability_type": "filesystem", "description": "Test"},
+                    {
+                        "name": "cap1",
+                        "capability_type": "desktop",
+                        "description": "Test",
+                    },
+                    {
+                        "name": "cap2",
+                        "capability_type": "filesystem",
+                        "description": "Test",
+                    },
                 ]
 
         plugin = MockPlugin()

@@ -5,8 +5,8 @@ Merges similar facts from different evidence sources into unified evidence.
 """
 
 import logging
-from typing import List, Dict, Any, Set, Tuple, Optional
 from dataclasses import dataclass
+from typing import Any
 
 from .models import Evidence, SourceTrustLevel, normalize_trust_level
 
@@ -16,23 +16,24 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EvidenceConflict:
     """Represents a conflict between evidence from different sources."""
+
     fact: str
-    sources: List[str]
-    source_urls: List[str]
+    sources: list[str]
+    source_urls: list[str]
     confidence: float
-    trust_levels: List[str]
+    trust_levels: list[str]
 
 
 class EvidenceMerger:
     """
     Merges similar facts from different evidence sources.
-    
+
     Instead of treating Provider A, Provider B, Provider C as separate
     evidence objects, they merge into one evidence object with multiple
     supporting sources.
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         """
         Initialize evidence merger.
 
@@ -40,11 +41,15 @@ class EvidenceMerger:
             config: Configuration dictionary
         """
         self.config = config or {}
-        self.merge_threshold = self.config.get('merge_threshold', 0.75)  # 75% similarity
-        self.max_evidence_objects = self.config.get('max_evidence_objects', 10)
-        self.conflict_threshold = self.config.get('conflict_threshold', 0.3)  # Low confidence indicates potential conflict
+        self.merge_threshold = self.config.get(
+            "merge_threshold", 0.75
+        )  # 75% similarity
+        self.max_evidence_objects = self.config.get("max_evidence_objects", 10)
+        self.conflict_threshold = self.config.get(
+            "conflict_threshold", 0.3
+        )  # Low confidence indicates potential conflict
 
-    def merge_evidence(self, evidence_list: List[Evidence]) -> List[Evidence]:
+    def merge_evidence(self, evidence_list: list[Evidence]) -> list[Evidence]:
         """
         Merge evidence from multiple sources.
 
@@ -57,7 +62,9 @@ class EvidenceMerger:
         if not evidence_list:
             return []
 
-        logger.info(f"Merging {len(evidence_list)} evidence objects into {self.max_evidence_objects} or fewer")
+        logger.info(
+            f"Merging {len(evidence_list)} evidence objects into {self.max_evidence_objects} or fewer"
+        )
 
         # Group similar facts within same evidence objects
         groups = self._group_similar_facts(evidence_list)
@@ -66,12 +73,14 @@ class EvidenceMerger:
         merged_evidence = self._merge_fact_groups(groups)
 
         # Reduce to max_evidence_objects
-        merged_evidence = merged_evidence[:self.max_evidence_objects]
+        merged_evidence = merged_evidence[: self.max_evidence_objects]
 
         logger.info(f"Merged to {len(merged_evidence)} evidence objects")
         return merged_evidence
 
-    def _group_similar_facts(self, evidence_list: List[Evidence]) -> List[List[Evidence]]:
+    def _group_similar_facts(
+        self, evidence_list: list[Evidence]
+    ) -> list[list[Evidence]]:
         """
         Group evidence objects with similar facts.
 
@@ -87,7 +96,7 @@ class EvidenceMerger:
         for i, evidence1 in enumerate(evidence_list):
             group = [evidence1]
 
-            for evidence2 in evidence_list[i+1:]:
+            for evidence2 in evidence_list[i + 1 :]:
                 if self._evidence_overlap(evidence1, evidence2):
                     group.append(evidence2)
 
@@ -147,7 +156,7 @@ class EvidenceMerger:
         # Similarity threshold
         return overlap / total > self.merge_threshold if total > 0 else False
 
-    def _merge_fact_groups(self, groups: List[List[Evidence]]) -> List[Evidence]:
+    def _merge_fact_groups(self, groups: list[list[Evidence]]) -> list[Evidence]:
         """
         Merge facts within each group into a single evidence object.
 
@@ -168,7 +177,7 @@ class EvidenceMerger:
 
         return merged
 
-    def _merge_evidence_group(self, group: List[Evidence]) -> Evidence:
+    def _merge_evidence_group(self, group: list[Evidence]) -> Evidence:
         """
         Merge a group of evidence objects into one.
 
@@ -191,7 +200,9 @@ class EvidenceMerger:
             all_facts.extend(evidence.facts)
             all_sources.extend([evidence.source] * len(evidence.facts))
             all_urls.extend([evidence.url] * len(evidence.facts))
-            all_trust_levels.extend([normalize_trust_level(evidence.trust_level)] * len(evidence.facts))
+            all_trust_levels.extend(
+                [normalize_trust_level(evidence.trust_level)] * len(evidence.facts)
+            )
 
         # Remove duplicates
         unique_facts = self._remove_duplicate_facts(all_facts)
@@ -216,12 +227,12 @@ class EvidenceMerger:
             facts=[fact.text for fact in scored_facts],
             trust_level=merged_trust_level,
             tags=group[0].tags,
-            timestamp=None
+            timestamp=None,
         )
 
         return merged_evidence
 
-    def _remove_duplicate_facts(self, facts: List[str]) -> List[str]:
+    def _remove_duplicate_facts(self, facts: list[str]) -> list[str]:
         """
         Remove duplicate facts.
 
@@ -246,7 +257,9 @@ class EvidenceMerger:
 
         return unique_facts
 
-    def _score_and_rank_facts(self, facts: List[str], group: List[Evidence]) -> List[Any]:
+    def _score_and_rank_facts(
+        self, facts: list[str], group: list[Evidence]
+    ) -> list[Any]:
         """
         Score and rank facts within a group.
 
@@ -269,18 +282,16 @@ class EvidenceMerger:
             if is_conflicting:
                 score = max(score - 0.3, 0)  # Reduce confidence for conflicts
 
-            scored_facts.append({
-                'text': fact,
-                'confidence': score,
-                'is_conflicting': is_conflicting
-            })
+            scored_facts.append(
+                {"text": fact, "confidence": score, "is_conflicting": is_conflicting}
+            )
 
         # Sort by confidence (descending)
-        scored_facts.sort(key=lambda x: x['confidence'], reverse=True)
+        scored_facts.sort(key=lambda x: x["confidence"], reverse=True)
 
         return scored_facts
 
-    def _calculate_fact_score(self, fact: str, group: List[Evidence]) -> float:
+    def _calculate_fact_score(self, fact: str, group: list[Evidence]) -> float:
         """
         Calculate score for a fact.
 
@@ -296,7 +307,9 @@ class EvidenceMerger:
         # Count trust levels
         trust_counts = {}
         for evidence in group:
-            trust_counts[evidence.trust_level] = trust_counts.get(evidence.trust_level, 0) + 1
+            trust_counts[evidence.trust_level] = (
+                trust_counts.get(evidence.trust_level, 0) + 1
+            )
 
         # Boost for multiple sources
         if len(group) > 1:
@@ -306,7 +319,7 @@ class EvidenceMerger:
         trusted_count = 0
         for trust_level, count in trust_counts.items():
             trust_level_str = normalize_trust_level(trust_level)
-            if trust_level_str in ['official', 'government', 'github']:
+            if trust_level_str in ["official", "government", "github"]:
                 trusted_count += count
 
         if trusted_count > 1:
@@ -318,7 +331,7 @@ class EvidenceMerger:
 
         return min(score, 1.0)
 
-    def _check_for_conflicts(self, fact: str, group: List[Evidence]) -> bool:
+    def _check_for_conflicts(self, fact: str, group: list[Evidence]) -> bool:
         """
         Check if fact might be in conflict with other sources.
 
@@ -333,11 +346,17 @@ class EvidenceMerger:
             return False
 
         # Get trust levels of all sources
-        trust_levels = [normalize_trust_level(evidence.trust_level) for evidence in group]
+        trust_levels = [
+            normalize_trust_level(evidence.trust_level) for evidence in group
+        ]
 
         # If we have sources with very different trust levels
-        trusted = [level for level in trust_levels if level in ['official', 'government']]
-        non_trusted = [level for level in trust_levels if level not in ['official', 'government']]
+        trusted = [
+            level for level in trust_levels if level in ["official", "government"]
+        ]
+        non_trusted = [
+            level for level in trust_levels if level not in ["official", "government"]
+        ]
 
         if trusted and non_trusted:
             # Potential conflict between high-trust and low-trust sources
@@ -345,7 +364,9 @@ class EvidenceMerger:
 
         return False
 
-    def _calculate_group_confidence(self, scored_facts: List[Any], trust_levels: List[str]) -> float:
+    def _calculate_group_confidence(
+        self, scored_facts: list[Any], trust_levels: list[str]
+    ) -> float:
         """
         Calculate overall confidence for a merged evidence group.
 
@@ -361,7 +382,7 @@ class EvidenceMerger:
 
         # Average of top facts
         top_facts = scored_facts[:5]
-        avg_confidence = sum(fact['confidence'] for fact in top_facts) / len(top_facts)
+        avg_confidence = sum(fact["confidence"] for fact in top_facts) / len(top_facts)
 
         # Adjust based on trust level diversity
         if len(set(trust_levels)) > 3:
@@ -369,7 +390,7 @@ class EvidenceMerger:
 
         return avg_confidence
 
-    def _determine_primary_source(self, trust_levels: List[str]) -> str:
+    def _determine_primary_source(self, trust_levels: list[str]) -> str:
         """
         Determine primary source for merged evidence.
 
@@ -385,14 +406,14 @@ class EvidenceMerger:
             counts[level] = counts.get(level, 0) + 1
 
         # Return most frequent high-trust level
-        for level in ['official', 'government', 'github']:
+        for level in ["official", "government", "github"]:
             if level in counts and counts[level] >= 2:
                 return level
 
         # Fall back to most frequent
-        return max(counts, key=counts.get) if counts else 'unknown'
+        return max(counts, key=counts.get) if counts else "unknown"
 
-    def _determine_merged_trust_level(self, trust_levels: List[str]) -> str:
+    def _determine_merged_trust_level(self, trust_levels: list[str]) -> str:
         """
         Determine merged trust level for evidence.
 
@@ -412,14 +433,14 @@ class EvidenceMerger:
             counts[normalized] = counts.get(normalized, 0) + 1
 
         # Return highest trust level
-        for level in ['official', 'government', 'github', 'stackoverflow', 'wikipedia']:
+        for level in ["official", "government", "github", "stackoverflow", "wikipedia"]:
             if level in counts:
                 return SourceTrustLevel(level)
 
         # Fall back to most frequent
         return SourceTrustLevel(max(counts, key=counts.get))
 
-    def detect_conflicts(self, evidence_list: List[Evidence]) -> List[EvidenceConflict]:
+    def detect_conflicts(self, evidence_list: list[Evidence]) -> list[EvidenceConflict]:
         """
         Detect conflicts between evidence from different sources.
 
@@ -435,8 +456,7 @@ class EvidenceMerger:
         for i in range(len(evidence_list)):
             for j in range(i + 1, len(evidence_list)):
                 conflict = self._detect_conflict_between_evidence(
-                    evidence_list[i],
-                    evidence_list[j]
+                    evidence_list[i], evidence_list[j]
                 )
 
                 if conflict:
@@ -445,10 +465,8 @@ class EvidenceMerger:
         return conflicts
 
     def _detect_conflict_between_evidence(
-        self,
-        evidence1: Evidence,
-        evidence2: Evidence
-    ) -> Optional[EvidenceConflict]:
+        self, evidence1: Evidence, evidence2: Evidence
+    ) -> EvidenceConflict | None:
         """
         Detect conflict between two evidence objects.
 
@@ -497,5 +515,5 @@ class EvidenceMerger:
             sources=[evidence1.source, evidence2.source],
             source_urls=[evidence1.url, evidence2.url],
             confidence=0.5,  # Default confidence
-            trust_levels=[evidence1.trust_level, evidence2.trust_level]
+            trust_levels=[evidence1.trust_level, evidence2.trust_level],
         )

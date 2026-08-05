@@ -13,77 +13,70 @@ The system consists of:
 
 from __future__ import annotations
 
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskPriority,
-    TaskType,
-    TaskInput,
-    TaskOutput
-)
-from .task_manager import TaskManager
 from .agent_registry import (
+    AgentCapability,
     AgentRegistry,
     AgentType,
-    AgentCapability,
-    register_builtin_agents
+    register_builtin_agents,
 )
-from .integration import (
-    AgentCoordinator,
-    CoordinationStrategy,
-    AgentCoordination,
-    execute_multi_agent_task
-)
-from .safety_layer import (
-    SafetyLayer,
-    OperationType,
-    OperationContext,
-    SafetyDecision,
-    get_safety_layer,
-    require_confirmation
-)
-from .plugin_system import (
-    PluginBase,
-    PluginRegistry,
-    PluginContext,
-    PluginAPI,
-    get_plugin_registry
-)
-from .skill_system import (
-    SkillRegistry,
-    Skill,
-    SkillStep,
-    SkillCategory,
-    get_skill_registry
-)
-from .observability import (
-    Observability,
-    MetricCollector,
-    Metric,
-    MetricType,
-    TaskMonitor,
-    TaskExecutionEvent,
-    get_observability
-)
+from .coding_agent import CodingAgent
 from .config import (
     ConfigManager,
     Configuration,
-    ModelSettings,
-    PluginSettings,
-    SafetySettings,
     LoggingSettings,
+    ModelSettings,
     PerformanceSettings,
+    PluginSettings,
+    ProviderType,
     ResearchSettings,
+    SafetySettings,
     get_config_manager,
-    ProviderType
+)
+from .desktop_agent import DesktopAgent
+from .integration import (
+    AgentCoordination,
+    AgentCoordinator,
+    CoordinationStrategy,
+    execute_multi_agent_task,
+)
+from .learning_agent import LearningAgent
+from .observability import (
+    Metric,
+    MetricCollector,
+    MetricType,
+    Observability,
+    TaskExecutionEvent,
+    TaskMonitor,
+    get_observability,
 )
 from .planner_agent import PlannerAgent
-from .desktop_agent import DesktopAgent
-from .coding_agent import CodingAgent
+from .plugin_system import (
+    PluginAPI,
+    PluginBase,
+    PluginContext,
+    PluginRegistry,
+    get_plugin_registry,
+)
 from .research_agent import ResearchAgent
+from .safety_layer import (
+    OperationContext,
+    OperationType,
+    SafetyDecision,
+    SafetyLayer,
+    get_safety_layer,
+    require_confirmation,
+)
+from .skill_system import (
+    Skill,
+    SkillCategory,
+    SkillRegistry,
+    SkillStep,
+    get_skill_registry,
+)
+from .task_manager import TaskManager
+from .task_model import Task, TaskInput, TaskOutput, TaskPriority, TaskStatus, TaskType
 from .vision_agent import VisionAgent
 from .voice_agent import VoiceAgent
-from .learning_agent import LearningAgent
 
 __version__ = "2.0.0"
 
@@ -96,19 +89,16 @@ __all__ = [
     "TaskInput",
     "TaskOutput",
     "TaskManager",
-
     # Agent registry
     "AgentRegistry",
     "AgentType",
     "AgentCapability",
     "register_builtin_agents",
-
     # Integration
     "AgentCoordinator",
     "CoordinationStrategy",
     "AgentCoordination",
     "execute_multi_agent_task",
-
     # Safety layer
     "SafetyLayer",
     "OperationType",
@@ -116,21 +106,18 @@ __all__ = [
     "SafetyDecision",
     "get_safety_layer",
     "require_confirmation",
-
     # Plugin system
     "PluginBase",
     "PluginRegistry",
     "PluginContext",
     "PluginAPI",
     "get_plugin_registry",
-
     # Skill system
     "SkillRegistry",
     "Skill",
     "SkillStep",
     "SkillCategory",
     "get_skill_registry",
-
     # Observability
     "Observability",
     "MetricCollector",
@@ -139,7 +126,6 @@ __all__ = [
     "TaskMonitor",
     "TaskExecutionEvent",
     "get_observability",
-
     # Configuration
     "ConfigManager",
     "Configuration",
@@ -151,7 +137,6 @@ __all__ = [
     "ResearchSettings",
     "get_config_manager",
     "ProviderType",
-
     # Specialized agents
     "PlannerAgent",
     "DesktopAgent",

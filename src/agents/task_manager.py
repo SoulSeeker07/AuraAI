@@ -9,19 +9,11 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Set
-import uuid
+from typing import Any
 
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskPriority,
-    TaskType,
-    TaskInput,
-    TaskOutput,
-    create_task
-)
+from .task_model import Task, TaskInput, TaskOutput, TaskStatus, TaskType, create_task
 
 
 class TaskManager:
@@ -37,22 +29,20 @@ class TaskManager:
     """
 
     def __init__(self):
-        self._tasks: Dict[str, Task] = {}
-        self._running_tasks: Dict[str, Task] = {}
-        self._completed_tasks: Dict[str, Task] = {}
-        self._failed_tasks: Dict[str, Task] = {}
-        self._pending_tasks: Dict[str, Task] = {}
+        self._tasks: dict[str, Task] = {}
+        self._running_tasks: dict[str, Task] = {}
+        self._completed_tasks: dict[str, Task] = {}
+        self._failed_tasks: dict[str, Task] = {}
+        self._pending_tasks: dict[str, Task] = {}
         self._task_queue: asyncio.Queue = asyncio.Queue()
         self._lock = threading.Lock()
         self._max_concurrent_tasks: int = 5
-        self._task_handlers: Dict[TaskType, Callable] = {}
-        self._callbacks: Dict[str, List[Callable]] = {}
+        self._task_handlers: dict[TaskType, Callable] = {}
+        self._callbacks: dict[str, list[Callable]] = {}
         self._task_counter: int = 0
 
     def register_task_handler(
-        self,
-        task_type: TaskType,
-        handler: Callable[[Task], TaskOutput]
+        self, task_type: TaskType, handler: Callable[[Task], TaskOutput]
     ) -> None:
         """
         Register a handler for a specific task type.
@@ -69,11 +59,7 @@ class TaskManager:
             del self._task_handlers[task_type]
 
     def create_task(
-        self,
-        task_type: TaskType,
-        title: str,
-        description: str = "",
-        **kwargs
+        self, task_type: TaskType, title: str, description: str = "", **kwargs
     ) -> Task:
         """
         Create a new task.
@@ -104,45 +90,43 @@ class TaskManager:
 
         return task
 
-    def get_task(self, task_id: str) -> Optional[Task]:
+    def get_task(self, task_id: str) -> Task | None:
         """Get task by ID."""
         return self._tasks.get(task_id)
 
-    def get_tasks_by_status(
-        self,
-        status: TaskStatus,
-        limit: int = 100
-    ) -> List[Task]:
+    def get_tasks_by_status(self, status: TaskStatus, limit: int = 100) -> list[Task]:
         """Get tasks by status."""
         with self._lock:
-            return [task for task in self._tasks.values() if task.status == status][:limit]
+            return [task for task in self._tasks.values() if task.status == status][
+                :limit
+            ]
 
-    def get_all_tasks(self) -> List[Task]:
+    def get_all_tasks(self) -> list[Task]:
         """Get all tasks."""
         with self._lock:
             return list(self._tasks.values())
 
-    def get_pending_tasks(self) -> List[Task]:
+    def get_pending_tasks(self) -> list[Task]:
         """Get pending tasks."""
         with self._lock:
             return list(self._pending_tasks.values())
 
-    def get_running_tasks(self) -> List[Task]:
+    def get_running_tasks(self) -> list[Task]:
         """Get running tasks."""
         with self._lock:
             return list(self._running_tasks.values())
 
-    def get_completed_tasks(self, limit: int = 100) -> List[Task]:
+    def get_completed_tasks(self, limit: int = 100) -> list[Task]:
         """Get completed tasks."""
         with self._lock:
             return list(self._completed_tasks.values())[:limit]
 
-    def get_failed_tasks(self, limit: int = 100) -> List[Task]:
+    def get_failed_tasks(self, limit: int = 100) -> list[Task]:
         """Get failed tasks."""
         with self._lock:
             return list(self._failed_tasks.values())[:limit]
 
-    def get_tasks_by_type(self, task_type: TaskType) -> List[Task]:
+    def get_tasks_by_type(self, task_type: TaskType) -> list[Task]:
         """Get tasks by type."""
         return [task for task in self._tasks.values() if task.type == task_type]
 
@@ -213,7 +197,7 @@ class TaskManager:
             else:
                 self._handle_failed_task(task)
 
-    def _create_subtasks(self, parent_task: Task, subtask_configs: List[dict]) -> None:
+    def _create_subtasks(self, parent_task: Task, subtask_configs: list[dict]) -> None:
         """
         Create subtasks from task output.
 
@@ -233,7 +217,7 @@ class TaskManager:
                 title=subtask_title,
                 description=subtask_description,
                 parent_task_id=parent_task.id,
-                input=TaskInput(data=config.get("input", {}))
+                input=TaskInput(data=config.get("input", {})),
             )
 
             with self._lock:
@@ -261,7 +245,9 @@ class TaskManager:
             self._callbacks[task_id] = []
         self._callbacks[task_id].append(callback)
 
-    def unregister_callback(self, task_id: str, callback: Callable[[Task], None]) -> None:
+    def unregister_callback(
+        self, task_id: str, callback: Callable[[Task], None]
+    ) -> None:
         """Unregister callback for task."""
         if task_id in self._callbacks and callback in self._callbacks[task_id]:
             self._callbacks[task_id].remove(callback)
@@ -279,11 +265,25 @@ class TaskManager:
         """Get task manager statistics."""
         with self._lock:
             # Count tasks by filtering from self._tasks based on status
-            completed_count = sum(1 for task in self._tasks.values() if task.status == TaskStatus.COMPLETED)
-            pending_count = sum(1 for task in self._tasks.values() if task.status == TaskStatus.PENDING)
-            running_count = sum(1 for task in self._tasks.values() if task.status == TaskStatus.RUNNING)
-            failed_count = sum(1 for task in self._tasks.values() if task.status == TaskStatus.FAILED)
-            cancelled_count = sum(1 for task in self._tasks.values() if task.status == TaskStatus.CANCELLED)
+            completed_count = sum(
+                1
+                for task in self._tasks.values()
+                if task.status == TaskStatus.COMPLETED
+            )
+            pending_count = sum(
+                1 for task in self._tasks.values() if task.status == TaskStatus.PENDING
+            )
+            running_count = sum(
+                1 for task in self._tasks.values() if task.status == TaskStatus.RUNNING
+            )
+            failed_count = sum(
+                1 for task in self._tasks.values() if task.status == TaskStatus.FAILED
+            )
+            cancelled_count = sum(
+                1
+                for task in self._tasks.values()
+                if task.status == TaskStatus.CANCELLED
+            )
 
             return {
                 "total_tasks": len(self._tasks),
@@ -294,10 +294,10 @@ class TaskManager:
                 "cancelled_tasks": cancelled_count,
                 "failed": failed_count,  # Legacy key for backward compatibility
                 "task_counter": self._task_counter,
-                "active_handlers": len(self._task_handlers)
+                "active_handlers": len(self._task_handlers),
             }
 
-    def clear_completed_tasks(self, older_than: Optional[timedelta] = None) -> int:
+    def clear_completed_tasks(self, older_than: timedelta | None = None) -> int:
         """
         Clear completed tasks older than specified time.
 
@@ -310,7 +310,8 @@ class TaskManager:
         cutoff = datetime.now() - (older_than or timedelta(days=1))
 
         to_remove = [
-            task_id for task_id, task in self._completed_tasks.items()
+            task_id
+            for task_id, task in self._completed_tasks.items()
             if task.completed_at and task.completed_at < cutoff
         ]
 
@@ -347,7 +348,7 @@ class TaskManager:
 
         return True
 
-    def get_task_dependencies(self, task_id: str) -> List[str]:
+    def get_task_dependencies(self, task_id: str) -> list[str]:
         """
         Get list of task IDs that depend on this task.
 
@@ -358,13 +359,12 @@ class TaskManager:
             List of dependent task IDs
         """
         return [
-            tid for tid, task in self._tasks.items()
-            if task.parent_task_id == task_id
+            tid for tid, task in self._tasks.items() if task.parent_task_id == task_id
         ]
 
 
 # Global task manager instance
-_task_manager: Optional[TaskManager] = None
+_task_manager: TaskManager | None = None
 
 
 def get_task_manager() -> TaskManager:

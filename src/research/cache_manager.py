@@ -4,12 +4,12 @@ Cache Manager
 Manages caching of research results to avoid redundant searches.
 """
 
-import logging
 import json
+import logging
 import time
-from typing import Optional, Dict, Any, List
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
+from typing import Any
 
 from .models import ResearchReport, SearchQuery
 
@@ -26,23 +26,23 @@ class CacheManager:
 
     # Content type to TTL mapping (in seconds)
     CONTENT_TYPE_TTL = {
-        'stocks': 60,            # 1 minute
-        'crypto': 30,            # 30 seconds
-        'github': 86400,         # 1 day
-        'github_releases': 86400, # 1 day
-        'github_release': 86400,  # 1 day
-        'wikipedia': 2592000,    # 30 days
-        'wiki': 2592000,         # 30 days
-        'docs': 604800,          # 7 days
-        'official_docs': 604800, # 7 days
-        'rfc': 31536000,         # 365 days
-        'rfc_editor': 31536000,  # 365 days
-        'news': 900,             # 15 minutes
-        'breaking_news': 900,    # 15 minutes
-        'stackoverflow': 1209600, # 14 days
-        'stack_overflow': 1209600, # 14 days
-        'tech_blog': 7200,       # 2 hours
-        'general': 1800,         # 30 minutes (default)
+        "stocks": 60,  # 1 minute
+        "crypto": 30,  # 30 seconds
+        "github": 86400,  # 1 day
+        "github_releases": 86400,  # 1 day
+        "github_release": 86400,  # 1 day
+        "wikipedia": 2592000,  # 30 days
+        "wiki": 2592000,  # 30 days
+        "docs": 604800,  # 7 days
+        "official_docs": 604800,  # 7 days
+        "rfc": 31536000,  # 365 days
+        "rfc_editor": 31536000,  # 365 days
+        "news": 900,  # 15 minutes
+        "breaking_news": 900,  # 15 minutes
+        "stackoverflow": 1209600,  # 14 days
+        "stack_overflow": 1209600,  # 14 days
+        "tech_blog": 7200,  # 2 hours
+        "general": 1800,  # 30 minutes (default)
     }
 
     def __init__(self, ttl: int = None):
@@ -52,12 +52,14 @@ class CacheManager:
         Args:
             ttl: Time-to-live in seconds (default: content-type-based TTL)
         """
-        self.cache: Dict[str, Dict[str, Any]] = {}
+        self.cache: dict[str, dict[str, Any]] = {}
         self.cache_dir = Path("Data/cache/research")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.default_ttl = ttl if ttl is not None else self.CONTENT_TYPE_TTL['general']
+        self.default_ttl = ttl if ttl is not None else self.CONTENT_TYPE_TTL["general"]
 
-    def get(self, key: str, query_obj: Optional[SearchQuery] = None) -> Optional[ResearchReport]:
+    def get(
+        self, key: str, query_obj: SearchQuery | None = None
+    ) -> ResearchReport | None:
         """
         Get a cached report with content-type-based TTL validation.
 
@@ -81,7 +83,9 @@ class CacheManager:
         if timestamp:
             age = time.time() - timestamp
             if age > ttl:
-                logger.debug(f"Cache entry expired (content_type: {content_type}, ttl: {ttl}s, age: {age:.1f}s): {key}")
+                logger.debug(
+                    f"Cache entry expired (content_type: {content_type}, ttl: {ttl}s, age: {age:.1f}s): {key}"
+                )
                 del self.cache[key]
                 return None
 
@@ -94,7 +98,7 @@ class CacheManager:
 
         return ResearchReport.from_dict(self._to_report_dict(cached))
 
-    def _to_report_dict(self, cached: Dict[str, Any]) -> Dict[str, Any]:
+    def _to_report_dict(self, cached: dict[str, Any]) -> dict[str, Any]:
         """
         Convert a raw cache entry into a dict safe for ResearchReport.from_dict().
 
@@ -118,9 +122,9 @@ class CacheManager:
     def set(
         self,
         key: str,
-        report: Optional[ResearchReport],
-        results: Optional[List] = None,
-        query_obj: Optional[SearchQuery] = None,
+        report: ResearchReport | None,
+        results: list | None = None,
+        query_obj: SearchQuery | None = None,
     ) -> None:
         """
         Cache a research report.
@@ -139,8 +143,12 @@ class CacheManager:
         results_list = results if results else (report.results if report else [])
 
         cache_data = {
-            "query": report.query if report else (query_obj.query_text if query_obj else ""),
-            "results": [r.to_dict() if hasattr(r, 'to_dict') else r for r in results_list],
+            "query": (
+                report.query if report else (query_obj.query_text if query_obj else "")
+            ),
+            "results": [
+                r.to_dict() if hasattr(r, "to_dict") else r for r in results_list
+            ],
             "merged_evidence": report.merged_evidence if report else [],
             "citations": [c.to_dict() for c in report.citations] if report else [],
             "conflicts": report.conflicts if report else [],
@@ -200,7 +208,7 @@ class CacheManager:
         self._clear_disk_cache()
         logger.info("Cache cleared")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache statistics with content-type breakdown.
 
@@ -228,7 +236,7 @@ class CacheManager:
                         "ttl": ttl,
                         "ttl_seconds": ttl,
                         "valid": 0,
-                        "expired": 0
+                        "expired": 0,
                     }
 
                 content_type_stats[content_type]["count"] += 1
@@ -247,7 +255,7 @@ class CacheManager:
             "expired_entries": expired_entries,
             "cache_dir": str(self.cache_dir),
             "default_ttl": self.default_ttl,
-            "content_type_stats": content_type_stats
+            "content_type_stats": content_type_stats,
         }
 
         return stats
@@ -268,14 +276,14 @@ class CacheManager:
             "query": query_obj.query_text,
             "mode": query_obj.mode.value,
             "max_results": query_obj.max_results,
-            "language": query_obj.language
+            "language": query_obj.language,
         }
 
-        return hashlib.sha256(
-            json.dumps(data, sort_keys=True).encode()
-        ).hexdigest()
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
-    def _get_content_type(self, query_obj: SearchQuery, results: Optional[List] = None) -> str:
+    def _get_content_type(
+        self, query_obj: SearchQuery, results: list | None = None
+    ) -> str:
         """
         Determine content type from query text and/or results.
 
@@ -290,15 +298,21 @@ class CacheManager:
 
         # Check query text for content type keywords (more specific types first)
         content_keywords = {
-            'github_releases': ['release notes', 'download', 'release assets', 'releases page', 'release v'],
-            'stocks': ['stock', 'ticker', 'share', 'market'],
-            'crypto': ['crypto', 'bitcoin', 'ethereum', 'token'],
-            'github': ['github', 'repo', 'repository', 'code'],
-            'wikipedia': ['wikipedia', 'wiki'],
-            'docs': ['docs', 'documentation'],
-            'rfc': ['rfc', 'draft', 'internet'],
-            'news': ['news', 'breaking'],
-            'stackoverflow': ['stackoverflow', 'stack overflow', 'coding question'],
+            "github_releases": [
+                "release notes",
+                "download",
+                "release assets",
+                "releases page",
+                "release v",
+            ],
+            "stocks": ["stock", "ticker", "share", "market"],
+            "crypto": ["crypto", "bitcoin", "ethereum", "token"],
+            "github": ["github", "repo", "repository", "code"],
+            "wikipedia": ["wikipedia", "wiki"],
+            "docs": ["docs", "documentation"],
+            "rfc": ["rfc", "draft", "internet"],
+            "news": ["news", "breaking"],
+            "stackoverflow": ["stackoverflow", "stack overflow", "coding question"],
         }
 
         for content_type, keywords in content_keywords.items():
@@ -309,24 +323,24 @@ class CacheManager:
         # Check results for source domains
         if results:
             for result in results:
-                if hasattr(result, 'source') and result.source:
+                if hasattr(result, "source") and result.source:
                     source_lower = result.source.lower()
-                    if 'github.com' in source_lower:
+                    if "github.com" in source_lower:
                         # Check if it's a release by checking URL pattern
-                        if '/releases/' in source_lower or '/tag/' in source_lower:
-                            return 'github_releases'
-                        return 'github'
-                    elif 'wikipedia.org' in source_lower or 'wiki' in source_lower:
-                        return 'wikipedia'
-                    elif 'rfc-editor.org' in source_lower:
-                        return 'rfc'
-                    elif 'stackoverflow.com' in source_lower:
-                        return 'stackoverflow'
-                    elif 'news' in source_lower or 'times' in source_lower:
-                        return 'news'
+                        if "/releases/" in source_lower or "/tag/" in source_lower:
+                            return "github_releases"
+                        return "github"
+                    elif "wikipedia.org" in source_lower or "wiki" in source_lower:
+                        return "wikipedia"
+                    elif "rfc-editor.org" in source_lower:
+                        return "rfc"
+                    elif "stackoverflow.com" in source_lower:
+                        return "stackoverflow"
+                    elif "news" in source_lower or "times" in source_lower:
+                        return "news"
 
         # Default to general content type
-        return 'general'
+        return "general"
 
     def _get_ttl_for_content_type(self, content_type: str) -> int:
         """
@@ -339,23 +353,23 @@ class CacheManager:
             TTL in seconds
         """
         # Normalize content type
-        content_type = content_type.lower().replace('_', ' ')
-        
+        content_type = content_type.lower().replace("_", " ")
+
         # Check exact match
         if content_type in self.CONTENT_TYPE_TTL:
             return self.CONTENT_TYPE_TTL[content_type]
-        
+
         # Check for partial matches (e.g., 'github_releases' -> 'github')
         for key, ttl in self.CONTENT_TYPE_TTL.items():
             if content_type in key or key in content_type:
                 logger.debug(f"Content type '{content_type}' maps to '{key}'")
                 return ttl
-        
+
         # Default to general TTL
         logger.debug(f"Content type '{content_type}' using default TTL")
         return self.default_ttl
 
-    def get_ttl(self, query_obj: SearchQuery, results: Optional[List] = None) -> int:
+    def get_ttl(self, query_obj: SearchQuery, results: list | None = None) -> int:
         """
         Get TTL for a specific query based on content type.
 
@@ -371,7 +385,7 @@ class CacheManager:
         logger.debug(f"Content type: {content_type}, TTL: {ttl}s")
         return ttl
 
-    def _save_to_disk(self, key: str, data: Dict[str, Any]) -> None:
+    def _save_to_disk(self, key: str, data: dict[str, Any]) -> None:
         """
         Save cache entry to disk.
 
@@ -381,12 +395,12 @@ class CacheManager:
         """
         try:
             cache_file = self.cache_dir / f"{key}.json"
-            with open(cache_file, 'w', encoding='utf-8') as f:
+            with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save cache to disk: {e}")
 
-    def _load_from_disk(self, key: str) -> Optional[Dict[str, Any]]:
+    def _load_from_disk(self, key: str) -> dict[str, Any] | None:
         """
         Load cache entry from disk.
 
@@ -401,7 +415,7 @@ class CacheManager:
             if not cache_file.exists():
                 return None
 
-            with open(cache_file, 'r', encoding='utf-8') as f:
+            with open(cache_file, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load cache from disk: {e}")
@@ -450,7 +464,7 @@ class CacheManager:
         if removed > 0:
             logger.info(f"Optimized cache: removed {removed} old entries")
 
-    def get_cache_age(self, key: str) -> Optional[float]:
+    def get_cache_age(self, key: str) -> float | None:
         """
         Get the age of a cache entry.
 

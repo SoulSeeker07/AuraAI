@@ -10,18 +10,18 @@ This file fixes the missing models import that was causing "No module named 'src
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from datetime import datetime, timedelta
-from typing import Any, Optional
-from uuid import uuid4
-
+from typing import Any
 
 # ============================================================================
 # Task Models
 # ============================================================================
 
+
 class TaskStatus(Enum):
     """Task status lifecycle."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -33,6 +33,7 @@ class TaskStatus(Enum):
 
 class TaskPriority(Enum):
     """Task priority levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -41,6 +42,7 @@ class TaskPriority(Enum):
 
 class TaskType(Enum):
     """Types of tasks agents can execute."""
+
     RESEARCH_WEB = "research_web"
     RESEARCH_DOCUMENT = "research_document"
     DEEP_RESEARCH = "deep_research"
@@ -85,6 +87,7 @@ class TaskType(Enum):
 
 class TaskRiskLevel(Enum):
     """Risk levels for tasks."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -94,24 +97,27 @@ class TaskRiskLevel(Enum):
 @dataclass
 class TaskInput:
     """Input parameters for a task."""
+
     data: dict[str, Any] = field(default_factory=dict)
     context: dict[str, Any] = field(default_factory=dict)
-    goal_id: Optional[str] = None
-    task_id: Optional[str] = None
+    goal_id: str | None = None
+    task_id: str | None = None
 
 
 @dataclass
 class TaskOutput:
     """Output from a task execution."""
+
     success: bool
     data: dict[str, Any] = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class TaskError:
     """Error information for a task."""
+
     task_id: str
     error: str
     occurred_at: datetime = field(default_factory=datetime.now)
@@ -123,8 +129,10 @@ class TaskError:
 # Goal Models
 # ============================================================================
 
+
 class GoalStatus(Enum):
     """Goal status states."""
+
     CREATED = "created"
     DRAFT = "draft"
     ACTIVE = "active"
@@ -137,6 +145,7 @@ class GoalStatus(Enum):
 
 class GoalPriority(Enum):
     """Goal priority levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -147,8 +156,10 @@ class GoalPriority(Enum):
 # Execution Models
 # ============================================================================
 
+
 class ApprovalRequired(Enum):
     """Approval requirements for goals/tasks."""
+
     AUTO = "auto"  # No approval needed, automatic
     MANUAL = "manual"  # Requires user approval
     NONE = "none"  # Not applicable
@@ -156,6 +167,7 @@ class ApprovalRequired(Enum):
 
 class RetryPolicy(Enum):
     """Retry policies for tasks."""
+
     DEFAULT = "default"
     IMMEDIATE = "immediate"
     DELAYED = "delayed"
@@ -166,8 +178,10 @@ class RetryPolicy(Enum):
 # Execution State Models
 # ============================================================================
 
+
 class ExecutionState(Enum):
     """Execution state for tasks/goals."""
+
     IDLE = "idle"
     INITIALIZING = "initializing"
     EXECUTING = "executing"
@@ -179,6 +193,7 @@ class ExecutionState(Enum):
 
 class ExecutionPriority(Enum):
     """Execution priority levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -189,13 +204,15 @@ class ExecutionPriority(Enum):
 # Execution Context Models
 # ============================================================================
 
+
 @dataclass
 class ExecutionContext:
     """Context for task execution."""
-    goal_id: Optional[str] = None
-    task_id: Optional[str] = None
-    parent_task_id: Optional[str] = None
-    workspace_path: Optional[str] = None
+
+    goal_id: str | None = None
+    task_id: str | None = None
+    parent_task_id: str | None = None
+    workspace_path: str | None = None
     user_context: dict[str, Any] = field(default_factory=dict)
     system_context: dict[str, Any] = field(default_factory=dict)
     execution_metadata: dict[str, Any] = field(default_factory=dict)

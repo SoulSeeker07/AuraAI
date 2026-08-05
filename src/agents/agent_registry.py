@@ -11,23 +11,23 @@ The Agent Registry manages:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Type, Dict
-from enum import Enum
 import logging
+from enum import Enum
+from typing import Any
 
-from .task_model import Task, TaskOutput, TaskType
-from .planner_agent import PlannerAgent
-from .desktop_agent import DesktopAgent
 from .coding_agent import CodingAgent
+from .desktop_agent import DesktopAgent
+from .learning_agent import LearningAgent
+from .planner_agent import PlannerAgent
 from .research_agent import ResearchAgent
+from .task_model import Task, TaskType
 from .vision_agent import VisionAgent
 from .voice_agent import VoiceAgent
-from .learning_agent import LearningAgent
-from .task_manager import TaskManager
 
 
 class AgentCapability(Enum):
     """Capabilities that agents can register for."""
+
     CODE_ANALYSIS = "code_analysis"
     CODE_REFACTORING = "code_refactoring"
     CODE_GENERATION = "code_generation"
@@ -64,6 +64,7 @@ class AgentCapability(Enum):
 
 class AgentType(Enum):
     """Types of specialized agents."""
+
     PLANNER = "planner"
     DESKTOP = "desktop"
     CODING = "coding"
@@ -91,10 +92,10 @@ class Agent:
         self,
         agent_id: str,
         agent_type: AgentType,
-        agent_class: Type,
-        capabilities: List[AgentCapability],
+        agent_class: type,
+        capabilities: list[AgentCapability],
         priority: int = 50,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None,
     ):
         self.agent_id = agent_id
         self.agent_type = agent_type
@@ -112,7 +113,9 @@ class Agent:
 
     def supports_capability(self, capability: AgentCapability) -> bool:
         """Check if agent supports a capability."""
-        return capability in self.capabilities or AgentCapability.ALL in self.capabilities
+        return (
+            capability in self.capabilities or AgentCapability.ALL in self.capabilities
+        )
 
 
 class AgentRegistry:
@@ -127,7 +130,7 @@ class AgentRegistry:
     - Manage agent lifecycle
     """
 
-    _instance: Optional['AgentRegistry'] = None
+    _instance: AgentRegistry | None = None
 
     def __new__(cls):
         """Create singleton instance."""
@@ -137,12 +140,12 @@ class AgentRegistry:
 
     def __init__(self):
         """Initialize the registry."""
-        if hasattr(self, '_initialized') and self._initialized:
+        if hasattr(self, "_initialized") and self._initialized:
             return
 
-        self._agents: Dict[str, Agent] = {}
-        self._agents_by_type: Dict[AgentType, List[Agent]] = {}
-        self._agents_by_capability: Dict[AgentCapability, List[Agent]] = {}
+        self._agents: dict[str, Agent] = {}
+        self._agents_by_type: dict[AgentType, list[Agent]] = {}
+        self._agents_by_capability: dict[AgentCapability, list[Agent]] = {}
         self._logger = logging.getLogger(__name__)
         self._initialized = True
 
@@ -150,10 +153,10 @@ class AgentRegistry:
         self,
         agent_id: str,
         agent_type: AgentType,
-        agent_class: Type,
-        capabilities: List[AgentCapability],
+        agent_class: type,
+        capabilities: list[AgentCapability],
         priority: int = 50,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None,
     ):
         """
         Register an agent type.
@@ -172,7 +175,7 @@ class AgentRegistry:
             agent_class=agent_class,
             capabilities=capabilities,
             priority=priority,
-            metadata=metadata
+            metadata=metadata,
         )
 
         self._agents[agent_id] = agent
@@ -188,7 +191,9 @@ class AgentRegistry:
                 self._agents_by_capability[capability] = []
             self._agents_by_capability[capability].append(agent)
 
-        self._logger.info(f"Registered agent: {agent_id} ({agent_type.value}) with capabilities: {[c.value for c in capabilities]}")
+        self._logger.info(
+            f"Registered agent: {agent_id} ({agent_type.value}) with capabilities: {[c.value for c in capabilities]}"
+        )
 
     def unregister_agent(self, agent_id: str):
         """Unregister an agent."""
@@ -209,15 +214,15 @@ class AgentRegistry:
 
             self._logger.info(f"Unregistered agent: {agent_id}")
 
-    def get_agent(self, agent_id: str) -> Optional[Agent]:
+    def get_agent(self, agent_id: str) -> Agent | None:
         """Get agent by ID."""
         return self._agents.get(agent_id)
 
-    def get_agent_by_type(self, agent_type: AgentType) -> List[Agent]:
+    def get_agent_by_type(self, agent_type: AgentType) -> list[Agent]:
         """Get all agents of a specific type."""
         return self._agents_by_type.get(agent_type, [])
 
-    def get_agent_by_capability(self, capability: AgentCapability) -> List[Agent]:
+    def get_agent_by_capability(self, capability: AgentCapability) -> list[Agent]:
         """Get all agents that support a capability."""
         return self._agents_by_capability.get(capability, [])
 
@@ -229,7 +234,7 @@ class AgentRegistry:
 
         return agent.instantiate(*args, **kwargs)
 
-    def find_agent_for_task(self, task: Task) -> Optional[Agent]:
+    def find_agent_for_task(self, task: Task) -> Agent | None:
         """
         Find the best agent to handle a task.
 
@@ -299,7 +304,7 @@ class AgentRegistry:
 
         return None
 
-    def find_agents_for_capability(self, capability: AgentCapability) -> List[Agent]:
+    def find_agents_for_capability(self, capability: AgentCapability) -> list[Agent]:
         """
         Find all agents that can handle a capability.
 
@@ -314,7 +319,7 @@ class AgentRegistry:
         # Sort by priority (highest first)
         return sorted(agents, key=lambda a: a.priority, reverse=True)
 
-    def get_all_agents(self) -> List[Agent]:
+    def get_all_agents(self) -> list[Agent]:
         """Get all registered agents."""
         return list(self._agents.values())
 
@@ -322,13 +327,12 @@ class AgentRegistry:
         """Get total number of registered agents."""
         return len(self._agents)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get registry statistics."""
         return {
             "total_agents": len(self._agents),
             "agents_by_type": {
-                type.value: len(agents)
-                for type, agents in self._agents_by_type.items()
+                type.value: len(agents) for type, agents in self._agents_by_type.items()
             },
             "agents_by_capability": {
                 cap.value: len(agents)
@@ -338,11 +342,11 @@ class AgentRegistry:
                 {
                     "capability": cap.value,
                     "agent_count": len(agents),
-                    "priority": max(a.priority for a in agents) if agents else 0
+                    "priority": max(a.priority for a in agents) if agents else 0,
                 }
                 for cap, agents in self._agents_by_capability.items()
                 if agents
-            ]
+            ],
         }
 
 
@@ -361,7 +365,10 @@ def register_builtin_agents(registry: AgentRegistry):
         agent_class=PlannerAgent,
         capabilities=[AgentCapability.ALL],
         priority=100,
-        metadata={"name": "Executive Planner", "description": "Coordinates all other agents"}
+        metadata={
+            "name": "Executive Planner",
+            "description": "Coordinates all other agents",
+        },
     )
 
     # Desktop Agent
@@ -374,10 +381,13 @@ def register_builtin_agents(registry: AgentRegistry):
             AgentCapability.APPLICATION_MANAGEMENT,
             AgentCapability.FILE_OPERATIONS,
             AgentCapability.SYSTEM_CONTROLS,
-            AgentCapability.BROWSER_MANAGEMENT
+            AgentCapability.BROWSER_MANAGEMENT,
         ],
         priority=80,
-        metadata={"name": "Desktop Agent", "description": "Controls desktop environment"}
+        metadata={
+            "name": "Desktop Agent",
+            "description": "Controls desktop environment",
+        },
     )
 
     # Coding Agent
@@ -391,10 +401,10 @@ def register_builtin_agents(registry: AgentRegistry):
             AgentCapability.CODE_GENERATION,
             AgentCapability.CODE_DEBUGGING,
             AgentCapability.TEST_GENERATION,
-            AgentCapability.DOCUMENTATION
+            AgentCapability.DOCUMENTATION,
         ],
         priority=75,
-        metadata={"name": "Coding Agent", "description": "Analyzes and improves code"}
+        metadata={"name": "Coding Agent", "description": "Analyzes and improves code"},
     )
 
     # Research Agent
@@ -405,10 +415,13 @@ def register_builtin_agents(registry: AgentRegistry):
         capabilities=[
             AgentCapability.WEB_RESEARCH,
             AgentCapability.DEEP_RESEARCH,
-            AgentCapability.DOCUMENT_RESEARCH
+            AgentCapability.DOCUMENT_RESEARCH,
         ],
         priority=70,
-        metadata={"name": "Research Agent", "description": "Performs web and document research"}
+        metadata={
+            "name": "Research Agent",
+            "description": "Performs web and document research",
+        },
     )
 
     # Vision Agent
@@ -420,10 +433,13 @@ def register_builtin_agents(registry: AgentRegistry):
             AgentCapability.IMAGE_ANALYSIS,
             AgentCapability.DOCUMENT_READING,
             AgentCapability.DIAGRAM_UNDERSTANDING,
-            AgentCapability.UI_EXPLANATION
+            AgentCapability.UI_EXPLANATION,
         ],
         priority=65,
-        metadata={"name": "Vision Agent", "description": "Analyzes images and documents"}
+        metadata={
+            "name": "Vision Agent",
+            "description": "Analyzes images and documents",
+        },
     )
 
     # Voice Agent
@@ -435,10 +451,10 @@ def register_builtin_agents(registry: AgentRegistry):
             AgentCapability.SPEECH_TO_TEXT,
             AgentCapability.TEXT_TO_SPEECH,
             AgentCapability.WAKE_WORD_DETECTION,
-            AgentCapability.VOICE_COMMAND_RECOGNITION
+            AgentCapability.VOICE_COMMAND_RECOGNITION,
         ],
         priority=60,
-        metadata={"name": "Voice Agent", "description": "Handles voice interactions"}
+        metadata={"name": "Voice Agent", "description": "Handles voice interactions"},
     )
 
     # Learning Agent
@@ -449,10 +465,13 @@ def register_builtin_agents(registry: AgentRegistry):
         capabilities=[
             AgentCapability.WORKFLOW_STORAGE,
             AgentCapability.WORKFLOW_RETRIEVAL,
-            AgentCapability.WORKFLOW_OPTIMIZATION
+            AgentCapability.WORKFLOW_OPTIMIZATION,
         ],
         priority=55,
-        metadata={"name": "Learning Agent", "description": "Stores and retrieves workflow knowledge"}
+        metadata={
+            "name": "Learning Agent",
+            "description": "Stores and retrieves workflow knowledge",
+        },
     )
 
     logging.info("Registered 7 built-in agents")

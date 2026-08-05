@@ -8,17 +8,16 @@ All logs are written to a file; the CLI stays clean.
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Default location for the log file if the caller doesn't specify one
 DEFAULT_LOG_FILE = Path(__file__).resolve().parent.parent / "Data" / "aura.log"
 
 
 def setup_logger(
-    name: str = 'AuraAI',
-    log_file: Optional[Path] = None,
+    name: str = "AuraAI",
+    log_file: Path | None = None,
     level: int = logging.INFO,
-    console_level: Optional[int] = logging.WARNING,
+    console_level: int | None = logging.WARNING,
 ) -> logging.Logger:
     """
     Set up and return a logger.
@@ -42,8 +41,8 @@ def setup_logger(
         return logger
 
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # File handler — always on, always UTF-8, so ✓/✗ and any other
@@ -51,7 +50,7 @@ def setup_logger(
     resolved_log_file = Path(log_file) if log_file else DEFAULT_LOG_FILE
     resolved_log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    file_handler = logging.FileHandler(resolved_log_file, encoding='utf-8')
+    file_handler = logging.FileHandler(resolved_log_file, encoding="utf-8")
     file_handler.setLevel(level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -62,16 +61,17 @@ def setup_logger(
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(console_level)
         console_handler.setFormatter(formatter)
-        console_handler.setEncoding('utf-8')
+        console_handler.setEncoding("utf-8")
         logger.addHandler(console_handler)
 
     return logger
 
+
 def get_logger(
-    name: str = 'AuraAI',
-    log_file: Optional[Path] = None,
+    name: str = "AuraAI",
+    log_file: Path | None = None,
     level: int = logging.INFO,
-    console_level: Optional[int] = logging.WARNING,
+    console_level: int | None = logging.WARNING,
 ) -> logging.Logger:
     """
     Convenience alias for setup_logger, matching the common
@@ -82,4 +82,4 @@ def get_logger(
 
 # Default logger: everything goes to Data/aura.log,
 # console only shows WARNING and above (clean CLI).
-logger = setup_logger('')
+logger = setup_logger("")

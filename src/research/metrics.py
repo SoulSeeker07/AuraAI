@@ -7,10 +7,9 @@ Used for diagnostics, monitoring, and user-facing dashboards.
 Milestone 14: Research Foundation
 """
 
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
-import time
 
 
 @dataclass
@@ -37,6 +36,7 @@ class ResearchExecutionMetrics:
         finished_at: Timestamp when research completed
         query: Original research query
     """
+
     planning_ms: float = 0.0
     search_ms: float = 0.0
     extraction_ms: float = 0.0
@@ -44,15 +44,15 @@ class ResearchExecutionMetrics:
     llm_ms: float = 0.0
     total_ms: float = 0.0
     iterations: int = 0
-    confidence_history: List[float] = field(default_factory=list)
-    providers_used: List[str] = field(default_factory=list)
+    confidence_history: list[float] = field(default_factory=list)
+    providers_used: list[str] = field(default_factory=list)
     evidence_count: int = 0
     strong_count: int = 0
     weak_count: int = 0
     conflicts: int = 0
-    missing_information: List[str] = field(default_factory=list)
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    missing_information: list[str] = field(default_factory=list)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     query: str = ""
 
     def to_dict(self) -> dict:
@@ -74,7 +74,7 @@ class ResearchExecutionMetrics:
             "missing_information": self.missing_information,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-            "query": self.query
+            "query": self.query,
         }
 
     def print_summary(self):
@@ -87,22 +87,30 @@ class ResearchExecutionMetrics:
         print(f"Finished: {self.finished_at}")
         print(f"Total Time: {self.total_ms:.1f}ms ({self.total_ms/1000:.2f}s)")
         print(f"Iterations: {self.iterations}")
-        print(f"\nTiming Breakdown:")
+        print("\nTiming Breakdown:")
         # Avoid division by zero when total_ms is 0
         total = self.total_ms if self.total_ms > 0 else 1.0
-        print(f"  Planning:    {self.planning_ms:.1f}ms ({(self.planning_ms/total*100):.1f}%)")
-        print(f"  Search:      {self.search_ms:.1f}ms ({(self.search_ms/total*100):.1f}%)")
-        print(f"  Extraction:  {self.extraction_ms:.1f}ms ({(self.extraction_ms/total*100):.1f}%)")
-        print(f"  Reasoning:   {self.reasoning_ms:.1f}ms ({(self.reasoning_ms/total*100):.1f}%)")
+        print(
+            f"  Planning:    {self.planning_ms:.1f}ms ({(self.planning_ms/total*100):.1f}%)"
+        )
+        print(
+            f"  Search:      {self.search_ms:.1f}ms ({(self.search_ms/total*100):.1f}%)"
+        )
+        print(
+            f"  Extraction:  {self.extraction_ms:.1f}ms ({(self.extraction_ms/total*100):.1f}%)"
+        )
+        print(
+            f"  Reasoning:   {self.reasoning_ms:.1f}ms ({(self.reasoning_ms/total*100):.1f}%)"
+        )
         print(f"  LLM:         {self.llm_ms:.1f}ms ({(self.llm_ms/total*100):.1f}%)")
-        print(f"\nEvidence:")
+        print("\nEvidence:")
         print(f"  Total:       {self.evidence_count}")
         print(f"  Strong:      {self.strong_count}")
         print(f"  Weak:        {self.weak_count}")
         print(f"  Conflicts:   {self.conflicts}")
         print(f"  Missing:     {len(self.missing_information)}")
         if self.confidence_history:
-            print(f"\nConfidence Progression:")
+            print("\nConfidence Progression:")
             for i, conf in enumerate(self.confidence_history, 1):
                 print(f"  Iteration {i}: {conf:.2f}")
         if self.providers_used:
@@ -147,11 +155,11 @@ class MetricsCollector:
         """Finalize metrics collection."""
         self.metrics.finished_at = datetime.now()
         self.metrics.total_ms = (
-            self.metrics.planning_ms +
-            self.metrics.search_ms +
-            self.metrics.extraction_ms +
-            self.metrics.reasoning_ms +
-            self.metrics.llm_ms
+            self.metrics.planning_ms
+            + self.metrics.search_ms
+            + self.metrics.extraction_ms
+            + self.metrics.reasoning_ms
+            + self.metrics.llm_ms
         )
 
     def print_summary(self):

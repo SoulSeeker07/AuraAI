@@ -16,9 +16,9 @@ This is the key feature that transforms Aura into a true agent.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from .capability_types import CapabilityType
-from .routing_result import RoutingResult
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +58,9 @@ class WorkflowOrchestrator:
 
     def __init__(self):
         """Initialize workflow orchestrator."""
-        self.steps: List[WorkflowStep] = []
+        self.steps: list[WorkflowStep] = []
 
-    def _extract_operations(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_operations(self, text: str) -> list[dict[str, Any]]:
         """
         Extract individual operations from a multi-step request.
 
@@ -78,72 +78,170 @@ class WorkflowOrchestrator:
 
         # Filesystem operations
         filesystem_ops = [
-            {"keywords": ["find", "search", "list", "all"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Find files"},
-            {"keywords": ["create", "new", "make", "write"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Create file"},
-            {"keywords": ["delete", "remove", "trash", "recycle", "destroy", "erase"],
-             "capability": CapabilityType.FILESYSTEM, "step_type": "execute", "description": "Delete file"},
-            {"keywords": ["move", "rename", "change name"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Move/Rename file"},
-            {"keywords": ["copy", "duplicate", "clone"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Copy file"},
-            {"keywords": ["compress", "archive", "zip", "unzip"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Compress file"},
-            {"keywords": ["save", "export", "write to"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Save file"},
-            {"keywords": ["read", "view", "show", "display"], "capability": CapabilityType.FILESYSTEM,
-             "step_type": "execute", "description": "Read file"},
+            {
+                "keywords": ["find", "search", "list", "all"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Find files",
+            },
+            {
+                "keywords": ["create", "new", "make", "write"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Create file",
+            },
+            {
+                "keywords": [
+                    "delete",
+                    "remove",
+                    "trash",
+                    "recycle",
+                    "destroy",
+                    "erase",
+                ],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Delete file",
+            },
+            {
+                "keywords": ["move", "rename", "change name"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Move/Rename file",
+            },
+            {
+                "keywords": ["copy", "duplicate", "clone"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Copy file",
+            },
+            {
+                "keywords": ["compress", "archive", "zip", "unzip"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Compress file",
+            },
+            {
+                "keywords": ["save", "export", "write to"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Save file",
+            },
+            {
+                "keywords": ["read", "view", "show", "display"],
+                "capability": CapabilityType.FILESYSTEM,
+                "step_type": "execute",
+                "description": "Read file",
+            },
         ]
 
         # Knowledge/Processing operations
         knowledge_ops = [
-            {"keywords": ["summarize", "analyze", "review", "explain", "interpret"],
-             "capability": CapabilityType.KNOWLEDGE, "step_type": "execute", "description": "Analyze content"},
-            {"keywords": ["search", "lookup", "research"], "capability": CapabilityType.KNOWLEDGE,
-             "step_type": "execute", "description": "Search knowledge base"},
-            {"keywords": ["compare", "contrast", "difference"], "capability": CapabilityType.KNOWLEDGE,
-             "step_type": "execute", "description": "Compare items"},
+            {
+                "keywords": ["summarize", "analyze", "review", "explain", "interpret"],
+                "capability": CapabilityType.KNOWLEDGE,
+                "step_type": "execute",
+                "description": "Analyze content",
+            },
+            {
+                "keywords": ["search", "lookup", "research"],
+                "capability": CapabilityType.KNOWLEDGE,
+                "step_type": "execute",
+                "description": "Search knowledge base",
+            },
+            {
+                "keywords": ["compare", "contrast", "difference"],
+                "capability": CapabilityType.KNOWLEDGE,
+                "step_type": "execute",
+                "description": "Compare items",
+            },
         ]
 
         # Provider operations
         provider_ops = [
-            {"keywords": ["create", "generate", "write", "make"], "capability": CapabilityType.PROVIDER,
-             "step_type": "execute", "description": "Generate content"},
-            {"keywords": ["explain", "describe", "clarify"], "capability": CapabilityType.PROVIDER,
-             "step_type": "execute", "description": "Explain content"},
-            {"keywords": ["transform", "convert", "translate"], "capability": CapabilityType.PROVIDER,
-             "step_type": "execute", "description": "Transform content"},
+            {
+                "keywords": ["create", "generate", "write", "make"],
+                "capability": CapabilityType.PROVIDER,
+                "step_type": "execute",
+                "description": "Generate content",
+            },
+            {
+                "keywords": ["explain", "describe", "clarify"],
+                "capability": CapabilityType.PROVIDER,
+                "step_type": "execute",
+                "description": "Explain content",
+            },
+            {
+                "keywords": ["transform", "convert", "translate"],
+                "capability": CapabilityType.PROVIDER,
+                "step_type": "execute",
+                "description": "Transform content",
+            },
         ]
 
         # Desktop operations
         desktop_ops = [
-            {"keywords": ["open", "launch", "start", "run"], "capability": CapabilityType.DESKTOP,
-             "step_type": "execute", "description": "Open application"},
-            {"keywords": ["close", "quit", "exit", "force quit"], "capability": CapabilityType.DESKTOP,
-             "step_type": "execute", "description": "Close application"},
-            {"keywords": ["minimize", "maximize", "restore"], "capability": CapabilityType.DESKTOP,
-             "step_type": "execute", "description": "Window management"},
+            {
+                "keywords": ["open", "launch", "start", "run"],
+                "capability": CapabilityType.DESKTOP,
+                "step_type": "execute",
+                "description": "Open application",
+            },
+            {
+                "keywords": ["close", "quit", "exit", "force quit"],
+                "capability": CapabilityType.DESKTOP,
+                "step_type": "execute",
+                "description": "Close application",
+            },
+            {
+                "keywords": ["minimize", "maximize", "restore"],
+                "capability": CapabilityType.DESKTOP,
+                "step_type": "execute",
+                "description": "Window management",
+            },
         ]
 
         # Vision operations
         vision_ops = [
-            {"keywords": ["analyze image", "read image", "extract text"], "capability": CapabilityType.VISION,
-             "step_type": "execute", "description": "Analyze image"},
-            {"keywords": ["describe", "explain"], "capability": CapabilityType.VISION,
-             "step_type": "execute", "description": "Describe image"},
+            {
+                "keywords": ["analyze image", "read image", "extract text"],
+                "capability": CapabilityType.VISION,
+                "step_type": "execute",
+                "description": "Analyze image",
+            },
+            {
+                "keywords": ["describe", "explain"],
+                "capability": CapabilityType.VISION,
+                "step_type": "execute",
+                "description": "Describe image",
+            },
         ]
 
         # Memory operations
         memory_ops = [
-            {"keywords": ["remember", "save", "store"], "capability": CapabilityType.MEMORY,
-             "step_type": "execute", "description": "Store information"},
-            {"keywords": ["recall", "retrieve", "remember"], "capability": CapabilityType.MEMORY,
-             "step_type": "execute", "description": "Retrieve information"},
+            {
+                "keywords": ["remember", "save", "store"],
+                "capability": CapabilityType.MEMORY,
+                "step_type": "execute",
+                "description": "Store information",
+            },
+            {
+                "keywords": ["recall", "retrieve", "remember"],
+                "capability": CapabilityType.MEMORY,
+                "step_type": "execute",
+                "description": "Retrieve information",
+            },
         ]
 
         # Check all operation types
-        all_ops = filesystem_ops + knowledge_ops + provider_ops + desktop_ops + vision_ops + memory_ops
+        all_ops = (
+            filesystem_ops
+            + knowledge_ops
+            + provider_ops
+            + desktop_ops
+            + vision_ops
+            + memory_ops
+        )
 
         # Match operations in order of appearance
         for op in all_ops:
@@ -151,20 +249,24 @@ class WorkflowOrchestrator:
                 if keyword in text_lower:
                     # Check if we already added this operation (avoid duplicates)
                     if not any(
-                        op["capability"] == existing["capability"] and
-                        op["step_type"] == existing["step_type"]
+                        op["capability"] == existing["capability"]
+                        and op["step_type"] == existing["step_type"]
                         for existing in operations
                     ):
-                        operations.append({
-                            "capability": op["capability"],
-                            "step_type": op["step_type"],
-                            "description": op["description"]
-                        })
+                        operations.append(
+                            {
+                                "capability": op["capability"],
+                                "step_type": op["step_type"],
+                                "description": op["description"],
+                            }
+                        )
                         break
 
         return operations
 
-    def _order_operations(self, operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _order_operations(
+        self, operations: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Order operations based on dependencies.
 
@@ -189,9 +291,15 @@ class WorkflowOrchestrator:
         other_ops = []
 
         for op in operations:
-            if op["capability"] == CapabilityType.FILESYSTEM and op["step_type"] == "execute":
+            if (
+                op["capability"] == CapabilityType.FILESYSTEM
+                and op["step_type"] == "execute"
+            ):
                 # Check if it's a save/export operation
-                if "save" in op["description"].lower() or "export" in op["description"].lower():
+                if (
+                    "save" in op["description"].lower()
+                    or "export" in op["description"].lower()
+                ):
                     save_ops.append(op)
                 else:
                     other_ops.append(op)
@@ -203,7 +311,7 @@ class WorkflowOrchestrator:
 
         return ordered_ops
 
-    def plan_workflow(self, text: str) -> List[Dict[str, Any]]:
+    def plan_workflow(self, text: str) -> list[dict[str, Any]]:
         """
         Plan a workflow from a multi-step request.
 
@@ -234,10 +342,7 @@ class WorkflowOrchestrator:
             step = WorkflowStep(
                 capability=op["capability"],
                 step_type=op["step_type"],
-                data={
-                    "description": op["description"],
-                    "operation_index": i
-                }
+                data={"description": op["description"], "operation_index": i},
             )
             self.steps.append(step)
 
@@ -247,7 +352,9 @@ class WorkflowOrchestrator:
             "source_text": text[:200],
         }
 
-        logger.info(f"Planned {len(self.steps)} workflow steps: {[s.capability.value for s in self.steps]}")
+        logger.info(
+            f"Planned {len(self.steps)} workflow steps: {[s.capability.value for s in self.steps]}"
+        )
         return [step.as_dict() for step in self.steps]
 
         # If no specific steps detected, create a simple workflow
@@ -261,14 +368,14 @@ class WorkflowOrchestrator:
             step = WorkflowStep(
                 capability=step_dict["capability"],
                 step_type=step_dict["step_type"],
-                data={"description": step_dict["description"]}
+                data={"description": step_dict["description"]},
             )
             self.steps.append(step)
 
         logger.info(f"Planned {len(self.steps)} workflow steps")
         return [step.as_dict() for step in self.steps]
 
-    async def execute_workflow(self) -> Dict[str, Any]:
+    async def execute_workflow(self) -> dict[str, Any]:
         """
         Execute the planned workflow.
 
@@ -279,10 +386,7 @@ class WorkflowOrchestrator:
             Dictionary with workflow results
         """
         if not self.steps:
-            return {
-                "success": False,
-                "error": "No workflow steps to execute"
-            }
+            return {"success": False, "error": "No workflow steps to execute"}
 
         logger.info(f"Starting workflow execution with {len(self.steps)} steps")
         results = []
@@ -290,14 +394,13 @@ class WorkflowOrchestrator:
 
         # Step 1: Validate workflow before execution
         if not self.validate_workflow([step.as_dict() for step in self.steps]):
-            return {
-                "success": False,
-                "error": "Workflow validation failed"
-            }
+            return {"success": False, "error": "Workflow validation failed"}
 
         # Step 2: Execute each step sequentially
         for i, step in enumerate(self.steps):
-            logger.info(f"Executing workflow step {i+1}/{len(self.steps)}: {step.step_type.value}")
+            logger.info(
+                f"Executing workflow step {i+1}/{len(self.steps)}: {step.step_type.value}"
+            )
 
             try:
                 step.status = "running"
@@ -312,14 +415,16 @@ class WorkflowOrchestrator:
                 step.output_data = step_output
                 step.status = "completed"
 
-                results.append({
-                    "step": i + 1,
-                    "capability": step.capability.value,
-                    "step_type": step.step_type.value,
-                    "status": "completed",
-                    "output": step_output,
-                    "description": step.data.get("description", "")
-                })
+                results.append(
+                    {
+                        "step": i + 1,
+                        "capability": step.capability.value,
+                        "step_type": step.step_type.value,
+                        "status": "completed",
+                        "output": step_output,
+                        "description": step.data.get("description", ""),
+                    }
+                )
 
                 logger.debug(f"Step {i+1} completed successfully")
 
@@ -327,14 +432,16 @@ class WorkflowOrchestrator:
                 step.status = "failed"
                 step.error = str(e)
 
-                results.append({
-                    "step": i + 1,
-                    "capability": step.capability.value,
-                    "step_type": step.step_type.value,
-                    "status": "failed",
-                    "error": str(e),
-                    "description": step.data.get("description", "")
-                })
+                results.append(
+                    {
+                        "step": i + 1,
+                        "capability": step.capability.value,
+                        "step_type": step.step_type.value,
+                        "status": "failed",
+                        "error": str(e),
+                        "description": step.data.get("description", ""),
+                    }
+                )
 
                 logger.error(f"Workflow step {i+1} failed: {e}")
                 break  # Stop on failure to prevent cascading errors
@@ -347,21 +454,23 @@ class WorkflowOrchestrator:
                     final_output.update(output)
 
         # Step 4: Compile final result
-        workflow_success = all(
-            step.status == "completed" for step in self.steps
-        )
+        workflow_success = all(step.status == "completed" for step in self.steps)
 
         return {
             "success": workflow_success,
             "total_steps": len(self.steps),
-            "completed_steps": sum(1 for step in self.steps if step.status == "completed"),
+            "completed_steps": sum(
+                1 for step in self.steps if step.status == "completed"
+            ),
             "failed_steps": sum(1 for step in self.steps if step.status == "failed"),
             "steps": results,
             "output": final_output,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
-    async def _execute_single_step(self, step: WorkflowStep, step_index: int) -> Dict[str, Any]:
+    async def _execute_single_step(
+        self, step: WorkflowStep, step_index: int
+    ) -> dict[str, Any]:
         """
         Execute a single workflow step.
 
@@ -393,15 +502,15 @@ class WorkflowOrchestrator:
             "execute": {
                 "success": True,
                 "message": f"Step {step.capability.value} executed successfully",
-                "step_data": step.data
+                "step_data": step.data,
             }
         }
 
         output_type = step.step_type.lower()
-        return mock_outputs.get(output_type, {
-            "success": True,
-            "message": f"Step {step.capability.value} executed"
-        })
+        return mock_outputs.get(
+            output_type,
+            {"success": True, "message": f"Step {step.capability.value} executed"},
+        )
 
     def can_orchestrate(self, text: str) -> bool:
         """
@@ -418,7 +527,16 @@ class WorkflowOrchestrator:
         text_lower = text.lower()
 
         # Check for explicit multi-step connectors
-        multi_step_connectors = ["and", "then", "after that", "then", "also", "while", "also", "additionally"]
+        multi_step_connectors = [
+            "and",
+            "then",
+            "after that",
+            "then",
+            "also",
+            "while",
+            "also",
+            "additionally",
+        ]
         if any(connector in text_lower for connector in multi_step_connectors):
             return True
 
@@ -426,9 +544,23 @@ class WorkflowOrchestrator:
         if "," in text_lower:
             # Count operations by common action verbs
             action_verbs = [
-                "find", "search", "list", "create", "write", "generate",
-                "delete", "move", "copy", "summarize", "analyze", "explain",
-                "open", "close", "save", "export", "compare"
+                "find",
+                "search",
+                "list",
+                "create",
+                "write",
+                "generate",
+                "delete",
+                "move",
+                "copy",
+                "summarize",
+                "analyze",
+                "explain",
+                "open",
+                "close",
+                "save",
+                "export",
+                "compare",
             ]
             operation_count = sum(1 for verb in action_verbs if verb in text_lower)
             if operation_count >= 2:
@@ -444,15 +576,29 @@ class WorkflowOrchestrator:
             if word == "and" and i > 0:
                 # Check if the previous and next words are action verbs
                 words_before = text_lower.split()[:i]
-                words_after = text_lower.split()[i+1:]
+                words_after = text_lower.split()[i + 1 :]
 
                 if words_before and words_after:
                     prev_word = words_before[-1].rstrip(",")
                     next_word = words_after[0].rstrip(",")
 
-                    if prev_word in ["find", "search", "create", "write", "generate",
-                                    "delete", "move", "copy", "summarize", "analyze",
-                                    "explain", "open", "close", "save", "export"]:
+                    if prev_word in [
+                        "find",
+                        "search",
+                        "create",
+                        "write",
+                        "generate",
+                        "delete",
+                        "move",
+                        "copy",
+                        "summarize",
+                        "analyze",
+                        "explain",
+                        "open",
+                        "close",
+                        "save",
+                        "export",
+                    ]:
                         return True
 
         # Check for quotes indicating multiple items
@@ -461,7 +607,7 @@ class WorkflowOrchestrator:
 
         return False
 
-    def validate_workflow(self, steps: List[Dict[str, Any]]) -> bool:
+    def validate_workflow(self, steps: list[dict[str, Any]]) -> bool:
         """
         Validate that a workflow is feasible.
 
@@ -477,8 +623,13 @@ class WorkflowOrchestrator:
 
         # Check for consecutive filesystem operations (could cause issues)
         for i in range(len(steps) - 1):
-            if steps[i]["capability"] == "filesystem" and steps[i + 1]["capability"] == "filesystem":
+            if (
+                steps[i]["capability"] == "filesystem"
+                and steps[i + 1]["capability"] == "filesystem"
+            ):
                 # This might be okay, but log a warning
-                logger.warning(f"Consecutive filesystem operations at step {i+1} and {i+2}")
+                logger.warning(
+                    f"Consecutive filesystem operations at step {i+1} and {i+2}"
+                )
 
         return True

@@ -27,12 +27,10 @@ This helps Aura answer:
 
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
-from collections import defaultdict
+from typing import Any
 
-from .knowledge_db import KnowledgeFact, KnowledgeDB
+from .knowledge_db import KnowledgeDB, KnowledgeFact
 
 
 @dataclass
@@ -40,55 +38,58 @@ class TopicNode:
     """
     A node in the topic tree structure.
     """
+
     name: str
-    parent: Optional['TopicNode'] = None
-    facts: List[KnowledgeFact] = field(default_factory=list)
-    subtopics: Dict[str, 'TopicNode'] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    parent: TopicNode | None = None
+    facts: list[KnowledgeFact] = field(default_factory=list)
+    subtopics: dict[str, TopicNode] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_fact(self, fact: KnowledgeFact) -> None:
         """Add a fact to this topic node."""
         self.facts.append(fact)
 
-    def add_subtopic(self, name: str, node: 'TopicNode' = None) -> 'TopicNode':
+    def add_subtopic(self, name: str, node: TopicNode = None) -> TopicNode:
         """Add or get a subtopic by name."""
         if node is None:
             node = TopicNode(name=name, parent=self)
         self.subtopics[name] = node
         return node
 
-    def get_fact(self, fact_text: str) -> Optional[KnowledgeFact]:
+    def get_fact(self, fact_text: str) -> KnowledgeFact | None:
         """Get a specific fact by its text."""
         for fact in self.facts:
             if fact.fact.lower() == fact_text.lower():
                 return fact
         return None
 
-    def get_subtopic(self, name: str) -> Optional['TopicNode']:
+    def get_subtopic(self, name: str) -> TopicNode | None:
         """Get a subtopic by name."""
         return self.subtopics.get(name)
 
-    def get_all_facts(self) -> List[KnowledgeFact]:
+    def get_all_facts(self) -> list[KnowledgeFact]:
         """Get all facts in this topic and all subtopics."""
         facts = self.facts.copy()
         for subtopic in self.subtopics.values():
             facts.extend(subtopic.get_all_facts())
         return facts
 
-    def get_all_subtopic_names(self) -> List[str]:
+    def get_all_subtopic_names(self) -> list[str]:
         """Get all subtopic names (including nested)."""
         names = list(self.subtopics.keys())
         for subtopic in self.subtopics.values():
             names.extend(subtopic.get_all_subtopic_names())
         return names
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "name": self.name,
             "facts": [f.to_dict() for f in self.facts],
-            "subtopics": {name: subtopic.to_dict() for name, subtopic in self.subtopics.items()},
-            "metadata": self.metadata
+            "subtopics": {
+                name: subtopic.to_dict() for name, subtopic in self.subtopics.items()
+            },
+            "metadata": self.metadata,
         }
 
 
@@ -112,7 +113,7 @@ class TopicMemory:
             knowledge_db: KnowledgeDB instance (optional, will create if not provided)
         """
         self.knowledge_db = knowledge_db or KnowledgeDB()
-        self.topic_tree: Dict[str, TopicNode] = {}
+        self.topic_tree: dict[str, TopicNode] = {}
         self._initialize_from_db()
 
     def _initialize_from_db(self):
@@ -122,7 +123,7 @@ class TopicMemory:
         for topic in topics:
             self._build_topic_hierarchy(topic)
 
-    def _build_topic_hierarchy(self, topic: str, path: List[str] = None) -> TopicNode:
+    def _build_topic_hierarchy(self, topic: str, path: list[str] = None) -> TopicNode:
         """
         Build a topic hierarchy tree.
 
@@ -161,7 +162,7 @@ class TopicMemory:
 
         return current_node
 
-    def _infer_subtopic(self, fact: KnowledgeFact) -> Optional[str]:
+    def _infer_subtopic(self, fact: KnowledgeFact) -> str | None:
         """
         Try to infer subtopic from fact content.
 
@@ -192,7 +193,7 @@ class TopicMemory:
 
         return None
 
-    def get_topic(self, topic: str) -> Optional[TopicNode]:
+    def get_topic(self, topic: str) -> TopicNode | None:
         """
         Get a topic node by name.
 
@@ -204,7 +205,7 @@ class TopicMemory:
         """
         return self.topic_tree.get(topic)
 
-    def get_facts(self, topic: str) -> List[KnowledgeFact]:
+    def get_facts(self, topic: str) -> list[KnowledgeFact]:
         """
         Get all facts for a topic.
 
@@ -219,7 +220,9 @@ class TopicMemory:
             return topic_node.get_all_facts()
         return []
 
-    def get_topic_facts(self, topic: str, subtopic: Optional[str] = None) -> List[KnowledgeFact]:
+    def get_topic_facts(
+        self, topic: str, subtopic: str | None = None
+    ) -> list[KnowledgeFact]:
         """
         Get facts for a specific topic and optionally subtopic.
 
@@ -265,12 +268,12 @@ class TopicMemory:
         else:
             topic_node.add_fact(fact)
 
-    def add_facts(self, facts: List[KnowledgeFact]) -> None:
+    def add_facts(self, facts: list[KnowledgeFact]) -> None:
         """Add multiple facts at once."""
         for fact in facts:
             self.add_fact(fact)
 
-    def get_all_topics(self) -> List[str]:
+    def get_all_topics(self) -> list[str]:
         """
         Get all available topics.
 
@@ -279,7 +282,7 @@ class TopicMemory:
         """
         return list(self.topic_tree.keys())
 
-    def get_subtopics(self, topic: str) -> List[str]:
+    def get_subtopics(self, topic: str) -> list[str]:
         """
         Get all subtopics for a specific topic.
 
@@ -295,7 +298,7 @@ class TopicMemory:
 
         return list(topic_node.subtopics.keys())
 
-    def get_topic_hierarchy(self, topic: str, max_depth: int = 3) -> Dict[str, Any]:
+    def get_topic_hierarchy(self, topic: str, max_depth: int = 3) -> dict[str, Any]:
         """
         Get hierarchical structure for a topic.
 
@@ -310,12 +313,12 @@ class TopicMemory:
         if not topic_node:
             return {}
 
-        def build_hierarchy(node: TopicNode, depth: int) -> Dict[str, Any]:
+        def build_hierarchy(node: TopicNode, depth: int) -> dict[str, Any]:
             if depth >= max_depth:
                 return {
                     "name": node.name,
                     "fact_count": len(node.facts),
-                    "subtopic_count": len(node.subtopics)
+                    "subtopic_count": len(node.subtopics),
                 }
 
             children = {}
@@ -326,12 +329,12 @@ class TopicMemory:
                 "name": node.name,
                 "fact_count": len(node.facts),
                 "subtopic_count": len(node.subtopics),
-                "subtopics": children
+                "subtopics": children,
             }
 
         return build_hierarchy(topic_node, 0)
 
-    def get_topic_stats(self, topic: str) -> Dict[str, Any]:
+    def get_topic_stats(self, topic: str) -> dict[str, Any]:
         """
         Get statistics about a topic.
 
@@ -353,10 +356,10 @@ class TopicMemory:
             "topic": topic,
             "total_facts": len(facts),
             "unique_subtopics": len(subtopics_used),
-            "subtopics": list(subtopics_used)
+            "subtopics": list(subtopics_used),
         }
 
-    def get_all_topic_stats(self) -> List[Dict[str, Any]]:
+    def get_all_topic_stats(self) -> list[dict[str, Any]]:
         """
         Get statistics for all topics.
 
@@ -368,7 +371,7 @@ class TopicMemory:
             stats.append(self.get_topic_stats(topic))
         return sorted(stats, key=lambda x: x["total_facts"], reverse=True)
 
-    def search_topics(self, query: str) -> List[str]:
+    def search_topics(self, query: str) -> list[str]:
         """
         Search for topics matching a query.
 

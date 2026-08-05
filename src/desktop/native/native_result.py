@@ -2,14 +2,17 @@
 Native Result Object
 Structured results for native operations with metadata for GUI and undo.
 """
-from dataclasses import dataclass, field
-from typing import Any, Optional, List, Dict
-from enum import Enum
+
 import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
 
 class ResultStatus(Enum):
     """Result status"""
+
     SUCCESS = "success"
     FAILURE = "failure"
     PARTIAL = "partial"
@@ -18,6 +21,7 @@ class ResultStatus(Enum):
 
 class ActionCategory(Enum):
     """Category of action"""
+
     WINDOW = "window"
     CLIPBOARD = "clipboard"
     DISPLAY = "display"
@@ -35,31 +39,32 @@ class NativeResult:
 
     Contains the actual result, metadata for GUI, undo info, and metrics.
     """
+
     # Core result
     status: ResultStatus
     data: Any = None
-    error: Optional[Exception] = None
+    error: Exception | None = None
 
     # Metadata
-    capability: Optional[str] = None
-    manager: Optional[str] = None
-    action: Optional[str] = None
-    category: Optional[ActionCategory] = None
+    capability: str | None = None
+    manager: str | None = None
+    action: str | None = None
+    category: ActionCategory | None = None
 
     # GUI visualization
-    success_message: Optional[str] = None
-    warning_messages: List[str] = field(default_factory=list)
-    info_messages: List[str] = field(default_factory=list)
+    success_message: str | None = None
+    warning_messages: list[str] = field(default_factory=list)
+    info_messages: list[str] = field(default_factory=list)
 
     # Undo information
     undo_available: bool = False
-    undo_data: Optional[Dict[str, Any]] = None
-    rollback_function: Optional[callable] = None
+    undo_data: dict[str, Any] | None = None
+    rollback_function: Callable | None = None
 
     # Metrics
     duration_ms: float = 0.0
     permission_used: bool = False
-    events_triggered: List[str] = field(default_factory=list)
+    events_triggered: list[str] = field(default_factory=list)
 
     # Timestamps
     started_at: float = field(default_factory=time.time)
@@ -77,11 +82,11 @@ class NativeResult:
         capability: str,
         action: str,
         category: ActionCategory,
-        success_message: Optional[str] = None,
+        success_message: str | None = None,
         undo_available: bool = False,
-        rollback_function: Optional[callable] = None,
-        events_triggered: List[str] = None
-    ) -> 'NativeResult':
+        rollback_function: Callable | None = None,
+        events_triggered: list | None = None,
+    ) -> "NativeResult":
         """
         Create a successful result.
 
@@ -107,7 +112,7 @@ class NativeResult:
             success_message=success_message,
             undo_available=undo_available,
             rollback_function=rollback_function,
-            events_triggered=events_triggered or []
+            events_triggered=events_triggered or [],
         )
 
     @classmethod
@@ -117,8 +122,8 @@ class NativeResult:
         capability: str,
         action: str,
         category: ActionCategory,
-        message: Optional[str] = None
-    ) -> 'NativeResult':
+        message: str | None = None,
+    ) -> "NativeResult":
         """
         Create a failed result.
 
@@ -138,7 +143,7 @@ class NativeResult:
             capability=capability,
             action=action,
             category=category,
-            info_messages=[message or str(error)] if message else []
+            info_messages=[message or str(error)] if message else [],
         )
 
     @classmethod
@@ -148,9 +153,9 @@ class NativeResult:
         capability: str,
         action: str,
         category: ActionCategory,
-        warning_messages: List[str] = None,
-        success_message: Optional[str] = None
-    ) -> 'NativeResult':
+        warning_messages: list[str] = None,
+        success_message: str | None = None,
+    ) -> "NativeResult":
         """
         Create a partial success result.
 
@@ -172,11 +177,11 @@ class NativeResult:
             action=action,
             category=category,
             warning_messages=warning_messages or [],
-            success_message=success_message
+            success_message=success_message,
         )
 
     @classmethod
-    def cancelled(cls, capability: str, action: str) -> 'NativeResult':
+    def cancelled(cls, capability: str, action: str) -> "NativeResult":
         """
         Create a cancelled result.
 
@@ -187,11 +192,7 @@ class NativeResult:
         Returns:
             NativeResult with CANCELLED status
         """
-        return cls(
-            status=ResultStatus.CANCELLED,
-            capability=capability,
-            action=action
-        )
+        return cls(status=ResultStatus.CANCELLED, capability=capability, action=action)
 
     def add_warning(self, message: str) -> None:
         """Add a warning message"""
@@ -201,7 +202,7 @@ class NativeResult:
         """Add an info message"""
         self.info_messages.append(message)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "status": self.status.value,

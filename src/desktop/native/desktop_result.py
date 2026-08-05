@@ -9,14 +9,16 @@ Vision, Browser, or Workspace — returns a DesktopResult.
 Mirrors the relationship between ResearchReport and ResearchEngine.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable
-from enum import Enum
 import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
 
 class DesktopStatus(Enum):
     """Status of a desktop operation."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     PARTIAL = "partial"
@@ -52,29 +54,29 @@ class DesktopResult:
     capability: str = ""
     manager: str = ""
     data: Any = None
-    error: Optional[str] = None
+    error: str | None = None
 
     # Execution metadata
     status: DesktopStatus = DesktopStatus.PENDING
 
     # Events published during execution
-    events: List[str] = field(default_factory=list)
+    events: list[str] = field(default_factory=list)
 
     # Rollback support
-    rollback: Optional[Callable[[], bool]] = None
+    rollback: Callable[[], bool] | None = None
     rollback_available: bool = False
 
     # Verification results
-    verification: Dict[str, Any] = field(default_factory=dict)
+    verification: dict[str, Any] = field(default_factory=dict)
 
     # Performance metrics
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
 
     # Context changes applied
-    context_changes: Dict[str, Any] = field(default_factory=dict)
+    context_changes: dict[str, Any] = field(default_factory=dict)
 
     # Non-fatal warnings
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     # Timestamps
     started_at: float = field(default_factory=time.time)
@@ -83,7 +85,9 @@ class DesktopResult:
     def __post_init__(self):
         """Calculate duration after initialization."""
         if self.status == DesktopStatus.PENDING:
-            self.status = DesktopStatus.SUCCESS if self.success else DesktopStatus.FAILURE
+            self.status = (
+                DesktopStatus.SUCCESS if self.success else DesktopStatus.FAILURE
+            )
         if self.rollback is not None:
             self.rollback_available = True
 
@@ -101,13 +105,13 @@ class DesktopResult:
         capability: str,
         manager: str,
         data: Any = None,
-        events: Optional[List[str]] = None,
-        rollback: Optional[Callable[[], bool]] = None,
-        verification: Optional[Dict[str, Any]] = None,
-        metrics: Optional[Dict[str, Any]] = None,
-        context_changes: Optional[Dict[str, Any]] = None,
-        warnings: Optional[List[str]] = None,
-    ) -> 'DesktopResult':
+        events: list[str] | None = None,
+        rollback: Callable[[], bool] | None = None,
+        verification: dict[str, Any] | None = None,
+        metrics: dict[str, Any] | None = None,
+        context_changes: dict[str, Any] | None = None,
+        warnings: list[str] | None = None,
+    ) -> "DesktopResult":
         """Create a successful DesktopResult."""
         return cls(
             success=True,
@@ -132,10 +136,10 @@ class DesktopResult:
         capability: str,
         manager: str,
         error: str,
-        events: Optional[List[str]] = None,
-        metrics: Optional[Dict[str, Any]] = None,
-        warnings: Optional[List[str]] = None,
-    ) -> 'DesktopResult':
+        events: list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
+        warnings: list[str] | None = None,
+    ) -> "DesktopResult":
         """Create a failed DesktopResult."""
         return cls(
             success=False,
@@ -156,10 +160,10 @@ class DesktopResult:
         capability: str,
         manager: str,
         data: Any = None,
-        warnings: Optional[List[str]] = None,
-        events: Optional[List[str]] = None,
-        metrics: Optional[Dict[str, Any]] = None,
-    ) -> 'DesktopResult':
+        warnings: list[str] | None = None,
+        events: list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
+    ) -> "DesktopResult":
         """Create a partial success DesktopResult."""
         return cls(
             success=True,
@@ -180,7 +184,7 @@ class DesktopResult:
         capability: str,
         manager: str,
         reason: str = "",
-    ) -> 'DesktopResult':
+    ) -> "DesktopResult":
         """Create a cancelled DesktopResult."""
         return cls(
             success=False,
@@ -226,7 +230,7 @@ class DesktopResult:
             self.add_warning(f"Rollback failed: {e}")
             return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "success": self.success,

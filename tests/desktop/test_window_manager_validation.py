@@ -9,21 +9,22 @@ DesktopExecutionEngine:
    metrics, and events are all triggered by the pipeline—not by WindowManager itself.
 """
 
-import sys
 import os
+import sys
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
 import inspect
 from unittest.mock import MagicMock
-from src.desktop.native.managers.window_manager import WindowManager
+
+from src.desktop.native.capability_registry import CapabilityRegistry
 from src.desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
 )
-from src.desktop.native.capability_registry import CapabilityRegistry
 from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
+from src.desktop.native.managers.window_manager import WindowManager
 
 
 def test_window_manager_no_cross_cutting_concerns():
@@ -87,9 +88,13 @@ def test_all_window_capabilities_registered_in_registry():
     ]
 
     for cap_name in expected:
-        assert cap_name in window_cap_names, f"Missing capability in registry: {cap_name}"
+        assert (
+            cap_name in window_cap_names
+        ), f"Missing capability in registry: {cap_name}"
 
-    print(f"[OK] All {len(expected)} window capabilities registered in CapabilityRegistry")
+    print(
+        f"[OK] All {len(expected)} window capabilities registered in CapabilityRegistry"
+    )
 
 
 def test_execution_through_engine_triggers_all_pipeline_stages():
@@ -110,7 +115,9 @@ def test_execution_through_engine_triggers_all_pipeline_stages():
     assert "diagnostics" in result.metrics, "Diagnostics stage must run"
     assert result.metrics["total_duration_ms"] > 0, "Metrics stage must run"
 
-    print("[OK] DesktopExecutionEngine pipeline stages executed successfully for window capability")
+    print(
+        "[OK] DesktopExecutionEngine pipeline stages executed successfully for window capability"
+    )
 
 
 def test_no_direct_manager_bypass():
@@ -123,7 +130,9 @@ def test_no_direct_manager_bypass():
     def execute_via_engine(goal: str, capability: str, **kwargs):
         return mock_engine.execute(goal=goal, capability=capability, arguments=kwargs)
 
-    execute_via_engine(goal="Activate VS Code", capability="activate_window", window_title="VS Code")
+    execute_via_engine(
+        goal="Activate VS Code", capability="activate_window", window_title="VS Code"
+    )
 
     mock_engine.execute.assert_called_once_with(
         goal="Activate VS Code",

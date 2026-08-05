@@ -1,4 +1,5 @@
 """Test ChatBot with GROQ API"""
+
 import sys
 from pathlib import Path
 
@@ -20,7 +21,7 @@ try:
     chatbot = ChatBot()
     print("✅ ChatBot created successfully!")
     print()
-    
+
     # Get configuration info
     print("📊 Configuration:")
     print(f"   Provider: {chatbot.provider_name}")
@@ -28,13 +29,13 @@ try:
     print(f"   Username: {chatbot.username}")
     print(f"   Assistant Name: {chatbot.assistant_name}")
     print()
-    
+
     # Test a simple query
     print("🤖 Testing query: 'Write a Python function for Fibonacci'")
     print()
-    
+
     response = chatbot.ask("Write a Python function for Fibonacci")
-    
+
     print("✅ Response received!")
     print()
     print("=" * 70)
@@ -43,12 +44,13 @@ try:
     print(response)
     print("=" * 70)
     print()
-    
+
     print("✅ ChatBot test completed successfully!")
-    
+
 except Exception as e:
     print(f"❌ Error: {e}")
     import traceback
+
     traceback.print_exc()
     print()
     print("📝 Troubleshooting:")

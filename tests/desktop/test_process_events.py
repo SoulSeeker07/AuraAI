@@ -1,27 +1,30 @@
 """Test script for ProcessManager event-driven features"""
-import sys
-import uuid
-import time
+
 import logging
+import sys
+import time
+import uuid
 from datetime import datetime
-sys.path.insert(0, 'd:/Sreekanta/VS Code Project/Desktop AI/AuraAI')
+
+sys.path.insert(0, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI")
 
 # Import modules directly to avoid package structure issues
 import core.event_bus as event_bus_module
 import core.logger as logger_module
-sys.path.insert(1, 'd:/Sreekanta/VS Code Project/Desktop AI/AuraAI/src')
 
+sys.path.insert(1, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI/src")
+
+from agents.process_manager import ProcessEvent, ProcessManager, ProcessState
+from agents.task_model import Task, TaskInput, TaskType
 from core.event_bus import EventBus
 from core.logger import get_logger
-from agents.process_manager import ProcessManager, ProcessEvent, ProcessState
-from agents.task_model import Task, TaskType, TaskInput
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 def test_event_bus_integration():
     """Test EventBus integration with ProcessManager"""
@@ -37,15 +40,13 @@ def test_event_bus_integration():
     event_log = []
 
     def log_event(event):
-        event_log.append({
-            'time': datetime.now(),
-            'event': event.name,
-            'data': event.payload
-        })
+        event_log.append(
+            {"time": datetime.now(), "event": event.name, "data": event.payload}
+        )
         print(f"\n[Event Published]: {event.name}")
         print(f"  PID: {event.payload.get('pid')}")
         print(f"  Name: {event.payload.get('name')}")
-        if event.payload.get('old_status'):
+        if event.payload.get("old_status"):
             print(f"  Old Status: {event.payload.get('old_status')}")
         print(f"  New Status: {event.payload.get('new_status')}")
 
@@ -73,6 +74,7 @@ def test_event_bus_integration():
         print(f"  {i}. {event['event']}")
     print()
 
+
 def test_background_monitor():
     """Test background monitor is running"""
     print("\n" + "=" * 70)
@@ -84,11 +86,14 @@ def test_background_monitor():
 
     print(f"Monitor running: {pm._monitor_running}")
     print(f"Monitor thread: {pm._monitor_thread is not None}")
-    print(f"Monitor thread name: {pm._monitor_thread.name if pm._monitor_thread else 'None'}")
+    print(
+        f"Monitor thread name: {pm._monitor_thread.name if pm._monitor_thread else 'None'}"
+    )
 
     # Run for a moment to see if it's working
     print("\nRunning for 3 seconds to verify monitor is active...")
     import time
+
     time.sleep(3)
 
     states = pm.get_all_process_states()
@@ -96,6 +101,7 @@ def test_background_monitor():
 
     pm.cleanup()
     print()
+
 
 def test_process_state_tracking():
     """Test process state tracking"""
@@ -111,7 +117,7 @@ def test_process_state_tracking():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_SEARCH,
         title="Find Python process",
-        input=TaskInput(data={"name": "python", "max_results": 1})
+        input=TaskInput(data={"name": "python", "max_results": 1}),
     )
     result = pm.execute_task(search_task)
 
@@ -122,23 +128,26 @@ def test_process_state_tracking():
         # Get initial state
         state1 = pm.get_process_state(pid)
         if state1:
-            print(f"\nInitial State:")
+            print("\nInitial State:")
             print(f"  PID: {state1.pid}")
             print(f"  Name: {state1.name}")
             print(f"  Status: {state1.previous_status}")
             print(f"  CPU: {state1.previous_cpu}%")
             print(f"  Memory: {state1.previous_memory} MB")
         elif state2:
-            print("\n(No initial state was captured yet — monitor hadn't scanned this PID before the first check)")
+            print(
+                "\n(No initial state was captured yet — monitor hadn't scanned this PID before the first check)"
+            )
 
         # Wait a moment and check again
         print("\nWaiting 2 seconds for potential changes...")
         import time
+
         time.sleep(2)
 
         state2 = pm.get_process_state(pid)
         if state2:
-            print(f"\nUpdated State:")
+            print("\nUpdated State:")
             print(f"  PID: {state2.pid}")
             print(f"  Name: {state2.name}")
             print(f"  Status: {state2.previous_status}")
@@ -153,6 +162,7 @@ def test_process_state_tracking():
 
     pm.cleanup()
     print()
+
 
 def test_process_list_updated_event():
     """Test PROCESS_LIST_UPDATED event"""
@@ -175,7 +185,7 @@ def test_process_list_updated_event():
         id=str(uuid.uuid4()),
         type=TaskType.PROCESS_LIST,
         title="List processes",
-        input=TaskInput(data={"max_results": 5})
+        input=TaskInput(data={"max_results": 5}),
     )
     result = pm.execute_task(list_task)
 
@@ -183,6 +193,7 @@ def test_process_list_updated_event():
 
     # Wait a moment for event to be published
     import time
+
     time.sleep(1)
 
     print(f"\nEvents published: {len(event_log)}")
@@ -192,6 +203,7 @@ def test_process_list_updated_event():
 
     pm.cleanup()
     print()
+
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
@@ -210,6 +222,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n✗ Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         print()

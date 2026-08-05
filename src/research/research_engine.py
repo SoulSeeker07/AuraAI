@@ -4,27 +4,32 @@ Research Engine
 Main orchestrator for research operations.
 """
 
-import logging
 import json
-from typing import List, Dict, Any, Optional
-from datetime import datetime
-import time
-from pathlib import Path
+import logging
 from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from .models import (
-    SearchQuery, SearchResult, ResearchReport,
-    ResearchConfig, SearchMode, SourceTrustLevel, ConflictResolution, Document,
-    Evidence, SourceRanking
-)
-from .citation_builder import Citation
-from .search_manager import SearchManager
-from .content_fetcher import ContentFetcher
 from .cache_manager import CacheManager
-from .research_planner import ResearchPlanner, ResearchMode as PlannerMode
+from .citation_builder import Citation
+from .content_fetcher import ContentFetcher
+from .metrics import MetricsCollector
+from .models import (
+    Document,
+    Evidence,
+    ResearchConfig,
+    ResearchReport,
+    SearchMode,
+    SearchQuery,
+    SearchResult,
+    SourceTrustLevel,
+)
 from .reasoning_layer import ResearchReasoner
 from .research_context import ResearchContext, ResearchMode
-from .metrics import MetricsCollector
+from .research_planner import ResearchMode as PlannerMode
+from .research_planner import ResearchPlanner
+from .search_manager import SearchManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,9 @@ class ResearchEngine:
     and report generation.
     """
 
-    def __init__(self, config: Optional[ResearchConfig] = None, settings_path: Optional[str] = None):
+    def __init__(
+        self, config: ResearchConfig | None = None, settings_path: str | None = None
+    ):
         """
         Initialize the research engine.
 
@@ -130,7 +137,9 @@ class ResearchEngine:
         self.search_manager = SearchManager(providers)
         logger.info(f"Research Engine initialized with {len(providers)} providers")
 
-    def _load_provider_configs(self, settings_path: Optional[str] = None) -> Dict[str, Any]:
+    def _load_provider_configs(
+        self, settings_path: str | None = None
+    ) -> dict[str, Any]:
         """
         Load provider configurations from settings.json.
 
@@ -144,11 +153,11 @@ class ResearchEngine:
             # Default to workspace root settings.json
             workspace_root = Path(__file__).parent.parent.parent.parent.parent
             settings_path = workspace_root / "settings.json"
-        
+
         try:
             settings_file = Path(settings_path)
             if settings_file.exists():
-                with open(settings_file, 'r', encoding='utf-8') as f:
+                with open(settings_file, encoding="utf-8") as f:
                     settings = json.load(f)
                 logger.info(f"Loaded provider configurations from {settings_path}")
                 return settings
@@ -160,10 +169,7 @@ class ResearchEngine:
             return {}
 
     def research(
-        self,
-        query: str,
-        mode: Optional[SearchMode] = None,
-        **kwargs
+        self, query: str, mode: SearchMode | None = None, **kwargs
     ) -> ResearchReport:
         """
         Perform research on a query.
@@ -186,29 +192,25 @@ class ResearchEngine:
 
         # Create search query
         search_mode = mode or self.config.default_mode
-        query_obj = SearchQuery(
-            query_text=query,
-            mode=search_mode,
-            **kwargs
-        )
+        query_obj = SearchQuery(query_text=query, mode=search_mode, **kwargs)
 
         # Check cache first
         cache_key = self._get_cache_key(query_obj)
         if self.cache_manager.has_cache(cache_key):
             logger.info(f"Returning cached results for: {query}")
-            metrics.stop_timer('search')
+            metrics.stop_timer("search")
             metrics.finalize()
             metrics.print_summary()
             return self.cache_manager.get(cache_key)
 
         # Start research timing
-        metrics.start_timer('planning')
+        metrics.start_timer("planning")
 
         # Execute research using the new planner + reasoning layer
         context = self._execute_research(query_obj, metrics_collector=metrics)
 
         # Stop timing
-        metrics.stop_timer('planning')
+        metrics.stop_timer("planning")
         metrics.finalize()
 
         # Cache results (only cache if reasonably fast)
@@ -216,10 +218,7 @@ class ResearchEngine:
         if duration < 60000:
             cache_key = self._get_cache_key(query_obj)
             self.cache_manager.set(
-                cache_key,
-                report=None,
-                results=context.evidence,
-                query_obj=query_obj
+                cache_key, report=None, results=context.evidence, query_obj=query_obj
             )
             logger.info(f"Cached results for: {query}")
 
@@ -229,7 +228,7 @@ class ResearchEngine:
         self,
         query_obj: SearchQuery,
         max_iterations: int = 3,
-        metrics_collector: Optional[MetricsCollector] = None
+        metrics_collector: MetricsCollector | None = None,
     ) -> ResearchContext:
         """
         Execute research using the planner, reasoning layer, and confidence loop.
@@ -252,7 +251,7 @@ class ResearchEngine:
         mode = query_obj.mode or self.config.default_mode
 
         if metrics_collector:
-            metrics_collector.start_timer('search')
+            metrics_collector.start_timer("search")
 
         logger.info(f"Starting research for: {query}")
         logger.info(f"Research mode: {mode}")
@@ -281,7 +280,7 @@ class ResearchEngine:
 
         while should_continue and iteration < max_iterations:
             if metrics_collector:
-                metrics_collector.start_timer('extraction')
+                metrics_collector.start_timer("extraction")
 
             iteration += 1
 
@@ -292,7 +291,9 @@ class ResearchEngine:
 
             # Log current confidence before this iteration
             if iteration > 1:
-                logger.info(f"Previous Confidence: {iteration_summaries[-1]['confidence']:.2f}")
+                logger.info(
+                    f"Previous Confidence: {iteration_summaries[-1]['confidence']:.2f}"
+                )
 
             logger.info(f"Executing research plan with {len(plan.steps)} steps")
 
@@ -304,14 +305,13 @@ class ResearchEngine:
 
                 # Execute search for this step
                 try:
-                    metrics_collector.start_timer('search')
+                    metrics_collector.start_timer("search")
                     search_results = self.search_manager.search_all(
-                        query=step.query,
-                        query_obj=query_obj
+                        query=step.query, query_obj=query_obj
                     )
 
                     # Fetch documents
-                    metrics_collector.start_timer('extraction')
+                    metrics_collector.start_timer("extraction")
                     documents = self._fetch_documents(search_results)
 
                     # Merge and rank
@@ -319,11 +319,10 @@ class ResearchEngine:
 
                     # Create evidence from results
                     evidence = self._create_evidence_from_results(
-                        ranked_results,
-                        step.query
+                        ranked_results, step.query
                     )
 
-                    metrics_collector.stop_timer('extraction')
+                    metrics_collector.stop_timer("extraction")
 
                     step_results.extend(evidence)
 
@@ -338,31 +337,30 @@ class ResearchEngine:
             all_evidence.extend(step_results)
 
             if metrics_collector:
-                metrics_collector.stop_timer('search')
+                metrics_collector.stop_timer("search")
 
             # Use reasoning layer to evaluate all evidence
             if metrics_collector:
-                metrics_collector.start_timer('reasoning')
+                metrics_collector.start_timer("reasoning")
 
             reasoning_result = self.reasoner.reason(all_evidence, query)
 
             if metrics_collector:
-                metrics_collector.stop_timer('reasoning')
+                metrics_collector.stop_timer("reasoning")
 
             # Capture iteration summary
-            iteration_summaries.append({
-                'iteration': iteration,
-                'strong_evidence': len(reasoning_result.strong_evidence),
-                'weak_evidence': len(reasoning_result.weak_evidence),
-                'confidence': reasoning_result.confidence
-            })
+            iteration_summaries.append(
+                {
+                    "iteration": iteration,
+                    "strong_evidence": len(reasoning_result.strong_evidence),
+                    "weak_evidence": len(reasoning_result.weak_evidence),
+                    "confidence": reasoning_result.confidence,
+                }
+            )
 
             # Check if we should continue to next iteration
             should_continue = self._should_continue_research(
-                reasoning_result.confidence,
-                iteration,
-                max_iterations,
-                reasoning_result
+                reasoning_result.confidence, iteration, max_iterations, reasoning_result
             )
 
             # Log iteration results
@@ -387,7 +385,7 @@ class ResearchEngine:
                     new_steps = self.planner.refine_plan(
                         query,
                         reasoning_result.missing_information,
-                        reasoning_result.recommendations
+                        reasoning_result.recommendations,
                     )
                     plan.steps = new_steps
                     logger.info(f"Refined plan: {len(plan.steps)} steps")
@@ -396,7 +394,7 @@ class ResearchEngine:
 
         # Stop timing after all research steps complete
         if metrics_collector:
-            metrics_collector.stop_timer('search')
+            metrics_collector.stop_timer("search")
             metrics_collector.finalize()
             metrics_collector.print_summary()
 
@@ -411,14 +409,14 @@ class ResearchEngine:
             unanswered_questions=reasoning_result.missing_information,
             recommendations=reasoning_result.recommendations,
             metadata={
-                'iterations': iteration,
-                'total_evidence': len(all_evidence),
-                'reasoning': {
-                    'strong_evidence': len(reasoning_result.strong_evidence),
-                    'weak_evidence': len(reasoning_result.weak_evidence),
-                    'confidence': reasoning_result.confidence
-                }
-            }
+                "iterations": iteration,
+                "total_evidence": len(all_evidence),
+                "reasoning": {
+                    "strong_evidence": len(reasoning_result.strong_evidence),
+                    "weak_evidence": len(reasoning_result.weak_evidence),
+                    "confidence": reasoning_result.confidence,
+                },
+            },
         )
 
         # Log comprehensive research summary
@@ -427,35 +425,39 @@ class ResearchEngine:
         logger.info(f"{'='*70}")
 
         logger.info("\nGoal")
-        logger.info(f"----")
+        logger.info("----")
         logger.info(f"{query}")
 
         logger.info("\nIterations")
-        logger.info(f"----------")
+        logger.info("----------")
         logger.info(f"{iteration}")
 
         # Log providers used (from search manager's available providers)
         logger.info("\nProviders Used")
-        logger.info(f"--------------")
-        providers_used = list(self.search_manager.providers.keys()) if self.search_manager else ["None"]
+        logger.info("--------------")
+        providers_used = (
+            list(self.search_manager.providers.keys())
+            if self.search_manager
+            else ["None"]
+        )
         for provider in providers_used:
             logger.info(f"  - {provider}")
 
         logger.info("\nEvidence")
-        logger.info(f"--------")
+        logger.info("--------")
         logger.info(f"Strong : {len(reasoning_result.strong_evidence)}")
         logger.info(f"Weak   : {len(reasoning_result.weak_evidence)}")
 
         logger.info("\nConflicts")
-        logger.info(f"---------")
+        logger.info("---------")
         logger.info(f"{len(reasoning_result.conflicts)}")
 
         logger.info("\nConfidence")
-        logger.info(f"----------")
+        logger.info("----------")
         logger.info(f"{final_context.confidence:.2f}")
 
         logger.info("\nDecision")
-        logger.info(f"--------")
+        logger.info("--------")
 
         # Determine stop reason
         stop_reason = []
@@ -465,7 +467,10 @@ class ResearchEngine:
             stop_reason.append("✓ Max iterations reached")
         if not reasoning_result.missing_information:
             stop_reason.append("✓ No additional information needed")
-        if not should_continue and reasoning_result.confidence < self.planner.confidence_threshold:
+        if (
+            not should_continue
+            and reasoning_result.confidence < self.planner.confidence_threshold
+        ):
             stop_reason.append("✓ Provider exhaustion or other stop condition")
 
         logger.info("\nStopping because:")
@@ -473,15 +478,17 @@ class ResearchEngine:
             logger.info(f"  {reason}")
 
         logger.info(f"\n{'='*70}")
-        logger.info(f"=============== Research Complete ================")
+        logger.info("=============== Research Complete ================")
         logger.info(f"{'='*70}\n")
 
         # Add Research Trace block (final comprehensive summary)
-        self._log_research_trace(query, iteration, should_continue, reasoning_result, final_context, duration)
+        self._log_research_trace(
+            query, iteration, should_continue, reasoning_result, final_context, duration
+        )
 
         return final_context
 
-    def _fetch_documents(self, results: List[SearchResult]) -> Dict[str, Document]:
+    def _fetch_documents(self, results: list[SearchResult]) -> dict[str, Document]:
         """
         Fetch documents from search results.
 
@@ -492,7 +499,7 @@ class ResearchEngine:
             Dictionary mapping URLs to documents
         """
         documents = {}
-        
+
         # Limit document fetching to top 5-10 results
         for result in results[:10]:
             if result.url not in documents:
@@ -507,10 +514,8 @@ class ResearchEngine:
         return documents
 
     def _merge_results(
-        self,
-        results: List[SearchResult],
-        documents: Dict[str, Document]
-    ) -> List[SearchResult]:
+        self, results: list[SearchResult], documents: dict[str, Document]
+    ) -> list[SearchResult]:
         """
         Merge and rank results.
 
@@ -530,7 +535,7 @@ class ResearchEngine:
         ranked_results = []
         for result in results:
             score = result.score
-            
+
             # Boost results with well-formed documents
             if result.document and result.document.content:
                 score += result.document.summary.count(" ") / 10  # Bonus for length
@@ -541,14 +546,12 @@ class ResearchEngine:
 
         # Sort by score
         ranked_results.sort(key=lambda r: r.score, reverse=True)
-        
+
         return ranked_results
 
     def _extract_facts(
-        self,
-        results: List[SearchResult],
-        query: str
-    ) -> List[Dict[str, Any]]:
+        self, results: list[SearchResult], query: str
+    ) -> list[dict[str, Any]]:
         """
         Extract relevant facts from results.
 
@@ -564,19 +567,13 @@ class ResearchEngine:
         for result in results:
             if result.document and result.document.content:
                 # Extract facts from document
-                doc_facts = self.content_fetcher.extract_facts(
-                    result.document,
-                    query
-                )
+                doc_facts = self.content_fetcher.extract_facts(result.document, query)
                 facts.extend(doc_facts)
 
         return facts
 
     def _create_report(
-        self,
-        query: str,
-        results: List[SearchResult],
-        duration: float
+        self, query: str, results: list[SearchResult], duration: float
     ) -> ResearchReport:
         """
         Create a research report.
@@ -590,10 +587,7 @@ class ResearchEngine:
             Research report
         """
         report = ResearchReport(
-            query=query,
-            results=results,
-            timestamp=datetime.now(),
-            duration=duration
+            query=query, results=results, timestamp=datetime.now(), duration=duration
         )
 
         # Create citations
@@ -616,7 +610,7 @@ class ResearchEngine:
 
         return report
 
-    def _create_citations(self, results: List[SearchResult]) -> List[Citation]:
+    def _create_citations(self, results: list[SearchResult]) -> list[Citation]:
         """
         Create citations from search results.
 
@@ -647,7 +641,7 @@ class ResearchEngine:
 
         return citations
 
-    def _identify_conflicts(self, results: List[SearchResult]) -> List[Dict[str, Any]]:
+    def _identify_conflicts(self, results: list[SearchResult]) -> list[dict[str, Any]]:
         """
         Identify conflicts between sources.
 
@@ -658,11 +652,11 @@ class ResearchEngine:
             List of conflicts
         """
         conflicts = []
-        
+
         # Simple conflict detection: check if multiple sources contradict
         # In production, use NLP for semantic conflict detection
         texts = [r.snippet for r in results if r.snippet]
-        
+
         if len(texts) < 5:
             return conflicts
 
@@ -677,15 +671,17 @@ class ResearchEngine:
         # Find words that appear in many sources (potential conflicts)
         for word, count in word_counts.items():
             if count >= 3:
-                conflicts.append({
-                    "word": word,
-                    "sources": count,
-                    "severity": "high" if count >= 5 else "medium"
-                })
+                conflicts.append(
+                    {
+                        "word": word,
+                        "sources": count,
+                        "severity": "high" if count >= 5 else "medium",
+                    }
+                )
 
         return conflicts
 
-    def _generate_summary(self, results: List[SearchResult]) -> str:
+    def _generate_summary(self, results: list[SearchResult]) -> str:
         """
         Generate a summary of the research.
 
@@ -704,10 +700,7 @@ class ResearchEngine:
 
         return combined[:500] + "..." if len(combined) > 500 else combined
 
-    def _build_detailed_findings(
-        self,
-        results: List[SearchResult]
-    ) -> Dict[str, Any]:
+    def _build_detailed_findings(self, results: list[SearchResult]) -> dict[str, Any]:
         """
         Build detailed findings.
 
@@ -721,17 +714,13 @@ class ResearchEngine:
             "total_sources": len(results),
             "trust_distribution": self._get_trust_distribution(results),
             "top_sources": [
-                {"url": r.url, "title": r.title, "score": r.score}
-                for r in results[:10]
-            ]
+                {"url": r.url, "title": r.title, "score": r.score} for r in results[:10]
+            ],
         }
 
         return findings
 
-    def _extract_key_stats(
-        self,
-        results: List[SearchResult]
-    ) -> Dict[str, Any]:
+    def _extract_key_stats(self, results: list[SearchResult]) -> dict[str, Any]:
         """
         Extract key statistics.
 
@@ -743,14 +732,16 @@ class ResearchEngine:
         """
         stats = {
             "source_count": len(results),
-            "confidence_score": sum(r.score for r in results) / len(results) if results else 0,
+            "confidence_score": (
+                sum(r.score for r in results) / len(results) if results else 0
+            ),
             "evidence_count": len(results) * 2,  # Estimate: 2 evidence items per source
-            "average_trust_score": self._get_average_trust_score(results)
+            "average_trust_score": self._get_average_trust_score(results),
         }
 
         return stats
 
-    def _identify_primary_sources(self, results: List[SearchResult]) -> List[str]:
+    def _identify_primary_sources(self, results: list[SearchResult]) -> list[str]:
         """
         Identify primary sources.
 
@@ -761,7 +752,7 @@ class ResearchEngine:
             List of primary source URLs
         """
         primary = []
-        
+
         for result in results[:5]:
             # Official sources first
             if result.trust_level == SourceTrustLevel.OFFICIAL:
@@ -772,10 +763,10 @@ class ResearchEngine:
             # High-trust sources
             elif result.score > 70:
                 primary.append(result.url)
-        
+
         return primary
 
-    def _get_trust_distribution(self, results: List[SearchResult]) -> Dict[str, int]:
+    def _get_trust_distribution(self, results: list[SearchResult]) -> dict[str, int]:
         """
         Get distribution of trust levels.
 
@@ -786,14 +777,14 @@ class ResearchEngine:
             Trust level distribution
         """
         distribution = {level.value: 0 for level in SourceTrustLevel}
-        
+
         for result in results:
             trust = result.trust_level.value
             distribution[trust] += 1
-        
+
         return distribution
 
-    def _get_average_trust_score(self, results: List[SearchResult]) -> float:
+    def _get_average_trust_score(self, results: list[SearchResult]) -> float:
         """
         Get average trust score.
 
@@ -819,38 +810,31 @@ class ResearchEngine:
         """
         import hashlib
         import json
-        
+
         data = {
             "query": query_obj.query_text,
             "mode": query_obj.mode.value,
             "max_results": query_obj.max_results,
-            "language": query_obj.language
+            "language": query_obj.language,
         }
-        
-        return hashlib.sha256(
-            json.dumps(data, sort_keys=True).encode()
-        ).hexdigest()
+
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
     def _create_empty_report(self, query: str) -> ResearchReport:
         """Create an empty report."""
         return ResearchReport(
-            query=query,
-            results=[],
-            summary="Research Engine is disabled"
+            query=query, results=[], summary="Research Engine is disabled"
         )
 
     def _create_error_report(
-        self,
-        query: str,
-        error: str,
-        duration: float
+        self, query: str, error: str, duration: float
     ) -> ResearchReport:
         """Create an error report."""
         report = ResearchReport(
             query=query,
             results=[],
             summary=f"Research failed: {error}",
-            duration=duration
+            duration=duration,
         )
         report.metadata["error"] = error
         return report
@@ -867,45 +851,62 @@ class ResearchEngine:
         """
         # Research is needed for queries that require live data
         research_keywords = [
-            "latest", "newest", "today", "currently", "latest update",
-            "recent", "recently", "current version", "released",
-            "recent news", "breaking", "latest update", "bug report",
-            "driver", "update", "patch", "fix", "security",
-            "best", "top", "review", "comparison", "ranking",
-            "how to", "tutorial", "guide", "tutorial"
+            "latest",
+            "newest",
+            "today",
+            "currently",
+            "latest update",
+            "recent",
+            "recently",
+            "current version",
+            "released",
+            "recent news",
+            "breaking",
+            "latest update",
+            "bug report",
+            "driver",
+            "update",
+            "patch",
+            "fix",
+            "security",
+            "best",
+            "top",
+            "review",
+            "comparison",
+            "ranking",
+            "how to",
+            "tutorial",
+            "guide",
+            "tutorial",
         ]
 
         query_lower = query.lower()
-        
+
         for keyword in research_keywords:
             if keyword in query_lower:
                 return True
-        
+
         return False
 
     def _should_continue_research(
-        self,
-        confidence: float,
-        iteration: int,
-        max_iterations: int,
-        reasoning_result
+        self, confidence: float, iteration: int, max_iterations: int, reasoning_result
     ) -> bool:
         """
         Determine if research should continue to the next iteration.
-        
+
         Research continues until:
         1. Confidence threshold is met (0.85)
         2. Maximum iterations is reached
         3. No useful evidence is added
         4. Remaining providers unlikely to improve results
         5. User selected Quick mode
-        
+
         Args:
             confidence: Current confidence score
             iteration: Current iteration number
             max_iterations: Maximum allowed iterations
             reasoning_result: Reasoning result from ResearchReasoner
-            
+
         Returns:
             True if research should continue, False otherwise
         """
@@ -913,52 +914,52 @@ class ResearchEngine:
         if iteration >= max_iterations:
             logger.info(f"Max iterations ({max_iterations}) reached")
             return False
-        
+
         # Check if confidence threshold is met
         if confidence >= self.planner.confidence_threshold:
-            logger.info(f"Confidence threshold ({self.planner.confidence_threshold}) reached")
+            logger.info(
+                f"Confidence threshold ({self.planner.confidence_threshold}) reached"
+            )
             return False
-        
+
         # Check if there's sufficient evidence
-        total_evidence = len(reasoning_result.strong_evidence) + len(reasoning_result.weak_evidence)
+        total_evidence = len(reasoning_result.strong_evidence) + len(
+            reasoning_result.weak_evidence
+        )
         if total_evidence < self.reasoner.min_evidence_count:
             logger.info(
                 f"Insufficient evidence ({total_evidence} < {self.reasoner.min_evidence_count})"
             )
             return False
-        
+
         # Check if no useful evidence was added in this iteration
         if iteration > 1:
             # In a real implementation, we'd track evidence added in this iteration
             # For now, we'll assume there's always some new evidence
             pass
-        
+
         # Check if remaining steps are unlikely to improve results
         if reasoning_result.recommendations:
             # If there are recommendations, consider continuing
             # In a full implementation, we'd analyze recommendations
             pass
-        
+
         # Default: continue if conditions not met
         return True
-    
-    def _create_evidence_from_results(
-        self,
-        results: list,
-        query: str
-    ) -> list:
+
+    def _create_evidence_from_results(self, results: list, query: str) -> list:
         """
         Convert search results to Evidence objects.
-        
+
         Args:
             results: Search results
             query: Original query
-            
+
         Returns:
             List of Evidence objects
         """
         evidence_list = []
-        
+
         for result in results:
             # Prefer full fetched document content, fall back to the
             # search snippet, then the title, so we always have something.
@@ -982,14 +983,16 @@ class ResearchEngine:
                 score=result.score,
                 url=result.url,
                 confidence=float(result.score),  # score is already 0-100
-                raw_snippet=result.snippet
+                raw_snippet=result.snippet,
             )
             evidence_list.append(evidence)
-        
-        logger.info(f"Created {len(evidence_list)} evidence items from {len(results)} results")
+
+        logger.info(
+            f"Created {len(evidence_list)} evidence items from {len(results)} results"
+        )
         return evidence_list
-    
-    def get_report(self, report_id: str) -> Optional[ResearchReport]:
+
+    def get_report(self, report_id: str) -> ResearchReport | None:
         """
         Get a previously created report.
 
@@ -1009,7 +1012,7 @@ class ResearchEngine:
         should_continue: bool,
         reasoning_result,
         final_context,
-        duration: float
+        duration: float,
     ):
         """
         Log comprehensive Research Trace block.
@@ -1028,62 +1031,61 @@ class ResearchEngine:
 
         # Check if research was needed
         research_needed = (
-            len(final_context.evidence) > 0 or
-            final_context.confidence > 0
+            len(final_context.evidence) > 0 or final_context.confidence > 0
         )
-        logger.info(f"Need Research")
+        logger.info("Need Research")
         logger.info(f"{'YES' if research_needed else 'NO'}\n")
 
         # Reason
-        logger.info(f"Reason")
+        logger.info("Reason")
         if reasoning_result.missing_information:
-            logger.info(f"Missing information:")
+            logger.info("Missing information:")
             for info in reasoning_result.missing_information[:3]:
                 logger.info(f"  - {info}")
         else:
-            logger.info(f"Current information is sufficient")
+            logger.info("Current information is sufficient")
         logger.info()
 
         # Planner
-        logger.info(f"Planner")
-        logger.info(f"STANDARD")
+        logger.info("Planner")
+        logger.info("STANDARD")
         logger.info()
 
         # Providers
-        logger.info(f"Providers")
+        logger.info("Providers")
         if self.search_manager and self.search_manager.providers:
             for provider_name in self.search_manager.providers.keys():
                 logger.info(f"  ✓ {provider_name}")
         else:
-            logger.info(f"  (No providers available)")
+            logger.info("  (No providers available)")
         logger.info()
 
         # Iterations
-        logger.info(f"Iterations")
+        logger.info("Iterations")
         logger.info(f"{iteration}")
         logger.info()
 
         # Confidence
-        logger.info(f"Confidence")
+        logger.info("Confidence")
         logger.info(f"{final_context.confidence:.2f}")
         logger.info()
 
         # Evidence distribution
-        logger.info(f"Strong Evidence")
+        logger.info("Strong Evidence")
         logger.info(f"{len(reasoning_result.strong_evidence)}")
         logger.info()
 
-        logger.info(f"Weak Evidence")
+        logger.info("Weak Evidence")
         logger.info(f"{len(reasoning_result.weak_evidence)}")
         logger.info()
 
         # Conflicts
-        logger.info(f"Conflicts")
+        logger.info("Conflicts")
         logger.info(f"{len(reasoning_result.conflicts)}")
         logger.info()
 
         # Stopped because
-        logger.info(f"Stopped Because")
+        logger.info("Stopped Because")
         stop_reason = []
         if reasoning_result.confidence >= self.planner.confidence_threshold:
             stop_reason.append("Confidence reached threshold")
@@ -1091,7 +1093,10 @@ class ResearchEngine:
             stop_reason.append("Max iterations reached")
         if not reasoning_result.missing_information:
             stop_reason.append("No additional information needed")
-        if not should_continue and reasoning_result.confidence < self.planner.confidence_threshold:
+        if (
+            not should_continue
+            and reasoning_result.confidence < self.planner.confidence_threshold
+        ):
             stop_reason.append("Provider exhaustion or other stop condition")
 
         for reason in stop_reason:
@@ -1099,6 +1104,6 @@ class ResearchEngine:
         logger.info()
 
         # Execution time
-        logger.info(f"Execution Time")
+        logger.info("Execution Time")
         logger.info(f"{duration:.2f} sec")
         logger.info(f"\n{'='*60}\n")

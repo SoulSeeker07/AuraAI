@@ -4,30 +4,31 @@ Comprehensive tests for Workspace Awareness module.
 Tests all workspace sensors and the WorkspaceManager.
 """
 
-import pytest
 import asyncio
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import pytest
 
 from src.workspace import (
-    WorkspaceManager,
-    WorkspaceState,
     ActiveWindow,
+    ClipboardContext,
     CurrentProject,
     GitRepository,
     OpenFile,
-    TerminalContext,
-    ClipboardContext,
-    RunningApplication,
     PlatformType,
     ProjectType,
-    TerminalType
+    RunningApplication,
+    TerminalContext,
+    TerminalType,
+    WorkspaceManager,
+    WorkspaceState,
 )
-from src.workspace.project_detector import ProjectDetector
-from src.workspace.git_context import GitContext
 from src.workspace.active_window import ActiveWindowMonitor
-from src.workspace.running_apps import RunningAppsMonitor
 from src.workspace.clipboard_monitor import ClipboardMonitor
+from src.workspace.git_context import GitContext
+from src.workspace.project_detector import ProjectDetector
+from src.workspace.running_apps import RunningAppsMonitor
 
 
 @pytest.fixture
@@ -36,13 +37,13 @@ def workspace_manager(tmp_path):
     return WorkspaceManager(
         data_path=tmp_path / "test_workspace.json",
         enabled_features={
-            'active_window': False,  # Disable for faster tests
-            'project_detection': False,
-            'git': False,
-            'clipboard': False,
-            'running_apps': False,
-            'terminal': False,
-        }
+            "active_window": False,  # Disable for faster tests
+            "project_detection": False,
+            "git": False,
+            "clipboard": False,
+            "running_apps": False,
+            "terminal": False,
+        },
     )
 
 
@@ -59,9 +60,7 @@ class TestWorkspaceStateModels:
     def test_active_window_creation(self):
         """Test ActiveWindow model creation"""
         window = ActiveWindow(
-            title="Test Window",
-            app_name="TestApp",
-            process_name="testapp.exe"
+            title="Test Window", app_name="TestApp", process_name="testapp.exe"
         )
 
         assert window.title == "Test Window"
@@ -75,11 +74,11 @@ class TestWorkspaceStateModels:
             title="Test Window",
             app_name="TestApp",
             process_name="testapp.exe",
-            rect={'x': 100, 'y': 200, 'width': 800, 'height': 600}
+            rect={"x": 100, "y": 200, "width": 800, "height": 600},
         )
 
         assert window.is_in_workspace is True
-        assert window.rect == {'x': 100, 'y': 200, 'width': 800, 'height': 600}
+        assert window.rect == {"x": 100, "y": 200, "width": 800, "height": 600}
 
     def test_active_window_out_of_bounds(self):
         """Test ActiveWindow outside workspace bounds"""
@@ -87,7 +86,7 @@ class TestWorkspaceStateModels:
             title="Test Window",
             app_name="TestApp",
             process_name="testapp.exe",
-            rect={'x': -100, 'y': -200, 'width': 800, 'height': 600}
+            rect={"x": -100, "y": -200, "width": 800, "height": 600},
         )
 
         assert window.is_in_workspace is False
@@ -95,9 +94,7 @@ class TestWorkspaceStateModels:
     def test_current_project_creation(self):
         """Test CurrentProject model creation"""
         project = CurrentProject(
-            path="/test/project",
-            name="TestProject",
-            type=ProjectType.PYTHON
+            path="/test/project", name="TestProject", type=ProjectType.PYTHON
         )
 
         assert project.path == "/test/project"
@@ -109,16 +106,14 @@ class TestWorkspaceStateModels:
     def test_current_project_with_git(self):
         """Test CurrentProject with git repository"""
         git_repo = GitRepository(
-            path="/test/project",
-            branch="main",
-            commit_hash="abc123"
+            path="/test/project", branch="main", commit_hash="abc123"
         )
 
         project = CurrentProject(
             path="/test/project",
             name="TestProject",
             type=ProjectType.PYTHON,
-            git_repo=git_repo
+            git_repo=git_repo,
         )
 
         assert project.has_git is True
@@ -141,15 +136,9 @@ class TestWorkspaceStateModels:
 
         # Create test data
         window = ActiveWindow(
-            title="Test Window",
-            app_name="TestApp",
-            process_name="testapp.exe"
+            title="Test Window", app_name="TestApp", process_name="testapp.exe"
         )
-        project = CurrentProject(
-            path="/test",
-            name="Test",
-            type=ProjectType.PYTHON
-        )
+        project = CurrentProject(path="/test", name="Test", type=ProjectType.PYTHON)
 
         state.active_window = window
         state.current_project = project
@@ -163,7 +152,7 @@ class TestWorkspaceStateModels:
             path="/test",
             branch="main",
             modified_files=["file1.py", "file2.py"],
-            is_dirty=True
+            is_dirty=True,
         )
 
         assert repo.path == "/test"
@@ -190,9 +179,9 @@ class TestWorkspaceManager:
 
     async def test_workspace_manager_enable_disable_feature(self, workspace_manager):
         """Test enabling/disabling features"""
-        assert workspace_manager.is_feature_enabled('active_window') is False
-        workspace_manager.enable_feature('active_window', True)
-        assert workspace_manager.is_feature_enabled('active_window') is True
+        assert workspace_manager.is_feature_enabled("active_window") is False
+        workspace_manager.enable_feature("active_window", True)
+        assert workspace_manager.is_feature_enabled("active_window") is True
 
     async def test_workspace_manager_force_update(self, workspace_manager):
         """Test force update method"""
@@ -242,7 +231,9 @@ class TestProjectDetector:
 
     async def test_project_detector_no_project_in_aura_ai(self, analyzer):
         """Test detecting project in AuraAI directory"""
-        result = await analyzer.detect_current_project(str(Path(__file__).parent.parent))
+        result = await analyzer.detect_current_project(
+            str(Path(__file__).parent.parent)
+        )
 
         assert result is not None
         assert result.project is not None
@@ -289,8 +280,8 @@ class TestGitContext:
         if commits:
             assert isinstance(commits, list)
             for commit in commits:
-                assert 'hash' in commit
-                assert 'message' in commit
+                assert "hash" in commit
+                assert "message" in commit
 
     async def test_git_context_get_modified_files(self, analyzer):
         """Test getting modified files"""
@@ -386,9 +377,7 @@ class TestRunningAppsMonitor:
     async def test_running_apps_monitor_is_editor(self):
         """Test is_editor property"""
         app = RunningApplication(
-            name="VS Code",
-            process_name="code.exe",
-            is_foreground=False
+            name="VS Code", process_name="code.exe", is_foreground=False
         )
 
         assert app.is_editor is True
@@ -396,9 +385,7 @@ class TestRunningAppsMonitor:
     async def test_running_apps_monitor_is_browser(self):
         """Test is_browser property"""
         app = RunningApplication(
-            name="Chrome",
-            process_name="chrome.exe",
-            is_foreground=False
+            name="Chrome", process_name="chrome.exe", is_foreground=False
         )
 
         assert app.is_browser is True
@@ -464,7 +451,7 @@ def test_git_repository_clone_with_additional_fields():
         commit_hash="abc123def456",
         modified_files=["file1.py"],
         uncommitted_changes=1,
-        is_dirty=True
+        is_dirty=True,
     )
 
     assert repo.repo_name == "project"
@@ -480,7 +467,7 @@ def test_open_file_creation():
         name="test.py",
         modified=True,
         line_number=10,
-        cursor_position=50
+        cursor_position=50,
     )
 
     assert file.path == "/test/project/test.py"
@@ -499,7 +486,7 @@ def test_clipboard_context_with_code():
         text="def hello():\n    print('hello')",
         code="def hello():\n    print('hello')",
         is_code=True,
-        is_text=True
+        is_text=True,
     )
 
     assert context.text == "def hello():\n    print('hello')"

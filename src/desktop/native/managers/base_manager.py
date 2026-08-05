@@ -17,19 +17,20 @@ Architecture:
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+from ..native_exceptions import NativeError
 from ..native_execution_context import NativeExecutionContext
 from ..native_result import NativeResult
-from ..native_exceptions import NativeError
-from ..verification_layer import VerificationLayer
 from ..rollback_framework import RollbackFunctions
+from ..verification_layer import VerificationLayer
 
-
-from enum import Enum
-from dataclasses import dataclass, field
 
 class HealthStatus(Enum):
     """Health status of a native manager."""
+
     HEALTHY = "HEALTHY"
     DEGRADED = "DEGRADED"
     UNAVAILABLE = "UNAVAILABLE"
@@ -39,13 +40,14 @@ class HealthStatus(Enum):
 @dataclass
 class HealthCheckResult:
     """Detailed health check diagnostics for a native manager."""
+
     manager_name: str
     status: HealthStatus
-    missing_dependencies: List[str] = field(default_factory=list)
-    available_fallbacks: List[str] = field(default_factory=list)
+    missing_dependencies: list[str] = field(default_factory=list)
+    available_fallbacks: list[str] = field(default_factory=list)
     total_capabilities: int = 0
     available_capabilities: int = 0
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 class BaseNativeManager(ABC):
@@ -61,13 +63,13 @@ class BaseNativeManager(ABC):
     NAME: str = "base"
     VERSION: str = "1.0"
     PRIORITY: int = 100
-    DEPENDENCIES: List[str] = []
+    DEPENDENCIES: list[str] = []
 
     def __init__(self):
         """Initialize the manager with capability registry and verification layer."""
-        self._capabilities: List[str] = []
-        self._verification_layer: Optional[VerificationLayer] = None
-        self._rollback_functions: Optional[RollbackFunctions] = None
+        self._capabilities: list[str] = []
+        self._verification_layer: VerificationLayer | None = None
+        self._rollback_functions: RollbackFunctions | None = None
         self._initialized: bool = False
 
     @property
@@ -98,7 +100,11 @@ class BaseNativeManager(ABC):
                 missing.append(dep)
 
         if missing:
-            status = HealthStatus.DEGRADED if len(missing) < len(self.DEPENDENCIES) else HealthStatus.UNAVAILABLE
+            status = (
+                HealthStatus.DEGRADED
+                if len(missing) < len(self.DEPENDENCIES)
+                else HealthStatus.UNAVAILABLE
+            )
         else:
             status = HealthStatus.HEALTHY
 
@@ -108,11 +114,21 @@ class BaseNativeManager(ABC):
             missing_dependencies=missing,
             available_fallbacks=[],
             total_capabilities=len(self.capabilities),
-            available_capabilities=len(self.capabilities) if status == HealthStatus.HEALTHY else 0,
+            available_capabilities=(
+                len(self.capabilities) if status == HealthStatus.HEALTHY else 0
+            ),
         )
 
+    def is_available(self) -> bool:
+        """Check if manager is available and dependencies are met."""
+        return self.health_check().status == HealthStatus.HEALTHY
+
+    def get_status(self) -> str:
+        """Get manager health status string."""
+        return self.health_check().status.value
+
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """
         Get list of capabilities this manager can handle.
 
@@ -162,9 +178,9 @@ class BaseNativeManager(ABC):
 
     def register_capabilities(
         self,
-        capabilities: List[str],
-        verification_handlers: Optional[Dict[str, callable]] = None,
-        rollback_handlers: Optional[Dict[str, callable]] = None,
+        capabilities: list[str],
+        verification_handlers: dict[str, callable] | None = None,
+        rollback_handlers: dict[str, callable] | None = None,
     ) -> None:
         """
         Register capabilities with verification and rollback handlers.
@@ -330,7 +346,7 @@ class BaseNativeManager(ABC):
         """
         return True
 
-    def get_capability_details(self, capability: str) -> Optional[Dict[str, Any]]:
+    def get_capability_details(self, capability: str) -> dict[str, Any] | None:
         """
         Get detailed information about a capability.
 
@@ -346,7 +362,7 @@ class BaseNativeManager(ABC):
             "supported": self.can_handle(capability),
         }
 
-    def list_all_capabilities(self) -> List[Dict[str, Any]]:
+    def list_all_capabilities(self) -> list[dict[str, Any]]:
         """
         Get details for all capabilities this manager supports.
 
@@ -354,8 +370,7 @@ class BaseNativeManager(ABC):
             List of dicts with capability details.
         """
         return [
-            self.get_capability_details(capability)
-            for capability in self._capabilities
+            self.get_capability_details(capability) for capability in self._capabilities
         ]
 
     def __repr__(self) -> str:

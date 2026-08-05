@@ -14,12 +14,13 @@ When Phase 2B begins, real managers (WindowManager, etc.) will replace
 this mock with actual Win32 API calls — but the pipeline stays the same.
 """
 
-from typing import Any, Dict, List, Optional, Callable
-from dataclasses import dataclass, field
-import time
 import logging
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
-from .desktop_result import DesktopResult, DesktopStatus
+from .desktop_result import DesktopResult
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MockWindowState:
     """Mock window state for testing."""
+
     title: str
     hwnd: int = 0
     process_id: int = 0
@@ -53,8 +55,8 @@ class MockManager:
     def __init__(self):
         """Initialize the mock manager."""
         self.name = "mock"
-        self._call_log: List[Dict[str, Any]] = []
-        self._mock_windows: Dict[str, MockWindowState] = {}
+        self._call_log: list[dict[str, Any]] = []
+        self._mock_windows: dict[str, MockWindowState] = {}
         self._clipboard_text: str = ""
         self._volume: float = 0.5
         self._muted: bool = False
@@ -73,15 +75,29 @@ class MockManager:
         logger.info("MockManager initialized with 3 mock windows")
 
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """Get list of capabilities supported by MockManager."""
         return [
-            "activate_window", "close_window", "list_windows",
-            "minimize_window", "maximize_window", "restore_window",
-            "clipboard.read_text", "clipboard.write_text", "clipboard.clear",
-            "set_volume", "toggle_mute", "list_audio_devices",
-            "list_network_interfaces", "shutdown", "restart", "sleep", "lock",
-            "list_services", "start_service", "stop_service",
+            "activate_window",
+            "close_window",
+            "list_windows",
+            "minimize_window",
+            "maximize_window",
+            "restore_window",
+            "clipboard.read_text",
+            "clipboard.write_text",
+            "clipboard.clear",
+            "set_volume",
+            "toggle_mute",
+            "list_audio_devices",
+            "list_network_interfaces",
+            "shutdown",
+            "restart",
+            "sleep",
+            "lock",
+            "list_services",
+            "start_service",
+            "stop_service",
         ]
 
     # ==================== Capability Execution ====================
@@ -90,7 +106,7 @@ class MockManager:
         self,
         capability: str,
         goal: str,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
     ) -> DesktopResult:
         """
         Execute a capability and return a DesktopResult.
@@ -109,12 +125,14 @@ class MockManager:
         start_time = time.time()
 
         # Log the call
-        self._call_log.append({
-            "capability": capability,
-            "goal": goal,
-            "arguments": arguments,
-            "timestamp": start_time,
-        })
+        self._call_log.append(
+            {
+                "capability": capability,
+                "goal": goal,
+                "arguments": arguments,
+                "timestamp": start_time,
+            }
+        )
 
         logger.info(f"[MockManager] Executing capability: {capability}")
         logger.info(f"[MockManager] Goal: {goal}")
@@ -147,7 +165,7 @@ class MockManager:
                 metrics={"duration_ms": (time.time() - start_time) * 1000},
             )
 
-    def _get_handler(self, capability: str) -> Optional[Callable]:
+    def _get_handler(self, capability: str) -> Callable | None:
         """Get the handler function for a capability."""
         handlers = {
             "activate_window": self._handle_activate_window,
@@ -180,7 +198,7 @@ class MockManager:
 
     # ==================== Window Handlers ====================
 
-    def _handle_activate_window(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_activate_window(self, goal: str, args: dict) -> DesktopResult:
         """Handle activate_window capability."""
         window_title = args.get("window_title") or args.get("title") or ""
 
@@ -228,7 +246,7 @@ class MockManager:
             context_changes={"active_window": window_title},
         )
 
-    def _handle_close_window(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_close_window(self, goal: str, args: dict) -> DesktopResult:
         """Handle close_window capability."""
         window_title = args.get("window_title") or args.get("title") or ""
 
@@ -274,7 +292,7 @@ class MockManager:
             context_changes={"windows_count": len(self._mock_windows)},
         )
 
-    def _handle_list_windows(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_list_windows(self, goal: str, args: dict) -> DesktopResult:
         """Handle list_windows capability."""
         windows = [
             {
@@ -298,13 +316,15 @@ class MockManager:
             context_changes={"windows_count": len(windows)},
         )
 
-    def _handle_minimize_window(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_minimize_window(self, goal: str, args: dict) -> DesktopResult:
         """Handle minimize_window capability."""
         window_title = args.get("window_title") or args.get("title") or ""
         window = self._mock_windows.get(window_title)
         if not window:
             return DesktopResult.create_failure(
-                goal=goal, capability="minimize_window", manager=self.name,
+                goal=goal,
+                capability="minimize_window",
+                manager=self.name,
                 error=f"Window not found: {window_title}",
             )
 
@@ -317,7 +337,9 @@ class MockManager:
             return True
 
         return DesktopResult.create_success(
-            goal=goal, capability="minimize_window", manager=self.name,
+            goal=goal,
+            capability="minimize_window",
+            manager=self.name,
             data={"window": window_title, "minimized": True},
             events=["window_minimized"],
             rollback=rollback,
@@ -325,13 +347,15 @@ class MockManager:
             context_changes={f"window_{window_title}_minimized": True},
         )
 
-    def _handle_maximize_window(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_maximize_window(self, goal: str, args: dict) -> DesktopResult:
         """Handle maximize_window capability."""
         window_title = args.get("window_title") or args.get("title") or ""
         window = self._mock_windows.get(window_title)
         if not window:
             return DesktopResult.create_failure(
-                goal=goal, capability="maximize_window", manager=self.name,
+                goal=goal,
+                capability="maximize_window",
+                manager=self.name,
                 error=f"Window not found: {window_title}",
             )
 
@@ -346,7 +370,9 @@ class MockManager:
             return True
 
         return DesktopResult.create_success(
-            goal=goal, capability="maximize_window", manager=self.name,
+            goal=goal,
+            capability="maximize_window",
+            manager=self.name,
             data={"window": window_title, "maximized": True},
             events=["window_maximized"],
             rollback=rollback,
@@ -354,13 +380,15 @@ class MockManager:
             context_changes={f"window_{window_title}_maximized": True},
         )
 
-    def _handle_restore_window(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_restore_window(self, goal: str, args: dict) -> DesktopResult:
         """Handle restore_window capability."""
         window_title = args.get("window_title") or args.get("title") or ""
         window = self._mock_windows.get(window_title)
         if not window:
             return DesktopResult.create_failure(
-                goal=goal, capability="restore_window", manager=self.name,
+                goal=goal,
+                capability="restore_window",
+                manager=self.name,
                 error=f"Window not found: {window_title}",
             )
 
@@ -368,7 +396,9 @@ class MockManager:
         window.is_maximized = False
 
         return DesktopResult.create_success(
-            goal=goal, capability="restore_window", manager=self.name,
+            goal=goal,
+            capability="restore_window",
+            manager=self.name,
             data={"window": window_title, "restored": True},
             events=["window_restored"],
             verification={"passed": True},
@@ -377,16 +407,18 @@ class MockManager:
 
     # ==================== Clipboard Handlers ====================
 
-    def _handle_read_clipboard(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_read_clipboard(self, goal: str, args: dict) -> DesktopResult:
         """Handle read_clipboard capability."""
         return DesktopResult.create_success(
-            goal=goal, capability="read_clipboard", manager=self.name,
+            goal=goal,
+            capability="read_clipboard",
+            manager=self.name,
             data={"text": self._clipboard_text, "length": len(self._clipboard_text)},
             events=["clipboard_read"],
             verification={"passed": True},
         )
 
-    def _handle_write_clipboard(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_write_clipboard(self, goal: str, args: dict) -> DesktopResult:
         """Handle write_clipboard capability."""
         text = args.get("text", "")
         previous_text = self._clipboard_text
@@ -397,7 +429,9 @@ class MockManager:
             return True
 
         return DesktopResult.create_success(
-            goal=goal, capability="write_clipboard", manager=self.name,
+            goal=goal,
+            capability="write_clipboard",
+            manager=self.name,
             data={"text": text, "length": len(text)},
             events=["clipboard_changed"],
             rollback=rollback,
@@ -405,7 +439,7 @@ class MockManager:
             context_changes={"clipboard_text": text},
         )
 
-    def _handle_clear_clipboard(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_clear_clipboard(self, goal: str, args: dict) -> DesktopResult:
         """Handle clear_clipboard capability."""
         previous_text = self._clipboard_text
         self._clipboard_text = ""
@@ -415,7 +449,9 @@ class MockManager:
             return True
 
         return DesktopResult.create_success(
-            goal=goal, capability="clear_clipboard", manager=self.name,
+            goal=goal,
+            capability="clear_clipboard",
+            manager=self.name,
             data={"cleared": True},
             events=["clipboard_changed"],
             rollback=rollback,
@@ -425,33 +461,55 @@ class MockManager:
 
     # ==================== Display Handlers ====================
 
-    def _handle_list_displays(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_list_displays(self, goal: str, args: dict) -> DesktopResult:
         """Handle list_displays capability."""
         displays = [
-            {"index": 0, "name": "Main Display", "width": 1920, "height": 1080, "primary": True},
-            {"index": 1, "name": "Secondary", "width": 1280, "height": 720, "primary": False},
+            {
+                "index": 0,
+                "name": "Main Display",
+                "width": 1920,
+                "height": 1080,
+                "primary": True,
+            },
+            {
+                "index": 1,
+                "name": "Secondary",
+                "width": 1280,
+                "height": 720,
+                "primary": False,
+            },
         ]
 
         return DesktopResult.create_success(
-            goal=goal, capability="list_displays", manager=self.name,
+            goal=goal,
+            capability="list_displays",
+            manager=self.name,
             data=displays,
             events=["displays_listed"],
             verification={"passed": True},
             context_changes={"displays_count": len(displays)},
         )
 
-    def _handle_get_primary_display(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_get_primary_display(self, goal: str, args: dict) -> DesktopResult:
         """Handle get_primary_display capability."""
         return DesktopResult.create_success(
-            goal=goal, capability="get_primary_display", manager=self.name,
-            data={"index": 0, "name": "Main Display", "width": 1920, "height": 1080, "primary": True},
+            goal=goal,
+            capability="get_primary_display",
+            manager=self.name,
+            data={
+                "index": 0,
+                "name": "Main Display",
+                "width": 1920,
+                "height": 1080,
+                "primary": True,
+            },
             events=["primary_display_retrieved"],
             verification={"passed": True},
         )
 
     # ==================== Audio Handlers ====================
 
-    def _handle_set_volume(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_set_volume(self, goal: str, args: dict) -> DesktopResult:
         """Handle set_volume capability."""
         new_volume = args.get("volume", 0.5)
         previous_volume = self._volume
@@ -462,7 +520,9 @@ class MockManager:
             return True
 
         return DesktopResult.create_success(
-            goal=goal, capability="set_volume", manager=self.name,
+            goal=goal,
+            capability="set_volume",
+            manager=self.name,
             data={"volume": new_volume, "previous_volume": previous_volume},
             events=["audio_volume_changed"],
             rollback=rollback,
@@ -470,7 +530,7 @@ class MockManager:
             context_changes={"volume": new_volume},
         )
 
-    def _handle_toggle_mute(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_toggle_mute(self, goal: str, args: dict) -> DesktopResult:
         """Handle toggle_mute capability."""
         previous_muted = self._muted
         self._muted = not self._muted
@@ -480,7 +540,9 @@ class MockManager:
             return True
 
         return DesktopResult.create_success(
-            goal=goal, capability="toggle_mute", manager=self.name,
+            goal=goal,
+            capability="toggle_mute",
+            manager=self.name,
             data={"muted": self._muted, "previous_muted": previous_muted},
             events=["audio_volume_changed"],
             rollback=rollback,
@@ -488,15 +550,31 @@ class MockManager:
             context_changes={"muted": self._muted},
         )
 
-    def _handle_list_audio_devices(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_list_audio_devices(self, goal: str, args: dict) -> DesktopResult:
         """Handle list_audio_devices capability."""
         devices = [
-            {"index": 0, "name": "Speakers", "type": "output", "volume": self._volume, "muted": self._muted, "is_default": True},
-            {"index": 1, "name": "Microphone", "type": "input", "volume": 0.8, "muted": False, "is_default": True},
+            {
+                "index": 0,
+                "name": "Speakers",
+                "type": "output",
+                "volume": self._volume,
+                "muted": self._muted,
+                "is_default": True,
+            },
+            {
+                "index": 1,
+                "name": "Microphone",
+                "type": "input",
+                "volume": 0.8,
+                "muted": False,
+                "is_default": True,
+            },
         ]
 
         return DesktopResult.create_success(
-            goal=goal, capability="list_audio_devices", manager=self.name,
+            goal=goal,
+            capability="list_audio_devices",
+            manager=self.name,
             data=devices,
             events=["audio_devices_listed"],
             verification={"passed": True},
@@ -505,15 +583,27 @@ class MockManager:
 
     # ==================== Network Handlers ====================
 
-    def _handle_list_network_interfaces(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_list_network_interfaces(self, goal: str, args: dict) -> DesktopResult:
         """Handle list_network_interfaces capability."""
         interfaces = [
-            {"name": "Ethernet", "is_up": True, "ip_address": "192.168.1.100", "mac_address": "AA:BB:CC:DD:EE:FF"},
-            {"name": "Wi-Fi", "is_up": False, "ip_address": None, "mac_address": "11:22:33:44:55:66"},
+            {
+                "name": "Ethernet",
+                "is_up": True,
+                "ip_address": "192.168.1.100",
+                "mac_address": "AA:BB:CC:DD:EE:FF",
+            },
+            {
+                "name": "Wi-Fi",
+                "is_up": False,
+                "ip_address": None,
+                "mac_address": "11:22:33:44:55:66",
+            },
         ]
 
         return DesktopResult.create_success(
-            goal=goal, capability="list_network_interfaces", manager=self.name,
+            goal=goal,
+            capability="list_network_interfaces",
+            manager=self.name,
             data=interfaces,
             events=["network_interfaces_listed"],
             verification={"passed": True},
@@ -522,40 +612,48 @@ class MockManager:
 
     # ==================== Power Handlers ====================
 
-    def _handle_shutdown(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_shutdown(self, goal: str, args: dict) -> DesktopResult:
         """Handle shutdown capability."""
         return DesktopResult.create_success(
-            goal=goal, capability="shutdown", manager=self.name,
+            goal=goal,
+            capability="shutdown",
+            manager=self.name,
             data={"action": "shutdown", "initiated": True},
             events=["system_shutdown"],
             verification={"passed": True},
             warnings=["This is a mock - no actual shutdown occurred"],
         )
 
-    def _handle_restart(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_restart(self, goal: str, args: dict) -> DesktopResult:
         """Handle restart capability."""
         return DesktopResult.create_success(
-            goal=goal, capability="restart", manager=self.name,
+            goal=goal,
+            capability="restart",
+            manager=self.name,
             data={"action": "restart", "initiated": True},
             events=["system_restart"],
             verification={"passed": True},
             warnings=["This is a mock - no actual restart occurred"],
         )
 
-    def _handle_sleep(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_sleep(self, goal: str, args: dict) -> DesktopResult:
         """Handle sleep capability."""
         return DesktopResult.create_success(
-            goal=goal, capability="sleep", manager=self.name,
+            goal=goal,
+            capability="sleep",
+            manager=self.name,
             data={"action": "sleep", "initiated": True},
             events=["system_sleep"],
             verification={"passed": True},
             warnings=["This is a mock - no actual sleep occurred"],
         )
 
-    def _handle_lock(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_lock(self, goal: str, args: dict) -> DesktopResult:
         """Handle lock capability."""
         return DesktopResult.create_success(
-            goal=goal, capability="lock", manager=self.name,
+            goal=goal,
+            capability="lock",
+            manager=self.name,
             data={"action": "lock", "initiated": True},
             events=["system_lock"],
             verification={"passed": True},
@@ -564,36 +662,52 @@ class MockManager:
 
     # ==================== Service Handlers ====================
 
-    def _handle_list_services(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_list_services(self, goal: str, args: dict) -> DesktopResult:
         """Handle list_services capability."""
         services = [
-            {"service_name": "AuraService", "display_name": "Aura AI Service", "status": "running", "start_type": "auto"},
-            {"service_name": "WindowsUpdate", "display_name": "Windows Update", "status": "stopped", "start_type": "manual"},
+            {
+                "service_name": "AuraService",
+                "display_name": "Aura AI Service",
+                "status": "running",
+                "start_type": "auto",
+            },
+            {
+                "service_name": "WindowsUpdate",
+                "display_name": "Windows Update",
+                "status": "stopped",
+                "start_type": "manual",
+            },
         ]
 
         return DesktopResult.create_success(
-            goal=goal, capability="list_services", manager=self.name,
+            goal=goal,
+            capability="list_services",
+            manager=self.name,
             data=services,
             events=["services_listed"],
             verification={"passed": True},
             context_changes={"services_count": len(services)},
         )
 
-    def _handle_start_service(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_start_service(self, goal: str, args: dict) -> DesktopResult:
         """Handle start_service capability."""
         service_name = args.get("service_name", "")
         return DesktopResult.create_success(
-            goal=goal, capability="start_service", manager=self.name,
+            goal=goal,
+            capability="start_service",
+            manager=self.name,
             data={"service": service_name, "action": "start", "status": "running"},
             events=["service_started"],
             verification={"passed": True},
         )
 
-    def _handle_stop_service(self, goal: str, args: Dict) -> DesktopResult:
+    def _handle_stop_service(self, goal: str, args: dict) -> DesktopResult:
         """Handle stop_service capability."""
         service_name = args.get("service_name", "")
         return DesktopResult.create_success(
-            goal=goal, capability="stop_service", manager=self.name,
+            goal=goal,
+            capability="stop_service",
+            manager=self.name,
             data={"service": service_name, "action": "stop", "status": "stopped"},
             events=["service_stopped"],
             verification={"passed": True},
@@ -601,7 +715,7 @@ class MockManager:
 
     # ==================== Introspection ====================
 
-    def get_call_log(self) -> List[Dict[str, Any]]:
+    def get_call_log(self) -> list[dict[str, Any]]:
         """Get the log of all calls made to this manager."""
         return self._call_log.copy()
 

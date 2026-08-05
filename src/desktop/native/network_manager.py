@@ -2,12 +2,12 @@
 Network Manager
 Manages network interface operations.
 """
-from typing import List, Optional
+
 import logging
 
+from .native_exceptions import NetworkInterfaceNotFoundError
 from .native_manager import NativeManager
 from .native_models import NetworkInterface
-from .native_exceptions import NetworkInterfaceNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class NetworkManager:
         self.native_manager = native_manager
         logger.debug("NetworkManager initialized")
 
-    def list_interfaces(self) -> List[NetworkInterface]:
+    def list_interfaces(self) -> list[NetworkInterface]:
         """
         List all network interfaces.
 
@@ -81,10 +81,10 @@ class NetworkManager:
         raise NetworkInterfaceNotFoundError(
             f"Network interface not found with name: {name}",
             "get_interface_by_name",
-            details={"name": name}
+            details={"name": name},
         )
 
-    def get_ip_address(self, interface_index: int) -> Optional[str]:
+    def get_ip_address(self, interface_index: int) -> str | None:
         """
         Get IP address for network interface.
 
@@ -97,7 +97,7 @@ class NetworkManager:
         logger.debug(f"Getting IP address for interface {interface_index}")
         return self.native_manager._network_manager.get_ip_address(interface_index)
 
-    def get_mac_address(self, interface_index: int) -> Optional[str]:
+    def get_mac_address(self, interface_index: int) -> str | None:
         """
         Get MAC address for network interface.
 
@@ -121,7 +121,9 @@ class NetworkManager:
             True if connected, False otherwise
         """
         logger.debug(f"Checking if interface {interface_index} is connected")
-        return self.native_manager._network_manager.is_interface_connected(interface_index)
+        return self.native_manager._network_manager.is_interface_connected(
+            interface_index
+        )
 
     def ping(self, host: str, count: int = 4, timeout: int = 2) -> dict:
         """
@@ -138,7 +140,7 @@ class NetworkManager:
         logger.debug(f"Pinging host: {host}")
         return self.native_manager._network_manager.ping(host, count, timeout)
 
-    def get_dns_servers(self, interface_index: int) -> List[str]:
+    def get_dns_servers(self, interface_index: int) -> list[str]:
         """
         Get DNS servers for network interface.
 

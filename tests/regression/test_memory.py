@@ -5,12 +5,13 @@ These tests ensure that Memory subsystem behavior doesn't break during refactors
 Run this suite before any major refactors to prevent regressions.
 """
 
-import pytest
-import os
 import json
-import tempfile
+import os
 import shutil
+import tempfile
 from pathlib import Path
+
+import pytest
 
 
 class TestMemoryRegression:
@@ -33,6 +34,7 @@ class TestMemoryRegression:
     def memory(self, temp_db):
         """Create a Memory instance for testing."""
         from Memory import Memory
+
         return Memory(db_path=str(temp_db), init_schema=True)
 
     def test_memory_initialization(self, memory):
@@ -48,6 +50,7 @@ class TestMemoryRegression:
 
         # Create new instance and verify facts exist
         from Memory import Memory
+
         new_memory = Memory(db_path=str(memory._get_db_path()), init_schema=False)
         facts = new_memory._get_all_facts()
 
@@ -62,6 +65,7 @@ class TestMemoryRegression:
 
         # Create new instance
         from Memory import Memory
+
         new_memory = Memory(db_path=str(memory._get_db_path()), init_schema=False)
 
         # Verify turn exists
@@ -77,6 +81,7 @@ class TestMemoryRegression:
 
         # Create new instance
         from Memory import Memory
+
         new_memory = Memory(db_path=str(memory._get_db_path()), init_schema=False)
 
         # Verify topic exists
@@ -91,10 +96,7 @@ class TestMemoryRegression:
         memory.add_topic("test_topic", "Test category")
 
         # Build context
-        context = memory.build_context(
-            user_input="Hello",
-            topic="test_topic"
-        )
+        context = memory.build_context(user_input="Hello", topic="test_topic")
 
         # Verify context contains expected components
         assert len(context) > 0
@@ -150,9 +152,7 @@ class TestMemoryRegression:
         """Verify chat log is properly persisted."""
         # Add conversation
         memory.remember_exchange(
-            query="What is 2+2?",
-            answer="2+2 equals 4",
-            topic="math"
+            query="What is 2+2?", answer="2+2 equals 4", topic="math"
         )
 
         # Verify chat log exists
@@ -160,7 +160,7 @@ class TestMemoryRegression:
         assert chat_log_path.exists()
 
         # Verify content
-        with open(chat_log_path, 'r', encoding='utf-8') as f:
+        with open(chat_log_path, encoding="utf-8") as f:
             chat_log = json.load(f)
 
         assert isinstance(chat_log, list)

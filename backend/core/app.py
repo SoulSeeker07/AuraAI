@@ -1,12 +1,11 @@
 # backend/core/app.py (Milestone 1.1)
 import sys
-from pathlib import Path
 
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
-from backend.core.config import APP_NAME, ORGANIZATION, MAIN_QML
+from backend.core.config import APP_NAME, MAIN_QML, ORGANIZATION
 from backend.core.logger import log
 
 

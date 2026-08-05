@@ -13,43 +13,34 @@ Provides comprehensive process management capabilities including:
 
 from __future__ import annotations
 
-import psutil
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from typing import List, Dict, Any, Optional, TYPE_CHECKING
+import psutil
 
 if TYPE_CHECKING:
     # Only used by Pylance/mypy for type hints — never runs
-    from core.event_bus import EventBus, Event
+    from core.event_bus import Event, EventBus
 else:
     # Actual runtime import, with graceful fallback
     try:
-        from core.event_bus import EventBus, Event
+        from core.event_bus import Event, EventBus
     except ImportError:
         EventBus = None
         Event = None
 
-from .task_model import (
-    Task,
-    TaskOutput,
-    TaskStatus,
-    TaskType
-)
-
-from .permission_manager import (
-    PermissionManager,
-    PermissionLevel
-)
+from .permission_manager import PermissionManager
+from .task_model import Task, TaskOutput
 
 
 class ProcessStatus(str, Enum):
     """Process status enumeration"""
+
     RUNNING = "running"
     STOPPED = "stopped"
     SLEEPING = "sleeping"
@@ -84,6 +75,7 @@ class ProcessStatus(str, Enum):
 # Event names for Process Manager
 class ProcessEvent(str, Enum):
     """Process manager event names"""
+
     PROCESS_STARTED = "process.started"
     PROCESS_STOPPED = "process.stopped"
     PROCESS_EXITED = "process.exited"
@@ -100,12 +92,13 @@ class ProcessState:
     Stores previous and current process states to detect changes
     and publish events.
     """
+
     pid: int
     name: str
-    previous_status: Optional[str] = None
+    previous_status: str | None = None
     previous_cpu: float = 0.0
     previous_memory: float = 0.0
-    previous_timestamp: Optional[datetime] = None
+    previous_timestamp: datetime | None = None
 
     # Aliases so has_changed() can accept either a ProcessInfo or another
     # ProcessState (the test compares two ProcessState snapshots directly).
@@ -135,31 +128,31 @@ class ProcessState:
             return False
 
         return (
-            self.previous_status != current.status or
-            self.previous_cpu != current.cpu_percent or
-            self.previous_memory != current.memory_mb
+            self.previous_status != current.status
+            or self.previous_cpu != current.cpu_percent
+            or self.previous_memory != current.memory_mb
         )
-    
 
 
 @dataclass
 class ProcessInfo:
     """Represents a running process"""
+
     pid: int
     name: str
     status: str
     username: str
     cpu_percent: float
     memory_mb: float
-    cmdline: List[str]
+    cmdline: list[str]
     create_time: datetime
-    executable: Optional[str] = None
-    cwd: Optional[str] = None
+    executable: str | None = None
+    cwd: str | None = None
 
     def __hash__(self):
         return hash(self.pid)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "pid": self.pid,
@@ -171,7 +164,7 @@ class ProcessInfo:
             "cmdline": self.cmdline,
             "create_time": self.create_time.isoformat(),
             "executable": self.executable,
-            "cwd": self.cwd
+            "cwd": self.cwd,
         }
 
 
@@ -188,7 +181,11 @@ class ProcessManager:
     - Process state tracking and event publishing
     """
 
-    def __init__(self, event_bus: Optional[EventBus] = None, permission_manager: Optional[PermissionManager] = None):
+    def __init__(
+        self,
+        event_bus: EventBus | None = None,
+        permission_manager: PermissionManager | None = None,
+    ):
         """
         Initialize the process manager.
 
@@ -197,8 +194,8 @@ class ProcessManager:
             permission_manager: Optional PermissionManager instance for confirmation
         """
         self.logger = logging.getLogger(__name__)
-        self._cache: Dict[int, ProcessInfo] = {}
-        self._cache_time: Optional[datetime] = None
+        self._cache: dict[int, ProcessInfo] = {}
+        self._cache_time: datetime | None = None
         self._cache_ttl_seconds = 5  # Cache for 5 seconds
 
         # Event Bus integration
@@ -212,12 +209,12 @@ class ProcessManager:
         # get_process_info() must NOT write to it — otherwise the scan loop's
         # "is this a new process?" check always sees it as already-known and
         # PROCESS_STARTED events never fire.
-        self._process_states: Dict[int, ProcessState] = {}
-        self._last_process_list: List[int] = []
-        self._last_scan_time: Optional[datetime] = None
+        self._process_states: dict[int, ProcessState] = {}
+        self._last_process_list: list[int] = []
+        self._last_scan_time: datetime | None = None
 
         # Background monitoring thread
-        self._monitor_thread: Optional[threading.Thread] = None
+        self._monitor_thread: threading.Thread | None = None
         self._monitor_running = False
         self._monitor_interval = 1.0  # Check every second
 
@@ -229,7 +226,7 @@ class ProcessManager:
         # Start background monitor
         self._start_background_monitor()
 
-    def get_process_info(self, pid: int) -> Optional[ProcessInfo]:
+    def get_process_info(self, pid: int) -> ProcessInfo | None:
         """
         Get information about a specific process by PID.
 
@@ -279,7 +276,7 @@ class ProcessManager:
                 cmdline=cmdline,
                 create_time=create_time,
                 executable=executable,
-                cwd=cwd
+                cwd=cwd,
             )
 
             # NOTE: state tracking intentionally NOT done here.
@@ -301,8 +298,9 @@ class ProcessManager:
             self.logger.error(f"Error getting process info for {pid}: {e}")
             return None
 
-    def list_processes(self, filter_by_name: Optional[str] = None,
-                       filter_by_status: Optional[str] = None) -> List[ProcessInfo]:
+    def list_processes(
+        self, filter_by_name: str | None = None, filter_by_status: str | None = None
+    ) -> list[ProcessInfo]:
         """
         List all running processes.
 
@@ -315,15 +313,18 @@ class ProcessManager:
         """
         processes = []
 
-        for proc in psutil.process_iter(['pid', 'name', 'status', 'username']):
+        for proc in psutil.process_iter(["pid", "name", "status", "username"]):
             try:
                 proc_info = proc.info
-                pid = proc_info['pid']
-                process_name = proc_info['name']
-                status = ProcessStatus.from_psutil(proc_info['status'])
+                pid = proc_info["pid"]
+                process_name = proc_info["name"]
+                status = ProcessStatus.from_psutil(proc_info["status"])
 
                 # Apply filters
-                if filter_by_name and filter_by_name.lower() not in process_name.lower():
+                if (
+                    filter_by_name
+                    and filter_by_name.lower() not in process_name.lower()
+                ):
                     continue
 
                 if filter_by_status and status != filter_by_status:
@@ -345,7 +346,7 @@ class ProcessManager:
 
         return processes
 
-    def find_process_by_name(self, name: str) -> List[ProcessInfo]:
+    def find_process_by_name(self, name: str) -> list[ProcessInfo]:
         """
         Find processes by name (supports partial matching).
 
@@ -357,7 +358,7 @@ class ProcessManager:
         """
         return [p for p in self.list_processes(filter_by_name=name)]
 
-    def find_process_by_pid(self, pid: int) -> Optional[ProcessInfo]:
+    def find_process_by_pid(self, pid: int) -> ProcessInfo | None:
         """
         Find a process by PID.
 
@@ -385,8 +386,13 @@ class ProcessManager:
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             return False
 
-    def start_process(self, command: str, args: List[str] = None,
-                      cwd: Optional[str] = None, shell: bool = False) -> ProcessInfo:
+    def start_process(
+        self,
+        command: str,
+        args: list[str] = None,
+        cwd: str | None = None,
+        shell: bool = False,
+    ) -> ProcessInfo:
         """
         Start a new process.
 
@@ -448,8 +454,8 @@ class ProcessManager:
                 "pid": pid,
                 "name": process_name,
                 "executable": process_exe,
-                "timeout": timeout
-            }
+                "timeout": timeout,
+            },
         )
 
         if not permission_approved:
@@ -510,8 +516,8 @@ class ProcessManager:
                 "pid": pid,
                 "name": process_name,
                 "executable": process_exe,
-                "force": force
-            }
+                "force": force,
+            },
         )
 
         if not permission_approved:
@@ -537,7 +543,7 @@ class ProcessManager:
             self.logger.error(f"Error killing process {pid}: {e}")
             return False
 
-    def get_top_processes(self, limit: int = 10) -> List[ProcessInfo]:
+    def get_top_processes(self, limit: int = 10) -> list[ProcessInfo]:
         """
         Get the top N processes by CPU usage.
 
@@ -549,7 +555,7 @@ class ProcessManager:
         """
         return self.list_processes()[:limit]
 
-    def get_memory_usage(self) -> Dict[str, Any]:
+    def get_memory_usage(self) -> dict[str, Any]:
         """
         Get overall memory usage statistics.
 
@@ -563,13 +569,13 @@ class ProcessManager:
                 "available_gb": round(memory.available / (1024 * 1024 * 1024), 2),
                 "used_gb": round(memory.used / (1024 * 1024 * 1024), 2),
                 "percent_used": memory.percent,
-                "processes_count": len(psutil.pids())
+                "processes_count": len(psutil.pids()),
             }
         except Exception as e:
             self.logger.error(f"Error getting memory usage: {e}")
             return {}
 
-    def get_system_stats(self) -> Dict[str, Any]:
+    def get_system_stats(self) -> dict[str, Any]:
         """
         Get system-level statistics.
 
@@ -578,7 +584,7 @@ class ProcessManager:
         """
         try:
             cpu_percent = psutil.cpu_percent(interval=1)
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             cpu_count = psutil.cpu_count()
 
             return {
@@ -589,7 +595,7 @@ class ProcessManager:
                 "disk_total_gb": round(disk.total / (1024 * 1024 * 1024), 2),
                 "disk_used_gb": round(disk.used / (1024 * 1024 * 1024), 2),
                 "disk_free_gb": round(disk.free / (1024 * 1024 * 1024), 2),
-                "disk_percent_used": disk.percent
+                "disk_percent_used": disk.percent,
             }
         except Exception as e:
             self.logger.error(f"Error getting system stats: {e}")
@@ -612,16 +618,14 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message=f"No handler for task type: {task.type.value}",
-                    error=f"Task type {task.type.value} not supported"
+                    error=f"Task type {task.type.value} not supported",
                 )
 
             return method(task)
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Error executing task",
-                error=str(e)
+                success=False, message="Error executing task", error=str(e)
             )
 
     # ========================================
@@ -634,7 +638,9 @@ class ProcessManager:
             filter_name = task.input.get("name")
             filter_status = task.input.get("status")
 
-            processes = self.list_processes(filter_by_name=filter_name, filter_by_status=filter_status)
+            processes = self.list_processes(
+                filter_by_name=filter_name, filter_by_status=filter_status
+            )
 
             return TaskOutput(
                 success=True,
@@ -642,16 +648,16 @@ class ProcessManager:
                 data={
                     "processes": [p.to_dict() for p in processes],
                     "count": len(processes),
-                    "total_cpu_percent": round(sum(p.cpu_percent for p in processes), 2),
-                    "total_memory_mb": round(sum(p.memory_mb for p in processes), 2)
-                }
+                    "total_cpu_percent": round(
+                        sum(p.cpu_percent for p in processes), 2
+                    ),
+                    "total_memory_mb": round(sum(p.memory_mb for p in processes), 2),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to list processes",
-                error=str(e)
+                success=False, message="Failed to list processes", error=str(e)
             )
 
     def _execute_process_get(self, task: Task) -> TaskOutput:
@@ -663,7 +669,7 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message="Failed to get process",
-                    error="PID not provided"
+                    error="PID not provided",
                 )
 
             process = self.get_process_info(pid)
@@ -672,20 +678,18 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message=f"Process {pid} not found",
-                    error=f"No process with PID {pid} exists"
+                    error=f"No process with PID {pid} exists",
                 )
 
             return TaskOutput(
                 success=True,
-                message=f"Process information retrieved",
-                data=process.to_dict()
+                message="Process information retrieved",
+                data=process.to_dict(),
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to get process",
-                error=str(e)
+                success=False, message="Failed to get process", error=str(e)
             )
 
     def _execute_process_start(self, task: Task) -> TaskOutput:
@@ -700,7 +704,7 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message="Failed to start process",
-                    error="Command not provided"
+                    error="Command not provided",
                 )
 
             process = self.start_process(command, args, cwd, shell)
@@ -708,14 +712,12 @@ class ProcessManager:
             return TaskOutput(
                 success=True,
                 message=f"Process started: {process.name} (PID: {process.pid})",
-                data=process.to_dict()
+                data=process.to_dict(),
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to start process",
-                error=str(e)
+                success=False, message="Failed to start process", error=str(e)
             )
 
     def _execute_process_stop(self, task: Task) -> TaskOutput:
@@ -728,7 +730,7 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message="Failed to stop process",
-                    error="PID not provided"
+                    error="PID not provided",
                 )
 
             success = self.stop_process(pid, timeout)
@@ -737,20 +739,18 @@ class ProcessManager:
                 return TaskOutput(
                     success=True,
                     message=f"Process stopped: PID {pid}",
-                    data={"pid": pid, "stopped": True}
+                    data={"pid": pid, "stopped": True},
                 )
             else:
                 return TaskOutput(
                     success=False,
                     message=f"Failed to stop process {pid}",
-                    error="Process did not terminate gracefully"
+                    error="Process did not terminate gracefully",
                 )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to stop process",
-                error=str(e)
+                success=False, message="Failed to stop process", error=str(e)
             )
 
     def _execute_process_kill(self, task: Task) -> TaskOutput:
@@ -763,7 +763,7 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message="Failed to kill process",
-                    error="PID not provided"
+                    error="PID not provided",
                 )
 
             success = self.kill_process(pid, force)
@@ -772,20 +772,18 @@ class ProcessManager:
                 return TaskOutput(
                     success=True,
                     message=f"Process killed: PID {pid}",
-                    data={"pid": pid, "killed": True}
+                    data={"pid": pid, "killed": True},
                 )
             else:
                 return TaskOutput(
                     success=False,
                     message=f"Failed to kill process {pid}",
-                    error="Failed to kill process"
+                    error="Failed to kill process",
                 )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to kill process",
-                error=str(e)
+                success=False, message="Failed to kill process", error=str(e)
             )
 
     def _execute_process_search(self, task: Task) -> TaskOutput:
@@ -798,7 +796,7 @@ class ProcessManager:
                 return TaskOutput(
                     success=False,
                     message="Failed to search processes",
-                    error="Search name not provided"
+                    error="Search name not provided",
                 )
 
             processes = self.find_process_by_name(name)
@@ -809,15 +807,13 @@ class ProcessManager:
                 data={
                     "processes": [p.to_dict() for p in processes[:max_results]],
                     "count": len(processes),
-                    "search_name": name
-                }
+                    "search_name": name,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to search processes",
-                error=str(e)
+                success=False, message="Failed to search processes", error=str(e)
             )
 
     # ========================================
@@ -831,9 +827,7 @@ class ProcessManager:
 
         self._monitor_running = True
         self._monitor_thread = threading.Thread(
-            target=self._run_monitor_loop,
-            name="ProcessMonitor",
-            daemon=True
+            target=self._run_monitor_loop, name="ProcessMonitor", daemon=True
         )
         self._monitor_thread.start()
         self.logger.info("Background process monitor started")
@@ -856,8 +850,11 @@ class ProcessManager:
         while self._monitor_running:
             try:
                 # Check if we should do a full scan (cache expired or first run)
-                if self._last_scan_time is None or \
-                   (datetime.now() - self._last_scan_time).total_seconds() >= self._monitor_interval:
+                if (
+                    self._last_scan_time is None
+                    or (datetime.now() - self._last_scan_time).total_seconds()
+                    >= self._monitor_interval
+                ):
                     self._scan_and_detect_changes()
 
             except Exception as e:
@@ -884,10 +881,10 @@ class ProcessManager:
             current_pids = set()
 
             # Scan all processes
-            for proc in psutil.process_iter(['pid', 'name', 'status']):
+            for proc in psutil.process_iter(["pid", "name", "status"]):
                 pid = None
                 try:
-                    pid = proc.info['pid']
+                    pid = proc.info["pid"]
                     current_pids.add(pid)
 
                     # Get current process info
@@ -904,7 +901,7 @@ class ProcessManager:
                             previous_status=process.status,
                             previous_cpu=process.cpu_percent,
                             previous_memory=process.memory_mb,
-                            previous_timestamp=datetime.now()
+                            previous_timestamp=datetime.now(),
                         )
 
                         # Publish PROCESS_STARTED event
@@ -914,15 +911,19 @@ class ProcessManager:
                                 pid=pid,
                                 name=process.name,
                                 executable=process.executable,
-                                cmdline=process.cmdline
+                                cmdline=process.cmdline,
                             )
-                            self.logger.debug(f"Process started: {process.name} (PID: {pid})")
+                            self.logger.debug(
+                                f"Process started: {process.name} (PID: {pid})"
+                            )
                     else:
                         # Check for changes
                         state = self._process_states[pid]
                         if state.has_changed(process):
                             # Process changed
-                            self.logger.debug(f"Process changed: {process.name} (PID: {pid})")
+                            self.logger.debug(
+                                f"Process changed: {process.name} (PID: {pid})"
+                            )
 
                             old_status = state.previous_status
                             old_cpu = state.previous_cpu
@@ -942,7 +943,7 @@ class ProcessManager:
                                     old_status=old_status,
                                     new_status=process.status,
                                     old_cpu=old_cpu,
-                                    new_cpu=process.cpu_percent
+                                    new_cpu=process.cpu_percent,
                                 )
                         else:
                             # No change, but make sure previous_timestamp is set
@@ -958,7 +959,7 @@ class ProcessManager:
                             self.event_bus.publish(
                                 ProcessEvent.PROCESS_EXITED,
                                 pid=pid,
-                                name=self._process_states[pid].name
+                                name=self._process_states[pid].name,
                             )
                         del self._process_states[pid]
 
@@ -970,7 +971,7 @@ class ProcessManager:
                     self.event_bus.publish(
                         ProcessEvent.PROCESS_EXITED,
                         pid=pid,
-                        name=self._process_states[pid].name
+                        name=self._process_states[pid].name,
                     )
                 del self._process_states[pid]
 
@@ -992,12 +993,9 @@ class ProcessManager:
                    in this class.
         """
         if self.event_bus:
-            self.event_bus.publish(
-                ProcessEvent.PROCESS_LIST_UPDATED,
-                count=count
-            )
+            self.event_bus.publish(ProcessEvent.PROCESS_LIST_UPDATED, count=count)
 
-    def get_process_state(self, pid: int) -> Optional[ProcessState]:
+    def get_process_state(self, pid: int) -> ProcessState | None:
         """
         Get the current state of a process.
 
@@ -1009,7 +1007,7 @@ class ProcessManager:
         """
         return self._process_states.get(pid)
 
-    def get_all_process_states(self) -> Dict[int, ProcessState]:
+    def get_all_process_states(self) -> dict[int, ProcessState]:
         """
         Get all tracked process states.
 

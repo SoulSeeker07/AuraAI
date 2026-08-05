@@ -4,10 +4,8 @@ Variable Manager
 Manages workflow variables and provides variable storage, retrieval, and manipulation.
 """
 
-
-import json
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any, List
 
 from .models import TriggerData
 
@@ -18,15 +16,15 @@ class VariableManager:
     Provides methods for setting, getting, updating, and persisting variables.
     """
 
-    def __init__(self, trigger_data: Optional[TriggerData] = None):
+    def __init__(self, trigger_data: TriggerData | None = None):
         """
         Initialize variable manager.
 
         Args:
             trigger_data: Optional trigger data to initialize variables from
         """
-        self._variables: Dict[str, Any] = {}
-        self._variable_history: Dict[str, List[Dict[str, Any]]] = {}
+        self._variables: dict[str, Any] = {}
+        self._variable_history: dict[str, List[dict[str, Any]]] = {}
         self._created_at = datetime.now()
         self._trigger_data = trigger_data
 
@@ -41,8 +39,8 @@ class VariableManager:
         value: Any,
         init: bool = False,
         source: str = "workflow",
-        step_id: Optional[str] = None,
-        persistent: bool = True
+        step_id: str | None = None,
+        persistent: bool = True,
     ) -> bool:
         """
         Set a variable to a value.
@@ -61,12 +59,14 @@ class VariableManager:
         if not init:
             # Add to history
             self._variable_history[name] = self._variable_history.get(name, [])
-            self._variable_history[name].append({
-                "timestamp": datetime.now().isoformat(),
-                "value": value,
-                "source": source,
-                "step_id": step_id
-            })
+            self._variable_history[name].append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "value": value,
+                    "source": source,
+                    "step_id": step_id,
+                }
+            )
 
         # Update variable
         self._variables[name] = value
@@ -117,7 +117,7 @@ class VariableManager:
             return True
         return False
 
-    def get_all_variables(self) -> Dict[str, Any]:
+    def get_all_variables(self) -> dict[str, Any]:
         """
         Get all variables.
 
@@ -126,7 +126,7 @@ class VariableManager:
         """
         return self._variables.copy()
 
-    def get_variable_history(self, name: str) -> List[Dict[str, Any]]:
+    def get_variable_history(self, name: str) -> List[dict[str, Any]]:
         """
         Get variable history.
 
@@ -138,7 +138,7 @@ class VariableManager:
         """
         return self._variable_history.get(name, [])
 
-    def clear_variable_history(self, name: Optional[str] = None) -> None:
+    def clear_variable_history(self, name: str | None = None) -> None:
         """
         Clear variable history.
 
@@ -150,7 +150,7 @@ class VariableManager:
         else:
             self._variable_history = {}
 
-    def get_variable_types(self) -> Dict[str, str]:
+    def get_variable_types(self) -> dict[str, str]:
         """
         Get all variable types.
 
@@ -199,7 +199,7 @@ class VariableManager:
         """
         return len(self._variables)
 
-    def export_variables(self) -> Dict[str, Any]:
+    def export_variables(self) -> dict[str, Any]:
         """
         Export all variables.
 
@@ -210,10 +210,10 @@ class VariableManager:
             "variables": self._variables,
             "variable_count": len(self._variables),
             "created_at": self._created_at.isoformat(),
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now().isoformat(),
         }
 
-    def import_variables(self, data: Dict[str, Any]) -> bool:
+    def import_variables(self, data: dict[str, Any]) -> bool:
         """
         Import variables from data.
 
@@ -236,7 +236,7 @@ class VariableManager:
         self._variables = {}
         self._variable_history = {}
 
-    def set_context_data(self, data: Dict[str, Any]) -> None:
+    def set_context_data(self, data: dict[str, Any]) -> None:
         """
         Set context data (non-persistent).
 
@@ -247,16 +247,14 @@ class VariableManager:
             if key.startswith("_ctx_"):
                 self._variables[key] = value
 
-    def get_context_data(self) -> Dict[str, Any]:
+    def get_context_data(self) -> dict[str, Any]:
         """
         Get all context data.
 
         Returns:
             Dictionary of context data
         """
-        return {
-            k: v for k, v in self._variables.items() if k.startswith("_ctx_")
-        }
+        return {k: v for k, v in self._variables.items() if k.startswith("_ctx_")}
 
     def clear_context_data(self) -> None:
         """Clear all context data."""
@@ -264,7 +262,7 @@ class VariableManager:
             k: v for k, v in self._variables.items() if not k.startswith("_ctx_")
         }
 
-    def merge_variables(self, other_manager: 'VariableManager') -> None:
+    def merge_variables(self, other_manager: "VariableManager") -> None:
         """
         Merge variables from another manager.
 
@@ -274,7 +272,7 @@ class VariableManager:
         for name, value in other_manager._variables.items():
             self.set_variable(name, value)
 
-    def deep_clone(self) -> 'VariableManager':
+    def deep_clone(self) -> "VariableManager":
         """
         Create a deep clone of this variable manager.
 
@@ -282,12 +280,13 @@ class VariableManager:
             New VariableManager instance
         """
         import copy
+
         new_manager = VariableManager(self._trigger_data)
         new_manager._variables = copy.deepcopy(self._variables)
         new_manager._variable_history = copy.deepcopy(self._variable_history)
         return new_manager
 
-    def get_variable_summary(self) -> Dict[str, Any]:
+    def get_variable_summary(self) -> dict[str, Any]:
         """
         Get a summary of variables.
 
@@ -298,7 +297,7 @@ class VariableManager:
             "total_variables": len(self._variables),
             "variable_types": self.get_variable_types(),
             "created_at": self._created_at.isoformat(),
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now().isoformat(),
         }
 
     def add_variable_comment(self, name: str, comment: str) -> bool:

@@ -4,17 +4,17 @@ Workflow Scheduler
 Manages scheduled workflow execution (cron-like scheduling).
 """
 
-
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
-from croniter import croniter
 import threading
 import time
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
-from .models import WorkflowTriggerType, WorkflowStatus
+from croniter import croniter
+
+from .models import WorkflowTriggerType
 from .workflow_engine import WorkflowEngine
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ class WorkflowScheduler:
     def __init__(
         self,
         engine: WorkflowEngine,
-        on_schedule_trigger: Optional[Callable[[str, Dict[str, Any]], None]] = None,
-        timezone: str = "UTC"
+        on_schedule_trigger: Callable[[str, dict[str, Any]], None] | None = None,
+        timezone: str = "UTC",
     ):
         """
         Initialize workflow scheduler.
@@ -43,22 +43,19 @@ class WorkflowScheduler:
         self.timezone = timezone
 
         # Scheduled workflows: workflow_id -> schedule_info
-        self.schedules: Dict[str, Dict[str, Any]] = {}
+        self.schedules: dict[str, dict[str, Any]] = {}
 
         # Thread management
         self.scheduler_running = False
-        self.scheduler_thread: Optional[threading.Thread] = None
+        self.scheduler_thread: threading.Thread | None = None
 
         # Last run times: workflow_id -> last_run_time
-        self.last_run_times: Dict[str, datetime] = {}
+        self.last_run_times: dict[str, datetime] = {}
 
         logger.info("Workflow Scheduler initialized")
 
     def add_schedule(
-        self,
-        workflow_id: str,
-        schedule: str,
-        timezone: str = "UTC"
+        self, workflow_id: str, schedule: str, timezone: str = "UTC"
     ) -> bool:
         """
         Add schedule for workflow.
@@ -79,11 +76,11 @@ class WorkflowScheduler:
             next_run = self._calculate_next_run(schedule, timezone)
 
             self.schedules[workflow_id] = {
-                'schedule': schedule,
-                'timezone': timezone,
-                'next_run': next_run,
-                'created_at': datetime.now(timezone),
-                'last_run': None
+                "schedule": schedule,
+                "timezone": timezone,
+                "next_run": next_run,
+                "created_at": datetime.now(timezone),
+                "last_run": None,
             }
 
             logger.info(f"Added schedule for workflow {workflow_id[:8]}: {schedule}")
@@ -135,7 +132,9 @@ class WorkflowScheduler:
             Success
         """
         if workflow_id not in self.schedules:
-            logger.warning(f"Cannot schedule workflow {workflow_id[:8]}: no schedule found")
+            logger.warning(
+                f"Cannot schedule workflow {workflow_id[:8]}: no schedule found"
+            )
             return False
 
         logger.info(f"Triggering workflow {workflow_id[:8]} immediately")
@@ -149,7 +148,9 @@ class WorkflowScheduler:
             return
 
         self.scheduler_running = True
-        self.scheduler_thread = threading.Thread(target=self._scheduler_loop, daemon=True)
+        self.scheduler_thread = threading.Thread(
+            target=self._scheduler_loop, daemon=True
+        )
         self.scheduler_thread.start()
 
         logger.info("Workflow Scheduler started")
@@ -183,7 +184,7 @@ class WorkflowScheduler:
         current_time = datetime.now(self.timezone)
 
         for workflow_id, schedule_info in list(self.schedules.items()):
-            next_run = schedule_info.get('next_run')
+            next_run = schedule_info.get("next_run")
 
             # Check if workflow should run now
             if next_run and current_time >= next_run:
@@ -191,18 +192,14 @@ class WorkflowScheduler:
                 self._trigger_workflow(workflow_id, WorkflowTriggerType.SCHEDULED)
 
                 # Calculate next run time
-                cron = croniter(schedule_info['schedule'], current_time)
+                cron = croniter(schedule_info["schedule"], current_time)
                 next_run = cron.get_next(datetime)
 
                 # Update schedule info
-                self.schedules[workflow_id]['next_run'] = next_run
-                self.schedules[workflow_id]['last_run'] = current_time
+                self.schedules[workflow_id]["next_run"] = next_run
+                self.schedules[workflow_id]["last_run"] = current_time
 
-    def _trigger_workflow(
-        self,
-        workflow_id: str,
-        trigger_type: WorkflowTriggerType
-    ):
+    def _trigger_workflow(self, workflow_id: str, trigger_type: WorkflowTriggerType):
         """
         Trigger workflow execution.
 
@@ -214,16 +211,12 @@ class WorkflowScheduler:
 
         # Trigger callback
         if self.on_schedule_trigger:
-            self.on_schedule_trigger(workflow_id, {'trigger_type': trigger_type})
+            self.on_schedule_trigger(workflow_id, {"trigger_type": trigger_type})
 
         # Execute workflow
         self.engine.workflow_manager.execute_workflow(workflow_id)
 
-    def _calculate_next_run(
-        self,
-        schedule: str,
-        timezone: str
-    ) -> datetime:
+    def _calculate_next_run(self, schedule: str, timezone: str) -> datetime:
         """
         Calculate next run time for schedule.
 
@@ -236,7 +229,7 @@ class WorkflowScheduler:
         """
         return croniter(schedule, datetime.now(timezone)).get_next(datetime)
 
-    def get_schedules(self) -> Dict[str, Dict[str, Any]]:
+    def get_schedules(self) -> dict[str, dict[str, Any]]:
         """
         Get all scheduled workflows.
 
@@ -245,7 +238,7 @@ class WorkflowScheduler:
         """
         return self.schedules.copy()
 
-    def get_next_run_time(self, workflow_id: str) -> Optional[datetime]:
+    def get_next_run_time(self, workflow_id: str) -> datetime | None:
         """
         Get next run time for a workflow.
 
@@ -256,10 +249,10 @@ class WorkflowScheduler:
             Next run datetime or None
         """
         if workflow_id in self.schedules:
-            return self.schedules[workflow_id].get('next_run')
+            return self.schedules[workflow_id].get("next_run")
         return None
 
-    def get_schedule(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+    def get_schedule(self, workflow_id: str) -> dict[str, Any] | None:
         """
         Get schedule info for a workflow.
 
@@ -271,7 +264,7 @@ class WorkflowScheduler:
         """
         return self.schedules.get(workflow_id)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get scheduler statistics.
 
@@ -279,10 +272,10 @@ class WorkflowScheduler:
             Statistics dictionary
         """
         return {
-            'total_scheduled': len(self.schedules),
-            'schedules': list(self.schedules.keys()),
-            'last_run_times': list(self.last_run_times.keys()),
-            'scheduler_running': self.scheduler_running
+            "total_scheduled": len(self.schedules),
+            "schedules": list(self.schedules.keys()),
+            "last_run_times": list(self.last_run_times.keys()),
+            "scheduler_running": self.scheduler_running,
         }
 
     def pause_workflow(self, workflow_id: str) -> bool:

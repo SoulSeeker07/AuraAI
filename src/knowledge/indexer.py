@@ -8,18 +8,18 @@ import logging
 import os
 import threading
 import time
-from typing import List, Dict, Any, Optional
-from pathlib import Path
-from datetime import datetime
-from queue import Queue, Empty
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from queue import Empty, Queue
+from typing import Any
 
-from .models import IndexingTask, IndexingStatus, SourceType
-from .embedding_manager import EmbeddingManager
-from .vector_store import VectorStore
-from .graph_store import GraphStore
 from .citation_engine import CitationEngine
+from .embedding_manager import EmbeddingManager
+from .graph_store import GraphStore
+from .models import IndexingStatus, IndexingTask
 from .parsers import get_parser_registry
+from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class IndexingResult:
     """Result of an indexing operation."""
+
     task_id: str
     status: IndexingStatus
     chunks_added: int
     chunks_processed: int
-    errors: List[str]
+    errors: list[str]
     duration_seconds: float
     timestamp: datetime
 
@@ -46,7 +47,7 @@ class Indexer:
         vector_store: VectorStore,
         graph_store: GraphStore,
         embedding_manager: EmbeddingManager,
-        citation_engine: CitationEngine
+        citation_engine: CitationEngine,
     ):
         """
         Initialize indexer.
@@ -74,7 +75,7 @@ class Indexer:
         self.lock = threading.Lock()
 
         # Worker thread
-        self.worker_thread: Optional[threading.Thread] = None
+        self.worker_thread: threading.Thread | None = None
         self.is_running = False
 
         logger.info("Indexer initialized")
@@ -86,10 +87,7 @@ class Indexer:
             return
 
         self.is_running = True
-        self.worker_thread = threading.Thread(
-            target=self._worker,
-            daemon=True
-        )
+        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         self.worker_thread.start()
         logger.info("Indexer worker thread started")
 
@@ -106,9 +104,7 @@ class Indexer:
         logger.info("Indexer stopped")
 
     def queue_indexing(
-        self,
-        file_path: str,
-        metadata: Optional[Dict[str, Any]] = None
+        self, file_path: str, metadata: dict[str, Any] | None = None
     ) -> str:
         """
         Queue a file for indexing.
@@ -126,7 +122,7 @@ class Indexer:
             status=IndexingStatus.PENDING,
             metadata=metadata,
             created_at=datetime.now(),
-            priority=0
+            priority=0,
         )
 
         self.queue.put(task)
@@ -134,11 +130,7 @@ class Indexer:
 
         return task.task_id
 
-    def queue_directory(
-        self,
-        directory: str,
-        recursive: bool = True
-    ) -> int:
+    def queue_directory(self, directory: str, recursive: bool = True) -> int:
         """
         Queue all files in a directory for indexing.
 
@@ -165,9 +157,9 @@ class Indexer:
 
         for ext in supported_extensions:
             if recursive:
-                files.extend(directory_path.rglob(f'*{ext}'))
+                files.extend(directory_path.rglob(f"*{ext}"))
             else:
-                files.extend(directory_path.glob(f'*{ext}'))
+                files.extend(directory_path.glob(f"*{ext}"))
 
         # Queue files
         tasks_queued = 0
@@ -179,10 +171,7 @@ class Indexer:
         logger.info(f"Queued {tasks_queued} files for indexing from {directory}")
         return tasks_queued
 
-    def process_file(
-        self,
-        file_path: str
-    ) -> IndexingResult:
+    def process_file(self, file_path: str) -> IndexingResult:
         """
         Process a single file through the indexing pipeline.
 
@@ -199,7 +188,7 @@ class Indexer:
             file_path=file_path,
             status=IndexingStatus.IN_PROGRESS,
             created_at=datetime.now(),
-            priority=0
+            priority=0,
         )
 
         start_time = time.time()
@@ -222,7 +211,7 @@ class Indexer:
                     chunks_processed=0,
                     errors=[],
                     duration_seconds=time.time() - start_time,
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(),
                 )
 
             chunks_processed = len(chunks)
@@ -241,33 +230,41 @@ class Indexer:
 
                     # Get metadata from chunk
                     metadata = chunk.metadata
-                    metadata_dict = metadata.__dict__ if hasattr(metadata, '__dict__') else {}
+                    metadata_dict = (
+                        metadata.__dict__ if hasattr(metadata, "__dict__") else {}
+                    )
 
                     # Create DocumentChunk
                     doc_chunk = DocumentChunk(
                         id=chunk_id,
                         content=chunk.content,
-                        title=metadata_dict.get('chunk_id', file_path),
-                        summary=metadata_dict.get('docstring', None),
-                        chunk_type=metadata_dict.get('chunk_type', 'file'),
+                        title=metadata_dict.get("chunk_id", file_path),
+                        summary=metadata_dict.get("docstring", None),
+                        chunk_type=metadata_dict.get("chunk_type", "file"),
                         source_file=file_path,
-                        source_type=metadata.file_type if hasattr(metadata, 'file_type') else 'unknown',
+                        source_type=(
+                            metadata.file_type
+                            if hasattr(metadata, "file_type")
+                            else "unknown"
+                        ),
                         chunk_number=i + 1,
-                        language=metadata_dict.get('language', None),
-                        project=metadata_dict.get('project', None),
-                        tags=metadata_dict.get('tags', []),
+                        language=metadata_dict.get("language", None),
+                        project=metadata_dict.get("project", None),
+                        tags=metadata_dict.get("tags", []),
                         created_at=datetime.now(),
-                        updated_at=datetime.now()
+                        updated_at=datetime.now(),
                     )
                     document_chunks.append(doc_chunk)
 
                 # Add to vector store
                 stats = self.vector_store.add_chunks(document_chunks)
-                chunks_added = stats.get('new_chunks_added', 0)
+                chunks_added = stats.get("new_chunks_added", 0)
 
                 # Add to graph store
                 self.graph_store.add_nodes_from_chunks(document_chunks)
-                self.graph_store.add_edges_from_chunks(document_chunks, self.vector_store)
+                self.graph_store.add_edges_from_chunks(
+                    document_chunks, self.vector_store
+                )
 
                 task.status = IndexingStatus.SUCCESS
 
@@ -303,7 +300,7 @@ class Indexer:
             chunks_processed=chunks_processed,
             errors=errors,
             duration_seconds=duration,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
     def _worker(self):
@@ -332,7 +329,7 @@ class Indexer:
 
         logger.info("Indexer worker thread stopped")
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get indexer statistics.
 
@@ -341,10 +338,10 @@ class Indexer:
         """
         with self.lock:
             return {
-                'total_processed': self.total_processed,
-                'total_errors': self.total_errors,
-                'queue_size': self.queue.qsize(),
-                'is_running': self.is_running
+                "total_processed": self.total_processed,
+                "total_errors": self.total_errors,
+                "queue_size": self.queue.qsize(),
+                "is_running": self.is_running,
             }
 
     def clear_queue(self):
@@ -363,5 +360,3 @@ class Indexer:
     def _generate_chunk_id(self) -> str:
         """Generate a unique chunk ID."""
         return f"chunk_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(os.urandom(8)) % 1000000}"
-
-

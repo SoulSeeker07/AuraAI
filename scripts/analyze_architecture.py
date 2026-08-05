@@ -9,13 +9,9 @@ This script analyzes:
 5. Integration completeness
 """
 
-import os
-import sys
-from pathlib import Path
-from collections import defaultdict
 import ast
-import importlib.util
-import json
+from collections import defaultdict
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "src"
@@ -46,12 +42,12 @@ print("Analyzing imports and dependencies...")
 print()
 
 import_graph = defaultdict(set)  # file -> set of imported files
-imported_by = defaultdict(set)   # file -> set of files that import it
-file_to_modules = {}             # file -> list of module names
+imported_by = defaultdict(set)  # file -> set of files that import it
+file_to_modules = {}  # file -> list of module names
 
 for file_path in all_files:
     try:
-        with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+        with open(file_structure[file_path], encoding="utf-8") as f:
             source = f.read()
             tree = ast.parse(source)
 
@@ -59,11 +55,11 @@ for file_path in all_files:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    module_name = alias.name.split('.')[0]
+                    module_name = alias.name.split(".")[0]
                     modules.append(module_name)
                     import_graph[file_path].add(module_name)
             elif isinstance(node, ast.ImportFrom):
-                module_name = node.module.split('.')[0] if node.module else ''
+                module_name = node.module.split(".")[0] if node.module else ""
                 if module_name:
                     modules.append(module_name)
                     import_graph[file_path].add(module_name)
@@ -88,6 +84,7 @@ circular_deps = []
 visited = set()
 rec_stack = set()
 
+
 def check_circular(file_path, path=[]):
     """Check for circular dependencies using DFS."""
     if file_path in rec_stack:
@@ -109,11 +106,14 @@ def check_circular(file_path, path=[]):
         for other_file in all_files:
             if file_structure[other_file].parent == Path(file_path).parent:
                 # Check if this file imports the module
-                if any(m.startswith(module) for m in file_to_modules.get(other_file, [])):
+                if any(
+                    m.startswith(module) for m in file_to_modules.get(other_file, [])
+                ):
                     check_circular(other_file, path[:])
 
     rec_stack.remove(file_path)
     path.pop()
+
 
 for file_path in all_files:
     check_circular(file_path)
@@ -142,7 +142,7 @@ duplicate_classes = defaultdict(list)
 
 for file_path in all_files:
     try:
-        with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+        with open(file_structure[file_path], encoding="utf-8") as f:
             source = f.read()
             tree = ast.parse(source)
 
@@ -218,7 +218,7 @@ found_aura_brain = False
 for file_path in all_files:
     if "aura_brain.py" in file_path:
         try:
-            with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+            with open(file_structure[file_path], encoding="utf-8") as f:
                 source = f.read()
                 if "class AuraBrain" in source:
                     found_aura_brain = True
@@ -236,14 +236,14 @@ else:
     missing_components = []
     for component_name, component_path in core_components.items():
         # Parse the component path
-        if '.' in component_path:
-            module_part, class_name = component_path.rsplit('.', 1)
+        if "." in component_path:
+            module_part, class_name = component_path.rsplit(".", 1)
             files = list(file_structure.keys())
-            found_files = [f for f in files if module_part in f and f.endswith('.py')]
+            found_files = [f for f in files if module_part in f and f.endswith(".py")]
 
             for found_file in found_files:
                 try:
-                    with open(file_structure[found_file], 'r', encoding='utf-8') as f:
+                    with open(file_structure[found_file], encoding="utf-8") as f:
                         source = f.read()
                         if f"class {class_name}" in source:
                             aura_brain_components.append(found_file)
@@ -261,24 +261,24 @@ else:
     usage_stats = defaultdict(int)
     for file_path in all_files:
         try:
-            with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+            with open(file_structure[file_path], encoding="utf-8") as f:
                 source = f.read()
 
                 # Check for common patterns
                 if "AuraBrain" in source or "aura_brain" in source.lower():
-                    usage_stats['AuraBrain_usage'] += 1
+                    usage_stats["AuraBrain_usage"] += 1
 
                 if "self.memory_manager" in source or "memory_manager" in source:
-                    usage_stats['MemoryManager_usage'] += 1
+                    usage_stats["MemoryManager_usage"] += 1
 
                 if "self.tool_router" in source or "tool_router" in source:
-                    usage_stats['ToolRouter_usage'] += 1
+                    usage_stats["ToolRouter_usage"] += 1
 
                 if "self.capability_router" in source or "capability_router" in source:
-                    usage_stats['CapabilityRouter_usage'] += 1
+                    usage_stats["CapabilityRouter_usage"] += 1
 
                 if "self.workspace" in source or "workspace_manager" in source:
-                    usage_stats['WorkspaceManager_usage'] += 1
+                    usage_stats["WorkspaceManager_usage"] += 1
 
         except:
             pass
@@ -302,7 +302,7 @@ entry_points = []
 # Check main.py
 if "main.py" in file_structure:
     try:
-        with open(file_structure["main.py"], 'r', encoding='utf-8') as f:
+        with open(file_structure["main.py"], encoding="utf-8") as f:
             source = f.read()
             if "AuraCore" in source or "AuraBrain" in source:
                 entry_points.append(("main.py", "AuraCore/AuraBrain"))
@@ -314,7 +314,7 @@ cli_client_found = False
 for file_path in all_files:
     if "cli_client.py" in file_path:
         try:
-            with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+            with open(file_structure[file_path], encoding="utf-8") as f:
                 source = f.read()
                 if "CLIClient" in source and "AuraCore" in source:
                     entry_points.append((file_path, "CLI Client → AuraCore"))
@@ -323,7 +323,9 @@ for file_path in all_files:
             pass
 
 if not cli_client_found:
-    entry_points.append(("cli_client.py", "CLI Client (likely needs AuraCore integration)"))
+    entry_points.append(
+        ("cli_client.py", "CLI Client (likely needs AuraCore integration)")
+    )
 
 print("Entry Points Found:")
 print("-" * 100)
@@ -338,9 +340,9 @@ print("🔌 PLUGIN SYSTEM INTEGRATION")
 print("=" * 100)
 print()
 
-plugin_system_files = [f for f in all_files if any(
-    keyword in f.lower() for keyword in ['plugin', 'tool']
-)]
+plugin_system_files = [
+    f for f in all_files if any(keyword in f.lower() for keyword in ["plugin", "tool"])
+]
 
 print(f"Found {len(plugin_system_files)} plugin/tool related files")
 print()
@@ -350,7 +352,7 @@ tool_router_found = False
 for file_path in plugin_system_files:
     if "tool_router" in file_path.lower():
         try:
-            with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+            with open(file_structure[file_path], encoding="utf-8") as f:
                 source = f.read()
                 if "class ToolRouter" in source or "def ToolRouter" in source:
                     print(f"✅ {file_path} - ToolRouter implementation found")
@@ -359,7 +361,7 @@ for file_path in plugin_system_files:
             pass
 
 if not tool_router_found:
-    print(f"❌ ToolRouter NOT found!")
+    print("❌ ToolRouter NOT found!")
 
 print()
 
@@ -368,16 +370,19 @@ capability_router_found = False
 for file_path in plugin_system_files:
     if "capability_router" in file_path.lower():
         try:
-            with open(file_structure[file_path], 'r', encoding='utf-8') as f:
+            with open(file_structure[file_path], encoding="utf-8") as f:
                 source = f.read()
-                if "class CapabilityRouter" in source or "def CapabilityRouter" in source:
+                if (
+                    "class CapabilityRouter" in source
+                    or "def CapabilityRouter" in source
+                ):
                     print(f"✅ {file_path} - CapabilityRouter implementation found")
                     capability_router_found = True
         except:
             pass
 
 if not capability_router_found:
-    print(f"❌ CapabilityRouter NOT found!")
+    print("❌ CapabilityRouter NOT found!")
 
 print()
 

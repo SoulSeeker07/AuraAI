@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 APP_NAME = "Aura"
 APP_VERSION = "0.2.0"
 ORGANIZATION_NAME = "Aura"

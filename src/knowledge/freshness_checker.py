@@ -19,17 +19,18 @@ If a fact expires, it triggers a refresh in the background.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-from enum import Enum
-import threading
 import asyncio
+import threading
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
-from .knowledge_db import KnowledgeFact, KnowledgeDB
+from .knowledge_db import KnowledgeDB, KnowledgeFact
 
 
 class KnowledgeCategory(Enum):
     """Knowledge categories and their default lifetimes."""
+
     WEATHER = "Weather"
     NEWS = "News"
     PROGRAMMING = "Programming"
@@ -57,7 +58,7 @@ class FreshnessChecker:
     """
 
     # Default lifetimes in days
-    LIFETIME_MAP: Dict[str, int] = {
+    LIFETIME_MAP: dict[str, int] = {
         "Weather": 0,  # 10 minutes
         "News": 1,  # 1 hour
         "Programming": 30,
@@ -93,11 +94,7 @@ class FreshnessChecker:
         """
         self._refresh_callback = callback
 
-    def calculate_expiry(
-        self,
-        fact: KnowledgeFact,
-        override_days: int = None
-    ) -> str:
+    def calculate_expiry(self, fact: KnowledgeFact, override_days: int = None) -> str:
         """
         Calculate the expiry date for a fact.
 
@@ -185,7 +182,9 @@ class FreshnessChecker:
         except (ValueError, AttributeError):
             return 0.0
 
-    def get_facts_by_freshness(self, category: Optional[str] = None) -> List[Tuple[KnowledgeFact, float]]:
+    def get_facts_by_freshness(
+        self, category: str | None = None
+    ) -> list[Tuple[KnowledgeFact, float]]:
         """
         Get all facts grouped by freshness score.
 
@@ -202,10 +201,8 @@ class FreshnessChecker:
             return scored_facts
 
     def get_facts_needing_refresh(
-        self,
-        category: Optional[str] = None,
-        threshold_days: float = None
-    ) -> List[KnowledgeFact]:
+        self, category: str | None = None, threshold_days: float = None
+    ) -> list[KnowledgeFact]:
         """
         Get facts that need refreshing.
 
@@ -234,11 +231,7 @@ class FreshnessChecker:
 
             return facts_to_refresh
 
-    def check_and_refresh(
-        self,
-        topic: str,
-        fact: KnowledgeFact
-    ) -> bool:
+    def check_and_refresh(self, topic: str, fact: KnowledgeFact) -> bool:
         """
         Check if a fact needs refreshing and trigger callback.
 
@@ -267,7 +260,7 @@ class FreshnessChecker:
         """
         return self.LIFETIME_MAP.get(category, 30)
 
-    def get_all_categories(self) -> List[str]:
+    def get_all_categories(self) -> list[str]:
         """
         Get all knowledge categories.
 
@@ -286,7 +279,7 @@ class FreshnessChecker:
         """
         self.LIFETIME_MAP[category] = days
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get freshness checker statistics.
 
@@ -309,8 +302,14 @@ class FreshnessChecker:
 
                 category_stats[category] = {
                     "total_facts": len(facts),
-                    "avg_age_days": sum(category_facts) / len(category_facts) if category_facts else 0,
-                    "total_lifetime_days": sum(self.get_category_lifetime(category) for _ in facts)
+                    "avg_age_days": (
+                        sum(category_facts) / len(category_facts)
+                        if category_facts
+                        else 0
+                    ),
+                    "total_lifetime_days": sum(
+                        self.get_category_lifetime(category) for _ in facts
+                    ),
                 }
 
             # Calculate overall statistics
@@ -335,12 +334,16 @@ class FreshnessChecker:
                 "total_facts": total_facts,
                 "categories_analyzed": len(categories),
                 "category_stats": category_stats,
-                "avg_freshness_score": sum(all_scores) / len(all_scores) if all_scores else 0,
-                "total_lifetime_days": sum(self.get_category_lifetime(cat) for cat in categories),
+                "avg_freshness_score": (
+                    sum(all_scores) / len(all_scores) if all_scores else 0
+                ),
+                "total_lifetime_days": sum(
+                    self.get_category_lifetime(cat) for cat in categories
+                ),
                 "fresh_facts": fresh_facts,
                 "expired_facts": stale_facts,
                 "stale_facts": stale_facts,
-                "expiring_soon": expiring_soon
+                "expiring_soon": expiring_soon,
             }
 
     async def auto_refresh_all_categories(self, refresh_interval: int = 3600) -> None:
@@ -359,7 +362,9 @@ class FreshnessChecker:
                     facts = self.get_facts_needing_refresh(category=category)
 
                     if facts:
-                        print(f"[FreshnessChecker] Refreshing {len(facts)} facts in {category}")
+                        print(
+                            f"[FreshnessChecker] Refreshing {len(facts)} facts in {category}"
+                        )
 
                         for fact in facts:
                             if self._refresh_callback:
@@ -380,10 +385,8 @@ class FreshnessChecker:
         return task
 
     def batch_update_facts(
-        self,
-        facts: List[KnowledgeFact],
-        lifetime_override: Optional[int] = None
-    ) -> List[KnowledgeFact]:
+        self, facts: list[KnowledgeFact], lifetime_override: int | None = None
+    ) -> list[KnowledgeFact]:
         """
         Batch update facts with new lifetimes.
 
@@ -397,6 +400,8 @@ class FreshnessChecker:
         with self._lock:
             updated_facts = []
             for fact in facts:
-                fact.expires = self.calculate_expiry(fact, override_days=lifetime_override)
+                fact.expires = self.calculate_expiry(
+                    fact, override_days=lifetime_override
+                )
                 updated_facts.append(fact)
             return updated_facts

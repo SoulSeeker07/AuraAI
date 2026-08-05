@@ -5,11 +5,12 @@ Usage: python test_client.py
 This test attempts to connect to the local Aura Service, prints status,
 and sends a test message. It demonstrates heartbeat/echo behavior.
 """
-import time
-import json
 
-from src.aura.client.connection_manager import ConnectionManager
+import json
+import time
+
 from src.aura.client.api_client import ApiClient
+from src.aura.client.connection_manager import ConnectionManager
 
 
 def main():

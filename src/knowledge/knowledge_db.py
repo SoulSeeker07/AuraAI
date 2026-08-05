@@ -23,36 +23,33 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
-from dataclasses import dataclass, asdict
 import threading
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any
 
-# Flexible import for IntentName
 try:
-    from src.brain.models import IntentName
+    from brain.models import IntentName
 except (ImportError, ModuleNotFoundError):
-    try:
-        from brain.models import IntentName
-    except (ImportError, ModuleNotFoundError):
-        IntentName = str  # Fallback: use string as type hint
+    IntentName = str  # Fallback: use string as type hint
 
 
 @dataclass
 class KnowledgeFact:
     """A single piece of factual knowledge."""
+
     topic: str
     fact: str
     source: str
-    source_url: Optional[str] = None
+    source_url: str | None = None
     confidence: float = 0.9  # 0.0 to 1.0
     updated: str = ""
     expires: str = ""
     category: str = "General"
-    related_topics: List[str] = None
+    related_topics: list[str] = None
     source_type: str = "web"
-    metadata: Dict[str, Any] = None
-    id: Optional[int] = None  # Database row ID
+    metadata: dict[str, Any] = None
+    id: int | None = None  # Database row ID
 
     def __post_init__(self):
         if self.related_topics is None:
@@ -100,13 +97,13 @@ class KnowledgeFact:
         except (ValueError, AttributeError):
             return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         data = asdict(self)
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "KnowledgeFact":
+    def from_dict(cls, data: dict[str, Any]) -> KnowledgeFact:
         """Create from dictionary."""
         return cls(**data)
 
@@ -206,24 +203,27 @@ class KnowledgeDB:
             conn = sqlite3.connect(self.db_path, check_same_thread=False)
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO knowledge (
                     topic, fact, source, source_url, confidence, updated,
                     expires, category, related_topics, source_type, metadata
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                fact.topic,
-                fact.fact,
-                fact.source,
-                fact.source_url,
-                fact.confidence,
-                fact.updated,
-                fact.expires,
-                fact.category,
-                json.dumps(fact.related_topics) if fact.related_topics else None,
-                fact.source_type,
-                json.dumps(fact.metadata) if fact.metadata else None,
-            ))
+            """,
+                (
+                    fact.topic,
+                    fact.fact,
+                    fact.source,
+                    fact.source_url,
+                    fact.confidence,
+                    fact.updated,
+                    fact.expires,
+                    fact.category,
+                    json.dumps(fact.related_topics) if fact.related_topics else None,
+                    fact.source_type,
+                    json.dumps(fact.metadata) if fact.metadata else None,
+                ),
+            )
 
             row_id = cursor.lastrowid
             conn.commit()
@@ -231,7 +231,7 @@ class KnowledgeDB:
 
             return row_id
 
-    def add_facts(self, facts: List[KnowledgeFact]) -> List[int]:
+    def add_facts(self, facts: list[KnowledgeFact]) -> list[int]:
         """
         Add multiple facts at once.
 
@@ -248,11 +248,11 @@ class KnowledgeDB:
 
     def get_facts(
         self,
-        topic: Optional[str] = None,
-        category: Optional[str] = None,
-        confidence: Optional[float] = None,
-        limit: int = 100
-    ) -> List[KnowledgeFact]:
+        topic: str | None = None,
+        category: str | None = None,
+        confidence: float | None = None,
+        limit: int = 100,
+    ) -> list[KnowledgeFact]:
         """
         Retrieve facts from the knowledge base.
 
@@ -304,14 +304,16 @@ class KnowledgeDB:
                     category=row[8],
                     related_topics=json.loads(row[9]) if row[9] else [],
                     source_type=row[10],
-                    metadata=json.loads(row[11]) if row[11] else {}
+                    metadata=json.loads(row[11]) if row[11] else {},
                 )
                 facts.append(fact)
 
             conn.close()
             return facts
 
-    def get_fresh_facts(self, category: Optional[str] = None, limit: int = 100) -> List[KnowledgeFact]:
+    def get_fresh_facts(
+        self, category: str | None = None, limit: int = 100
+    ) -> list[KnowledgeFact]:
         """
         Get only fresh facts (not expired).
 
@@ -353,7 +355,7 @@ class KnowledgeDB:
                     category=row[8],
                     related_topics=json.loads(row[9]) if row[9] else [],
                     source_type=row[10],
-                    metadata=json.loads(row[11]) if row[11] else {}
+                    metadata=json.loads(row[11]) if row[11] else {},
                 )
                 # Only add if fresh
                 if fact.is_fresh():
@@ -362,7 +364,7 @@ class KnowledgeDB:
             conn.close()
             return facts
 
-    def get_facts_by_topic(self, topic: str, limit: int = 50) -> List[KnowledgeFact]:
+    def get_facts_by_topic(self, topic: str, limit: int = 50) -> list[KnowledgeFact]:
         """
         Get all facts for a specific topic.
 
@@ -375,7 +377,9 @@ class KnowledgeDB:
         """
         return self.get_facts(topic=topic, limit=limit)
 
-    def get_facts_by_category(self, category: str, limit: int = 50) -> List[KnowledgeFact]:
+    def get_facts_by_category(
+        self, category: str, limit: int = 50
+    ) -> list[KnowledgeFact]:
         """
         Get all facts for a specific category.
 
@@ -388,11 +392,7 @@ class KnowledgeDB:
         """
         return self.get_facts(category=category, limit=limit)
 
-    def update_fact(
-        self,
-        fact_id: int,
-        updated_fact: KnowledgeFact
-    ) -> bool:
+    def update_fact(self, fact_id: int, updated_fact: KnowledgeFact) -> bool:
         """
         Update an existing fact.
 
@@ -407,25 +407,36 @@ class KnowledgeDB:
             conn = sqlite3.connect(self.db_path, check_same_thread=False)
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE knowledge
                 SET topic=?, fact=?, source=?, source_url=?, confidence=?,
                     updated=CURRENT_TIMESTAMP, expires=?, category=?,
                     related_topics=?, source_type=?, metadata=?
                 WHERE id=?
-            """, (
-                updated_fact.topic,
-                updated_fact.fact,
-                updated_fact.source,
-                updated_fact.source_url,
-                updated_fact.confidence,
-                updated_fact.expires,
-                updated_fact.category,
-                json.dumps(updated_fact.related_topics) if updated_fact.related_topics else None,
-                updated_fact.source_type,
-                json.dumps(updated_fact.metadata) if updated_fact.metadata else None,
-                fact_id,
-            ))
+            """,
+                (
+                    updated_fact.topic,
+                    updated_fact.fact,
+                    updated_fact.source,
+                    updated_fact.source_url,
+                    updated_fact.confidence,
+                    updated_fact.expires,
+                    updated_fact.category,
+                    (
+                        json.dumps(updated_fact.related_topics)
+                        if updated_fact.related_topics
+                        else None
+                    ),
+                    updated_fact.source_type,
+                    (
+                        json.dumps(updated_fact.metadata)
+                        if updated_fact.metadata
+                        else None
+                    ),
+                    fact_id,
+                ),
+            )
 
             rows_affected = cursor.rowcount
             conn.commit()
@@ -455,7 +466,7 @@ class KnowledgeDB:
 
             return rows_affected > 0
 
-    def get_topics(self) -> Set[str]:
+    def get_topics(self) -> set[str]:
         """
         Get all unique topics in the knowledge base.
 
@@ -472,7 +483,7 @@ class KnowledgeDB:
             conn.close()
             return topics
 
-    def get_categories(self) -> List[str]:
+    def get_categories(self) -> list[str]:
         """
         Get all unique categories in the knowledge base.
 
@@ -508,7 +519,7 @@ class KnowledgeDB:
 
             return removed
 
-    def count_facts(self, category: Optional[str] = None) -> int:
+    def count_facts(self, category: str | None = None) -> int:
         """
         Count total facts in the database.
 
@@ -523,7 +534,9 @@ class KnowledgeDB:
             cursor = conn.cursor()
 
             if category:
-                cursor.execute("SELECT COUNT(*) FROM knowledge WHERE category=?", (category,))
+                cursor.execute(
+                    "SELECT COUNT(*) FROM knowledge WHERE category=?", (category,)
+                )
             else:
                 cursor.execute("SELECT COUNT(*) FROM knowledge")
 
@@ -532,7 +545,7 @@ class KnowledgeDB:
 
             return count
 
-    def search_facts(self, query: str, limit: int = 20) -> List[KnowledgeFact]:
+    def search_facts(self, query: str, limit: int = 20) -> list[KnowledgeFact]:
         """
         Search facts using full-text search.
 
@@ -550,12 +563,15 @@ class KnowledgeDB:
             # Simple search implementation
             # For production, consider implementing FTS5 full-text search
             search_pattern = f"%{query}%"
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM knowledge
                 WHERE topic LIKE ? OR fact LIKE ? OR source LIKE ?
                 ORDER BY confidence DESC
                 LIMIT ?
-            """, (search_pattern, search_pattern, search_pattern, limit))
+            """,
+                (search_pattern, search_pattern, search_pattern, limit),
+            )
 
             rows = cursor.fetchall()
 
@@ -573,14 +589,14 @@ class KnowledgeDB:
                     category=row[8],
                     related_topics=json.loads(row[9]) if row[9] else [],
                     source_type=row[10],
-                    metadata=json.loads(row[11]) if row[11] else {}
+                    metadata=json.loads(row[11]) if row[11] else {},
                 )
                 facts.append(fact)
 
             conn.close()
             return facts
 
-    def search_topics(self, query: str, limit: int = 20) -> List[str]:
+    def search_topics(self, query: str, limit: int = 20) -> list[str]:
         """
         Search topics by keyword.
 
@@ -597,12 +613,15 @@ class KnowledgeDB:
 
             # Simple search implementation
             search_pattern = f"%{query}%"
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DISTINCT topic FROM knowledge
                 WHERE topic LIKE ?
                 ORDER BY topic
                 LIMIT ?
-            """, (search_pattern, limit))
+            """,
+                (search_pattern, limit),
+            )
 
             topics = [row[0] for row in cursor.fetchall()]
             conn.close()

@@ -4,12 +4,11 @@ import datetime as dt
 import json
 import re
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Iterator
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_ROOT / "Data"
@@ -19,6 +18,7 @@ CHAT_LOG_FILE = DATA_DIR / "ChatLog.json"
 
 class MemoryCategory(Enum):
     """Enum for memory fact categories to avoid string typos."""
+
     PROFILE = "profile"
     PREFERENCE = "preference"
     SKILL = "skill"
@@ -43,6 +43,7 @@ class Memory:
         chat_log_path: Path | str = CHAT_LOG_FILE,
     ):
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"[Memory] Initializing Memory with db_path: {db_path}")
         logger.info(f"[Memory] Memory module PROJECT_ROOT: {PROJECT_ROOT}")
@@ -126,10 +127,7 @@ class Memory:
         return "\n".join(lines)
 
     def build_context(
-        self,
-        user_input: str = "",
-        current_topic: str = "",
-        max_tokens: int = 2000
+        self, user_input: str = "", current_topic: str = "", max_tokens: int = 2000
     ) -> str:
         """
         Build comprehensive context string for LLM.
@@ -196,7 +194,9 @@ class Memory:
         # Truncate if too long
         char_count = len(context)
         if char_count > max_tokens * 4:  # Approximate: 4 chars per token
-            context = context[:max_tokens * 4] + "\n\n... (truncated for context window)"
+            context = (
+                context[: max_tokens * 4] + "\n\n... (truncated for context window)"
+            )
 
         return context
 
@@ -227,7 +227,9 @@ class Memory:
                 {"role": "assistant", "content": answer, "topic": topic},
             ]
         )
-        self.chat_log_path.write_text(json.dumps(messages[-60:], indent=2, ensure_ascii=False), encoding="utf-8")
+        self.chat_log_path.write_text(
+            json.dumps(messages[-60:], indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     def remember_exchange(self, query: str, answer: str, topic: str) -> None:
         compact_answer = self._format_answer(answer)
@@ -243,7 +245,11 @@ class Memory:
 
     def recent_messages(self, limit: int) -> list[dict[str, str]]:
         return [
-            {"role": item["role"], "content": item["content"], "topic": item.get("topic", "")}
+            {
+                "role": item["role"],
+                "content": item["content"],
+                "topic": item.get("topic", ""),
+            }
             for item in self.load_chat_log()[-limit:]
             if item.get("role") in {"user", "assistant"} and item.get("content")
         ]
@@ -269,7 +275,10 @@ class Memory:
                 next_message = messages[index + 1] if index + 1 < len(messages) else {}
                 previous_text = str(previous.get("content", "")).lower()
                 next_text = str(next_message.get("content", "")).lower()
-                if "do not know your name" in previous_text or "nice to meet you" in next_text:
+                if (
+                    "do not know your name" in previous_text
+                    or "nice to meet you" in next_text
+                ):
                     self.upsert_fact("profile", "name", text)
                     return
 
@@ -282,10 +291,23 @@ class Memory:
         facts: list[MemoryFact] = []
 
         # 1. Extract profile/name facts
-        name_match = re.search(r"\b(?:my name is|i am|i'm)\s+([A-Z][A-Za-z0-9 _.-]{1,40})$", cleaned, re.IGNORECASE)
-        if name_match and not any(word in lower for word in ("learning", "studying", "building", "working")):
-            facts.append(MemoryFact(MemoryCategory.PROFILE.value, "name", name_match.group(1).strip()))
-        elif self.looks_like_name(cleaned) and self.fact_value(MemoryCategory.PROFILE.value, "name") is None:
+        name_match = re.search(
+            r"\b(?:my name is|i am|i'm)\s+([A-Z][A-Za-z0-9 _.-]{1,40})$",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if name_match and not any(
+            word in lower for word in ("learning", "studying", "building", "working")
+        ):
+            facts.append(
+                MemoryFact(
+                    MemoryCategory.PROFILE.value, "name", name_match.group(1).strip()
+                )
+            )
+        elif (
+            self.looks_like_name(cleaned)
+            and self.fact_value(MemoryCategory.PROFILE.value, "name") is None
+        ):
             facts.append(MemoryFact(MemoryCategory.PROFILE.value, "name", cleaned))
 
         # 2. Extract skills
@@ -297,7 +319,13 @@ class Memory:
             match = re.search(pattern, lower)
             if match:
                 for value in self._split_values(match.group(1)):
-                    facts.append(MemoryFact(MemoryCategory.SKILL.value, self._key(value), self._title_value(value)))
+                    facts.append(
+                        MemoryFact(
+                            MemoryCategory.SKILL.value,
+                            self._key(value),
+                            self._title_value(value),
+                        )
+                    )
 
         # 3. Extract projects
         for pattern in (
@@ -307,7 +335,13 @@ class Memory:
             match = re.search(pattern, lower)
             if match:
                 for value in self._split_values(match.group(1)):
-                    facts.append(MemoryFact(MemoryCategory.PROJECT.value, self._key(value), self._title_value(value)))
+                    facts.append(
+                        MemoryFact(
+                            MemoryCategory.PROJECT.value,
+                            self._key(value),
+                            self._title_value(value),
+                        )
+                    )
 
         # 4. Extract goals
         goal_match = re.search(r"\bmy goal is to\s+(.+)", lower)
@@ -328,13 +362,17 @@ class Memory:
             match = re.search(pattern, lower)
             if match:
                 value = match.group(1).strip()
-                facts.append(MemoryFact(MemoryCategory.PREFERENCE.value, self._key(value), value))
+                facts.append(
+                    MemoryFact(MemoryCategory.PREFERENCE.value, self._key(value), value)
+                )
 
         # 6. Extract important facts
         important_match = re.search(r"\bremember that\s+(.+)", cleaned, re.IGNORECASE)
         if important_match:
             value = important_match.group(1).strip()
-            facts.append(MemoryFact(MemoryCategory.IMPORTANT.value, self._key(value), value))
+            facts.append(
+                MemoryFact(MemoryCategory.IMPORTANT.value, self._key(value), value)
+            )
 
         return facts
 
@@ -366,14 +404,14 @@ class Memory:
                     "SELECT category, key, value FROM facts "
                     "WHERE category = ? AND key = ? "
                     "ORDER BY updated_at DESC",
-                    (str(category), key)
+                    (str(category), key),
                 ).fetchall()
             else:
                 rows = conn.execute(
                     "SELECT category, key, value FROM facts "
                     "WHERE category = ? "
                     "ORDER BY updated_at DESC",
-                    (str(category),)
+                    (str(category),),
                 ).fetchall()
         return [MemoryFact(*row) for row in rows]
 
@@ -417,8 +455,11 @@ class Memory:
     def upsert_fact(self, category: str, key: str, value: str) -> None:
         now = dt.datetime.now().isoformat(timespec="seconds")
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.info(f"[Memory] upsert_fact called: category={category}, key={key}, value={value}")
+        logger.info(
+            f"[Memory] upsert_fact called: category={category}, key={key}, value={value}"
+        )
 
         # Log current memory count before insertion
         current_count = self.count_memories()
@@ -433,11 +474,13 @@ class Memory:
                 """,
                 (category, key, value, now, now),
             )
-        logger.info(f"[Memory] Fact successfully inserted into database")
+        logger.info("[Memory] Fact successfully inserted into database")
 
         # Log memory count after insertion
         new_count = self.count_memories()
-        logger.info(f"[Memory] Memory count after insertion: {new_count} (inserted 1 fact)")
+        logger.info(
+            f"[Memory] Memory count after insertion: {new_count} (inserted 1 fact)"
+        )
 
     def upsert_topic(self, topic: str, summary: str) -> None:
         now = dt.datetime.now().isoformat(timespec="seconds")
@@ -503,8 +546,7 @@ class Memory:
 
     def _init_db(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS facts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     category TEXT NOT NULL,
@@ -514,18 +556,15 @@ class Memory:
                     updated_at TEXT NOT NULL,
                     UNIQUE(category, key, value)
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS topics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     topic TEXT NOT NULL UNIQUE,
                     summary TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
-                """
-            )
+                """)
 
     def count_memories(self) -> int:
         """Count total number of facts stored."""
@@ -550,7 +589,7 @@ class Memory:
                 ORDER BY count DESC
                 LIMIT ?
                 """,
-                (limit,)
+                (limit,),
             ).fetchall()
             return [(row[0], row[1]) for row in rows]
 

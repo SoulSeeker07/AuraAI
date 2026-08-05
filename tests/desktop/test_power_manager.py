@@ -10,21 +10,25 @@ Validates:
 6. Capability execution through DesktopExecutionEngine.
 """
 
-import sys
-import os
 import inspect
+import os
+import sys
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
+import src.desktop.native.managers.power_manager as pm_module
 from src.desktop.native.adapters.power_adapter import (
-    PowerAdapter, WMIPowerAdapter, Win32PowerAdapter, DummyPowerAdapter, PowerAdapterFactory
+    DummyPowerAdapter,
+    PowerAdapter,
+    PowerAdapterFactory,
+    Win32PowerAdapter,
+    WMIPowerAdapter,
 )
-from src.desktop.native.managers.power_manager import PowerManager
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
 from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
 from src.desktop.native.managers.base_manager import HealthStatus
-import src.desktop.native.managers.power_manager as pm_module
+from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from src.desktop.native.managers.power_manager import PowerManager
 
 
 def setup_function():
@@ -58,7 +62,9 @@ def test_power_adapter_hierarchy():
     all_adapters = PowerAdapterFactory.get_all_adapters()
     assert len(all_adapters) == 3
 
-    print(f"[OK] PowerAdapter hierarchy & BaseAdapterFactory verified (active: {active_adapter.name})")
+    print(
+        f"[OK] PowerAdapter hierarchy & BaseAdapterFactory verified (active: {active_adapter.name})"
+    )
 
 
 def test_power_manager_native_structure():
@@ -81,7 +87,9 @@ def test_power_manager_native_structure():
         "NativeEventBus",
     ]
     for symbol in forbidden_symbols:
-        assert symbol not in source, f"PowerManager code body contains forbidden symbol: {symbol}"
+        assert (
+            symbol not in source
+        ), f"PowerManager code body contains forbidden symbol: {symbol}"
 
     print("[OK] PowerManager native structure verified")
 
@@ -99,7 +107,9 @@ def test_power_manager_auto_discovery_and_health():
     health_res = power_manager.health_check()
     assert health_res.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
 
-    print(f"[OK] PowerManager auto-discovery and health check verified (status: {health_res.status.value})")
+    print(
+        f"[OK] PowerManager auto-discovery and health check verified (status: {health_res.status.value})"
+    )
 
 
 def test_power_capabilities_execution():
@@ -118,7 +128,9 @@ def test_power_capabilities_execution():
     assert res_ac.success is True
     assert "ac_online" in res_ac.data
 
-    res_plan = engine.execute(goal="get active power plan", capability="power.power_plan")
+    res_plan = engine.execute(
+        goal="get active power plan", capability="power.power_plan"
+    )
     assert res_plan.success is True
     assert "name" in res_plan.data
 
@@ -130,11 +142,15 @@ def test_power_capabilities_execution():
     power_mgr = registry.get("power")
     power_mgr._adapter = DummyPowerAdapter()
 
-    res_shutdown = engine.execute(goal="shutdown computer", capability="power.shutdown", force=False)
+    res_shutdown = engine.execute(
+        goal="shutdown computer", capability="power.shutdown", force=False
+    )
     assert res_shutdown.success is True
     assert res_shutdown.data["status"] == "shutdown_initiated"
 
-    res_restart = engine.execute(goal="restart computer", capability="power.restart", force=False)
+    res_restart = engine.execute(
+        goal="restart computer", capability="power.restart", force=False
+    )
     assert res_restart.success is True
     assert res_restart.data["status"] == "restart_initiated"
 

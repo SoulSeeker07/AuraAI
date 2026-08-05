@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-from typing import Any, Dict, Optional
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class Message(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: str
     timestamp: str = Field(default_factory=now_iso)
-    source: Optional[str] = None
-    target: Optional[str] = None
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    source: str | None = None
+    target: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
 
     class Config:
         extra = "forbid"

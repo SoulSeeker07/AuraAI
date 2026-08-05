@@ -4,8 +4,7 @@ Desktop Rules
 Rules for routing desktop-related requests.
 """
 
-from typing import List, Dict, Any
-from ..capability_types import CapabilityType, CapabilityPriority
+from ..capability_types import CapabilityPriority, CapabilityType
 from ..routing_result import RoutingResult
 
 
@@ -17,7 +16,14 @@ class DesktopRules:
         self.rules = [
             # Window management
             {
-                "keywords": ["minimize", "minimise", "maximize", "maximise", "maximize all", "maximise all"],
+                "keywords": [
+                    "minimize",
+                    "minimise",
+                    "maximize",
+                    "maximise",
+                    "maximize all",
+                    "maximise all",
+                ],
                 "confidence": 0.95,
                 "priority": CapabilityPriority.HIGH,
                 "requires_permission": False,

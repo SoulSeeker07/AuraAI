@@ -1,5 +1,5 @@
+from datetime import UTC, datetime
 from uuid import uuid4
-from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
@@ -11,9 +11,7 @@ class AuraMessage(BaseModel):
 
     type: MessageType
 
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     source: str
 

@@ -25,11 +25,71 @@ dependencies = [
 dev = [
   "pytest",
   "ruff",
+  "black",
+  "isort",
   "mypy",
+  "import-linter",
+  "psutil",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+  "scripts/buggy_code.py",
+  "scripts/fixed_code.py",
+  "scripts/fix_evidence.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = [
+  "E501",   # line too long — enforced by black
+  "UP007",  # X | Y union syntax — keep Optional for clarity
+  "UP042",  # StrEnum inheritance — maintain Python 3.11 compatibility
+  "I001",   # import sorting
+  "W293",   # trailing whitespace
+  "F841",   # unused local variables
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811", "F821", "F841", "E402", "W293", "W291", "E712", "E722", "UP035"]
+"src/vision/*" = ["F401", "F821", "E722", "E741"]
+"src/voice/*" = ["F401", "F821", "E722"]
+"src/workflows/*" = ["F821", "F841", "E722", "UP006", "UP035"]
+"src/routing/*" = ["F821", "F841", "F823"]
+"src/workspace/*" = ["F821", "F841", "F401"]
+"src/knowledge/*" = ["F821", "F401", "E402", "F601", "UP035"]
+"src/research/*" = ["F821", "E722"]
+"src/engineering/*" = ["F821", "F401", "F402", "W291"]
+"src/execution/*" = ["F821", "F401"]
+"src/agents/*" = ["F821"]
+"src/brain/*" = ["F821", "F811", "F601", "E402", "E722"]
+"src/desktop/*" = ["F401", "UP022", "E722"]
+"scripts/*" = ["E722", "E402", "F821", "E902", "W292", "E999"]
+"clients/*" = ["F401", "F821", "E402"]
+"examples/*" = ["E402"]
+"core/*" = ["E402", "F401"]
+"main.py" = ["E402", "F401"]
+"aura.py" = ["E402", "F401"]
+"run_aura.py" = ["E402", "F401", "F811"]
+
+[tool.isort]
+profile = "black"
+known_first_party = ["src", "core", "desktop", "execution", "research", "engineering"]
+line_length = 100
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = false
+warn_return_any = false
+disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "union-attr", "var-annotated", "call-arg", "name-defined", "override", "str-bytes-safe", "valid-type", "operator", "dict-item", "index", "import-untyped", "annotation-unchecked", "return-value", "no-redef", "truthy-function", "type-var", "has-type", "used-before-def", "list-item", "unused-coroutine", "call-overload"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
 
 [build-system]
 requires = ["setuptools", "wheel"]

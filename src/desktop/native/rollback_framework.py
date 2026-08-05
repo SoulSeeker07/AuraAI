@@ -5,17 +5,17 @@ Executable rollback functions for state-changing operations.
 Every action returns a rollback() function that can be called to revert changes.
 """
 
-from typing import Callable, Optional, Any, Dict
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from .native_models import WindowInfo, ClipboardData, DisplayInfo, AudioDevice, NetworkInterface
-from .native_exceptions import RollbackError
 from .native_execution_context import NativeExecutionContext
 
 
 class RollbackAction(Enum):
     """Type of rollback action"""
+
     WINDOW_ACTIVATED = "window_activated"
     WINDOW_CLOSED = "window_closed"
     WINDOW_MOVED = "window_moved"
@@ -35,9 +35,10 @@ class RollbackData:
 
     Stores the state before the operation so it can be restored.
     """
+
     action: RollbackAction
     previous_state: Any
-    details: Dict[str, Any]
+    details: dict[str, Any]
 
 
 class RollbackManager:
@@ -49,13 +50,9 @@ class RollbackManager:
 
     def __init__(self):
         """Initialize rollback manager"""
-        self.rollback_functions: Dict[str, Callable] = {}
+        self.rollback_functions: dict[str, Callable] = {}
 
-    def register_rollback(
-        self,
-        capability: str,
-        rollback_function: Callable
-    ) -> None:
+    def register_rollback(self, capability: str, rollback_function: Callable) -> None:
         """
         Register a rollback function for a capability.
 
@@ -65,7 +62,9 @@ class RollbackManager:
         """
         self.rollback_functions[capability] = rollback_function
 
-    def execute_rollback(self, capability: str, context: NativeExecutionContext) -> bool:
+    def execute_rollback(
+        self, capability: str, context: NativeExecutionContext
+    ) -> bool:
         """
         Execute rollback for a capability.
 
@@ -229,7 +228,9 @@ class RollbackFunctions:
                 # Restore to previous dimensions
                 previous_width = context.arguments.get("previous_width", 0)
                 previous_height = context.arguments.get("previous_height", 0)
-                print(f"[Rollback] Resizing window to {previous_width}x{previous_height}")
+                print(
+                    f"[Rollback] Resizing window to {previous_width}x{previous_height}"
+                )
                 return True
 
             return False
@@ -253,7 +254,9 @@ class RollbackFunctions:
             # In real implementation, this would restore clipboard from backup
             previous_clipboard = context.arguments.get("previous_clipboard")
             if previous_clipboard:
-                print(f"[Rollback] Restoring clipboard with {len(previous_clipboard)} characters")
+                print(
+                    f"[Rollback] Restoring clipboard with {len(previous_clipboard)} characters"
+                )
                 return True
             return False
         except Exception as e:
@@ -274,7 +277,7 @@ class RollbackFunctions:
         """
         try:
             # In real implementation, this would restore display mode
-            print(f"[Rollback] Restoring display mode")
+            print("[Rollback] Restoring display mode")
             return True
         except Exception as e:
             print(f"[Rollback] Error restoring display mode: {e}")
@@ -296,10 +299,12 @@ class RollbackFunctions:
         try:
             operation = context.capability
             if operation in ["shutdown", "restart"]:
-                print(f"[Rollback] Cannot rollback {operation} - system is changing state")
+                print(
+                    f"[Rollback] Cannot rollback {operation} - system is changing state"
+                )
                 return False
 
-            print(f"[Rollback] Power operation rolled back")
+            print("[Rollback] Power operation rolled back")
             return True
         except Exception as e:
             print(f"[Rollback] Error rolling back power operation: {e}")
@@ -322,7 +327,9 @@ class RollbackFunctions:
             previous_volume = context.arguments.get("previous_volume", 0.0)
             previous_muted = context.arguments.get("previous_muted", False)
 
-            print(f"[Rollback] Restoring volume to {previous_volume} and mute to {previous_muted}")
+            print(
+                f"[Rollback] Restoring volume to {previous_volume} and mute to {previous_muted}"
+            )
             return True
         except Exception as e:
             print(f"[Rollback] Error rolling back audio volume: {e}")
@@ -358,10 +365,10 @@ class RollbackContext:
 
     def __init__(self):
         """Initialize rollback context"""
-        self.backup_data: Dict[str, Any] = {}
-        self.action: Optional[RollbackAction] = None
+        self.backup_data: dict[str, Any] = {}
+        self.action: RollbackAction | None = None
 
-    def store_state(self, state: Any, details: Dict[str, Any]) -> None:
+    def store_state(self, state: Any, details: dict[str, Any]) -> None:
         """
         Store state for rollback.
 
@@ -372,23 +379,21 @@ class RollbackContext:
         self.backup_data["state"] = state
         self.backup_data["details"] = details
 
-    def get_state(self) -> Optional[Any]:
+    def get_state(self) -> Any | None:
         """Get stored state"""
         return self.backup_data.get("state")
 
-    def get_details(self) -> Dict[str, Any]:
+    def get_details(self) -> dict[str, Any]:
         """Get stored details"""
         return self.backup_data.get("details", {})
 
-    def get_action(self) -> Optional[RollbackAction]:
+    def get_action(self) -> RollbackAction | None:
         """Get stored action"""
         return self.action
 
 
 def create_rollback_context(
-    action: RollbackAction,
-    previous_state: Any,
-    details: Optional[Dict[str, Any]] = None
+    action: RollbackAction, previous_state: Any, details: dict[str, Any] | None = None
 ) -> RollbackContext:
     """
     Create a rollback context.

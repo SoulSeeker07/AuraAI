@@ -4,16 +4,16 @@ Configuration module for AuraAI
 Contains configuration classes and settings.
 """
 
-import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
 
 class AuraConfig:
     """
     Configuration class for AuraAI.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize configuration.
 
@@ -23,22 +23,26 @@ class AuraConfig:
         self.config = config or {}
 
         # Default settings
-        self.project_root = self.config.get('project_root', Path(__file__).resolve().parent.parent)
-        self.workspace = self.config.get('workspace', str(self.project_root))
-        self.groq_api_key = self.config.get('groq_api_key', '')
+        self.project_root = self.config.get(
+            "project_root", Path(__file__).resolve().parent.parent
+        )
+        self.workspace = self.config.get("workspace", str(self.project_root))
+        self.groq_api_key = self.config.get("groq_api_key", "")
 
         # Logging settings
-        self.log_dir = self.config.get('log_dir', self.project_root / 'logs')
+        self.log_dir = self.config.get("log_dir", self.project_root / "logs")
 
         # Component settings
-        self.memory_enabled = self.config.get('memory_enabled', True)
-        self.knowledge_enabled = self.config.get('knowledge_enabled', True)
-        self.vision_enabled = self.config.get('vision_enabled', False)
-        self.voice_enabled = self.config.get('voice_enabled', False)
-        self.plugins_enabled = self.config.get('plugins_enabled', True)
+        self.memory_enabled = self.config.get("memory_enabled", True)
+        self.knowledge_enabled = self.config.get("knowledge_enabled", True)
+        self.vision_enabled = self.config.get("vision_enabled", False)
+        self.voice_enabled = self.config.get("voice_enabled", False)
+        self.plugins_enabled = self.config.get("plugins_enabled", True)
 
         # Plugin settings
-        self.plugin_path = self.config.get('plugin_path', Path(__file__).parent.parent / 'plugins')
+        self.plugin_path = self.config.get(
+            "plugin_path", Path(__file__).parent.parent / "plugins"
+        )
 
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -71,11 +75,12 @@ class AuraConfig:
             config_file: Path to configuration file
         """
         import json
-        with open(config_file, 'w') as f:
+
+        with open(config_file, "w") as f:
             json.dump(self.config, f, indent=2)
 
     @classmethod
-    def load(cls, config_file: Path) -> 'AuraConfig':
+    def load(cls, config_file: Path) -> "AuraConfig":
         """
         Load configuration from a file.
 
@@ -86,8 +91,9 @@ class AuraConfig:
             AuraConfig instance
         """
         import json
+
         try:
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 config_data = json.load(f)
             return cls(config_data)
         except (FileNotFoundError, json.JSONDecodeError):

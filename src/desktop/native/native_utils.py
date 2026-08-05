@@ -2,20 +2,18 @@
 Native Windows Layer Utilities
 Common utilities for Windows operations.
 """
-import win32api
+
+import psutil
 import win32con
+import win32con as wconst
 import win32gui
 import win32process
-import win32con as wconst
-import ctypes
-from typing import Optional, List, Tuple, Any
-import psutil
 
-from .native_models import WindowInfo, Rect
-from .native_exceptions import WindowAccessDeniedError, ProcessAccessDeniedError
+from .native_exceptions import WindowAccessDeniedError
+from .native_models import Rect, WindowInfo
 
 
-def get_window_by_title(title: str, exact_match: bool = False) -> Optional[int]:
+def get_window_by_title(title: str, exact_match: bool = False) -> int | None:
     """
     Get window handle by title.
 
@@ -43,7 +41,7 @@ def get_window_by_title(title: str, exact_match: bool = False) -> Optional[int]:
         return windows[0] if windows else None
 
 
-def get_window_by_process_id(process_id: int) -> Optional[int]:
+def get_window_by_process_id(process_id: int) -> int | None:
     """
     Get window handle by process ID.
 
@@ -53,6 +51,7 @@ def get_window_by_process_id(process_id: int) -> Optional[int]:
     Returns:
         Window handle (hwnd) or None
     """
+
     def callback(hwnd, windows):
         if win32gui.IsWindowVisible(hwnd):
             _, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -65,7 +64,7 @@ def get_window_by_process_id(process_id: int) -> Optional[int]:
     return windows[0] if windows else None
 
 
-def get_process_by_id(process_id: int) -> Optional[psutil.Process]:
+def get_process_by_id(process_id: int) -> psutil.Process | None:
     """
     Get process object by process ID.
 
@@ -81,7 +80,7 @@ def get_process_by_id(process_id: int) -> Optional[psutil.Process]:
         return None
 
 
-def get_active_window() -> Optional[WindowInfo]:
+def get_active_window() -> WindowInfo | None:
     """
     Get information about the active window.
 
@@ -94,7 +93,7 @@ def get_active_window() -> Optional[WindowInfo]:
     return _get_window_info(hwnd)
 
 
-def _get_window_info(hwnd: int) -> Optional[WindowInfo]:
+def _get_window_info(hwnd: int) -> WindowInfo | None:
     """
     Get window information for a specific handle.
 
@@ -163,11 +162,11 @@ def _get_window_info(hwnd: int) -> Optional[WindowInfo]:
             f"Failed to get window info: {e}",
             "get_window_info",
             win32_error=0,
-            details={"hwnd": hwnd}
+            details={"hwnd": hwnd},
         )
 
 
-def get_all_windows() -> List[WindowInfo]:
+def get_all_windows() -> list[WindowInfo]:
     """
     Get information about all visible windows.
 
@@ -181,7 +180,7 @@ def get_all_windows() -> List[WindowInfo]:
             try:
                 info = _get_window_info(hwnd)
                 if info:
-                    info.is_active = (hwnd == win32gui.GetForegroundWindow())
+                    info.is_active = hwnd == win32gui.GetForegroundWindow()
                     window_list.append(info)
             except Exception:
                 pass
@@ -213,7 +212,7 @@ def activate_window(hwnd: int) -> bool:
             f"Failed to activate window: {e}",
             "activate_window",
             win32_error=0,
-            details={"hwnd": hwnd}
+            details={"hwnd": hwnd},
         )
 
 
@@ -238,10 +237,7 @@ def close_window(hwnd: int, force: bool = False) -> bool:
         else:
             # Force close using WM_SYSCOMMAND + SC_CLOSE
             result = win32gui.PostMessage(
-                hwnd,
-                win32con.WM_SYSCOMMAND,
-                wconst.SC_CLOSE,
-                0
+                hwnd, win32con.WM_SYSCOMMAND, wconst.SC_CLOSE, 0
             )
 
         return result != 0
@@ -250,7 +246,7 @@ def close_window(hwnd: int, force: bool = False) -> bool:
             f"Failed to close window: {e}",
             "close_window",
             win32_error=0,
-            details={"hwnd": hwnd, "force": force}
+            details={"hwnd": hwnd, "force": force},
         )
 
 
@@ -275,7 +271,7 @@ def minimize_window(hwnd: int) -> bool:
             f"Failed to minimize window: {e}",
             "minimize_window",
             win32_error=0,
-            details={"hwnd": hwnd}
+            details={"hwnd": hwnd},
         )
 
 
@@ -300,7 +296,7 @@ def maximize_window(hwnd: int) -> bool:
             f"Failed to maximize window: {e}",
             "maximize_window",
             win32_error=0,
-            details={"hwnd": hwnd}
+            details={"hwnd": hwnd},
         )
 
 
@@ -325,7 +321,7 @@ def restore_window(hwnd: int) -> bool:
             f"Failed to restore window: {e}",
             "restore_window",
             win32_error=0,
-            details={"hwnd": hwnd}
+            details={"hwnd": hwnd},
         )
 
 
@@ -345,14 +341,16 @@ def set_window_position(hwnd: int, x: int, y: int) -> bool:
         if not win32gui.IsWindow(hwnd):
             return False
 
-        win32gui.SetWindowPos(hwnd, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+        win32gui.SetWindowPos(
+            hwnd, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER
+        )
         return True
     except Exception as e:
         raise WindowAccessDeniedError(
             f"Failed to set window position: {e}",
             "set_window_position",
             win32_error=0,
-            details={"hwnd": hwnd, "x": x, "y": y}
+            details={"hwnd": hwnd, "x": x, "y": y},
         )
 
 
@@ -373,18 +371,26 @@ def set_window_size(hwnd: int, width: int, height: int) -> bool:
             return False
 
         rect = win32gui.GetWindowRect(hwnd)
-        win32gui.SetWindowPos(hwnd, None, rect[0], rect[1], width, height, win32con.SWP_NOMOVE | win32con.SWP_NOZORDER)
+        win32gui.SetWindowPos(
+            hwnd,
+            None,
+            rect[0],
+            rect[1],
+            width,
+            height,
+            win32con.SWP_NOMOVE | win32con.SWP_NOZORDER,
+        )
         return True
     except Exception as e:
         raise WindowAccessDeniedError(
             f"Failed to set window size: {e}",
             "set_window_size",
             win32_error=0,
-            details={"hwnd": hwnd, "width": width, "height": height}
+            details={"hwnd": hwnd, "width": width, "height": height},
         )
 
 
-def get_process_name(pid: int) -> Optional[str]:
+def get_process_name(pid: int) -> str | None:
     """
     Get process name from process ID.
 

@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from .logger import get_logger
 from .routes import router as api_router
 from .ws_manager import WebSocketManager
-from .ws_routes import set_manager, router as ws_router
-from .logger import get_logger
+from .ws_routes import router as ws_router
+from .ws_routes import set_manager
 
 log = get_logger("app")
 

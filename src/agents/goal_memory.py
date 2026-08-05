@@ -4,12 +4,9 @@ Goal Memory
 Manages temporary memory during goal execution.
 """
 
-
 import logging
-from typing import Optional, Dict, Any, List, Callable
 from datetime import datetime
-import json
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +32,13 @@ class GoalMemory:
         self.goal_description = goal_description
 
         # Memory storage
-        self.variables: Dict[str, Any] = {}  # name -> value
-        self.intermediate_results: Dict[str, Any] = {}  # key -> result
-        self.generated_files: Dict[str, str] = {}  # filename -> path
-        self.task_outputs: Dict[str, Any] = {}  # task_id -> output
+        self.variables: dict[str, Any] = {}  # name -> value
+        self.intermediate_results: dict[str, Any] = {}  # key -> result
+        self.generated_files: dict[str, str] = {}  # filename -> path
+        self.task_outputs: dict[str, Any] = {}  # task_id -> output
 
         # Progress
-        self.current_step: Optional[str] = None
+        self.current_step: str | None = None
         self.step_progress: float = 0.0
 
         # Metadata
@@ -61,16 +58,16 @@ class GoalMemory:
             persistent: Whether to preserve after completion
         """
         self.variables[name] = {
-            'value': value,
-            'type': type(value).__name__,
-            'persistent': persistent,
-            'set_at': datetime.now()
+            "value": value,
+            "type": type(value).__name__,
+            "persistent": persistent,
+            "set_at": datetime.now(),
         }
         self._update_memory_size()
 
         logger.debug(f"Set variable: {name} = {type(value).__name__}")
 
-    def get_variable(self, name: str) -> Optional[Any]:
+    def get_variable(self, name: str) -> Any | None:
         """
         Get a variable from memory.
 
@@ -83,7 +80,7 @@ class GoalMemory:
         var_info = self.variables.get(name)
         if var_info:
             self.last_accessed = datetime.now()
-            return var_info['value']
+            return var_info["value"]
         return None
 
     def set_intermediate_result(self, key: str, result: Any, description: str = ""):
@@ -96,15 +93,15 @@ class GoalMemory:
             description: Description of the result
         """
         self.intermediate_results[key] = {
-            'value': result,
-            'description': description,
-            'stored_at': datetime.now()
+            "value": result,
+            "description": description,
+            "stored_at": datetime.now(),
         }
         self._update_memory_size()
 
         logger.debug(f"Stored intermediate result: {key}")
 
-    def get_intermediate_result(self, key: str) -> Optional[Any]:
+    def get_intermediate_result(self, key: str) -> Any | None:
         """
         Get an intermediate result.
 
@@ -117,7 +114,7 @@ class GoalMemory:
         result_info = self.intermediate_results.get(key)
         if result_info:
             self.last_accessed = datetime.now()
-            return result_info['value']
+            return result_info["value"]
         return None
 
     def add_generated_file(self, filename: str, filepath: str):
@@ -128,15 +125,12 @@ class GoalMemory:
             filename: Generated filename
             filepath: Path to the file
         """
-        self.generated_files[filename] = {
-            'path': filepath,
-            'added_at': datetime.now()
-        }
+        self.generated_files[filename] = {"path": filepath, "added_at": datetime.now()}
         self._update_memory_size()
 
         logger.debug(f"Added generated file: {filename} -> {filepath}")
 
-    def get_generated_file(self, filename: str) -> Optional[str]:
+    def get_generated_file(self, filename: str) -> str | None:
         """
         Get a generated file path.
 
@@ -149,7 +143,7 @@ class GoalMemory:
         file_info = self.generated_files.get(filename)
         if file_info:
             self.last_accessed = datetime.now()
-            return file_info['path']
+            return file_info["path"]
         return None
 
     def store_task_output(self, task_id: str, output: Any):
@@ -160,15 +154,12 @@ class GoalMemory:
             task_id: ID of the task
             output: Task output
         """
-        self.task_outputs[task_id] = {
-            'output': output,
-            'stored_at': datetime.now()
-        }
+        self.task_outputs[task_id] = {"output": output, "stored_at": datetime.now()}
         self._update_memory_size()
 
         logger.debug(f"Stored task output for {task_id[:8]}")
 
-    def get_task_output(self, task_id: str) -> Optional[Any]:
+    def get_task_output(self, task_id: str) -> Any | None:
         """
         Get output from a task.
 
@@ -181,7 +172,7 @@ class GoalMemory:
         output_info = self.task_outputs.get(task_id)
         if output_info:
             self.last_accessed = datetime.now()
-            return output_info['output']
+            return output_info["output"]
         return None
 
     def update_step(self, step: str, progress: float):
@@ -198,7 +189,7 @@ class GoalMemory:
 
         logger.debug(f"Step updated: {step} ({self.step_progress * 100:.1f}%)")
 
-    def get_memory_summary(self) -> Dict[str, Any]:
+    def get_memory_summary(self) -> dict[str, Any]:
         """
         Get summary of memory contents.
 
@@ -206,37 +197,37 @@ class GoalMemory:
             Memory summary dictionary
         """
         return {
-            'goal_id': self.goal_id,
-            'goal_description': self.goal_description,
-            'variables': {
+            "goal_id": self.goal_id,
+            "goal_description": self.goal_description,
+            "variables": {
                 k: {
-                    'type': v['type'],
-                    'persistent': v['persistent'],
-                    'set_at': v['set_at'].isoformat()
+                    "type": v["type"],
+                    "persistent": v["persistent"],
+                    "set_at": v["set_at"].isoformat(),
                 }
                 for k, v in self.variables.items()
             },
-            'intermediate_results': {
+            "intermediate_results": {
                 k: {
-                    'type': type(v['value']).__name__,
-                    'stored_at': v['stored_at'].isoformat()
+                    "type": type(v["value"]).__name__,
+                    "stored_at": v["stored_at"].isoformat(),
                 }
                 for k, v in self.intermediate_results.items()
             },
-            'generated_files': list(self.generated_files.keys()),
-            'task_outputs': list(self.task_outputs.keys()),
-            'current_step': self.current_step,
-            'step_progress': self.step_progress,
-            'created_at': self.created_at.isoformat(),
-            'last_accessed': self.last_accessed.isoformat(),
-            'memory_size': self.memory_size,
-            'total_variables': len(self.variables),
-            'total_intermediate_results': len(self.intermediate_results),
-            'total_generated_files': len(self.generated_files),
-            'total_task_outputs': len(self.task_outputs)
+            "generated_files": list(self.generated_files.keys()),
+            "task_outputs": list(self.task_outputs.keys()),
+            "current_step": self.current_step,
+            "step_progress": self.step_progress,
+            "created_at": self.created_at.isoformat(),
+            "last_accessed": self.last_accessed.isoformat(),
+            "memory_size": self.memory_size,
+            "total_variables": len(self.variables),
+            "total_intermediate_results": len(self.intermediate_results),
+            "total_generated_files": len(self.generated_files),
+            "total_task_outputs": len(self.task_outputs),
         }
 
-    def export_to_dict(self) -> Dict[str, Any]:
+    def export_to_dict(self) -> dict[str, Any]:
         """
         Export all memory to dictionary.
 
@@ -244,20 +235,20 @@ class GoalMemory:
             Complete memory as dictionary
         """
         return {
-            'goal_id': self.goal_id,
-            'goal_description': self.goal_description,
-            'variables': self.variables,
-            'intermediate_results': self.intermediate_results,
-            'generated_files': self.generated_files,
-            'task_outputs': self.task_outputs,
-            'current_step': self.current_step,
-            'step_progress': self.step_progress,
-            'created_at': self.created_at.isoformat(),
-            'last_accessed': self.last_accessed.isoformat(),
-            'memory_size': self.memory_size
+            "goal_id": self.goal_id,
+            "goal_description": self.goal_description,
+            "variables": self.variables,
+            "intermediate_results": self.intermediate_results,
+            "generated_files": self.generated_files,
+            "task_outputs": self.task_outputs,
+            "current_step": self.current_step,
+            "step_progress": self.step_progress,
+            "created_at": self.created_at.isoformat(),
+            "last_accessed": self.last_accessed.isoformat(),
+            "memory_size": self.memory_size,
         }
 
-    def get_persistent_data(self) -> Dict[str, Any]:
+    def get_persistent_data(self) -> dict[str, Any]:
         """
         Get only persistent data (to be promoted to long-term memory).
 
@@ -265,22 +256,22 @@ class GoalMemory:
             Persistent data dictionary
         """
         return {
-            'goal_id': self.goal_id,
-            'goal_description': self.goal_description,
-            'variables': {
-                k: v for k, v in self.variables.items()
-                if v.get('persistent', False)
+            "goal_id": self.goal_id,
+            "goal_description": self.goal_description,
+            "variables": {
+                k: v for k, v in self.variables.items() if v.get("persistent", False)
             },
-            'intermediate_results': {
-                k: v for k, v in self.intermediate_results.items()
-                if v.get('persistent', False)
+            "intermediate_results": {
+                k: v
+                for k, v in self.intermediate_results.items()
+                if v.get("persistent", False)
             },
-            'generated_files': self.generated_files,
-            'current_step': self.current_step,
-            'step_progress': self.step_progress
+            "generated_files": self.generated_files,
+            "current_step": self.current_step,
+            "step_progress": self.step_progress,
         }
 
-    def get_context_for_task(self, task_id: str) -> Dict[str, Any]:
+    def get_context_for_task(self, task_id: str) -> dict[str, Any]:
         """
         Get context data for a specific task.
 
@@ -291,32 +282,33 @@ class GoalMemory:
             Context dictionary
         """
         context = {
-            'goal_id': self.goal_id,
-            'goal_description': self.goal_description,
-            'current_step': self.current_step,
-            'step_progress': self.step_progress,
-            'available_files': list(self.generated_files.keys()),
-            'stored_variables': list(self.variables.keys()),
-            'stored_results': list(self.intermediate_results.keys())
+            "goal_id": self.goal_id,
+            "goal_description": self.goal_description,
+            "current_step": self.current_step,
+            "step_progress": self.step_progress,
+            "available_files": list(self.generated_files.keys()),
+            "stored_variables": list(self.variables.keys()),
+            "stored_results": list(self.intermediate_results.keys()),
         }
 
         return context
 
     def _update_memory_size(self):
         """Update memory size in bytes."""
+
         def get_size(obj: Any) -> int:
             if isinstance(obj, str):
-                return len(obj.encode('utf-8'))
+                return len(obj.encode("utf-8"))
             elif isinstance(obj, (dict, list)):
                 return sum(get_size(item) for item in obj.values())
             else:
-                return len(str(obj).encode('utf-8'))
+                return len(str(obj).encode("utf-8"))
 
         size = (
-            get_size(self.variables) +
-            get_size(self.intermediate_results) +
-            get_size(self.generated_files) +
-            get_size(self.task_outputs)
+            get_size(self.variables)
+            + get_size(self.intermediate_results)
+            + get_size(self.generated_files)
+            + get_size(self.task_outputs)
         )
         self.memory_size = size
 
@@ -324,12 +316,12 @@ class GoalMemory:
         """Clean up temporary memory."""
         # Keep persistent data, discard rest
         persistent_vars = {
-            k: v for k, v in self.variables.items()
-            if v.get('persistent', False)
+            k: v for k, v in self.variables.items() if v.get("persistent", False)
         }
         persistent_results = {
-            k: v for k, v in self.intermediate_results.items()
-            if v.get('persistent', False)
+            k: v
+            for k, v in self.intermediate_results.items()
+            if v.get("persistent", False)
         }
 
         self.variables = persistent_vars

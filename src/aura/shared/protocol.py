@@ -1,7 +1,7 @@
 import json
 
-from .message import AuraMessage
 from .exceptions import AuraProtocolError
+from .message import AuraMessage
 
 
 def serialize(message: AuraMessage) -> str:

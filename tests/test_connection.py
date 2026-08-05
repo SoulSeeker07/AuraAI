@@ -27,20 +27,30 @@ async def _service_handler(websocket):
         if isinstance(data, dict) and data.get("type") == "heartbeat":
             await websocket.send(json.dumps({"type": "heartbeat_ack"}))
         elif isinstance(data, dict) and data.get("type") == "chat.message":
-            await websocket.send(json.dumps({"type": "chat.response", "payload": {"ok": True}}))
+            await websocket.send(
+                json.dumps({"type": "chat.response", "payload": {"ok": True}})
+            )
         else:
-            await websocket.send(json.dumps({"type": "welcome", "payload": {"message": "Welcome to Aura"}}))
+            await websocket.send(
+                json.dumps(
+                    {"type": "welcome", "payload": {"message": "Welcome to Aura"}}
+                )
+            )
 
 
 async def _run_server():
-    async with websockets.serve(_service_handler, "127.0.0.1", PORT, ping_interval=None):
+    async with websockets.serve(
+        _service_handler, "127.0.0.1", PORT, ping_interval=None
+    ):
         await asyncio.Future()
 
 
 def main():
     app = QCoreApplication.instance() or QCoreApplication([])
 
-    server_thread = threading.Thread(target=lambda: asyncio.run(_run_server()), daemon=True)
+    server_thread = threading.Thread(
+        target=lambda: asyncio.run(_run_server()), daemon=True
+    )
     server_thread.start()
     time.sleep(1)
 

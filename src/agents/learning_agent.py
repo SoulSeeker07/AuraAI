@@ -12,41 +12,36 @@ The Learning Agent can:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Dict
 import json
-from pathlib import Path
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskType,
-    TaskInput,
-    TaskOutput,
-    TaskPriority
-)
+from .task_model import Task, TaskOutput
 
 
 @dataclass
 class WorkflowEntry:
     """Represents a learned workflow."""
+
     workflow_id: str
     name: str
     description: str
-    inputs: Dict[str, Any]
-    steps: List[Dict[str, Any]]
+    inputs: dict[str, Any]
+    steps: list[dict[str, Any]]
     success_count: int = 0
     failure_count: int = 0
     last_run: datetime = field(default_factory=datetime.now)
     success_rate: float = 0.0
     notes: str = ""
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
 class LearningStats:
     """Statistics about learned workflows."""
+
     total_workflows: int = 0
     total_successes: int = 0
     total_failures: int = 0
@@ -68,7 +63,9 @@ class LearningAgent:
     - Workflow optimization suggestions
     """
 
-    def __init__(self, task_manager, knowledge_manager=None, storage_path: str = "data/learning"):
+    def __init__(
+        self, task_manager, knowledge_manager=None, storage_path: str = "data/learning"
+    ):
         """
         Initialize the learning agent.
 
@@ -80,7 +77,7 @@ class LearningAgent:
         self.task_manager = task_manager
         self._knowledge = knowledge_manager
         self._storage_path = Path(storage_path)
-        self._workflows: Dict[str, WorkflowEntry] = {}
+        self._workflows: dict[str, WorkflowEntry] = {}
 
         # Create storage directory
         self._storage_path.mkdir(parents=True, exist_ok=True)
@@ -105,16 +102,14 @@ class LearningAgent:
                 return TaskOutput(
                     success=False,
                     message=f"No handler for task type: {task.type.value}",
-                    error=f"Task type {task.type.value} not supported"
+                    error=f"Task type {task.type.value} not supported",
                 )
 
             return method(task)
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Error executing task",
-                error=str(e)
+                success=False, message="Error executing task", error=str(e)
             )
 
     # ========================================
@@ -139,21 +134,19 @@ class LearningAgent:
                 description=f"Workflow: {workflow_name}",
                 inputs=inputs,
                 steps=steps,
-                notes=notes
+                notes=notes,
             )
 
             # Update stats
             if outcome == "success":
                 workflow.success_count += 1
-                workflow.success_rate = (
-                    workflow.success_count /
-                    (workflow.success_count + workflow.failure_count + 1)
+                workflow.success_rate = workflow.success_count / (
+                    workflow.success_count + workflow.failure_count + 1
                 )
             else:
                 workflow.failure_count += 1
-                workflow.success_rate = (
-                    workflow.success_count /
-                    (workflow.success_count + workflow.failure_count + 1)
+                workflow.success_rate = workflow.success_count / (
+                    workflow.success_count + workflow.failure_count + 1
                 )
 
             workflow.last_run = datetime.now()
@@ -174,15 +167,13 @@ class LearningAgent:
                     "workflow_name": workflow_name,
                     "success_count": workflow.success_count,
                     "failure_count": workflow.failure_count,
-                    "success_rate": workflow.success_rate
-                }
+                    "success_rate": workflow.success_rate,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Workflow storage failed",
-                error=str(e)
+                success=False, message="Workflow storage failed", error=str(e)
             )
 
     def _save_workflow(self, workflow: WorkflowEntry):
@@ -200,10 +191,10 @@ class LearningAgent:
             "last_run": workflow.last_run.isoformat(),
             "success_rate": workflow.success_rate,
             "notes": workflow.notes,
-            "tags": workflow.tags
+            "tags": workflow.tags,
         }
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str)
 
     def _load_workflows(self):
@@ -213,7 +204,7 @@ class LearningAgent:
 
         for json_file in self._storage_path.glob("*.json"):
             try:
-                with open(json_file, 'r', encoding='utf-8') as f:
+                with open(json_file, encoding="utf-8") as f:
                     data = json.load(f)
 
                 workflow = WorkflowEntry(
@@ -225,7 +216,7 @@ class LearningAgent:
                     success_count=data.get("success_count", 0),
                     failure_count=data.get("failure_count", 0),
                     notes=data.get("notes", ""),
-                    tags=data.get("tags", [])
+                    tags=data.get("tags", []),
                 )
 
                 # Parse last_run datetime
@@ -235,9 +226,7 @@ class LearningAgent:
                 # Calculate success rate
                 total_runs = workflow.success_count + workflow.failure_count
                 if total_runs > 0:
-                    workflow.success_rate = (
-                        workflow.success_count / total_runs
-                    )
+                    workflow.success_rate = workflow.success_count / total_runs
 
                 self._workflows[workflow.workflow_id] = workflow
 
@@ -269,7 +258,7 @@ class LearningAgent:
                 return TaskOutput(
                     success=False,
                     message="Workflow not found",
-                    error=f"No workflow found with name or ID: {workflow_name or workflow_id}"
+                    error=f"No workflow found with name or ID: {workflow_name or workflow_id}",
                 )
 
             return TaskOutput(
@@ -284,15 +273,13 @@ class LearningAgent:
                     "success_count": workflow.success_count,
                     "failure_count": workflow.failure_count,
                     "success_rate": workflow.success_rate,
-                    "last_run": workflow.last_run.isoformat()
-                }
+                    "last_run": workflow.last_run.isoformat(),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Workflow retrieval failed",
-                error=str(e)
+                success=False, message="Workflow retrieval failed", error=str(e)
             )
 
     def _execute_workflow_list(self, task: Task) -> TaskOutput:
@@ -311,35 +298,32 @@ class LearningAgent:
             # Get summary
             summary = []
             for name, workflows_list in grouped.items():
-                total_runs = sum(w.success_count + w.failure_count for w in workflows_list)
-                total_success = sum(w.success_count for w in workflows_list)
-                success_rate = (
-                    total_success / total_runs * 100 if total_runs > 0 else 0
+                total_runs = sum(
+                    w.success_count + w.failure_count for w in workflows_list
                 )
+                total_success = sum(w.success_count for w in workflows_list)
+                success_rate = total_success / total_runs * 100 if total_runs > 0 else 0
 
-                summary.append({
-                    "name": name,
-                    "count": len(workflows_list),
-                    "total_runs": total_runs,
-                    "success_count": total_success,
-                    "failure_count": total_runs - total_success,
-                    "success_rate": success_rate
-                })
+                summary.append(
+                    {
+                        "name": name,
+                        "count": len(workflows_list),
+                        "total_runs": total_runs,
+                        "success_count": total_success,
+                        "failure_count": total_runs - total_success,
+                        "success_rate": success_rate,
+                    }
+                )
 
             return TaskOutput(
                 success=True,
                 message=f"Found {len(workflows)} workflows",
-                data={
-                    "workflows": summary,
-                    "count": len(workflows)
-                }
+                data={"workflows": summary, "count": len(workflows)},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Workflow listing failed",
-                error=str(e)
+                success=False, message="Workflow listing failed", error=str(e)
             )
 
     # ========================================
@@ -358,7 +342,7 @@ class LearningAgent:
                 return TaskOutput(
                     success=False,
                     message="Workflow not found",
-                    error=f"Workflow ID not found: {workflow_id}"
+                    error=f"Workflow ID not found: {workflow_id}",
                 )
 
             # Update workflow based on feedback
@@ -386,15 +370,13 @@ class LearningAgent:
                     "rating": rating,
                     "comment": comment,
                     "success_count": workflow.success_count,
-                    "failure_count": workflow.failure_count
-                }
+                    "failure_count": workflow.failure_count,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Feedback collection failed",
-                error=str(e)
+                success=False, message="Feedback collection failed", error=str(e)
             )
 
     # ========================================
@@ -415,14 +397,14 @@ class LearningAgent:
             most_used = max(
                 self._workflows.values(),
                 key=lambda w: w.success_count + w.failure_count,
-                default=None
+                default=None,
             )
 
             # Find most successful
             most_successful = max(
                 self._workflows.values(),
                 key=lambda w: w.success_rate if w.success_rate > 0 else 0,
-                default=None
+                default=None,
             )
 
             stats = LearningStats(
@@ -431,7 +413,9 @@ class LearningAgent:
                 total_failures=total_failures,
                 average_success_rate=avg_success_rate,
                 most_used_workflow=most_used.name if most_used else "None",
-                most_successful_workflow=most_successful.name if most_successful else "None"
+                most_successful_workflow=(
+                    most_successful.name if most_successful else "None"
+                ),
             )
 
             return TaskOutput(
@@ -443,15 +427,13 @@ class LearningAgent:
                     "failures": stats.total_failures,
                     "success_rate": f"{stats.average_success_rate:.1f}%",
                     "most_used": stats.most_used_workflow,
-                    "most_successful": stats.most_successful_workflow
-                }
+                    "most_successful": stats.most_successful_workflow,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Statistics retrieval failed",
-                error=str(e)
+                success=False, message="Statistics retrieval failed", error=str(e)
             )
 
     # ========================================
@@ -471,7 +453,7 @@ class LearningAgent:
                 "success_rate": f"{workflow.success_rate * 100:.1f}%",
                 "successes": workflow.success_count,
                 "failures": workflow.failure_count,
-                "last_run": workflow.last_run.isoformat()
+                "last_run": workflow.last_run.isoformat(),
             }
 
             # In production, this would use knowledge brain APIs
@@ -490,41 +472,49 @@ class LearningAgent:
                 return TaskOutput(
                     success=False,
                     message="Workflow not found",
-                    error=f"Workflow not found: {workflow_name}"
+                    error=f"Workflow not found: {workflow_name}",
                 )
 
             suggestions = []
 
             # Analyze success rate
             if workflow.success_rate < 0.5:
-                suggestions.append({
-                    "type": "risk",
-                    "message": f"Low success rate ({workflow.success_rate * 100:.1f}%)",
-                    "recommendation": "Review workflow steps and add error handling"
-                })
+                suggestions.append(
+                    {
+                        "type": "risk",
+                        "message": f"Low success rate ({workflow.success_rate * 100:.1f}%)",
+                        "recommendation": "Review workflow steps and add error handling",
+                    }
+                )
 
             # Analyze step count
             if len(workflow.steps) > 10:
-                suggestions.append({
-                    "type": "complexity",
-                    "message": "Complex workflow with many steps",
-                    "recommendation": "Consider breaking into sub-workflows"
-                })
+                suggestions.append(
+                    {
+                        "type": "complexity",
+                        "message": "Complex workflow with many steps",
+                        "recommendation": "Consider breaking into sub-workflows",
+                    }
+                )
 
             # Analyze recent failures
             if workflow.failure_count > workflow.success_count:
-                suggestions.append({
-                    "type": "warning",
-                    "message": "More failures than successes",
-                    "recommendation": "Review and improve workflow based on failures"
-                })
+                suggestions.append(
+                    {
+                        "type": "warning",
+                        "message": "More failures than successes",
+                        "recommendation": "Review and improve workflow based on failures",
+                    }
+                )
 
             if not suggestions:
-                suggestions.append({
-                    "type": "success",
-                    "message": "Workflow is well-optimized",
-                    "recommendation": "Keep current implementation"
-                })
+                suggestions.append(
+                    {
+                        "type": "success",
+                        "message": "Workflow is well-optimized",
+                        "recommendation": "Keep current implementation",
+                    }
+                )
 
             return TaskOutput(
                 success=True,
@@ -532,13 +522,11 @@ class LearningAgent:
                 data={
                     "workflow_name": workflow.name,
                     "suggestions": suggestions,
-                    "success_rate": workflow.success_rate
-                }
+                    "success_rate": workflow.success_rate,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Optimization suggestions failed",
-                error=str(e)
+                success=False, message="Optimization suggestions failed", error=str(e)
             )

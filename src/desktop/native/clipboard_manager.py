@@ -2,12 +2,11 @@
 Clipboard Manager
 Manages clipboard operations.
 """
-from typing import Optional
+
 import logging
 
 from .native_manager import NativeManager
 from .native_models import ClipboardData
-from .native_exceptions import ClipboardError
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class ClipboardManager:
         logger.debug("Reading clipboard")
         return self.native_manager._clipboard_manager.read()
 
-    def write(self, text: str, html: Optional[str] = None) -> bool:
+    def write(self, text: str, html: str | None = None) -> bool:
         """
         Write to clipboard.
 

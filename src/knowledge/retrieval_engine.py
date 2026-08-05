@@ -5,13 +5,13 @@ Combines vector search, keyword search, and graph search for intelligent knowled
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
+from typing import Any
 
-from .models import RetrievalResult, RetrievalMode, Citation, SourceType
-from .vector_store import VectorStore
-from .graph_store import GraphStore
 from .chunker import Chunker
+from .graph_store import GraphStore
+from .models import Citation, RetrievalMode, RetrievalResult, SourceType
+from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,7 @@ class RetrievalEngine:
     """
 
     def __init__(
-        self,
-        vector_store: VectorStore,
-        graph_store: GraphStore,
-        chunker: Chunker
+        self, vector_store: VectorStore, graph_store: GraphStore, chunker: Chunker
     ):
         """
         Initialize retrieval engine.
@@ -47,9 +44,9 @@ class RetrievalEngine:
         query: str,
         top_k: int = 10,
         mode: RetrievalMode = RetrievalMode.HYBRID,
-        filters: Optional[Dict[str, Any]] = None,
-        include_citations: bool = True
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+        include_citations: bool = True,
+    ) -> list[RetrievalResult]:
         """
         Retrieve knowledge chunks based on query.
 
@@ -84,11 +81,8 @@ class RetrievalEngine:
         return results
 
     def _semantic_retrieval(
-        self,
-        query: str,
-        top_k: int,
-        filters: Optional[Dict[str, Any]]
-    ) -> List[RetrievalResult]:
+        self, query: str, top_k: int, filters: dict[str, Any] | None
+    ) -> list[RetrievalResult]:
         """
         Semantic search using vector similarity.
 
@@ -104,20 +98,14 @@ class RetrievalEngine:
 
         return [
             RetrievalResult(
-                chunk=chunk,
-                score=score,
-                sources=["Semantic similarity"],
-                rank=i + 1
+                chunk=chunk, score=score, sources=["Semantic similarity"], rank=i + 1
             )
             for i, (chunk, score) in enumerate(results)
         ]
 
     def _keyword_retrieval(
-        self,
-        query: str,
-        top_k: int,
-        filters: Optional[Dict[str, Any]]
-    ) -> List[RetrievalResult]:
+        self, query: str, top_k: int, filters: dict[str, Any] | None
+    ) -> list[RetrievalResult]:
         """
         Keyword search using token matching.
 
@@ -133,20 +121,14 @@ class RetrievalEngine:
 
         return [
             RetrievalResult(
-                chunk=chunk,
-                score=score,
-                sources=["Keyword matching"],
-                rank=i + 1
+                chunk=chunk, score=score, sources=["Keyword matching"], rank=i + 1
             )
             for i, (chunk, score) in enumerate(results)
         ]
 
     def _hybrid_retrieval(
-        self,
-        query: str,
-        top_k: int,
-        filters: Optional[Dict[str, Any]]
-    ) -> List[RetrievalResult]:
+        self, query: str, top_k: int, filters: dict[str, Any] | None
+    ) -> list[RetrievalResult]:
         """
         Hybrid search combining semantic and keyword.
 
@@ -160,65 +142,52 @@ class RetrievalEngine:
         """
         # Get results from both methods
         semantic_results = self.vector_store.hybrid_search(
-            query,
-            top_k * 2,
-            filters,
-            keyword_weight=0.3
+            query, top_k * 2, filters, keyword_weight=0.3
         )
 
-        keyword_results = self.vector_store._keyword_search(
-            query,
-            top_k * 2,
-            filters
-        )
+        keyword_results = self.vector_store._keyword_search(query, top_k * 2, filters)
 
         # Combine results
         combined = {}
         for chunk, score in semantic_results:
             if chunk.id not in combined:
                 combined[chunk.id] = {
-                    'chunk': chunk,
-                    'semantic_score': score,
-                    'keyword_scores': {}
+                    "chunk": chunk,
+                    "semantic_score": score,
+                    "keyword_scores": {},
                 }
 
         for chunk, score in keyword_results:
             if chunk.id in combined:
-                combined[chunk.id]['keyword_scores'][chunk] = score
+                combined[chunk.id]["keyword_scores"][chunk] = score
 
         # Weighted combination of scores
         final_results = []
         for chunk_id, data in combined.items():
-            semantic_score = data['semantic_score']
-            keyword_scores = data['keyword_scores']
+            semantic_score = data["semantic_score"]
+            keyword_scores = data["keyword_scores"]
 
             if keyword_scores:
                 max_keyword = max(keyword_scores.values())
-                combined_score = (semantic_score * 0.7 + max_keyword * 0.3)
+                combined_score = semantic_score * 0.7 + max_keyword * 0.3
             else:
                 combined_score = semantic_score
 
-            final_results.append((data['chunk'], combined_score))
+            final_results.append((data["chunk"], combined_score))
 
         # Sort and return top_k
         final_results.sort(key=lambda x: x[1], reverse=True)
 
         return [
             RetrievalResult(
-                chunk=chunk,
-                score=score,
-                sources=["Hybrid search"],
-                rank=i + 1
+                chunk=chunk, score=score, sources=["Hybrid search"], rank=i + 1
             )
             for i, (chunk, score) in enumerate(final_results[:top_k])
         ]
 
     def _graph_retrieval(
-        self,
-        query: str,
-        top_k: int,
-        filters: Optional[Dict[str, Any]]
-    ) -> List[RetrievalResult]:
+        self, query: str, top_k: int, filters: dict[str, Any] | None
+    ) -> list[RetrievalResult]:
         """
         Graph-aware search using knowledge graph.
 
@@ -238,35 +207,24 @@ class RetrievalEngine:
 
         for chunk, score in semantic_results:
             # Get related nodes
-            related_ids = self.graph_store.get_related_nodes(
-                chunk.id,
-                max_depth=2
-            )
+            related_ids = self.graph_store.get_related_nodes(chunk.id, max_depth=2)
 
             # Add related nodes
             for related_id in related_ids:
                 if related_id in self.graph_store.nodes:
-                    expanded_results.add(
-                        (self.graph_store.nodes[related_id], score)
-                    )
+                    expanded_results.add((self.graph_store.nodes[related_id], score))
 
         # Convert to results
         results = list(expanded_results)
 
         return [
             RetrievalResult(
-                chunk=chunk,
-                score=score,
-                sources=["Graph expansion"],
-                rank=i + 1
+                chunk=chunk, score=score, sources=["Graph expansion"], rank=i + 1
             )
             for i, (chunk, score) in enumerate(results[:top_k])
         ]
 
-    def _add_citations(
-        self,
-        results: List[RetrievalResult]
-    ) -> List[RetrievalResult]:
+    def _add_citations(self, results: list[RetrievalResult]) -> list[RetrievalResult]:
         """
         Add citations to results.
 
@@ -286,7 +244,7 @@ class RetrievalEngine:
                 project=result.chunk.project,
                 page=result.chunk.page,
                 line=result.chunk.line,
-                retrieval_date=datetime.now()
+                retrieval_date=datetime.now(),
             )
 
             result.citation = citation
@@ -298,9 +256,9 @@ class RetrievalEngine:
         query: str,
         top_k: int = 10,
         mode: RetrievalMode = RetrievalMode.HYBRID,
-        filters: Optional[Dict[str, Any]] = None,
-        include_neighbors: bool = True
-    ) -> Dict[str, Any]:
+        filters: dict[str, Any] | None = None,
+        include_neighbors: bool = True,
+    ) -> dict[str, Any]:
         """
         Retrieve knowledge chunks with additional context.
 
@@ -320,34 +278,27 @@ class RetrievalEngine:
         # Add neighbor information if requested
         if include_neighbors:
             for chunk in chunks:
-                neighbors = self.graph_store.get_neighbors(
-                    chunk.chunk.id,
-                    limit=3
-                )
+                neighbors = self.graph_store.get_neighbors(chunk.chunk.id, limit=3)
 
                 chunk.neighbors = [
                     {
-                        'id': neighbor[0].id,
-                        'title': neighbor[0].title,
-                        'content': neighbor[0].content[:200] + "...",
-                        'score': neighbor[1].weight
+                        "id": neighbor[0].id,
+                        "title": neighbor[0].title,
+                        "content": neighbor[0].content[:200] + "...",
+                        "score": neighbor[1].weight,
                     }
                     for neighbor in neighbors
                 ]
 
-        return {
-            'query': query,
-            'results': chunks,
-            'total_results': len(chunks)
-        }
+        return {"query": query, "results": chunks, "total_results": len(chunks)}
 
     def retrieve_by_project(
         self,
         query: str,
         project: str,
         top_k: int = 10,
-        mode: RetrievalMode = RetrievalMode.HYBRID
-    ) -> List[RetrievalResult]:
+        mode: RetrievalMode = RetrievalMode.HYBRID,
+    ) -> list[RetrievalResult]:
         """
         Retrieve results filtered by project.
 
@@ -360,7 +311,7 @@ class RetrievalEngine:
         Returns:
             List of RetrievalResult objects
         """
-        filters = {'project': project}
+        filters = {"project": project}
         return self.retrieve(query, top_k, mode, filters)
 
     def retrieve_by_source(
@@ -368,8 +319,8 @@ class RetrievalEngine:
         query: str,
         source_type: SourceType,
         top_k: int = 10,
-        mode: RetrievalMode = RetrievalMode.HYBRID
-    ) -> List[RetrievalResult]:
+        mode: RetrievalMode = RetrievalMode.HYBRID,
+    ) -> list[RetrievalResult]:
         """
         Retrieve results filtered by source type.
 
@@ -382,15 +333,12 @@ class RetrievalEngine:
         Returns:
             List of RetrievalResult objects
         """
-        filters = {'source_type': source_type.value}
+        filters = {"source_type": source_type.value}
         return self.retrieve(query, top_k, mode, filters)
 
     def retrieve_conversation_context(
-        self,
-        query: str,
-        conversation_history: List[str],
-        top_k: int = 10
-    ) -> Dict[str, Any]:
+        self, query: str, conversation_history: list[str], top_k: int = 10
+    ) -> dict[str, Any]:
         """
         Retrieve knowledge for conversation context.
 
@@ -407,17 +355,11 @@ class RetrievalEngine:
 
         results = self.retrieve(combined_query, top_k, RetrievalMode.HYBRID)
 
-        return {
-            'query': query,
-            'context': results
-        }
+        return {"query": query, "context": results}
 
     def get_retrieval_stats(
-        self,
-        query: str,
-        top_k: int = 10,
-        mode: RetrievalMode = RetrievalMode.HYBRID
-    ) -> Dict[str, Any]:
+        self, query: str, top_k: int = 10, mode: RetrievalMode = RetrievalMode.HYBRID
+    ) -> dict[str, Any]:
         """
         Get statistics about retrieval results.
 
@@ -432,10 +374,7 @@ class RetrievalEngine:
         results = self.retrieve(query, top_k, mode)
 
         if not results:
-            return {
-                'query': query,
-                'results_found': 0
-            }
+            return {"query": query, "results_found": 0}
 
         # Calculate statistics
         total_score = sum(r.score for r in results)
@@ -455,19 +394,17 @@ class RetrievalEngine:
                 by_project[project] = by_project.get(project, 0) + 1
 
         return {
-            'query': query,
-            'results_found': len(results),
-            'avg_score': avg_score,
-            'total_score': total_score,
-            'by_source': by_source,
-            'by_project': by_project
+            "query": query,
+            "results_found": len(results),
+            "avg_score": avg_score,
+            "total_score": total_score,
+            "by_source": by_source,
+            "by_project": by_project,
         }
 
     def prune_results(
-        self,
-        results: List[RetrievalResult],
-        min_score: float = 0.5
-    ) -> List[RetrievalResult]:
+        self, results: list[RetrievalResult], min_score: float = 0.5
+    ) -> list[RetrievalResult]:
         """
         Prune results below minimum score threshold.
 
@@ -479,13 +416,12 @@ class RetrievalEngine:
             Pruned list of results
         """
         pruned = [r for r in results if r.score >= min_score]
-        logger.info(f"Pruned {len(results) - len(pruned)} results below score {min_score}")
+        logger.info(
+            f"Pruned {len(results) - len(pruned)} results below score {min_score}"
+        )
         return pruned
 
-    def enrich_results(
-        self,
-        results: List[RetrievalResult]
-    ) -> List[RetrievalResult]:
+    def enrich_results(self, results: list[RetrievalResult]) -> list[RetrievalResult]:
         """
         Enrich results with additional information.
 
@@ -497,35 +433,24 @@ class RetrievalEngine:
         """
         for result in results:
             # Add neighbors
-            neighbors = self.graph_store.get_neighbors(
-                result.chunk.id,
-                limit=2
-            )
+            neighbors = self.graph_store.get_neighbors(result.chunk.id, limit=2)
             result.neighbors = [
-                {
-                    'id': n[0].id,
-                    'title': n[0].title,
-                    'score': n[1].weight
-                }
+                {"id": n[0].id, "title": n[0].title, "score": n[1].weight}
                 for n in neighbors
             ]
 
             # Add source information
             result.source_info = {
-                'file': result.chunk.source_file,
-                'type': result.chunk.source_type.value,
-                'project': result.chunk.project,
-                'line': result.chunk.line,
-                'page': result.chunk.page
+                "file": result.chunk.source_file,
+                "type": result.chunk.source_type.value,
+                "project": result.chunk.project,
+                "line": result.chunk.line,
+                "page": result.chunk.page,
             }
 
         return results
 
-    def get_similar_queries(
-        self,
-        query: str,
-        top_k: int = 5
-    ) -> List[str]:
+    def get_similar_queries(self, query: str, top_k: int = 5) -> list[str]:
         """
         Get similar queries based on retrieved chunks.
 
@@ -546,7 +471,7 @@ class RetrievalEngine:
             # Extract words and phrases from content
             words = result.chunk.content.split()
             for i in range(len(words) - 1):
-                phrase = " ".join(words[i:i+3])
+                phrase = " ".join(words[i : i + 3])
                 phrases.add(phrase)
 
         # Return unique phrases

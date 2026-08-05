@@ -52,9 +52,9 @@ class TestAuraCoreSingleton:
         from core.aura_core import AuraCore
 
         config = {
-            'project_root': '/test/path',
-            'workspace': 'test_workspace',
-            'groq_model': 'custom-model'
+            "project_root": "/test/path",
+            "workspace": "test_workspace",
+            "groq_model": "custom-model",
         }
 
         core = AuraCore.get_instance(config)
@@ -124,7 +124,6 @@ class TestAuraCoreSingleton:
         # Verify they are the same instance
         assert core1 is core2
 
-
     @pytest.fixture(autouse=True)
     def reset_singleton(self):
         """Reset AuraCore singleton state before and after each test."""
@@ -133,6 +132,7 @@ class TestAuraCoreSingleton:
         yield
         AuraCore._instance = None
         AuraCore._initialized = False
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

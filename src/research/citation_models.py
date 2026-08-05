@@ -9,6 +9,7 @@ from enum import Enum
 
 class CitationStyle(Enum):
     """Citation formatting styles."""
+
     APA = "apa"
     MLA = "mla"
     Chicago = "chicago"

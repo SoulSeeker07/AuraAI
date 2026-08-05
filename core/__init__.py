@@ -9,10 +9,10 @@ Contains core system components including:
 - Workspace management
 """
 
+import importlib.util
+import logging
 import sys
 from pathlib import Path
-import logging
-import importlib.util
 
 # Default logger
 logger = logging.getLogger(__name__)
@@ -51,20 +51,14 @@ except Exception as e:
     logger.warning(f"Could not import logger from core.logger: {e}")
 
 # Import core modules
-from . import memory
-from . import plugins
-from . import tools
-from . import vision
-from . import workspace
-
 # Import aura_core (the main Aura brain)
-from . import aura_core
+from . import aura_core, memory, plugins, tools, vision, workspace
 
 __all__ = [
-    'logger',
-    'memory',
-    'plugins',
-    'tools',
-    'vision',
-    'workspace',
+    "logger",
+    "memory",
+    "plugins",
+    "tools",
+    "vision",
+    "workspace",
 ]

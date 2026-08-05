@@ -30,7 +30,9 @@ class PluginManager:
 
     def load_plugins(self) -> None:
         self.plugin_dir.mkdir(parents=True, exist_ok=True)
-        for plugin_path in sorted(path for path in self.plugin_dir.iterdir() if path.is_dir()):
+        for plugin_path in sorted(
+            path for path in self.plugin_dir.iterdir() if path.is_dir()
+        ):
             try:
                 plugin = self._load_plugin(plugin_path)
             except Exception:
@@ -39,7 +41,9 @@ class PluginManager:
 
             if plugin is not None:
                 self.plugins[plugin.name] = plugin
-                self.event_bus.publish("plugin.loaded", name=plugin.name, version=plugin.version)
+                self.event_bus.publish(
+                    "plugin.loaded", name=plugin.name, version=plugin.version
+                )
                 logger.info("Plugin loaded: %s", plugin.name)
 
     def register(self, plugin: Any, name: str | None = None) -> None:
@@ -71,7 +75,9 @@ class PluginManager:
                 enabled=True,
             )
 
-        module = self._import_module(manifest.get("name", plugin_path.name), module_path)
+        module = self._import_module(
+            manifest.get("name", plugin_path.name), module_path
+        )
         instance = None
         if hasattr(module, "setup"):
             instance = module.setup(self.event_bus)

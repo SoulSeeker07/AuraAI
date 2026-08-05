@@ -20,8 +20,9 @@ Priority Handling:
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-from .capability_types import CapabilityType, CapabilityPriority
+from typing import Any
+
+from .capability_types import CapabilityPriority, CapabilityType
 from .routing_result import RoutingResult
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class KeywordRouter:
         """Initialize keyword router."""
         self.rules = self._build_rules()
 
-    def _build_rules(self) -> Dict[str, List[Dict[str, Any]]]:
+    def _build_rules(self) -> dict[str, list[dict[str, Any]]]:
         """
         Build keyword rules for different capabilities.
 
@@ -50,7 +51,14 @@ class KeywordRouter:
             CapabilityType.DESKTOP: [
                 # Window management
                 {
-                    "keywords": ["minimize", "minimise", "maximize", "maximise", "maximize all", "maximise all"],
+                    "keywords": [
+                        "minimize",
+                        "minimise",
+                        "maximize",
+                        "maximise",
+                        "maximize all",
+                        "maximise all",
+                    ],
                     "confidence": 0.95,
                     "priority": CapabilityPriority.HIGH,
                     "requires_permission": False,
@@ -109,13 +117,26 @@ class KeywordRouter:
                     "requires_permission": False,
                 },
                 {
-                    "keywords": ["delete", "remove", "trash", "recycle", "destroy", "erase"],
+                    "keywords": [
+                        "delete",
+                        "remove",
+                        "trash",
+                        "recycle",
+                        "destroy",
+                        "erase",
+                    ],
                     "confidence": 0.95,
                     "priority": CapabilityPriority.HIGH,
                     "requires_permission": True,
                 },
                 {
-                    "keywords": ["move", "rename", "rename file", "rename folder", "change name"],
+                    "keywords": [
+                        "move",
+                        "rename",
+                        "rename file",
+                        "rename folder",
+                        "change name",
+                    ],
                     "confidence": 0.90,
                     "priority": CapabilityPriority.HIGH,
                     "requires_permission": False,
@@ -199,13 +220,24 @@ class KeywordRouter:
                     "requires_permission": False,
                 },
                 {
-                    "keywords": ["forget", "erase memory", "remove memory", "delete from memory"],
+                    "keywords": [
+                        "forget",
+                        "erase memory",
+                        "remove memory",
+                        "delete from memory",
+                    ],
                     "confidence": 0.85,
                     "priority": CapabilityPriority.HIGH,
                     "requires_permission": False,
                 },
                 {
-                    "keywords": ["what do you remember", "recall", "retrieve", "summarize my memories", "my facts"],
+                    "keywords": [
+                        "what do you remember",
+                        "recall",
+                        "retrieve",
+                        "summarize my memories",
+                        "my facts",
+                    ],
                     "confidence": 0.85,
                     "priority": CapabilityPriority.MEDIUM,
                     "requires_permission": False,
@@ -219,7 +251,13 @@ class KeywordRouter:
             ],
             CapabilityType.KNOWLEDGE: [
                 {
-                    "keywords": ["explain", "what is", "how does", "describe", "tell me about"],
+                    "keywords": [
+                        "explain",
+                        "what is",
+                        "how does",
+                        "describe",
+                        "tell me about",
+                    ],
                     "confidence": 0.90,
                     "priority": CapabilityPriority.MEDIUM,
                     "requires_permission": False,
@@ -241,7 +279,7 @@ class KeywordRouter:
 
         return rules
 
-    def route(self, text: str) -> Optional[RoutingResult]:
+    def route(self, text: str) -> RoutingResult | None:
         """
         Route request using keyword matching.
 
@@ -269,7 +307,7 @@ class KeywordRouter:
                             rule["confidence"],
                             rule["priority"],
                             rule["requires_permission"],
-                            keyword
+                            keyword,
                         )
 
         return None
@@ -280,7 +318,7 @@ class KeywordRouter:
         confidence: float,
         priority: CapabilityPriority,
         requires_permission: bool,
-        matched_keyword: str = ""
+        matched_keyword: str = "",
     ) -> RoutingResult:
         """
         Create a RoutingResult from rule data.
@@ -310,7 +348,7 @@ class KeywordRouter:
 
         return result
 
-    def get_priority_order(self) -> List[CapabilityType]:
+    def get_priority_order(self) -> list[CapabilityType]:
         """
         Get the priority order of capabilities.
 

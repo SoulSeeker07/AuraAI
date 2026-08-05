@@ -2,10 +2,10 @@
 
 This keeps REST separate from the websocket transport.
 """
+
 from __future__ import annotations
 
 import httpx
-from typing import Optional
 
 
 class ApiClient:

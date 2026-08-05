@@ -9,20 +9,24 @@ Formally validates that Phase 2B (Native Layer) meets all architectural standard
 5. End-to-End Orchestration (all executions route through DesktopExecutionEngine & NativeManagerRegistry).
 """
 
-import pytest
-import inspect
 import importlib
+import inspect
 import pkgutil
 
+import pytest
+
+from src.desktop.native.adapters.network_adapter import DummyNetworkAdapter
 from src.desktop.native.capability_registry import CapabilityRegistry, RiskLevel
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry, HealthStatus
-from src.desktop.native.managers.base_manager import BaseNativeManager
 from src.desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     reset_desktop_execution_engine,
 )
-from src.desktop.native.adapters.network_adapter import DummyNetworkAdapter
+from src.desktop.native.managers.base_manager import BaseNativeManager
+from src.desktop.native.managers.native_manager_registry import (
+    HealthStatus,
+    NativeManagerRegistry,
+)
 from src.desktop.native.managers.network_manager import NetworkManager
 
 
@@ -77,9 +81,15 @@ def test_capability_graph_integrity(cap_registry):
             if rb not in all_caps:
                 orphans_rollback.append((desc.name, rb))
 
-    assert not orphans_requires, f"Orphan 'requires' references found: {orphans_requires}"
-    assert not orphans_verifies, f"Orphan 'verifies' references found: {orphans_verifies}"
-    assert not orphans_rollback, f"Orphan 'rollback_capabilities' references found: {orphans_rollback}"
+    assert (
+        not orphans_requires
+    ), f"Orphan 'requires' references found: {orphans_requires}"
+    assert (
+        not orphans_verifies
+    ), f"Orphan 'verifies' references found: {orphans_verifies}"
+    assert (
+        not orphans_rollback
+    ), f"Orphan 'rollback_capabilities' references found: {orphans_rollback}"
 
 
 # ==================== 2. Boot Report Accuracy ====================
@@ -117,9 +127,15 @@ def test_execution_simulation_intercepts_destructive_actions(engine):
     ]
 
     for cap in destructive_caps:
-        result = engine.execute(goal=f"test {cap}", capability=cap, adapter_name="Wi-Fi")
-        assert result.success is True, f"Capability {cap} should succeed in simulation mode"
-        assert result.data.get("simulated") is True, f"Capability {cap} should set simulated=True"
+        result = engine.execute(
+            goal=f"test {cap}", capability=cap, adapter_name="Wi-Fi"
+        )
+        assert (
+            result.success is True
+        ), f"Capability {cap} should succeed in simulation mode"
+        assert (
+            result.data.get("simulated") is True
+        ), f"Capability {cap} should set simulated=True"
         assert result.data.get("status") == "simulated_execution"
 
 
@@ -141,7 +157,9 @@ def test_manager_purity_audit():
 
     leaks = []
 
-    for _, module_name, is_pkg in pkgutil.walk_packages(pkg_path, prefix="src.desktop.native.managers."):
+    for _, module_name, is_pkg in pkgutil.walk_packages(
+        pkg_path, prefix="src.desktop.native.managers."
+    ):
         if is_pkg or module_name.endswith(".base_manager"):
             continue
         mod = importlib.import_module(module_name)
@@ -151,7 +169,9 @@ def test_manager_purity_audit():
             if token in source:
                 leaks.append((module_name, token))
 
-    assert not leaks, f"Cross-cutting concern leakage detected in native managers: {leaks}"
+    assert (
+        not leaks
+    ), f"Cross-cutting concern leakage detected in native managers: {leaks}"
 
 
 # ==================== 5. End-to-End Engine Orchestration ====================
@@ -170,9 +190,12 @@ def test_end_to_end_engine_orchestration(engine):
 
     for goal, expected_cap, expected_manager in goals:
         res = engine.execute(goal=goal)
-        assert res.success is True, f"Goal '{goal}' failed with error: {res.error}, discovered cap: {res.capability}"
-        assert res.capability == expected_cap, f"Goal '{goal}' expected cap {expected_cap}, got {res.capability}"
+        assert (
+            res.success is True
+        ), f"Goal '{goal}' failed with error: {res.error}, discovered cap: {res.capability}"
+        assert (
+            res.capability == expected_cap
+        ), f"Goal '{goal}' expected cap {expected_cap}, got {res.capability}"
         assert res.manager == expected_manager
         assert res.metrics.get("total_duration_ms") is not None
         assert "passed" in res.verification
-

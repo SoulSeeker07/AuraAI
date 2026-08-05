@@ -1,0 +1,45 @@
+architecture_version: 3
+minimum_supported: 3
+
+layers:
+  core:
+    description: "Foundational utilities, logger, configuration, event bus, base backends"
+    depends_on: []
+  planning:
+    description: "Core planning abstractions and orchestrators"
+    depends_on:
+      - core
+  desktop:
+    description: "Desktop execution engine and native OS managers"
+    depends_on:
+      - core
+      - planning
+  browser:
+    description: "Browser automation and web execution layer"
+    depends_on:
+      - core
+      - planning
+  research:
+    description: "Research engine, search integration, web scraping"
+    depends_on:
+      - core
+      - planning
+  coding:
+    description: "Engineering intelligence platform, AST tools, quality engine"
+    depends_on:
+      - core
+      - planning
+
+forbidden:
+  - importer: desktop
+    cannot_import: gui
+  - importer: desktop
+    cannot_import: research
+  - importer: planner
+    cannot_import: frontend
+  - importer: backend
+    cannot_import: desktop
+  - importer: core
+    cannot_import: desktop
+  - importer: core
+    cannot_import: research

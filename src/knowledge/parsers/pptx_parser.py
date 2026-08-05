@@ -8,7 +8,6 @@ Supports:
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 try:
@@ -26,13 +25,13 @@ class PPTXParser:
     """Parse PPTX files into structured chunks."""
 
     def __init__(self):
-        self.supported_extensions = ['.pptx']
+        self.supported_extensions = [".pptx"]
 
     def supports(self, file_path: Path) -> bool:
         """Check if file type is supported."""
         return file_path.suffix.lower() in self.supported_extensions
 
-    def parse(self, file_path: Path) -> List[DocumentChunk]:
+    def parse(self, file_path: Path) -> list[DocumentChunk]:
         """Parse PPTX file into slide chunks."""
         chunks = []
         if not Presentation:
@@ -55,7 +54,7 @@ class PPTXParser:
 
                 # Add if there's content
                 if slide_content or slide_title:
-                    full_content = '\n'.join(slide_content)
+                    full_content = "\n".join(slide_content)
                     if slide_title:
                         full_content = f"{slide_title}\n\n{full_content}"
 
@@ -71,9 +70,9 @@ class PPTXParser:
                             line_end=slide_num + 1,
                             slide_number=slide_num,
                             slide_title=slide_title,
-                            text_count=len(slide_content)
+                            text_count=len(slide_content),
                         ),
-                        embeddings=None
+                        embeddings=None,
                     )
                     chunks.append(chunk)
 
@@ -91,7 +90,7 @@ class PPTXParser:
                 chunk_type="file",
                 chunk_id=file_path.stem,
                 line_start=1,
-                line_end=0
+                line_end=0,
             )
 
         try:
@@ -106,9 +105,13 @@ class PPTXParser:
                 line_end=len(prs.slides),
                 slide_count=len(prs.slides),
                 word_count=sum(
-                    sum(len(shape.text.split()) for shape in slide.shapes if hasattr(shape, "text"))
+                    sum(
+                        len(shape.text.split())
+                        for shape in slide.shapes
+                        if hasattr(shape, "text")
+                    )
                     for slide in prs.slides
-                )
+                ),
             )
         except Exception as e:
             logger.error(f"Error extracting metadata from PPTX file {file_path}: {e}")
@@ -118,10 +121,10 @@ class PPTXParser:
                 chunk_type="file",
                 chunk_id=file_path.stem,
                 line_start=1,
-                line_end=0
+                line_end=0,
             )
 
-    def _extract_title(self, slide) -> Optional[str]:
+    def _extract_title(self, slide) -> str | None:
         """Extract slide title."""
         try:
             for shape in slide.shapes:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from loguru import logger
 
@@ -9,7 +9,7 @@ from .windows import WindowsHotkeyBackend
 
 
 class HotkeyManager:
-    def __init__(self, backend: Optional[WindowsHotkeyBackend] = None) -> None:
+    def __init__(self, backend: WindowsHotkeyBackend | None = None) -> None:
         self.backend = backend or WindowsHotkeyBackend()
         self._enabled = False
         self._handlers: dict[str, Callable[[], None]] = {}

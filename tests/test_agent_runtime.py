@@ -4,17 +4,24 @@ Agent Runtime Integration Tests
 Tests for the complete Agent Runtime system.
 """
 
-
-import pytest
 from datetime import timedelta
 from enum import Enum
 
-from src.agents.goal import Goal, GoalStatus, GoalPriority
-from src.agents.task import Task, TaskStatus, TaskPriority, TaskRiskLevel, RetryPolicy, ApprovalRequired
-from src.agents.execution_graph import ExecutionGraph
-from src.agents.scheduler import Scheduler, ExecutionStrategy
-from src.agents.planner import Planner
+import pytest
+
 from src.agents.agent_runtime import AgentRuntime
+from src.agents.execution_graph import ExecutionGraph
+from src.agents.goal import Goal, GoalPriority, GoalStatus
+from src.agents.planner import Planner
+from src.agents.scheduler import ExecutionStrategy, Scheduler
+from src.agents.task import (
+    ApprovalRequired,
+    RetryPolicy,
+    Task,
+    TaskPriority,
+    TaskRiskLevel,
+    TaskStatus,
+)
 
 
 class TestGoalModel:
@@ -25,7 +32,7 @@ class TestGoalModel:
         goal = Goal(
             description="Test goal",
             priority=GoalPriority.NORMAL,
-            estimated_total_duration=timedelta(minutes=10)
+            estimated_total_duration=timedelta(minutes=10),
         )
 
         assert goal.description == "Test goal"
@@ -77,7 +84,7 @@ class TestTaskModel:
             goal="Analyze files",
             task_type="file_operation",
             priority=TaskPriority.HIGH,
-            estimated_duration=timedelta(minutes=5)
+            estimated_duration=timedelta(minutes=5),
         )
 
         assert task.goal == "Analyze files"
@@ -121,9 +128,7 @@ class TestTaskModel:
     def test_task_retry(self):
         """Test task retry policy."""
         task = Task(
-            "Test task",
-            retry_policy=RetryPolicy.RETRY_WITH_BACKOFF,
-            max_retries=3
+            "Test task", retry_policy=RetryPolicy.RETRY_WITH_BACKOFF, max_retries=3
         )
 
         assert task.should_retry
@@ -372,10 +377,10 @@ class TestAgentRuntime:
 
         stats = runtime.get_statistics()
 
-        assert 'is_running' in stats
-        assert 'current_goal_id' in stats
-        assert 'execution_graph' in stats
-        assert 'scheduler_stats' in stats
+        assert "is_running" in stats
+        assert "current_goal_id" in stats
+        assert "execution_graph" in stats
+        assert "scheduler_stats" in stats
 
 
 class TestApprovalManager:
@@ -408,7 +413,7 @@ class TestApprovalManager:
             task_id="test_task",
             task_description="Test operation",
             risk_level="CRITICAL",
-            required_by="TestManager"
+            required_by="TestManager",
         )
 
         assert granted[0]
@@ -425,9 +430,9 @@ class TestApprovalManager:
 
         stats = manager.get_statistics()
 
-        assert stats['total_approvals_requested'] == 2
-        assert stats['total_approvals_granted'] == 1
-        assert stats['total_approvals_denied'] == 1
+        assert stats["total_approvals_requested"] == 2
+        assert stats["total_approvals_granted"] == 1
+        assert stats["total_approvals_denied"] == 1
 
 
 class TestRecoveryManager:
@@ -441,18 +446,18 @@ class TestRecoveryManager:
         task = Task("Test task", retry_policy=RetryPolicy.DEFAULT)
         task.error = "Network timeout"
         action = manager._determine_recovery_action(task)
-        assert action == 'retry'
+        assert action == "retry"
 
         # File error should pause
         task.error = "Permission denied"
         action = manager._determine_recovery_action(task)
-        assert action == 'pause'
+        assert action == "pause"
 
         # Too many retries should continue
         task.retry_count = 3
         task.max_retries = 3
         action = manager._determine_recovery_action(task)
-        assert action == 'continue'
+        assert action == "continue"
 
     def test_statistics(self):
         """Test recovery statistics."""
@@ -469,9 +474,9 @@ class TestRecoveryManager:
 
         stats = manager.get_statistics()
 
-        assert stats['total_failures'] == 2
-        assert stats['total_recovered'] == 1  # One retry
-        assert stats['total_permanently_failed'] == 1
+        assert stats["total_failures"] == 2
+        assert stats["total_recovered"] == 1  # One retry
+        assert stats["total_permanently_failed"] == 1
 
 
 if __name__ == "__main__":

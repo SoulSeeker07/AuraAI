@@ -2,12 +2,10 @@
 Power Manager
 Manages power operations.
 """
-from typing import Optional
+
 import logging
 
 from .native_manager import NativeManager
-from .native_models import DisplayInfo
-from .native_exceptions import PowerError
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +83,7 @@ class PowerManager:
         logger.debug("Logging off user")
         return self.native_manager._power_manager.logoff()
 
-    def get_battery_level(self) -> Optional[float]:
+    def get_battery_level(self) -> float | None:
         """
         Get current battery level (0.0 to 1.0).
 

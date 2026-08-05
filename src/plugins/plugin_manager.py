@@ -5,12 +5,12 @@ The Plugin Manager orchestrates plugin lifecycle and coordinates
 communication between plugins and the Brain.
 """
 
-
 import logging
-from typing import Dict, Any, List, Optional, Callable
-from .plugin_registry import PluginRegistry
-from .plugin_interface import Plugin, PluginManifest, PluginCategory, PluginState
+from collections.abc import Callable
+from typing import Any
 
+from .plugin_interface import Plugin, PluginCategory
+from .plugin_registry import PluginRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class PluginManager:
         """Get the plugin registry."""
         return self.registry
 
-    def get_plugin(self, name: str) -> Optional[Plugin]:
+    def get_plugin(self, name: str) -> Plugin | None:
         """
         Get a plugin by name.
 
@@ -80,7 +80,7 @@ class PluginManager:
         """
         return self.registry.get_plugin(name)
 
-    def execute_capability(self, capability: str, **kwargs) -> Dict[str, Any]:
+    def execute_capability(self, capability: str, **kwargs) -> dict[str, Any]:
         """
         Execute a capability through the appropriate plugin.
 
@@ -102,7 +102,7 @@ class PluginManager:
             return {
                 "success": False,
                 "error": f"No plugin found for capability: {capability}",
-                "output": None
+                "output": None,
             }
 
         # Execute through the first enabled plugin
@@ -111,7 +111,9 @@ class PluginManager:
                 continue
 
             try:
-                logger.info(f"Executing capability '{capability}' through plugin {plugin.manifest.name}")
+                logger.info(
+                    f"Executing capability '{capability}' through plugin {plugin.manifest.name}"
+                )
 
                 # Execute the capability
                 result = plugin.execute(capability, **kwargs)
@@ -121,25 +123,32 @@ class PluginManager:
                 return {
                     "success": True,
                     "plugin": plugin.manifest.name,
-                    "output": result
+                    "output": result,
                 }
 
             except Exception as e:
-                logger.error(f"Error executing capability '{capability}' through plugin {plugin.manifest.name}: {e}", exc_info=True)
+                logger.error(
+                    f"Error executing capability '{capability}' through plugin {plugin.manifest.name}: {e}",
+                    exc_info=True,
+                )
 
                 # Check if plugin crashed
                 if plugin.get_error():
-                    logger.error(f"Plugin {plugin.manifest.name} crashed: {plugin.get_error()}")
+                    logger.error(
+                        f"Plugin {plugin.manifest.name} crashed: {plugin.get_error()}"
+                    )
 
         # If all plugins failed
         logger.error(f"All plugins failed to execute capability: {capability}")
         return {
             "success": False,
             "error": f"All plugins failed to execute capability: {capability}",
-            "output": None
+            "output": None,
         }
 
-    def execute_capability_through_plugin(self, plugin_name: str, capability: str, **kwargs) -> Dict[str, Any]:
+    def execute_capability_through_plugin(
+        self, plugin_name: str, capability: str, **kwargs
+    ) -> dict[str, Any]:
         """
         Execute a capability through a specific plugin.
 
@@ -157,40 +166,35 @@ class PluginManager:
             return {
                 "success": False,
                 "error": f"Plugin not found: {plugin_name}",
-                "output": None
+                "output": None,
             }
 
         if not plugin.get_status()["enabled"]:
             return {
                 "success": False,
                 "error": f"Plugin is disabled: {plugin_name}",
-                "output": None
+                "output": None,
             }
 
         if not plugin.can_handle(capability):
             return {
                 "success": False,
                 "error": f"Plugin {plugin_name} does not support capability: {capability}",
-                "output": None
+                "output": None,
             }
 
         try:
             result = plugin.execute(capability, **kwargs)
 
-            return {
-                "success": True,
-                "plugin": plugin_name,
-                "output": result
-            }
+            return {"success": True, "plugin": plugin_name, "output": result}
 
         except Exception as e:
-            logger.error(f"Error executing capability '{capability}' through plugin {plugin_name}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing capability '{capability}' through plugin {plugin_name}: {e}",
+                exc_info=True,
+            )
 
-            return {
-                "success": False,
-                "error": str(e),
-                "output": None
-            }
+            return {"success": False, "error": str(e), "output": None}
 
     def register_plugin_event_handler(self, event: str, handler: Callable) -> None:
         """
@@ -205,7 +209,9 @@ class PluginManager:
         """
         self.registry.register_callback(event, handler)
 
-    def execute_plugin_command(self, plugin_name: str, command: str, **kwargs) -> Dict[str, Any]:
+    def execute_plugin_command(
+        self, plugin_name: str, command: str, **kwargs
+    ) -> dict[str, Any]:
         """
         Execute a command on a plugin.
 
@@ -225,14 +231,14 @@ class PluginManager:
             return {
                 "success": False,
                 "error": f"Plugin not found: {plugin_name}",
-                "output": None
+                "output": None,
             }
 
         if not plugin.get_status()["enabled"]:
             return {
                 "success": False,
                 "error": f"Plugin is disabled: {plugin_name}",
-                "output": None
+                "output": None,
             }
 
         # Check if plugin has a command handler
@@ -242,7 +248,7 @@ class PluginManager:
             return {
                 "success": False,
                 "error": f"Plugin {plugin_name} does not support command: {command}",
-                "output": None
+                "output": None,
             }
 
         try:
@@ -252,19 +258,18 @@ class PluginManager:
                 "success": True,
                 "plugin": plugin_name,
                 "command": command,
-                "output": result
+                "output": result,
             }
 
         except Exception as e:
-            logger.error(f"Error executing command '{command}' on plugin {plugin_name}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing command '{command}' on plugin {plugin_name}: {e}",
+                exc_info=True,
+            )
 
-            return {
-                "success": False,
-                "error": str(e),
-                "output": None
-            }
+            return {"success": False, "error": str(e), "output": None}
 
-    def get_plugin_status(self, plugin_name: str) -> Dict[str, Any]:
+    def get_plugin_status(self, plugin_name: str) -> dict[str, Any]:
         """
         Get status information for a plugin.
 
@@ -277,15 +282,11 @@ class PluginManager:
         plugin = self.registry.get_plugin(plugin_name)
 
         if not plugin:
-            return {
-                "name": plugin_name,
-                "state": "not_found",
-                "healthy": False
-            }
+            return {"name": plugin_name, "state": "not_found", "healthy": False}
 
         return plugin.get_status()
 
-    def get_all_plugin_statuses(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_plugin_statuses(self) -> dict[str, dict[str, Any]]:
         """
         Get status for all plugins.
 
@@ -348,7 +349,7 @@ class PluginManager:
 
         return True
 
-    def get_all_capabilities(self) -> Dict[str, List[str]]:
+    def get_all_capabilities(self) -> dict[str, list[str]]:
         """
         Get all capabilities and their providers.
 
@@ -357,7 +358,7 @@ class PluginManager:
         """
         return self.registry.get_all_capabilities()
 
-    def get_plugin_categories(self) -> List[PluginCategory]:
+    def get_plugin_categories(self) -> list[PluginCategory]:
         """
         Get all registered plugin categories.
 
@@ -366,7 +367,7 @@ class PluginManager:
         """
         return list(set(m.category for m in self.registry._manifests.values()))
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get plugin manager statistics.
 
@@ -381,7 +382,7 @@ class PluginManager:
             "disabled_plugins": len(self.registry._disabled),
             "capabilities_count": len(self.registry._capabilities),
             "categories": len(self.get_plugin_categories()),
-            "registry_info": self.registry.get_registry_info()
+            "registry_info": self.registry.get_registry_info(),
         }
 
     def shutdown(self) -> None:

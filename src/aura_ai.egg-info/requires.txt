@@ -8,6 +8,7 @@ pydantic-settings>=1.0
 loguru>=0.7
 python-dotenv>=1.0
 groq>=0.9
+beautifulsoup4>=4.12
 
 [:platform_system == "Windows"]
 pywin32>=305
@@ -15,4 +16,6 @@ pywin32>=305
 [dev]
 pytest
 ruff
+black
+isort
 mypy

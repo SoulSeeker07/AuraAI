@@ -1,6 +1,6 @@
-from .message import AuraMessage
-from .protocol import serialize, deserialize
 from .enums import MessageType
+from .message import AuraMessage
+from .protocol import deserialize, serialize
 
 __all__ = [
     "AuraMessage",

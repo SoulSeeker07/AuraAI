@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
-
-from PySide6.QtCore import QObject, Property, Signal, Slot
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from ...client import ConnectionManager
 from ...shared import AuraMessage, MessageType
@@ -18,7 +13,7 @@ class OverlayController(QObject):
     connectionChanged = Signal(str)
     errorOccurred = Signal(str)
 
-    def __init__(self, connection_manager: Optional[ConnectionManager] = None) -> None:
+    def __init__(self, connection_manager: ConnectionManager | None = None) -> None:
         super().__init__()
         self._visible = False
         self._connection_state = "Offline"

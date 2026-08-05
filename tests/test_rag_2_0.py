@@ -18,7 +18,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.knowledge.parsers import get_parser_registry
 
 
-
 def test_parser_registry():
     """Test the parser registry and all parsers."""
     print("=" * 70)
@@ -28,12 +27,12 @@ def test_parser_registry():
     # Get the parser registry
     registry = get_parser_registry()
 
-    print(f"\n✓ Parser Registry Initialized")
+    print("\n✓ Parser Registry Initialized")
     print(f"✓ Total Parsers Registered: {len(registry._parsers)}")
 
     # List all registered parsers
     parsers = registry.list_parsers()
-    print(f"\n✓ Registered Parsers:")
+    print("\n✓ Registered Parsers:")
     for i, parser_name in enumerate(parsers, 1):
         print(f"  {i}. {parser_name}")
 
@@ -95,17 +94,25 @@ def test_document_parsing(registry):
                 # Show first chunk details
                 if chunks:
                     first_chunk = chunks[0]
-                    print(f"\n  First Chunk:")
+                    print("\n  First Chunk:")
                     print(f"    - ID: {first_chunk.id}")
                     print(f"    - Content (preview): {first_chunk.content[:100]}...")
                     # Handle both dict and object for chunk metadata
-                    chunk_metadata = getattr(first_chunk, 'metadata', first_chunk)
+                    chunk_metadata = getattr(first_chunk, "metadata", first_chunk)
                     if isinstance(chunk_metadata, dict):
-                        print(f"    - Chunk Type: {chunk_metadata.get('chunk_type', 'unknown')}")
-                        print(f"    - Source: {chunk_metadata.get('source', 'unknown')}")
+                        print(
+                            f"    - Chunk Type: {chunk_metadata.get('chunk_type', 'unknown')}"
+                        )
+                        print(
+                            f"    - Source: {chunk_metadata.get('source', 'unknown')}"
+                        )
                     else:
-                        print(f"    - Chunk Type: {getattr(chunk_metadata, 'chunk_type', 'unknown')}")
-                        print(f"    - Source: {getattr(chunk_metadata, 'source', 'unknown')}")
+                        print(
+                            f"    - Chunk Type: {getattr(chunk_metadata, 'chunk_type', 'unknown')}"
+                        )
+                        print(
+                            f"    - Source: {getattr(chunk_metadata, 'source', 'unknown')}"
+                        )
 
                 parsed_count += 1
             else:
@@ -160,20 +167,20 @@ def run_specific_file(file_path: str):
 
             # Handle chunk_type for metadata
             if isinstance(metadata, dict):
-                chunk_type = metadata.get('chunk_type')
+                chunk_type = metadata.get("chunk_type")
             else:
-                chunk_type = getattr(metadata, 'chunk_type', None)
+                chunk_type = getattr(metadata, "chunk_type", None)
 
             if chunk_type:
                 print(f"✓ Chunk Type: {chunk_type}")
 
             # Handle line numbers for metadata
             if isinstance(metadata, dict):
-                line_start = metadata.get('line_start')
-                line_end = metadata.get('line_end')
+                line_start = metadata.get("line_start")
+                line_end = metadata.get("line_end")
             else:
-                line_start = getattr(metadata, 'line_start', None)
-                line_end = getattr(metadata, 'line_end', None)
+                line_start = getattr(metadata, "line_start", None)
+                line_end = getattr(metadata, "line_end", None)
 
             if line_start is not None and line_start >= 0:
                 print(f"✓ Lines: {line_start} - {line_end}")
@@ -202,6 +209,7 @@ def run_specific_file(file_path: str):
     except Exception as e:
         print(f"✗ Error: {e}")
         import traceback
+
         traceback.print_exc()
         assert False, f"Error parsing {file_path}: {e}"
 
@@ -235,7 +243,7 @@ def main():
         print("\n" + "=" * 70)
         print("TEST SUMMARY")
         print("=" * 70)
-        print(f"✓ Parser Registry: Complete")
+        print("✓ Parser Registry: Complete")
         print(f"✓ Total Parsers: {len(registry._parsers)}")
         print(f"✓ Supported Extensions: {len(registry.list_supported_extensions())}")
         print(f"✓ Parsing Tests: {parsed} passed, {failed} failed")
@@ -251,6 +259,7 @@ def main():
     except Exception as e:
         print(f"\n✗ CRITICAL ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

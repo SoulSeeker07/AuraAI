@@ -9,21 +9,25 @@ Validates:
 5. Capability execution through DesktopExecutionEngine.
 """
 
-import sys
-import os
 import inspect
+import os
+import sys
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-from src.desktop.native.adapters.audio_adapter import (
-    AudioAdapter, PyCAWAudioAdapter, WinMMAudioAdapter, DummyAudioAdapter, AudioAdapterFactory
-)
-from src.desktop.native.managers.audio_manager import AudioManager
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-from src.desktop.native.managers.base_manager import HealthStatus
 import src.desktop.native.managers.audio_manager as am_module
+from src.desktop.native.adapters.audio_adapter import (
+    AudioAdapter,
+    AudioAdapterFactory,
+    DummyAudioAdapter,
+    PyCAWAudioAdapter,
+    WinMMAudioAdapter,
+)
+from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
+from src.desktop.native.managers.audio_manager import AudioManager
+from src.desktop.native.managers.base_manager import HealthStatus
+from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
 
 
 def setup_function():
@@ -80,7 +84,9 @@ def test_audio_manager_native_structure():
         "NativeEventBus",
     ]
     for symbol in forbidden_symbols:
-        assert symbol not in source, f"AudioManager code body contains forbidden symbol: {symbol}"
+        assert (
+            symbol not in source
+        ), f"AudioManager code body contains forbidden symbol: {symbol}"
 
     print("[OK] AudioManager native structure verified")
 
@@ -98,7 +104,9 @@ def test_audio_manager_auto_discovery_and_health():
     health_res = audio_manager.health_check()
     assert health_res.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
 
-    print(f"[OK] AudioManager auto-discovery and health check verified (status: {health_res.status.value})")
+    print(
+        f"[OK] AudioManager auto-discovery and health check verified (status: {health_res.status.value})"
+    )
 
 
 def test_audio_capabilities_execution():
@@ -109,12 +117,16 @@ def test_audio_capabilities_execution():
     engine = DesktopExecutionEngine(manager_registry=registry)
 
     # Test list_audio_devices
-    res_list = engine.execute(goal="list audio devices", capability="list_audio_devices")
+    res_list = engine.execute(
+        goal="list audio devices", capability="list_audio_devices"
+    )
     assert res_list.success is True
     assert "devices" in res_list.data
 
     # Test audio.list_devices
-    res_list_dot = engine.execute(goal="list audio endpoints", capability="audio.list_devices")
+    res_list_dot = engine.execute(
+        goal="list audio endpoints", capability="audio.list_devices"
+    )
     assert res_list_dot.success is True
 
     # Test get_volume
@@ -123,7 +135,9 @@ def test_audio_capabilities_execution():
     assert "level" in res_vol.data
 
     # Test set_volume
-    res_set_vol = engine.execute(goal="set volume to 80%", capability="set_volume", level=80.0)
+    res_set_vol = engine.execute(
+        goal="set volume to 80%", capability="set_volume", level=80.0
+    )
     assert res_set_vol.success is True
     assert res_set_vol.data["level"] == 80.0
 

@@ -6,4 +6,4 @@ Provides an autonomous agent that can generate, save, execute, and debug Python 
 
 from core.agents.coding_agent.autonomous_coding_agent import AutonomousCodingAgent
 
-__all__ = ['AutonomousCodingAgent']
+__all__ = ["AutonomousCodingAgent"]

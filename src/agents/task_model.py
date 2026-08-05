@@ -6,15 +6,17 @@ Defines the Task class that represents a unit of work that agents can execute.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from datetime import datetime, timedelta
-from typing import Any, Callable, Optional
+from typing import Any
 from uuid import uuid4
 
 
 class TaskStatus(Enum):
     """Task status lifecycle."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -26,6 +28,7 @@ class TaskStatus(Enum):
 
 class TaskPriority(Enum):
     """Task priority levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -34,6 +37,7 @@ class TaskPriority(Enum):
 
 class TaskType(Enum):
     """Types of tasks agents can execute."""
+
     # Research tasks
     RESEARCH_WEB = "research_web"
     RESEARCH_DOCUMENT = "research_document"
@@ -104,6 +108,7 @@ class TaskType(Enum):
 @dataclass
 class TaskInput:
     """Input parameters for a task."""
+
     data: dict[str, Any] = field(default_factory=dict)
     context: dict[str, Any] = field(default_factory=dict)
     priority: TaskPriority = TaskPriority.MEDIUM
@@ -123,13 +128,14 @@ class TaskInput:
             "data": self.data,
             "context": self.context,
             "priority": self.priority.value,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class TaskOutput:
     """Output from task execution."""
+
     success: bool
     data: dict[str, Any] = field(default_factory=dict)
     message: str = ""
@@ -145,7 +151,7 @@ class TaskOutput:
             "message": self.message,
             "error": self.error,
             "execution_time_ms": self.execution_time_ms,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
@@ -178,8 +184,8 @@ class Task:
     progress: float = 0.0  # 0.0 to 1.0
     steps_completed: int = 0
     total_steps: int = 0
-    result_callback: Optional[Callable[[Task], None]] = None
-    on_progress_callback: Optional[Callable[[float], None]] = None
+    result_callback: Callable[[Task], None] | None = None
+    on_progress_callback: Callable[[float], None] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert task to dictionary."""
@@ -194,7 +200,9 @@ class Task:
             "output": self.output.to_dict() if self.output else None,
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
             "agent_id": self.agent_id,
             "error_count": self.error_count,
             "max_retries": self.max_retries,
@@ -202,7 +210,7 @@ class Task:
             "subtasks": self.subtasks,
             "progress": self.progress,
             "steps_completed": self.steps_completed,
-            "total_steps": self.total_steps
+            "total_steps": self.total_steps,
         }
 
     def update_progress(self, progress: float) -> None:
@@ -225,8 +233,8 @@ class Task:
             # Calculate execution time if not set
             if self.started_at and self.completed_at:
                 self.output.execution_time_ms = (
-                        (self.completed_at - self.started_at).total_seconds() * 1000
-                    )
+                    self.completed_at - self.started_at
+                ).total_seconds() * 1000
 
     def mark_failed(self, error: str = "") -> None:
         """Mark task as failed."""
@@ -260,15 +268,12 @@ class Task:
             "progress": self.progress,
             "steps_completed": self.steps_completed,
             "total_steps": self.total_steps,
-            "error_count": self.error_count
+            "error_count": self.error_count,
         }
 
 
 def create_task(
-    task_type: TaskType,
-    title: str,
-    description: str = "",
-    **kwargs
+    task_type: TaskType, title: str, description: str = "", **kwargs
 ) -> Task:
     """
     Factory function to create a new task.
@@ -293,7 +298,7 @@ def create_task(
             data=kwargs.get("input", {}),
             context=kwargs.get("context", {}),
             priority=TaskPriority(kwargs.get("priority", TaskPriority.MEDIUM).value),
-            metadata=kwargs.get("metadata", {})
+            metadata=kwargs.get("metadata", {}),
         ),
         parent_task_id=kwargs.get("parent_task_id"),
         subtasks=kwargs.get("subtasks", []),
@@ -301,6 +306,6 @@ def create_task(
         retry_delay_seconds=kwargs.get("retry_delay_seconds", 10),
         total_steps=kwargs.get("total_steps", 0),
         result_callback=kwargs.get("result_callback"),
-        on_progress_callback=kwargs.get("on_progress_callback")
+        on_progress_callback=kwargs.get("on_progress_callback"),
     )
     return task

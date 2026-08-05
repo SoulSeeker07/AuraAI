@@ -15,21 +15,11 @@ The Coding Agent can:
 
 from __future__ import annotations
 
-import os
 import ast
-import inspect
 from pathlib import Path
-from typing import Any, List, Optional
-import subprocess
+from typing import Any
 
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskType,
-    TaskInput,
-    TaskOutput,
-    TaskPriority
-)
+from .task_model import Task, TaskOutput
 
 
 class CodingAgent:
@@ -54,7 +44,7 @@ class CodingAgent:
             task_manager: TaskManager instance
         """
         self.task_manager = task_manager
-        self._project_roots: List[Path] = []
+        self._project_roots: list[Path] = []
 
     def execute_task(self, task: Task) -> TaskOutput:
         """
@@ -73,16 +63,14 @@ class CodingAgent:
                 return TaskOutput(
                     success=False,
                     message=f"No handler for task type: {task.type.value}",
-                    error=f"Task type {task.type.value} not supported"
+                    error=f"Task type {task.type.value} not supported",
                 )
 
             return method(task)
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Error executing task",
-                error=str(e)
+                success=False, message="Error executing task", error=str(e)
             )
 
     # ========================================
@@ -100,7 +88,7 @@ class CodingAgent:
                 return TaskOutput(
                     success=False,
                     message="Project path not found",
-                    error=f"Path does not exist: {project_path}"
+                    error=f"Path does not exist: {project_path}",
                 )
 
             issues = []
@@ -109,7 +97,7 @@ class CodingAgent:
             # Scan Python files
             for py_file in path.rglob("*.py"):
                 try:
-                    with open(py_file, 'r', encoding='utf-8') as f:
+                    with open(py_file, encoding="utf-8") as f:
                         tree = ast.parse(f.read())
 
                     # Simple analysis: check for common issues
@@ -126,18 +114,16 @@ class CodingAgent:
                 data={
                     "files_analyzed": files_analyzed,
                     "issues": issues,
-                    "file_count": len(issues)
-                }
+                    "file_count": len(issues),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Code analysis failed",
-                error=str(e)
+                success=False, message="Code analysis failed", error=str(e)
             )
 
-    def _analyze_ast(self, tree: ast.AST) -> List[dict[str, Any]]:
+    def _analyze_ast(self, tree: ast.AST) -> list[dict[str, Any]]:
         """Analyze AST for common issues."""
         issues = []
 
@@ -145,26 +131,30 @@ class CodingAgent:
             # Check for unused imports (simplified)
             if isinstance(node, ast.ImportFrom):
                 if node.module:
-                    issues.append({
-                        "type": "unused_import",
-                        "file": getattr(node, 'filename', 'unknown'),
-                        "line": node.lineno,
-                        "message": f"Import from '{node.module}'",
-                        "severity": "low"
-                    })
+                    issues.append(
+                        {
+                            "type": "unused_import",
+                            "file": getattr(node, "filename", "unknown"),
+                            "line": node.lineno,
+                            "message": f"Import from '{node.module}'",
+                            "severity": "low",
+                        }
+                    )
 
             # Check for missing docstrings (optional)
             if isinstance(node, ast.FunctionDef) and node.lineno:
                 # Simple heuristic: functions without docstrings
                 docstring = ast.get_docstring(node)
                 if not docstring:
-                    issues.append({
-                        "type": "missing_docstring",
-                        "file": getattr(node, 'filename', 'unknown'),
-                        "line": node.lineno,
-                        "message": "Function lacks docstring",
-                        "severity": "medium"
-                    })
+                    issues.append(
+                        {
+                            "type": "missing_docstring",
+                            "file": getattr(node, "filename", "unknown"),
+                            "line": node.lineno,
+                            "message": "Function lacks docstring",
+                            "severity": "medium",
+                        }
+                    )
 
         return issues
 
@@ -181,7 +171,7 @@ class CodingAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to refactor code",
-                error="File path required"
+                error="File path required",
             )
 
         try:
@@ -190,11 +180,11 @@ class CodingAgent:
                 return TaskOutput(
                     success=False,
                     message="File not found",
-                    error=f"Path does not exist: {file_path}"
+                    error=f"Path does not exist: {file_path}",
                 )
 
             # Read file
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding="utf-8") as f:
                 original_content = f.read()
 
             # Apply refactoring
@@ -202,70 +192,72 @@ class CodingAgent:
             changes_made = []
 
             if refactoring_type in ["all", "imports"]:
-                refactored_content, import_changes = self._refactor_imports(refactored_content)
+                refactored_content, import_changes = self._refactor_imports(
+                    refactored_content
+                )
                 changes_made.extend(import_changes)
 
             if refactoring_type in ["all", "formatting"]:
-                refactored_content, format_changes = self._apply_basic_formatting(refactored_content)
+                refactored_content, format_changes = self._apply_basic_formatting(
+                    refactored_content
+                )
                 changes_made.extend(format_changes)
 
             # Write refactored code
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(refactored_content)
 
             return TaskOutput(
                 success=True,
-                message=f"Code refactored successfully",
+                message="Code refactored successfully",
                 data={
                     "file": str(path),
                     "changes": changes_made,
-                    "change_count": len(changes_made)
-                }
+                    "change_count": len(changes_made),
+                },
             )
 
         except Exception as e:
-            return TaskOutput(
-                success=False,
-                message="Refactoring failed",
-                error=str(e)
-            )
+            return TaskOutput(success=False, message="Refactoring failed", error=str(e))
 
-    def _refactor_imports(self, content: str) -> tuple[str, List[dict]]:
+    def _refactor_imports(self, content: str) -> tuple[str, list[dict]]:
         """Refactor imports (simple version)."""
         # Sort imports alphabetically
-        lines = content.split('\n')
+        lines = content.split("\n")
         import_lines = []
         other_lines = []
 
         for line in lines:
-            if line.strip().startswith('import ') or line.strip().startswith('from '):
+            if line.strip().startswith("import ") or line.strip().startswith("from "):
                 import_lines.append(line)
             else:
                 other_lines.append(line)
 
         import_lines.sort()
 
-        return '\n'.join(import_lines + other_lines), []
+        return "\n".join(import_lines + other_lines), []
 
-    def _apply_basic_formatting(self, content: str) -> tuple[str, List[dict]]:
+    def _apply_basic_formatting(self, content: str) -> tuple[str, list[dict]]:
         """Apply basic formatting (simple version)."""
         # Normalize whitespace (basic)
         lines = []
         changes = []
 
-        for i, line in enumerate(content.split('\n')):
+        for i, line in enumerate(content.split("\n")):
             # Remove trailing whitespace
             if line != line.rstrip():
-                changes.append({
-                    "line": i + 1,
-                    "type": "trailing_whitespace",
-                    "message": "Removed trailing whitespace"
-                })
+                changes.append(
+                    {
+                        "line": i + 1,
+                        "type": "trailing_whitespace",
+                        "message": "Removed trailing whitespace",
+                    }
+                )
                 line = line.rstrip()
 
             lines.append(line)
 
-        return '\n'.join(lines), changes
+        return "\n".join(lines), changes
 
     # ========================================
     # CODE GENERATION
@@ -286,10 +278,12 @@ class CodingAgent:
             return TaskOutput(
                 success=False,
                 message="Unknown code type",
-                error=f"Code type '{code_type}' not supported"
+                error=f"Code type '{code_type}' not supported",
             )
 
-    def _generate_function(self, name: str, description: str, returns: str = None, **kwargs) -> TaskOutput:
+    def _generate_function(
+        self, name: str, description: str, returns: str = None, **kwargs
+    ) -> TaskOutput:
         """Generate a function."""
         params = kwargs.get("params", [])
         param_list = ", ".join(params)
@@ -304,23 +298,24 @@ class CodingAgent:
         return TaskOutput(
             success=True,
             message=f"Function generated: {name}",
-            data={
-                "code": func_code,
-                "function_name": name
-            }
+            data={"code": func_code, "function_name": name},
         )
 
-    def _generate_class(self, name: str, description: str, methods: List[dict] = None, **kwargs) -> TaskOutput:
+    def _generate_class(
+        self, name: str, description: str, methods: list[dict] = None, **kwargs
+    ) -> TaskOutput:
         """Generate a class."""
         methods = methods or []
         method_code = []
 
         for method in methods:
-            method_code.append(self._generate_function(
-                name=method.get("name"),
-                description=method.get("description"),
-                returns=method.get("returns")
-            ).data["code"])
+            method_code.append(
+                self._generate_function(
+                    name=method.get("name"),
+                    description=method.get("description"),
+                    returns=method.get("returns"),
+                ).data["code"]
+            )
 
         class_code = f'''class {name}:
     """
@@ -332,13 +327,12 @@ class CodingAgent:
         return TaskOutput(
             success=True,
             message=f"Class generated: {name}",
-            data={
-                "code": class_code,
-                "class_name": name
-            }
+            data={"code": class_code, "class_name": name},
         )
 
-    def _generate_module(self, name: str, description: str, components: List[dict] = None, **kwargs) -> TaskOutput:
+    def _generate_module(
+        self, name: str, description: str, components: list[dict] = None, **kwargs
+    ) -> TaskOutput:
         """Generate a module."""
         components = components or []
 
@@ -352,17 +346,13 @@ Module: {name}
 
         for comp in components:
             module_code += self._generate_function(
-                name=comp.get("name"),
-                description=comp.get("description")
+                name=comp.get("name"), description=comp.get("description")
             ).data["code"]
 
         return TaskOutput(
             success=True,
             message=f"Module generated: {name}",
-            data={
-                "code": module_code,
-                "module_name": name
-            }
+            data={"code": module_code, "module_name": name},
         )
 
     # ========================================
@@ -381,10 +371,7 @@ Module: {name}
             return TaskOutput(
                 success=True,
                 message="Code parsed successfully (no syntax errors)",
-                data={
-                    "parsed": True,
-                    "issues": []
-                }
+                data={"parsed": True, "issues": []},
             )
 
         except SyntaxError as e:
@@ -397,15 +384,13 @@ Module: {name}
                     "syntax_error": {
                         "line": e.lineno,
                         "message": e.msg,
-                        "offset": e.offset
-                    }
-                }
+                        "offset": e.offset,
+                    },
+                },
             )
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Debug analysis failed",
-                error=str(e)
+                success=False, message="Debug analysis failed", error=str(e)
             )
 
     # ========================================
@@ -423,7 +408,7 @@ Module: {name}
         return TaskOutput(
             success=False,
             message="Test generation failed",
-            error=f"Test framework '{test_framework}' not supported"
+            error=f"Test framework '{test_framework}' not supported",
         )
 
     def _generate_pytest_tests(self, code: str) -> TaskOutput:
@@ -446,18 +431,23 @@ Module: {name}
                     "tests": [
                         {
                             "name": f"test_{func.name}",
-                            "description": f"Test for {func.name}"
+                            "description": f"Test for {func.name}",
                         }
-                        for func in [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and not n.name.startswith("_")]
-                    ]
-                }
+                        for func in [
+                            n
+                            for n in ast.walk(tree)
+                            if isinstance(n, ast.FunctionDef)
+                            and not n.name.startswith("_")
+                        ]
+                    ],
+                },
             )
 
         except SyntaxError:
             return TaskOutput(
                 success=False,
                 message="Failed to generate tests (syntax error)",
-                error="Code has syntax errors, cannot generate tests"
+                error="Code has syntax errors, cannot generate tests",
             )
 
     # ========================================
@@ -472,7 +462,7 @@ Module: {name}
             return TaskOutput(
                 success=False,
                 message="Failed to generate documentation",
-                error="File path required"
+                error="File path required",
             )
 
         try:
@@ -481,10 +471,10 @@ Module: {name}
                 return TaskOutput(
                     success=False,
                     message="File not found",
-                    error=f"Path does not exist: {file_path}"
+                    error=f"Path does not exist: {file_path}",
                 )
 
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding="utf-8") as f:
                 code = f.read()
 
             # Parse and generate documentation
@@ -497,35 +487,34 @@ Module: {name}
                     parameters = []
 
                     for arg in node.args.args:
-                        param_type = self._get_annotation(arg.annotation) if arg.annotation else "Any"
+                        param_type = (
+                            self._get_annotation(arg.annotation)
+                            if arg.annotation
+                            else "Any"
+                        )
                         parameters.append(f"  {arg.arg}: {param_type}")
 
-                    returns = self._get_annotation(node.returns) if node.returns else "None"
+                    returns = (
+                        self._get_annotation(node.returns) if node.returns else "None"
+                    )
 
                     docstring += "Parameters:\n"
                     docstring += "\n".join(parameters) + "\n\n"
                     docstring += f"Returns: {returns}\n"
 
-                    documentation.append({
-                        "name": node.name,
-                        "docstring": docstring,
-                        "line": node.lineno
-                    })
+                    documentation.append(
+                        {"name": node.name, "docstring": docstring, "line": node.lineno}
+                    )
 
             return TaskOutput(
                 success=True,
                 message=f"Generated documentation for {len(documentation)} functions",
-                data={
-                    "documentation": documentation,
-                    "format": "markdown"
-                }
+                data={"documentation": documentation, "format": "markdown"},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Documentation generation failed",
-                error=str(e)
+                success=False, message="Documentation generation failed", error=str(e)
             )
 
     def _get_annotation(self, annotation) -> str:
@@ -533,8 +522,13 @@ Module: {name}
         if isinstance(annotation, ast.Name):
             return annotation.id
         elif isinstance(annotation, ast.Subscript):
-            return self._get_annotation(annotation.value) + "[" + ", ".join(
-                self._get_annotation(sub) for sub in annotation.slice.value.elts
-            ) + "]"
+            return (
+                self._get_annotation(annotation.value)
+                + "["
+                + ", ".join(
+                    self._get_annotation(sub) for sub in annotation.slice.value.elts
+                )
+                + "]"
+            )
         else:
             return str(annotation)

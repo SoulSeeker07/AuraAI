@@ -4,14 +4,12 @@ Image Preprocessing
 Utilities for image preprocessing before OCR and analysis.
 """
 
-
 import logging
-from typing import Tuple, Optional
+
 import cv2
 import numpy as np
-from PIL import Image
-from .models import OCRSettings
 
+from .models import OCRSettings
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +36,8 @@ class ImagePreprocessor:
         self.settings = settings or OCRSettings()
 
     def preprocess_image(
-        self,
-        image_path: str,
-        original_size: Optional[Tuple[int, int]] = None
-    ) -> Tuple[np.ndarray, Tuple[int, int]]:
+        self, image_path: str, original_size: tuple[int, int] | None = None
+    ) -> tuple[np.ndarray, tuple[int, int]]:
         """
         Load and preprocess an image.
 
@@ -76,8 +72,9 @@ class ImagePreprocessor:
         # Remove noise
         img = self._remove_noise(img)
 
-        logger.info(f"Preprocessed image: {width}x{height} -> "
-                   f"{img.shape[1]}x{img.shape[0]}")
+        logger.info(
+            f"Preprocessed image: {width}x{height} -> " f"{img.shape[1]}x{img.shape[0]}"
+        )
         return img, (img.shape[1], img.shape[0])
 
     def _load_image(self, image_path: str) -> np.ndarray:
@@ -147,11 +144,7 @@ class ImagePreprocessor:
 
         return angle
 
-    def _rotate_image(
-        self,
-        img: np.ndarray,
-        angle: float
-    ) -> np.ndarray:
+    def _rotate_image(self, img: np.ndarray, angle: float) -> np.ndarray:
         """
         Rotate an image by the specified angle.
 
@@ -163,16 +156,12 @@ class ImagePreprocessor:
             Rotated image
         """
         # Rotate image
-        (h, w) = img.shape[:2]
+        h, w = img.shape[:2]
         center = (w // 2, h // 2)
 
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
         rotated = cv2.warpAffine(
-            img,
-            M,
-            (w, h),
-            flags=cv2.INTER_CUBIC,
-            borderMode=cv2.BORDER_REPLICATE
+            img, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
         )
 
         return rotated
@@ -213,7 +202,7 @@ class ImagePreprocessor:
             M,
             (width, height),
             flags=cv2.INTER_CUBIC,
-            borderMode=cv2.BORDER_REPLICATE
+            borderMode=cv2.BORDER_REPLICATE,
         )
 
         # Convert back to RGB
@@ -222,11 +211,7 @@ class ImagePreprocessor:
         logger.debug(f"Deskewing image by {angle:.1f} degrees")
         return deskewed_rgb
 
-    def _resize_image(
-        self,
-        img: np.ndarray,
-        max_width: int = 2048
-    ) -> np.ndarray:
+    def _resize_image(self, img: np.ndarray, max_width: int = 2048) -> np.ndarray:
         """
         Resize image while maintaining aspect ratio.
 
@@ -321,11 +306,7 @@ class ImagePreprocessor:
         img, _ = self.preprocess_image(image_path)
         return img
 
-    def save_preprocessed_image(
-        self,
-        img: np.ndarray,
-        output_path: str
-    ) -> str:
+    def save_preprocessed_image(self, img: np.ndarray, output_path: str) -> str:
         """
         Save preprocessed image to file.
 

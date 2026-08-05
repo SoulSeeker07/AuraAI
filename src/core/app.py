@@ -39,7 +39,9 @@ class AuraApplication:
         self.local_responder = LocalResponder(self.screen_context, self.live_screen)
         self.window_manager = WindowManager(self.qt_app, self.event_bus, self.settings)
         self.overlay_manager = OverlayManager(self.event_bus, self.local_responder)
-        self.hotkeys = GlobalHotkeyManager(self.settings.overlay_hotkey, parent=self.qt_app)
+        self.hotkeys = GlobalHotkeyManager(
+            self.settings.overlay_hotkey, parent=self.qt_app
+        )
 
         self._subscribe_events()
         self._connect_lifecycle()
@@ -53,7 +55,9 @@ class AuraApplication:
 
     def _subscribe_events(self) -> None:
         self.event_bus.subscribe("history.prompt", self._record_prompt)
-        self.event_bus.subscribe("live_screen.set_enabled", self._set_live_screen_enabled)
+        self.event_bus.subscribe(
+            "live_screen.set_enabled", self._set_live_screen_enabled
+        )
 
     def _connect_lifecycle(self) -> None:
         self.hotkeys.activated.connect(lambda: self.event_bus.publish("overlay.toggle"))
@@ -78,7 +82,11 @@ class AuraApplication:
             "live_screen.state_changed",
             is_active=is_active,
             frame_count=self.live_screen.frame_count,
-            frame_path=str(self.live_screen.latest_frame_path) if self.live_screen.latest_frame_path else None,
+            frame_path=(
+                str(self.live_screen.latest_frame_path)
+                if self.live_screen.latest_frame_path
+                else None
+            ),
         )
 
     def _publish_live_screen_frame(self, frame_path: str, frame_count: int) -> None:

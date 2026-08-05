@@ -4,12 +4,11 @@ Condition Engine
 Evaluates workflow conditions for decision points and conditional branching.
 """
 
-
-
 import logging
-from typing import Optional, Dict, Any, Callable, List
-import json
+from collections.abc import Callable
+from typing import Any
 
+from .models import DecisionOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +26,11 @@ class ConditionEngine:
             variable_manager: VariableManager instance
         """
         self.variable_manager = variable_manager
-        self.custom_conditions: Dict[str, Callable] = {}
+        self.custom_conditions: dict[str, Callable] = {}
         logger.info("Condition Engine initialized")
 
     def evaluate(
-        self,
-        condition: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+        self, condition: dict[str, Any], context: dict[str, Any] | None = None
     ) -> bool:
         """
         Evaluate a condition.
@@ -45,22 +42,26 @@ class ConditionEngine:
         Returns:
             True if condition is met, False otherwise
         """
-        condition_type = condition.get('type', 'value_check')
-        params = condition.get('params', {})
+        condition_type = condition.get("type", "value_check")
+        params = condition.get("params", {})
 
         logger.debug(f"Evaluating condition: {condition_type}")
 
-        if condition_type == 'attribute_check':
+        if condition_type == "attribute_check":
             return self._evaluate_attribute_check(params, context or {})
-        elif condition_type == 'value_check':
+        elif condition_type == "value_check":
             return self._evaluate_value_check(params, context or {})
-        elif condition_type == 'custom':
-            return self._evaluate_custom_condition(params.get('condition_id'), context or {})
+        elif condition_type == "custom":
+            return self._evaluate_custom_condition(
+                params.get("condition_id"), context or {}
+            )
         else:
             logger.warning(f"Unknown condition type: {condition_type}")
             return False
 
-    def _evaluate_attribute_check(self, params: Dict[str, Any], context: Dict[str, Any]) -> bool:
+    def _evaluate_attribute_check(
+        self, params: dict[str, Any], context: dict[str, Any]
+    ) -> bool:
         """
         Evaluate attribute check condition.
 
@@ -72,7 +73,7 @@ class ConditionEngine:
             True if condition is met
         """
         # Check if attribute exists
-        attribute = params.get('attribute', '')
+        attribute = params.get("attribute", "")
         if not attribute:
             return False
 
@@ -83,14 +84,16 @@ class ConditionEngine:
             return False
 
         # Check against expected value
-        expected_value = params.get('expected_value')
+        expected_value = params.get("expected_value")
         if expected_value is not None:
             return value == expected_value
 
         # Just check if attribute exists
         return True
 
-    def _evaluate_value_check(self, params: Dict[str, Any], context: Dict[str, Any]) -> bool:
+    def _evaluate_value_check(
+        self, params: dict[str, Any], context: dict[str, Any]
+    ) -> bool:
         """
         Evaluate value check condition.
 
@@ -101,9 +104,9 @@ class ConditionEngine:
         Returns:
             True if condition is met
         """
-        variable = params.get('variable', '')
-        operator = params.get('operator', '==')
-        expected_value = params.get('expected_value')
+        variable = params.get("variable", "")
+        operator = params.get("operator", "==")
+        expected_value = params.get("expected_value")
 
         if not variable or expected_value is None:
             logger.warning("Value check missing variable or expected_value")
@@ -119,7 +122,9 @@ class ConditionEngine:
         # Apply operator
         return self._apply_operator(operator, actual_value, expected_value)
 
-    def _apply_operator(self, operator: str, actual_value: Any, expected_value: Any) -> bool:
+    def _apply_operator(
+        self, operator: str, actual_value: Any, expected_value: Any
+    ) -> bool:
         """
         Apply comparison operator.
 
@@ -131,43 +136,45 @@ class ConditionEngine:
         Returns:
             Result of comparison
         """
-        if operator == '==':
+        if operator == "==":
             return actual_value == expected_value
-        elif operator == '!=':
+        elif operator == "!=":
             return actual_value != expected_value
-        elif operator == '>':
+        elif operator == ">":
             return actual_value > expected_value
-        elif operator == '<':
+        elif operator == "<":
             return actual_value < expected_value
-        elif operator == '>=':
+        elif operator == ">=":
             return actual_value >= expected_value
-        elif operator == '<=':
+        elif operator == "<=":
             return actual_value <= expected_value
-        elif operator == 'in':
+        elif operator == "in":
             return actual_value in expected_value
-        elif operator == 'not in':
+        elif operator == "not in":
             return actual_value not in expected_value
-        elif operator == 'contains':
+        elif operator == "contains":
             return expected_value in actual_value
-        elif operator == 'not contains':
+        elif operator == "not contains":
             return expected_value not in actual_value
-        elif operator == 'starts_with':
+        elif operator == "starts_with":
             return str(actual_value).startswith(expected_value)
-        elif operator == 'ends_with':
+        elif operator == "ends_with":
             return str(actual_value).endswith(expected_value)
-        elif operator == 'is_empty':
-            return actual_value is None or actual_value == ''
-        elif operator == 'is_not_empty':
-            return actual_value is not None and actual_value != ''
-        elif operator == 'is_true':
+        elif operator == "is_empty":
+            return actual_value is None or actual_value == ""
+        elif operator == "is_not_empty":
+            return actual_value is not None and actual_value != ""
+        elif operator == "is_true":
             return bool(actual_value) is True
-        elif operator == 'is_false':
+        elif operator == "is_false":
             return bool(actual_value) is False
         else:
             logger.warning(f"Unknown operator: {operator}")
             return False
 
-    def _evaluate_custom_condition(self, condition_id: str, context: Dict[str, Any]) -> bool:
+    def _evaluate_custom_condition(
+        self, condition_id: str, context: dict[str, Any]
+    ) -> bool:
         """
         Evaluate custom condition.
 
@@ -185,9 +192,7 @@ class ConditionEngine:
         return self.custom_conditions[condition_id](context)
 
     def add_custom_condition(
-        self,
-        condition_id: str,
-        condition_func: Callable[[Dict[str, Any]], bool]
+        self, condition_id: str, condition_func: Callable[[dict[str, Any]], bool]
     ):
         """
         Add a custom condition function.
@@ -200,9 +205,7 @@ class ConditionEngine:
         logger.info(f"Added custom condition: {condition_id}")
 
     def evaluate_decision(
-        self,
-        decision: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+        self, decision: dict[str, Any], context: dict[str, Any] | None = None
     ) -> DecisionOutcome:
         """
         Evaluate a decision (branching logic).
@@ -214,8 +217,8 @@ class ConditionEngine:
         Returns:
             Decision outcome
         """
-        outcomes = decision.get('outcomes', [])
-        conditions = decision.get('conditions', [])
+        outcomes = decision.get("outcomes", [])
+        conditions = decision.get("conditions", [])
 
         context = context or {}
 
@@ -225,7 +228,7 @@ class ConditionEngine:
                 return outcome_key
 
         # Return default outcome
-        default_outcome = decision.get('default_outcome', 'continue')
+        default_outcome = decision.get("default_outcome", "continue")
         return default_outcome
 
     def get_variable_value(self, variable_name: str, default: Any = None) -> Any:
@@ -249,9 +252,11 @@ class ConditionEngine:
             variable_name: Variable name
             value: Value to set
         """
-        self.variable_manager.set_variable(variable_name, value, scope='step')
+        self.variable_manager.set_variable(variable_name, value, scope="step")
 
-    def evaluate_batch(self, conditions: List[Dict[str, Any]], context: Optional[Dict[str, Any]] = None) -> List[bool]:
+    def evaluate_batch(
+        self, conditions: list[dict[str, Any]], context: dict[str, Any] | None = None
+    ) -> list[bool]:
         """
         Evaluate multiple conditions.
 

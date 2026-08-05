@@ -13,19 +13,12 @@ The Vision Agent can:
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
-import json
+from typing import Any
 
-from PIL import Image
 import pytesseract
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskType,
-    TaskInput,
-    TaskOutput,
-    TaskPriority
-)
+from PIL import Image
+
+from .task_model import Task, TaskOutput
 
 
 class VisionAgent:
@@ -69,16 +62,14 @@ class VisionAgent:
                 return TaskOutput(
                     success=False,
                     message=f"No handler for task type: {task.type.value}",
-                    error=f"Task type {task.type.value} not supported"
+                    error=f"Task type {task.type.value} not supported",
                 )
 
             return method(task)
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Error executing task",
-                error=str(e)
+                success=False, message="Error executing task", error=str(e)
             )
 
     # ========================================
@@ -94,7 +85,7 @@ class VisionAgent:
             return TaskOutput(
                 success=False,
                 message="Image analysis failed",
-                error="Image path required"
+                error="Image path required",
             )
 
         try:
@@ -116,7 +107,7 @@ class VisionAgent:
                 "format": image.format,
                 "mode": image.mode,
                 "text_content": text,
-                "analysis_type": analysis_type
+                "analysis_type": analysis_type,
             }
 
             return TaskOutput(
@@ -125,15 +116,13 @@ class VisionAgent:
                 data={
                     "image": image_path,
                     "analysis": analysis,
-                    "dimensions": f"{width}x{height}"
-                }
+                    "dimensions": f"{width}x{height}",
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Image analysis failed",
-                error=str(e)
+                success=False, message="Image analysis failed", error=str(e)
             )
 
     def _extract_text_from_image(self, image_path: str) -> str:
@@ -157,7 +146,7 @@ class VisionAgent:
             return TaskOutput(
                 success=False,
                 message="Document reading failed",
-                error="Document path required"
+                error="Document path required",
             )
 
         try:
@@ -166,12 +155,12 @@ class VisionAgent:
                 return TaskOutput(
                     success=False,
                     message="Document not found",
-                    error=f"Path does not exist: {document_path}"
+                    error=f"Path does not exist: {document_path}",
                 )
 
             # Read based on content type
             if content_type == "text":
-                with open(path, 'r', encoding='utf-8') as f:
+                with open(path, encoding="utf-8") as f:
                     content = f.read()
 
             elif content_type == "image":
@@ -185,7 +174,7 @@ class VisionAgent:
                 return TaskOutput(
                     success=False,
                     message="Unknown content type",
-                    error=f"Content type '{content_type}' not supported"
+                    error=f"Content type '{content_type}' not supported",
                 )
 
             # Extract key sections (simplified)
@@ -199,25 +188,23 @@ class VisionAgent:
                     "content_type": content_type,
                     "sections": sections,
                     "section_count": len(sections),
-                    "total_length": len(content)
-                }
+                    "total_length": len(content),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Document reading failed",
-                error=str(e)
+                success=False, message="Document reading failed", error=str(e)
             )
 
-    def _extract_sections(self, content: str) -> List[dict[str, Any]]:
+    def _extract_sections(self, content: str) -> list[dict[str, Any]]:
         """Extract sections from document content."""
         sections = []
 
         # Split by common section markers
-        markers = ['## ', '# ', '### ', '--- ', '* ']
+        markers = ["## ", "# ", "### ", "--- ", "* "]
 
-        lines = content.split('\n')
+        lines = content.split("\n")
         current_section = {"title": "Document", "content": "", "lines": 0}
 
         for line in lines[:100]:  # First 100 lines
@@ -231,9 +218,9 @@ class VisionAgent:
                         sections.append(current_section)
 
                     current_section = {
-                        "title": stripped[len(marker):].strip(),
+                        "title": stripped[len(marker) :].strip(),
                         "content": "",
-                        "lines": 0
+                        "lines": 0,
                     }
                     is_section = True
                     break
@@ -260,7 +247,7 @@ class VisionAgent:
             return TaskOutput(
                 success=False,
                 message="Diagram understanding failed",
-                error="Diagram path required"
+                error="Diagram path required",
             )
 
         try:
@@ -277,36 +264,36 @@ class VisionAgent:
                     "diagram": diagram_path,
                     "type": diagram_type,
                     "elements": elements,
-                    "interpretation": "Flowchart diagram analysis completed"
-                }
+                    "interpretation": "Flowchart diagram analysis completed",
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Diagram understanding failed",
-                error=str(e)
+                success=False, message="Diagram understanding failed", error=str(e)
             )
 
-    def _interpret_diagram_elements(self, text: str, diagram_type: str) -> List[dict]:
+    def _interpret_diagram_elements(self, text: str, diagram_type: str) -> list[dict]:
         """Interpret diagram elements."""
         elements = []
 
         # Simple parsing based on diagram type
         if diagram_type == "flowchart":
-            for i, line in enumerate(text.split('\n')[:20]):
-                elements.append({
-                    "element_type": "node" if "→" in line or "=" in line else "arrow",
-                    "content": line.strip(),
-                    "index": i
-                })
+            for i, line in enumerate(text.split("\n")[:20]):
+                elements.append(
+                    {
+                        "element_type": (
+                            "node" if "→" in line or "=" in line else "arrow"
+                        ),
+                        "content": line.strip(),
+                        "index": i,
+                    }
+                )
         else:
-            for i, line in enumerate(text.split('\n')[:20]):
-                elements.append({
-                    "element_type": "shape",
-                    "content": line.strip(),
-                    "index": i
-                })
+            for i, line in enumerate(text.split("\n")[:20]):
+                elements.append(
+                    {"element_type": "shape", "content": line.strip(), "index": i}
+                )
 
         return elements
 
@@ -322,7 +309,7 @@ class VisionAgent:
             return TaskOutput(
                 success=False,
                 message="UI explanation failed",
-                error="Screenshot path required"
+                error="Screenshot path required",
             )
 
         try:
@@ -339,23 +326,21 @@ class VisionAgent:
                     "screenshot": screenshot_path,
                     "elements": elements,
                     "element_count": len(elements),
-                    "ui_type": "Web/Desktop application"
-                }
+                    "ui_type": "Web/Desktop application",
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="UI explanation failed",
-                error=str(e)
+                success=False, message="UI explanation failed", error=str(e)
             )
 
-    def _extract_ui_elements(self, text: str) -> List[dict[str, Any]]:
+    def _extract_ui_elements(self, text: str) -> list[dict[str, Any]]:
         """Extract UI elements from text."""
         elements = []
 
         # Parse text for UI elements (buttons, inputs, headers, etc.)
-        lines = text.split('\n')
+        lines = text.split("\n")
         headers = []
         buttons = []
         inputs = []
@@ -363,24 +348,32 @@ class VisionAgent:
         for i, line in enumerate(lines[:50]):
             stripped = line.strip()
 
-            if stripped.startswith('>>>') or stripped.startswith('Button'):
-                buttons.append({
-                    "type": "button",
-                    "label": stripped.split(':', 1)[1].strip() if ':' in stripped else stripped,
-                    "position": i
-                })
-            elif stripped.startswith('>>') or stripped.startswith('Input'):
-                inputs.append({
-                    "type": "input",
-                    "label": stripped.split(':', 1)[1].strip() if ':' in stripped else stripped,
-                    "position": i
-                })
+            if stripped.startswith(">>>") or stripped.startswith("Button"):
+                buttons.append(
+                    {
+                        "type": "button",
+                        "label": (
+                            stripped.split(":", 1)[1].strip()
+                            if ":" in stripped
+                            else stripped
+                        ),
+                        "position": i,
+                    }
+                )
+            elif stripped.startswith(">>") or stripped.startswith("Input"):
+                inputs.append(
+                    {
+                        "type": "input",
+                        "label": (
+                            stripped.split(":", 1)[1].strip()
+                            if ":" in stripped
+                            else stripped
+                        ),
+                        "position": i,
+                    }
+                )
             elif len(stripped) < 50:
-                headers.append({
-                    "type": "header",
-                    "text": stripped,
-                    "level": 1
-                })
+                headers.append({"type": "header", "text": stripped, "level": 1})
 
         return headers + buttons + inputs
 
@@ -397,7 +390,7 @@ class VisionAgent:
             return TaskOutput(
                 success=False,
                 message="Image comparison failed",
-                error="Both image paths required"
+                error="Both image paths required",
             )
 
         try:
@@ -409,35 +402,38 @@ class VisionAgent:
             info1 = {
                 "dimensions": f"{img1.width}x{img1.height}",
                 "format": img1.format,
-                "mode": img1.mode
+                "mode": img1.mode,
             }
 
             info2 = {
                 "dimensions": f"{img2.width}x{img2.height}",
                 "format": img2.format,
-                "mode": img2.mode
+                "mode": img2.mode,
             }
 
             # Compare
             differences = []
 
             if img1.size != img2.size:
-                differences.append({
-                    "type": "size",
-                    "message": f"Images have different sizes: {info1['dimensions']} vs {info2['dimensions']}"
-                })
+                differences.append(
+                    {
+                        "type": "size",
+                        "message": f"Images have different sizes: {info1['dimensions']} vs {info2['dimensions']}",
+                    }
+                )
 
             if img1.format != img2.format:
-                differences.append({
-                    "type": "format",
-                    "message": f"Images have different formats: {img1.format} vs {img2.format}"
-                })
+                differences.append(
+                    {
+                        "type": "format",
+                        "message": f"Images have different formats: {img1.format} vs {img2.format}",
+                    }
+                )
 
             if not differences:
-                differences.append({
-                    "type": "identical",
-                    "message": "Images appear identical"
-                })
+                differences.append(
+                    {"type": "identical", "message": "Images appear identical"}
+                )
 
             return TaskOutput(
                 success=True,
@@ -448,15 +444,13 @@ class VisionAgent:
                     "image1_info": info1,
                     "image2_info": info2,
                     "differences": differences,
-                    "differences_count": len(differences)
-                }
+                    "differences_count": len(differences),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Image comparison failed",
-                error=str(e)
+                success=False, message="Image comparison failed", error=str(e)
             )
 
     # ========================================

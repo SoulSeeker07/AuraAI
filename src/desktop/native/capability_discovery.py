@@ -5,16 +5,16 @@ Search for capabilities based on goals instead of hardcoded names.
 Planner → Capability Search → Best Capability
 """
 
-from typing import List, Dict, Any, Optional
 from enum import Enum
+from typing import Any
 
-from .capability_registry import CapabilityRegistry, CapabilityDescriptor, PermissionRequired
+from .capability_registry import CapabilityRegistry
 from .native_manager import NativeManager
-from .native_exceptions import CapabilityNotFoundError
 
 
 class GoalIntent(Enum):
     """Intent of the user's goal"""
+
     OPEN_APPLICATION = "open_application"
     CLOSE_APPLICATION = "close_application"
     MINIMIZE_APPLICATION = "minimize_application"
@@ -48,6 +48,7 @@ class GoalIntent(Enum):
 
 class CapabilityMatchScore(Enum):
     """Score of capability match"""
+
     NO_MATCH = 0
     WEAK_MATCH = 1
     MODERATE_MATCH = 2
@@ -62,7 +63,7 @@ class CapabilityDiscovery:
     Maps user goals to capabilities without hardcoding names.
     """
 
-    def __init__(self, registry: Optional[CapabilityRegistry] = None):
+    def __init__(self, registry: CapabilityRegistry | None = None):
         """
         Initialize discovery system.
 
@@ -74,7 +75,7 @@ class CapabilityDiscovery:
 
     # ==================== Goal Matching ====================
 
-    def discover_capabilities_for_goal(self, goal: str) -> List[Dict[str, Any]]:
+    def discover_capabilities_for_goal(self, goal: str) -> list[dict[str, Any]]:
         """
         Discover capabilities for a given goal.
 
@@ -97,12 +98,14 @@ class CapabilityDiscovery:
                 for cap in capabilities:
                     score = self._calculate_score(goal, cap, intent)
                     if score > CapabilityMatchScore.WEAK_MATCH:
-                        matches.append({
-                            "capability": cap,
-                            "intent": intent,
-                            "score": score,
-                            "reason": self._get_match_reason(goal, intent)
-                        })
+                        matches.append(
+                            {
+                                "capability": cap,
+                                "intent": intent,
+                                "score": score,
+                                "reason": self._get_match_reason(goal, intent),
+                            }
+                        )
 
         # If no matches from intents, do semantic matching
         if not matches:
@@ -113,7 +116,7 @@ class CapabilityDiscovery:
 
         return matches
 
-    def _get_capabilities_for_intent(self, intent: GoalIntent) -> List[str]:
+    def _get_capabilities_for_intent(self, intent: GoalIntent) -> list[str]:
         """
         Get capabilities for a specific intent.
 
@@ -124,7 +127,7 @@ class CapabilityDiscovery:
             List of capability names
         """
         # Map intents to capabilities
-        intent_to_capability: Dict[GoalIntent, List[str]] = {
+        intent_to_capability: dict[GoalIntent, list[str]] = {
             GoalIntent.OPEN_APPLICATION: ["launch_application"],
             GoalIntent.CLOSE_APPLICATION: ["close_window"],
             GoalIntent.MINIMIZE_APPLICATION: ["minimize_window"],
@@ -159,10 +162,7 @@ class CapabilityDiscovery:
         return intent_to_capability.get(intent, [])
 
     def _calculate_score(
-        self,
-        goal: str,
-        capability: str,
-        intent: GoalIntent
+        self, goal: str, capability: str, intent: GoalIntent
     ) -> CapabilityMatchScore:
         """
         Calculate match score between goal and capability.
@@ -212,7 +212,7 @@ class CapabilityDiscovery:
         """
         return f"Matches {intent.value} intent"
 
-    def _get_keywords_for_capability(self, capability: str) -> List[str]:
+    def _get_keywords_for_capability(self, capability: str) -> list[str]:
         """
         Get keywords for a capability.
 
@@ -222,11 +222,17 @@ class CapabilityDiscovery:
         Returns:
             List of keywords
         """
-        keywords: Dict[str, List[str]] = {
+        keywords: dict[str, list[str]] = {
             "list_windows": ["list", "show", "display", "open", "running"],
             "list_displays": ["list", "screen", "monitor", "display"],
             "list_audio_devices": ["list", "audio", "sound", "speaker", "microphone"],
-            "list_network_interfaces": ["list", "network", "interface", "wifi", "ethernet"],
+            "list_network_interfaces": [
+                "list",
+                "network",
+                "interface",
+                "wifi",
+                "ethernet",
+            ],
             "read_clipboard": ["clipboard", "copy", "paste"],
             "write_clipboard": ["clipboard", "copy", "paste"],
             "set_volume": ["volume", "loud", "quiet", "mute", "sound"],
@@ -235,7 +241,13 @@ class CapabilityDiscovery:
             "sleep": ["sleep", "hibernate", "standby", "pause"],
             "lock": ["lock", "screen", "secure"],
             "logoff": ["logoff", "switch user", "logout", "exit"],
-            "activate_window": ["activate", "focus", "bring to front", "select", "open"],
+            "activate_window": [
+                "activate",
+                "focus",
+                "bring to front",
+                "select",
+                "open",
+            ],
             "move_window": ["move", "position", "location", "drag"],
             "resize_window": ["resize", "size", "dimensions", "maximize", "minimize"],
             "close_window": ["close", "exit", "quit", "end", "stop"],
@@ -243,7 +255,7 @@ class CapabilityDiscovery:
 
         return keywords.get(capability.lower(), [])
 
-    def _semantic_match(self, goal: str) -> List[Dict[str, Any]]:
+    def _semantic_match(self, goal: str) -> list[dict[str, Any]]:
         """
         Perform semantic matching based on capability categories.
 
@@ -272,16 +284,18 @@ class CapabilityDiscovery:
                         if score >= CapabilityMatchScore.STRONG_MATCH:
                             score = CapabilityMatchScore.EXACT_MATCH
 
-                        matches.append({
-                            "capability": cap.name,
-                            "intent": None,
-                            "score": score,
-                            "reason": f"Related to {category}"
-                        })
+                        matches.append(
+                            {
+                                "capability": cap.name,
+                                "intent": None,
+                                "score": score,
+                                "reason": f"Related to {category}",
+                            }
+                        )
 
         return matches
 
-    def _analyze_goal_categories(self, goal: str) -> List[str]:
+    def _analyze_goal_categories(self, goal: str) -> list[str]:
         """
         Analyze goal and return relevant categories.
 
@@ -291,14 +305,20 @@ class CapabilityDiscovery:
         Returns:
             List of relevant category names
         """
-        categories: List[str] = []
+        categories: list[str] = []
 
         # Window-related keywords
-        if any(kw in goal for kw in ["window", "app", "program", "browser", "chrome", "edge"]):
+        if any(
+            kw in goal
+            for kw in ["window", "app", "program", "browser", "chrome", "edge"]
+        ):
             categories.append("window")
 
         # Display-related keywords
-        if any(kw in goal for kw in ["display", "screen", "monitor", "resolution", "fullscreen"]):
+        if any(
+            kw in goal
+            for kw in ["display", "screen", "monitor", "resolution", "fullscreen"]
+        ):
             categories.append("display")
 
         # Clipboard-related keywords
@@ -306,15 +326,24 @@ class CapabilityDiscovery:
             categories.append("clipboard")
 
         # Audio-related keywords
-        if any(kw in goal for kw in ["audio", "sound", "volume", "mute", "speaker", "microphone"]):
+        if any(
+            kw in goal
+            for kw in ["audio", "sound", "volume", "mute", "speaker", "microphone"]
+        ):
             categories.append("audio")
 
         # Network-related keywords
-        if any(kw in goal for kw in ["network", "internet", "wifi", "ethernet", "connection"]):
+        if any(
+            kw in goal
+            for kw in ["network", "internet", "wifi", "ethernet", "connection"]
+        ):
             categories.append("network")
 
         # Power-related keywords
-        if any(kw in goal for kw in ["power", "shutdown", "restart", "sleep", "lock", "logoff"]):
+        if any(
+            kw in goal
+            for kw in ["power", "shutdown", "restart", "sleep", "lock", "logoff"]
+        ):
             categories.append("power")
 
         # Registry-related keywords
@@ -322,12 +351,17 @@ class CapabilityDiscovery:
             categories.append("registry")
 
         # Service-related keywords
-        if any(kw in goal for kw in ["service", "server", "background", "daemon", "process"]):
+        if any(
+            kw in goal
+            for kw in ["service", "server", "background", "daemon", "process"]
+        ):
             categories.append("service")
 
         return categories
 
-    def _calculate_category_score(self, goal: str, category: str) -> CapabilityMatchScore:
+    def _calculate_category_score(
+        self, goal: str, category: str
+    ) -> CapabilityMatchScore:
         """
         Calculate score based on category relevance.
 
@@ -341,42 +375,59 @@ class CapabilityDiscovery:
         score = CapabilityMatchScore.NO_MATCH
 
         # Window category
-        if category == "window" and any(kw in goal for kw in ["window", "app", "browser", "chrome", "edge"]):
+        if category == "window" and any(
+            kw in goal for kw in ["window", "app", "browser", "chrome", "edge"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Display category
-        if category == "display" and any(kw in goal for kw in ["display", "screen", "monitor", "resolution"]):
+        if category == "display" and any(
+            kw in goal for kw in ["display", "screen", "monitor", "resolution"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Clipboard category
-        if category == "clipboard" and any(kw in goal for kw in ["clipboard", "copy", "paste"]):
+        if category == "clipboard" and any(
+            kw in goal for kw in ["clipboard", "copy", "paste"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Audio category
-        if category == "audio" and any(kw in goal for kw in ["audio", "sound", "volume", "mute"]):
+        if category == "audio" and any(
+            kw in goal for kw in ["audio", "sound", "volume", "mute"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Network category
-        if category == "network" and any(kw in goal for kw in ["network", "internet", "wifi", "ethernet"]):
+        if category == "network" and any(
+            kw in goal for kw in ["network", "internet", "wifi", "ethernet"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Power category
-        if category == "power" and any(kw in goal for kw in ["power", "shutdown", "restart", "sleep", "lock", "logoff"]):
+        if category == "power" and any(
+            kw in goal
+            for kw in ["power", "shutdown", "restart", "sleep", "lock", "logoff"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Registry category
-        if category == "registry" and any(kw in goal for kw in ["registry", "system", "config", "setting"]):
+        if category == "registry" and any(
+            kw in goal for kw in ["registry", "system", "config", "setting"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         # Service category
-        if category == "service" and any(kw in goal for kw in ["service", "server", "background", "daemon"]):
+        if category == "service" and any(
+            kw in goal for kw in ["service", "server", "background", "daemon"]
+        ):
             score = CapabilityMatchScore.MODERATE_MATCH
 
         return score
 
     # ==================== Capability Selection ====================
 
-    def select_best_capability(self, goal: str) -> Optional[Dict[str, Any]]:
+    def select_best_capability(self, goal: str) -> dict[str, Any] | None:
         """
         Select the best capability for a given goal.
 
@@ -397,10 +448,10 @@ class CapabilityDiscovery:
             "capability": best_match["capability"],
             "metadata": self.registry.get(best_match["capability"]),
             "reason": best_match["reason"],
-            "score": best_match["score"]
+            "score": best_match["score"],
         }
 
-    def list_capable_capabilities(self, goal: str) -> List[Dict[str, Any]]:
+    def list_capable_capabilities(self, goal: str) -> list[dict[str, Any]]:
         """
         List all capabilities that could potentially fulfill the goal.
 
@@ -427,10 +478,12 @@ class CapabilityDiscovery:
 
 
 # Singleton instance
-_discovery: Optional[CapabilityDiscovery] = None
+_discovery: CapabilityDiscovery | None = None
 
 
-def get_capability_discovery(registry: Optional[CapabilityRegistry] = None) -> CapabilityDiscovery:
+def get_capability_discovery(
+    registry: CapabilityRegistry | None = None,
+) -> CapabilityDiscovery:
     """
     Get or create the global capability discovery singleton.
 
@@ -455,4 +508,5 @@ def reset_capability_discovery() -> None:
 def get_capability_registry() -> CapabilityRegistry:
     """Get CapabilityRegistry singleton (for internal use)"""
     from .capability_registry import CapabilityRegistry
+
     return CapabilityRegistry()

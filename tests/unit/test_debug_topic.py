@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.getcwd())
 
 from core.memory.memory_manager import MemoryManager
@@ -10,10 +11,18 @@ manager = MemoryManager(memory=memory)
 
 # Store messages
 print("Storing messages...")
-memory.remember_exchange("Let's discuss networking.", "Sure! What would you like to know?", "General")
-memory.remember_exchange("What protocol elects DR and BDR?", "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.", "Networking")
+memory.remember_exchange(
+    "Let's discuss networking.", "Sure! What would you like to know?", "General"
+)
+memory.remember_exchange(
+    "What protocol elects DR and BDR?",
+    "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
+    "Networking",
+)
 memory.remember_exchange("Switch topic.", "What's next?", "General")
-memory.remember_exchange("Let's discuss Python.", "Great choice! Python is versatile.", "Python")
+memory.remember_exchange(
+    "Let's discuss Python.", "Great choice! Python is versatile.", "Python"
+)
 
 # Get recent messages
 messages = manager.get_recent_messages(limit=5)

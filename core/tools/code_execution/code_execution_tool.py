@@ -4,12 +4,11 @@ Code Execution Tool
 This tool allows Aura to automatically save and execute generated Python code.
 """
 
-import os
-import sys
 import subprocess
-from pathlib import Path
-from typing import Dict, Any, Optional, List
+import sys
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from core import logger
 
@@ -24,11 +23,8 @@ class CodeExecutionTool:
         logger.info(f"Code execution tool initialized in {self.code_dir}")
 
     def save_and_execute(
-        self,
-        code: str,
-        filename: str = None,
-        timeout: int = 30
-    ) -> Dict[str, Any]:
+        self, code: str, filename: str = None, timeout: int = 30
+    ) -> dict[str, Any]:
         """
         Save code to a file and execute it.
 
@@ -56,24 +52,24 @@ class CodeExecutionTool:
 
         # Save code to file
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(code)
             logger.info(f"Saved code to {filepath}")
         except Exception as e:
             error_msg = f"Failed to save code: {e}"
             logger.error(error_msg)
             return {
-                'success': False,
-                'output': None,
-                'error': error_msg,
-                'filename': filename,
-                'execution_time': 0.0
+                "success": False,
+                "output": None,
+                "error": error_msg,
+                "filename": filename,
+                "execution_time": 0.0,
             }
 
         # Execute the code
         return self._execute_code(filepath, timeout)
 
-    def _execute_code(self, filepath: Path, timeout: int) -> Dict[str, Any]:
+    def _execute_code(self, filepath: Path, timeout: int) -> dict[str, Any]:
         """
         Execute a Python file.
 
@@ -95,7 +91,7 @@ class CodeExecutionTool:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                cwd=str(self.workspace_root)
+                cwd=str(self.workspace_root),
             )
 
             execution_time = time.time() - start_time
@@ -103,45 +99,47 @@ class CodeExecutionTool:
             if result.returncode == 0:
                 logger.info(f"Successfully executed {filepath}")
                 return {
-                    'success': True,
-                    'output': result.stdout,
-                    'error': None,
-                    'filename': filepath.name,
-                    'execution_time': execution_time
+                    "success": True,
+                    "output": result.stdout,
+                    "error": None,
+                    "filename": filepath.name,
+                    "execution_time": execution_time,
                 }
             else:
-                logger.error(f"Failed to execute {filepath} (return code: {result.returncode})")
+                logger.error(
+                    f"Failed to execute {filepath} (return code: {result.returncode})"
+                )
                 return {
-                    'success': False,
-                    'output': result.stdout,
-                    'error': result.stderr,
-                    'filename': filepath.name,
-                    'execution_time': execution_time
+                    "success": False,
+                    "output": result.stdout,
+                    "error": result.stderr,
+                    "filename": filepath.name,
+                    "execution_time": execution_time,
                 }
 
         except subprocess.TimeoutExpired:
             execution_time = time.time() - start_time
             logger.error(f"Code execution timed out after {timeout}s")
             return {
-                'success': False,
-                'output': None,
-                'error': f"Execution timed out after {timeout} seconds",
-                'filename': filepath.name,
-                'execution_time': execution_time
+                "success": False,
+                "output": None,
+                "error": f"Execution timed out after {timeout} seconds",
+                "filename": filepath.name,
+                "execution_time": execution_time,
             }
 
         except Exception as e:
             execution_time = time.time() - start_time
             logger.error(f"Error executing code: {e}", exc_info=True)
             return {
-                'success': False,
-                'output': None,
-                'error': str(e),
-                'filename': filepath.name,
-                'execution_time': execution_time
+                "success": False,
+                "output": None,
+                "error": str(e),
+                "filename": filepath.name,
+                "execution_time": execution_time,
             }
 
-    def list_executions(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def list_executions(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         List previously executed codes.
 
@@ -156,12 +154,14 @@ class CodeExecutionTool:
         for filepath in sorted(self.code_dir.glob("*.py"), reverse=True)[:limit]:
             try:
                 stat = filepath.stat()
-                executions.append({
-                    'filename': filepath.name,
-                    'path': str(filepath),
-                    'timestamp': datetime.fromtimestamp(stat.st_mtime),
-                    'size': stat.st_size
-                })
+                executions.append(
+                    {
+                        "filename": filepath.name,
+                        "path": str(filepath),
+                        "timestamp": datetime.fromtimestamp(stat.st_mtime),
+                        "size": stat.st_size,
+                    }
+                )
             except Exception as e:
                 logger.error(f"Error reading {filepath}: {e}")
 

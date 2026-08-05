@@ -7,7 +7,7 @@ from typing import Any
 @dataclass
 class RoutingConfig:
     """Configuration for routing queries to appropriate sources."""
-    
+
     # Live information sources
     news_sources = [
         "news.google.com",
@@ -15,7 +15,7 @@ class RoutingConfig:
         "reuters.com",
         "apnews.com",
     ]
-    
+
     # Programming sources
     programming_sources = [
         "github.com",
@@ -25,7 +25,7 @@ class RoutingConfig:
         "developer.mozilla.org",
         "learn.microsoft.com",
     ]
-    
+
     # Networking sources
     networking_sources = [
         "cisco.com",
@@ -34,7 +34,7 @@ class RoutingConfig:
         "paloaltonetworks.com",
         "fortinet.com",
     ]
-    
+
     # Medical sources
     medical_sources = [
         "who.int",
@@ -43,7 +43,7 @@ class RoutingConfig:
         "nih.gov",
         "healthline.com",
     ]
-    
+
     # Research/educational sources
     research_sources = [
         "wikipedia.org",
@@ -59,7 +59,7 @@ class KnowledgeRouter:
     Routes user queries to the most appropriate information sources.
     This is Aura's traffic controller, deciding which domains to search.
     """
-    
+
     ROUTING_RULES = {
         "LIVE_INFORMATION": {
             "source_type": "news",
@@ -68,7 +68,11 @@ class KnowledgeRouter:
         },
         "KNOWLEDGE_REQUEST": {
             "source_type": "general",
-            "priority": ["wikipedia.org", "developer.mozilla.org", "learn.microsoft.com"],
+            "priority": [
+                "wikipedia.org",
+                "developer.mozilla.org",
+                "learn.microsoft.com",
+            ],
             "exclude": [],
         },
         "PROGRAMMING": {
@@ -132,25 +136,27 @@ class KnowledgeRouter:
         self.config = config or RoutingConfig()
         self.routing_rules = self.ROUTING_RULES.copy()
 
-    def get_routing_config(self, intent: str, specialized_sources: list[str] | None = None) -> dict[str, Any]:
+    def get_routing_config(
+        self, intent: str, specialized_sources: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get routing configuration for a given intent.
-        
+
         Args:
             intent: The intent category to route
             specialized_sources: User-specified special sources to prioritize
-            
+
         Returns:
             Dict with source_type, priority, and exclude lists
         """
         rules = self.routing_rules.get(intent, self.routing_rules["GENERAL_CHAT"])
-        
+
         # If user provided specialized sources, merge them
         if specialized_sources:
             priority = rules["priority"] + specialized_sources
         else:
             priority = rules["priority"]
-        
+
         return {
             "source_type": rules["source_type"],
             "priority": priority,
@@ -176,7 +182,7 @@ class KnowledgeRouter:
     def determine_source_strategy(self, intent: str, needs_deep_research: bool) -> str:
         """
         Determine the search strategy for an intent.
-        
+
         Returns:
             "quick" for simple searches
             "deep" for multi-source research

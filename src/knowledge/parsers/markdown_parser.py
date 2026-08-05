@@ -9,10 +9,10 @@ Supports:
 
 import logging
 import re
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Any
 
-from ..models import DocumentChunk, DocumentMetadata, ChunkType, SourceType
+from ..models import ChunkType, DocumentChunk, DocumentMetadata, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class MarkdownParser:
         # tests assert supported_extensions == ['.md', '.markdown', '.mkd']
         self.supported_extensions = [".md", ".markdown", ".mkd"]
 
-    def parse(self, file_path: Path, project: str = "unknown") -> List[DocumentChunk]:
+    def parse(self, file_path: Path, project: str = "unknown") -> list[DocumentChunk]:
         """
         Parse a Markdown file.
 
@@ -38,7 +38,7 @@ class MarkdownParser:
             List of document chunks
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             logger.error(f"Failed to read Markdown file: {e}")
@@ -55,12 +55,14 @@ class MarkdownParser:
             content_no_frontmatter = content[frontmatter["end"] :]
 
         # Parse headings to create chunks
-        chunks = self._parse_by_headings(content_no_frontmatter, file_path, project, frontmatter)
+        chunks = self._parse_by_headings(
+            content_no_frontmatter, file_path, project, frontmatter
+        )
 
         logger.info(f"Parsed Markdown into {len(chunks)} chunks")
         return chunks
 
-    def _extract_frontmatter(self, content: str) -> Optional[Dict[str, Any]]:
+    def _extract_frontmatter(self, content: str) -> dict[str, Any] | None:
         """
         Extract YAML frontmatter from Markdown.
 
@@ -74,6 +76,7 @@ class MarkdownParser:
         if match:
             try:
                 import yaml
+
                 frontmatter = yaml.safe_load(match.group(1))
                 return {"data": frontmatter or {}, "end": match.end()}
             except ImportError:
@@ -84,7 +87,9 @@ class MarkdownParser:
                 return None
         return None
 
-    def _parse_by_headings(self, content: str, file_path: Path, project: str, frontmatter: Dict[str, Any]) -> List[DocumentChunk]:
+    def _parse_by_headings(
+        self, content: str, file_path: Path, project: str, frontmatter: dict[str, Any]
+    ) -> list[DocumentChunk]:
         """
         Parse content by headings.
 
@@ -112,7 +117,9 @@ class MarkdownParser:
                 heading_text = level_match.group(2).strip()
 
                 # If we have a current chunk and the new heading is not a child
-                if current_chunk and (heading_level > current_level or heading_level == current_level):
+                if current_chunk and (
+                    heading_level > current_level or heading_level == current_level
+                ):
                     chunk = self._create_chunk(
                         "\n".join(current_chunk),
                         file_path,
@@ -144,7 +151,9 @@ class MarkdownParser:
 
         return chunks
 
-    def _create_chunk(self, content: str, file_path: Path, project: str, title: str, level: int) -> DocumentChunk:
+    def _create_chunk(
+        self, content: str, file_path: Path, project: str, title: str, level: int
+    ) -> DocumentChunk:
         """
         Create a document chunk.
 
@@ -203,7 +212,7 @@ class MarkdownParser:
         """
         return file_path.suffix.lower() in self.supported_extensions
 
-    def extract_metadata(self, file_path: Path) -> Dict[str, Any]:
+    def extract_metadata(self, file_path: Path) -> dict[str, Any]:
         """
         Extract metadata from Markdown file.
 
@@ -214,7 +223,7 @@ class MarkdownParser:
             Dictionary of metadata
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except Exception:
             return {}
@@ -232,7 +241,7 @@ class MarkdownParser:
 
         return metadata
 
-    def extract_code_blocks(self, content: str) -> List[Dict[str, str]]:
+    def extract_code_blocks(self, content: str) -> list[dict[str, str]]:
         """
         Extract code blocks from Markdown.
 

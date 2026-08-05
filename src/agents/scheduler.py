@@ -4,25 +4,24 @@ Scheduler
 Handles task scheduling and parallel execution based on dependencies.
 """
 
-
 import logging
 import threading
-from typing import List, Dict, Any, Optional, Callable
-from datetime import datetime
-from queue import Queue
-from concurrent.futures import ThreadPoolExecutor, Future
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+from queue import Queue
+from typing import Any
 
 from .execution_graph import ExecutionGraph
+from .models import TaskPriority, TaskStatus
 from .task import Task
-from .models import TaskStatus, TaskPriority
-
 
 logger = logging.getLogger(__name__)
 
 
 class ExecutionStrategy(Enum):
     """Execution strategies for task scheduling."""
+
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
     BALANCED = "balanced"
@@ -41,9 +40,9 @@ class Scheduler:
         execution_strategy: ExecutionStrategy = ExecutionStrategy.BALANCED,
         max_workers: int = 4,
         max_parallel_groups: int = 2,
-        on_task_complete: Optional[Callable[[Task], None]] = None,
-        on_task_fail: Optional[Callable[[Task], None]] = None,
-        on_task_progress: Optional[Callable[[Task, float], None]] = None
+        on_task_complete: Callable[[Task], None] | None = None,
+        on_task_fail: Callable[[Task], None] | None = None,
+        on_task_progress: Callable[[Task, float], None] | None = None,
     ):
         """
         Initialize scheduler.
@@ -67,9 +66,9 @@ class Scheduler:
 
         # Execution state
         self.running = False
-        self.execution_graph: Optional[ExecutionGraph] = None
-        self.completed_tasks: List[Task] = []
-        self.failed_tasks: List[Task] = []
+        self.execution_graph: ExecutionGraph | None = None
+        self.completed_tasks: list[Task] = []
+        self.failed_tasks: list[Task] = []
 
         # Thread pool
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -77,7 +76,9 @@ class Scheduler:
         # Task queue
         self.task_queue = Queue()
 
-        logger.debug(f"Initialized scheduler with {execution_strategy.value} strategy, {max_workers} workers")
+        logger.debug(
+            f"Initialized scheduler with {execution_strategy.value} strategy, {max_workers} workers"
+        )
 
     def schedule_graph(self, graph: ExecutionGraph):
         """
@@ -95,7 +96,9 @@ class Scheduler:
         self.completed_tasks = []
         self.failed_tasks = []
 
-        logger.info(f"Scheduling {len(graph.tasks)} tasks for goal {graph.goal.goal_id[:8]}")
+        logger.info(
+            f"Scheduling {len(graph.tasks)} tasks for goal {graph.goal.goal_id[:8]}"
+        )
 
         # Build task queue
         ready_tasks = graph.get_ready_tasks()
@@ -170,7 +173,9 @@ class Scheduler:
 
             # Check if task should be retried
             if task.should_retry:
-                logger.info(f"Retrying task {task.task_id[:8]} (attempt {task.retry_count + 1}/{task.max_retries})")
+                logger.info(
+                    f"Retrying task {task.task_id[:8]} (attempt {task.retry_count + 1}/{task.max_retries})"
+                )
                 task.retry_count += 1
                 self.task_queue.put(task)
             else:
@@ -192,6 +197,7 @@ class Scheduler:
 
         # Simulate task execution
         import time
+
         time.sleep(0.1)
 
         return f"Result for {task.goal}"
@@ -231,7 +237,7 @@ class Scheduler:
         if self.on_task_progress:
             self.on_task_progress(task, progress)
 
-    def get_execution_stats(self) -> Dict[str, Any]:
+    def get_execution_stats(self) -> dict[str, Any]:
         """
         Get scheduler execution statistics.
 
@@ -241,22 +247,24 @@ class Scheduler:
         graph = self.execution_graph
         if not graph:
             return {
-                'status': 'idle',
-                'total_tasks': 0,
-                'completed_tasks': 0,
-                'failed_tasks': 0,
-                'running_tasks': 0
+                "status": "idle",
+                "total_tasks": 0,
+                "completed_tasks": 0,
+                "failed_tasks": 0,
+                "running_tasks": 0,
             }
 
         return {
-            'status': 'running' if self.running else 'stopped',
-            'execution_strategy': self.execution_strategy.value,
-            'max_workers': self.max_workers,
-            'total_tasks': len(graph.tasks),
-            'completed_tasks': len(self.completed_tasks),
-            'failed_tasks': len(self.failed_tasks),
-            'running_tasks': sum(1 for t in graph.tasks.values() if t.status == TaskStatus.RUNNING),
-            'ready_tasks': len(graph.get_ready_tasks())
+            "status": "running" if self.running else "stopped",
+            "execution_strategy": self.execution_strategy.value,
+            "max_workers": self.max_workers,
+            "total_tasks": len(graph.tasks),
+            "completed_tasks": len(self.completed_tasks),
+            "failed_tasks": len(self.failed_tasks),
+            "running_tasks": sum(
+                1 for t in graph.tasks.values() if t.status == TaskStatus.RUNNING
+            ),
+            "ready_tasks": len(graph.get_ready_tasks()),
         }
 
     def cancel_all(self):
@@ -264,7 +272,7 @@ class Scheduler:
         self.running = False
         logger.info("Cancelled all pending tasks")
 
-    def wait_for_completion(self, timeout: Optional[float] = None) -> bool:
+    def wait_for_completion(self, timeout: float | None = None) -> bool:
         """
         Wait for all tasks to complete.
 
@@ -291,7 +299,7 @@ class Scheduler:
         self.executor.shutdown(wait=True)
         logger.debug("Scheduler shutdown complete")
 
-    def get_failed_tasks(self) -> List[Task]:
+    def get_failed_tasks(self) -> list[Task]:
         """
         Get all failed tasks.
 
@@ -300,7 +308,7 @@ class Scheduler:
         """
         return self.failed_tasks.copy()
 
-    def get_completed_tasks(self) -> List[Task]:
+    def get_completed_tasks(self) -> list[Task]:
         """
         Get all completed tasks.
 
@@ -309,7 +317,7 @@ class Scheduler:
         """
         return self.completed_tasks.copy()
 
-    def get_statistics_by_priority(self) -> Dict[str, int]:
+    def get_statistics_by_priority(self) -> dict[str, int]:
         """
         Get statistics by task priority.
 

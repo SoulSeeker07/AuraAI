@@ -6,10 +6,10 @@ Generates citations from knowledge chunks for LLM responses.
 
 import logging
 import re
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any
 
-from .models import Citation, RetrievalResult, DocumentChunk, SourceType
+from .models import Citation, DocumentChunk, RetrievalResult, SourceType
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class CitationEngine:
         self,
         chunk: DocumentChunk,
         retrieval_mode: str = "Semantic search",
-        relevance_score: float = 0.0
+        relevance_score: float = 0.0,
     ) -> Citation:
         """
         Create a citation from a chunk.
@@ -50,13 +50,10 @@ class CitationEngine:
             line=chunk.line,
             retrieval_date=datetime.now(),
             retrieval_mode=retrieval_mode,
-            relevance_score=relevance_score
+            relevance_score=relevance_score,
         )
 
-    def generate_citations(
-        self,
-        results: List[RetrievalResult]
-    ) -> List[Citation]:
+    def generate_citations(self, results: list[RetrievalResult]) -> list[Citation]:
         """
         Generate citations from retrieval results.
 
@@ -72,17 +69,14 @@ class CitationEngine:
             citation = self.create_citation(
                 chunk=result.chunk,
                 retrieval_mode="Hybrid search",
-                relevance_score=result.score
+                relevance_score=result.score,
             )
             result.citation = citation
             citations.append(citation)
 
         return citations
 
-    def format_citation_simple(
-        self,
-        citation: Citation
-    ) -> str:
+    def format_citation_simple(self, citation: Citation) -> str:
         """
         Format citation in simple format.
 
@@ -106,9 +100,7 @@ class CitationEngine:
         return ", ".join(components)
 
     def format_citation_detailed(
-        self,
-        citation: Citation,
-        include_url: bool = False
+        self, citation: Citation, include_url: bool = False
     ) -> str:
         """
         Format citation in detailed format.
@@ -147,10 +139,7 @@ class CitationEngine:
 
         return ", ".join(components)
 
-    def format_citation_camelcase(
-        self,
-        citation: Citation
-    ) -> str:
+    def format_citation_camelcase(self, citation: Citation) -> str:
         """
         Format citation in CamelCase format (e.g., "Chapter1 (Chapter:1.2)").
 
@@ -191,7 +180,7 @@ class CitationEngine:
         words = text.split()
 
         # Capitalize first letter of each word, lowercase the rest
-        camel_case = ''.join(word.capitalize() for word in words)
+        camel_case = "".join(word.capitalize() for word in words)
 
         # Convert to lowercase
         camel_case = camel_case[0].lower() + camel_case[1:] if camel_case else ""
@@ -199,9 +188,7 @@ class CitationEngine:
         return camel_case
 
     def format_citation_bracket(
-        self,
-        citation: Citation,
-        include_year: bool = True
+        self, citation: Citation, include_year: bool = True
     ) -> str:
         """
         Format citation in bracket format (e.g., "[Chapter1, 2024]")).
@@ -224,10 +211,7 @@ class CitationEngine:
 
         return f"[{', '.join(components)}]"
 
-    def create_bibliography(
-        self,
-        citations: List[Citation]
-    ) -> str:
+    def create_bibliography(self, citations: list[Citation]) -> str:
         """
         Create a bibliography from citations.
 
@@ -256,10 +240,7 @@ class CitationEngine:
 
         return bibliography
 
-    def generate_citation_links(
-        self,
-        results: List[RetrievalResult]
-    ) -> Dict[str, str]:
+    def generate_citation_links(self, results: list[RetrievalResult]) -> dict[str, str]:
         """
         Generate citation links for results.
 
@@ -275,7 +256,7 @@ class CitationEngine:
             citation = self.create_citation(
                 chunk=result.chunk,
                 retrieval_mode="Hybrid search",
-                relevance_score=result.score
+                relevance_score=result.score,
             )
 
             link = self._create_citation_link(citation)
@@ -283,10 +264,7 @@ class CitationEngine:
 
         return links
 
-    def _create_citation_link(
-        self,
-        citation: Citation
-    ) -> str:
+    def _create_citation_link(self, citation: Citation) -> str:
         """
         Create a citation link.
 
@@ -307,10 +285,7 @@ class CitationEngine:
 
         return " → ".join(parts)
 
-    def get_citation_summary(
-        self,
-        citations: List[Citation]
-    ) -> str:
+    def get_citation_summary(self, citations: list[Citation]) -> str:
         """
         Get a summary of citations.
 
@@ -346,7 +321,7 @@ class CitationEngine:
 
         return ", ".join(summary_parts)
 
-    def validate_citation(self, citation: Citation) -> Dict[str, Any]:
+    def validate_citation(self, citation: Citation) -> dict[str, Any]:
         """
         Validate a citation.
 
@@ -366,7 +341,9 @@ class CitationEngine:
             errors.append("Missing source")
 
         # Check source type validity
-        if citation.source_type and citation.source_type not in [st.value for st in SourceType]:
+        if citation.source_type and citation.source_type not in [
+            st.value for st in SourceType
+        ]:
             errors.append(f"Invalid source type: {citation.source_type}")
 
         # Check relevance score range
@@ -376,15 +353,9 @@ class CitationEngine:
                     f"Relevance score out of range: {citation.relevance_score}"
                 )
 
-        return {
-            'valid': len(errors) == 0,
-            'errors': errors
-        }
+        return {"valid": len(errors) == 0, "errors": errors}
 
-    def deduplicate_citations(
-        self,
-        citations: List[Citation]
-    ) -> List[Citation]:
+    def deduplicate_citations(self, citations: list[Citation]) -> list[Citation]:
         """
         Remove duplicate citations.
 
@@ -399,11 +370,7 @@ class CitationEngine:
 
         for citation in citations:
             # Create a key based on unique attributes
-            key = (
-                citation.chunk_id,
-                citation.source,
-                citation.source_type
-            )
+            key = (citation.chunk_id, citation.source, citation.source_type)
 
             if key not in seen:
                 seen.add(key)
@@ -414,10 +381,7 @@ class CitationEngine:
 
         return unique
 
-    def extract_citation_metadata(
-        self,
-        citation_text: str
-    ) -> Dict[str, Any]:
+    def extract_citation_metadata(self, citation_text: str) -> dict[str, Any]:
         """
         Extract metadata from citation text.
 
@@ -428,44 +392,41 @@ class CitationEngine:
             Dictionary with extracted metadata
         """
         metadata = {
-            'title': None,
-            'source': None,
-            'page': None,
-            'line': None,
-            'project': None
+            "title": None,
+            "source": None,
+            "page": None,
+            "line": None,
+            "project": None,
         }
 
         # Extract title (first capitalized word or phrase)
-        match = re.search(r'^[A-Z][a-zA-Z\s]+', citation_text)
+        match = re.search(r"^[A-Z][a-zA-Z\s]+", citation_text)
         if match:
-            metadata['title'] = match.group(0).strip()
+            metadata["title"] = match.group(0).strip()
 
         # Extract source (in parentheses or brackets)
-        source_match = re.search(r'[(\[](.*?)[)\]]', citation_text)
+        source_match = re.search(r"[(\[](.*?)[)\]]", citation_text)
         if source_match:
-            metadata['source'] = source_match.group(1).strip()
+            metadata["source"] = source_match.group(1).strip()
 
         # Extract page number
-        page_match = re.search(r'p\.(\d+)', citation_text)
+        page_match = re.search(r"p\.(\d+)", citation_text)
         if page_match:
-            metadata['page'] = int(page_match.group(1))
+            metadata["page"] = int(page_match.group(1))
 
         # Extract line number
-        line_match = re.search(r'l\.(\d+)', citation_text)
+        line_match = re.search(r"l\.(\d+)", citation_text)
         if line_match:
-            metadata['line'] = int(line_match.group(1))
+            metadata["line"] = int(line_match.group(1))
 
         # Extract project
-        project_match = re.search(r'Project:\s*(\w+)', citation_text)
+        project_match = re.search(r"Project:\s*(\w+)", citation_text)
         if project_match:
-            metadata['project'] = project_match.group(1)
+            metadata["project"] = project_match.group(1)
 
         return metadata
 
-    def format_citation_for_llm(
-        self,
-        results: List[RetrievalResult]
-    ) -> str:
+    def format_citation_for_llm(self, results: list[RetrievalResult]) -> str:
         """
         Format citations in a way that's friendly for LLM context.
 

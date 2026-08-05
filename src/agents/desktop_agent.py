@@ -13,23 +13,11 @@ The Desktop Agent provides safe, controlled access to:
 from __future__ import annotations
 
 import subprocess
-import shutil
 from pathlib import Path
-from typing import Any, List, Optional
-import asyncio
-import threading
-
-from .task_model import (
-    Task,
-    TaskStatus,
-    TaskType,
-    TaskInput,
-    TaskOutput,
-    TaskPriority
-)
 
 # Import ProcessManager
 from .process_manager import ProcessManager
+from .task_model import Task, TaskOutput
 
 
 class DesktopAgent:
@@ -87,16 +75,14 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message=f"No handler for task type: {task.type.value}",
-                    error=f"Task type {task.type.value} not supported"
+                    error=f"Task type {task.type.value} not supported",
                 )
 
             return method(task)
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Error executing task",
-                error=str(e)
+                success=False, message="Error executing task", error=str(e)
             )
 
     # ========================================
@@ -111,7 +97,7 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to open application",
-                error="App name not provided"
+                error="App name not provided",
             )
 
         if not self._require_confirmation("Open Application", f"Opening {app_name}"):
@@ -128,14 +114,12 @@ class DesktopAgent:
             return TaskOutput(
                 success=True,
                 message=f"Application opened: {app_name}",
-                data={"app_name": app_name}
+                data={"app_name": app_name},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message=f"Failed to open {app_name}",
-                error=str(e)
+                success=False, message=f"Failed to open {app_name}", error=str(e)
             )
 
     def _execute_app_close(self, task: Task) -> TaskOutput:
@@ -146,7 +130,7 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to close application",
-                error="App name not provided"
+                error="App name not provided",
             )
 
         if not self._require_confirmation("Close Application", f"Closing {app_name}"):
@@ -159,15 +143,13 @@ class DesktopAgent:
             return TaskOutput(
                 success=True,
                 message=f"Application closed: {app_name}",
-                data={"app_name": app_name}
+                data={"app_name": app_name},
             )
 
         except Exception as e:
             # Fallback: return error
             return TaskOutput(
-                success=False,
-                message=f"Failed to close {app_name}",
-                error=str(e)
+                success=False, message=f"Failed to close {app_name}", error=str(e)
             )
 
     # ========================================
@@ -186,33 +168,31 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Directory not found",
-                    error=f"Path does not exist: {directory}"
+                    error=f"Path does not exist: {directory}",
                 )
 
             results = []
             for item in search_path.rglob(search_pattern):
                 if item.is_file() or item.is_dir():
-                    results.append({
-                        "name": item.name,
-                        "path": str(item.absolute()),
-                        "type": "file" if item.is_file() else "directory",
-                        "size": item.stat().st_size if item.is_file() else 0
-                    })
+                    results.append(
+                        {
+                            "name": item.name,
+                            "path": str(item.absolute()),
+                            "type": "file" if item.is_file() else "directory",
+                            "size": item.stat().st_size if item.is_file() else 0,
+                        }
+                    )
                     if len(results) >= max_results:
                         break
 
             return TaskOutput(
                 success=True,
                 message=f"Found {len(results)} files",
-                data={"results": results, "count": len(results)}
+                data={"results": results, "count": len(results)},
             )
 
         except Exception as e:
-            return TaskOutput(
-                success=False,
-                message="File search failed",
-                error=str(e)
-            )
+            return TaskOutput(success=False, message="File search failed", error=str(e))
 
     def _execute_file_rename(self, task: Task) -> TaskOutput:
         """Rename a file."""
@@ -223,12 +203,11 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to rename file",
-                error="File path and new name required"
+                error="File path and new name required",
             )
 
         if not self._require_confirmation(
-            "Rename File",
-            f"Renaming:\n{file_path}\nto:\n{new_name}"
+            "Rename File", f"Renaming:\n{file_path}\nto:\n{new_name}"
         ):
             return TaskOutput(success=False, message="Action cancelled by user")
 
@@ -240,15 +219,13 @@ class DesktopAgent:
 
             return TaskOutput(
                 success=True,
-                message=f"File renamed",
-                data={"old_path": str(file_path), "new_path": str(new_path)}
+                message="File renamed",
+                data={"old_path": str(file_path), "new_path": str(new_path)},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to rename file",
-                error=str(e)
+                success=False, message="Failed to rename file", error=str(e)
             )
 
     def _execute_file_move(self, task: Task) -> TaskOutput:
@@ -260,12 +237,11 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to move file",
-                error="File path and destination required"
+                error="File path and destination required",
             )
 
         if not self._require_confirmation(
-            "Move File",
-            f"Moving:\n{file_path}\nto:\n{destination}"
+            "Move File", f"Moving:\n{file_path}\nto:\n{destination}"
         ):
             return TaskOutput(success=False, message="Action cancelled by user")
 
@@ -277,22 +253,20 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Source file not found",
-                    error=f"Path does not exist: {file_path}"
+                    error=f"Path does not exist: {file_path}",
                 )
 
             path.rename(dest_path)
 
             return TaskOutput(
                 success=True,
-                message=f"File moved",
-                data={"source": str(file_path), "destination": str(destination)}
+                message="File moved",
+                data={"source": str(file_path), "destination": str(destination)},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to move file",
-                error=str(e)
+                success=False, message="Failed to move file", error=str(e)
             )
 
     # ========================================
@@ -307,7 +281,11 @@ class DesktopAgent:
             screenshot = ImageGrab.grab()
 
             # Save screenshot
-            screenshot_path = Path.home() / "screenshots" / f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            screenshot_path = (
+                Path.home()
+                / "screenshots"
+                / f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            )
             screenshot_path.parent.mkdir(parents=True, exist_ok=True)
 
             screenshot.save(screenshot_path)
@@ -318,22 +296,18 @@ class DesktopAgent:
                 data={
                     "path": str(screenshot_path),
                     "width": screenshot.width,
-                    "height": screenshot.height
-                }
+                    "height": screenshot.height,
+                },
             )
 
         except ImportError:
             return TaskOutput(
                 success=False,
                 message="Screenshot failed",
-                error="Pillow not installed. Run: pip install Pillow"
+                error="Pillow not installed. Run: pip install Pillow",
             )
         except Exception as e:
-            return TaskOutput(
-                success=False,
-                message="Screenshot failed",
-                error=str(e)
-            )
+            return TaskOutput(success=False, message="Screenshot failed", error=str(e))
 
     def _execute_clipboard_read(self, task: Task) -> TaskOutput:
         """Read clipboard content."""
@@ -347,20 +321,18 @@ class DesktopAgent:
             return TaskOutput(
                 success=True,
                 message="Clipboard content retrieved",
-                data={"content": str(content)}
+                data={"content": str(content)},
             )
 
         except ImportError:
             return TaskOutput(
                 success=False,
                 message="Clipboard read failed",
-                error="pywin32 not installed. Run: pip install pywin32"
+                error="pywin32 not installed. Run: pip install pywin32",
             )
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Clipboard read failed",
-                error=str(e)
+                success=False, message="Clipboard read failed", error=str(e)
             )
 
     def _execute_system_volume(self, task: Task) -> TaskOutput:
@@ -370,13 +342,17 @@ class DesktopAgent:
 
         if not self._require_confirmation(
             "System Volume",
-            f"{'Setting' if set_volume else 'Adjusting'} volume to {volume}%"
+            f"{'Setting' if set_volume else 'Adjusting'} volume to {volume}%",
         ):
             return TaskOutput(success=False, message="Action cancelled by user")
 
         try:
             # Windows command to set volume
-            cmd = ["powershell", "-Command", f"Set-Volume -Mute $false -NewVolume {volume / 100.0}"]
+            cmd = [
+                "powershell",
+                "-Command",
+                f"Set-Volume -Mute $false -NewVolume {volume / 100.0}",
+            ]
 
             if set_volume:
                 subprocess.Popen(cmd, shell=True)
@@ -384,14 +360,12 @@ class DesktopAgent:
             return TaskOutput(
                 success=True,
                 message=f"Volume set to {volume}%",
-                data={"volume": volume, "set_volume": set_volume}
+                data={"volume": volume, "set_volume": set_volume},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to adjust volume",
-                error=str(e)
+                success=False, message="Failed to adjust volume", error=str(e)
             )
 
     def _execute_lock_workstation(self, task: Task) -> TaskOutput:
@@ -402,16 +376,11 @@ class DesktopAgent:
         try:
             subprocess.Popen(["rundll32.exe", "user32.dll,LockWorkStation"], shell=True)
 
-            return TaskOutput(
-                success=True,
-                message="Workstation locked"
-            )
+            return TaskOutput(success=True, message="Workstation locked")
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to lock workstation",
-                error=str(e)
+                success=False, message="Failed to lock workstation", error=str(e)
             )
 
     # ========================================
@@ -425,14 +394,11 @@ class DesktopAgent:
 
         if not url:
             return TaskOutput(
-                success=False,
-                message="Failed to open browser",
-                error="URL required"
+                success=False, message="Failed to open browser", error="URL required"
             )
 
         if not self._require_confirmation(
-            "Open Browser",
-            f"Opening {browser} with:\n{url}"
+            "Open Browser", f"Opening {browser} with:\n{url}"
         ):
             return TaskOutput(success=False, message="Action cancelled by user")
 
@@ -441,7 +407,7 @@ class DesktopAgent:
             browsers = {
                 "chrome": ["chrome.exe", "google-chrome.exe", "chrome"],
                 "firefox": ["firefox.exe", "firefox"],
-                "edge": ["msedge.exe", "microsoftedge.exe", "edge"]
+                "edge": ["msedge.exe", "microsoftedge.exe", "edge"],
             }
 
             browser_cmd = browsers.get(browser.lower(), [browser])
@@ -457,14 +423,12 @@ class DesktopAgent:
             return TaskOutput(
                 success=True,
                 message=f"Browser opened: {browser}",
-                data={"browser": browser, "url": url}
+                data={"browser": browser, "url": url},
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to open browser",
-                error=str(e)
+                success=False, message="Failed to open browser", error=str(e)
             )
 
     # ========================================
@@ -479,12 +443,11 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to maximize window",
-                error="Window title required"
+                error="Window title required",
             )
 
         if not self._require_confirmation(
-            "Maximize Window",
-            f"Maximizing window: {window_title}"
+            "Maximize Window", f"Maximizing window: {window_title}"
         ):
             return TaskOutput(success=False, message="Action cancelled by user")
 
@@ -495,25 +458,20 @@ class DesktopAgent:
                 "powershell",
                 "-Command",
                 f"(Get-Process | Where-Object {{$_.MainWindowTitle -like '{window_title_escaped}'}}).MainWindowHandle | "
-                f"ForEach-Object {{ [Windows.Forms.SendKeys]::SendWait('%')}}"
+                f"ForEach-Object {{ [Windows.Forms.SendKeys]::SendWait('%')}}",
             ]
 
             # Simplified: use PowerShell to maximize first matching window
             subprocess.Popen(
                 ["powershell", "-Command", "Add-Type '[Win32.WindowStation]'"],
-                shell=True
+                shell=True,
             )
 
-            return TaskOutput(
-                success=True,
-                message=f"Window maximized: {window_title}"
-            )
+            return TaskOutput(success=True, message=f"Window maximized: {window_title}")
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to maximize window",
-                error=str(e)
+                success=False, message="Failed to maximize window", error=str(e)
             )
 
     def _execute_window_minimize(self, task: Task) -> TaskOutput:
@@ -524,28 +482,26 @@ class DesktopAgent:
             return TaskOutput(
                 success=False,
                 message="Failed to minimize window",
-                error="Window title required"
+                error="Window title required",
             )
 
         try:
             # Use PowerShell to minimize window
             window_title_escaped = window_title.replace("'", "''")
-            subprocess.Popen([
-                "powershell",
-                "-Command",
-                f"Add-Type 'using System; using System.Runtime.InteropServices; public class W{{[DllImport('user32.dll')] public static extern int ShowWindow(IntPtr hwnd, int nCmdShow);}}'; $w = Get-Process | Where-Object {{$_.MainWindowTitle -like '{window_title_escaped}'}}; [W]::ShowWindow($w.MainWindowHandle, 6)"
-            ], shell=True)
-
-            return TaskOutput(
-                success=True,
-                message=f"Window minimized: {window_title}"
+            subprocess.Popen(
+                [
+                    "powershell",
+                    "-Command",
+                    f"Add-Type 'using System; using System.Runtime.InteropServices; public class W{{[DllImport('user32.dll')] public static extern int ShowWindow(IntPtr hwnd, int nCmdShow);}}'; $w = Get-Process | Where-Object {{$_.MainWindowTitle -like '{window_title_escaped}'}}; [W]::ShowWindow($w.MainWindowHandle, 6)",
+                ],
+                shell=True,
             )
+
+            return TaskOutput(success=True, message=f"Window minimized: {window_title}")
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to minimize window",
-                error=str(e)
+                success=False, message="Failed to minimize window", error=str(e)
             )
 
     # ========================================
@@ -558,8 +514,9 @@ class DesktopAgent:
             filter_name = task.input.get("name")
             filter_status = task.input.get("status")
 
-            processes = self.process_manager.list_processes(filter_by_name=filter_name,
-                                                          filter_by_status=filter_status)
+            processes = self.process_manager.list_processes(
+                filter_by_name=filter_name, filter_by_status=filter_status
+            )
 
             return TaskOutput(
                 success=True,
@@ -567,16 +524,16 @@ class DesktopAgent:
                 data={
                     "processes": [p.to_dict() for p in processes],
                     "count": len(processes),
-                    "total_cpu_percent": round(sum(p.cpu_percent for p in processes), 2),
-                    "total_memory_mb": round(sum(p.memory_mb for p in processes), 2)
-                }
+                    "total_cpu_percent": round(
+                        sum(p.cpu_percent for p in processes), 2
+                    ),
+                    "total_memory_mb": round(sum(p.memory_mb for p in processes), 2),
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to list processes",
-                error=str(e)
+                success=False, message="Failed to list processes", error=str(e)
             )
 
     def _execute_process_get(self, task: Task) -> TaskOutput:
@@ -588,7 +545,7 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Failed to get process",
-                    error="PID not provided"
+                    error="PID not provided",
                 )
 
             process = self.process_manager.get_process_info(pid)
@@ -597,20 +554,18 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message=f"Process {pid} not found",
-                    error=f"No process with PID {pid} exists"
+                    error=f"No process with PID {pid} exists",
                 )
 
             return TaskOutput(
                 success=True,
-                message=f"Process information retrieved",
-                data=process.to_dict()
+                message="Process information retrieved",
+                data=process.to_dict(),
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to get process",
-                error=str(e)
+                success=False, message="Failed to get process", error=str(e)
             )
 
     def _execute_process_start(self, task: Task) -> TaskOutput:
@@ -625,7 +580,7 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Failed to start process",
-                    error="Command not provided"
+                    error="Command not provided",
                 )
 
             process = self.process_manager.start_process(command, args, cwd, shell)
@@ -633,14 +588,12 @@ class DesktopAgent:
             return TaskOutput(
                 success=True,
                 message=f"Process started: {process.name} (PID: {process.pid})",
-                data=process.to_dict()
+                data=process.to_dict(),
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to start process",
-                error=str(e)
+                success=False, message="Failed to start process", error=str(e)
             )
 
     def _execute_process_stop(self, task: Task) -> TaskOutput:
@@ -653,7 +606,7 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Failed to stop process",
-                    error="PID not provided"
+                    error="PID not provided",
                 )
 
             success = self.process_manager.stop_process(pid, timeout)
@@ -662,20 +615,18 @@ class DesktopAgent:
                 return TaskOutput(
                     success=True,
                     message=f"Process stopped: PID {pid}",
-                    data={"pid": pid, "stopped": True}
+                    data={"pid": pid, "stopped": True},
                 )
             else:
                 return TaskOutput(
                     success=False,
                     message=f"Failed to stop process {pid}",
-                    error="Process did not terminate gracefully"
+                    error="Process did not terminate gracefully",
                 )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to stop process",
-                error=str(e)
+                success=False, message="Failed to stop process", error=str(e)
             )
 
     def _execute_process_kill(self, task: Task) -> TaskOutput:
@@ -688,7 +639,7 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Failed to kill process",
-                    error="PID not provided"
+                    error="PID not provided",
                 )
 
             success = self.process_manager.kill_process(pid, force)
@@ -697,20 +648,18 @@ class DesktopAgent:
                 return TaskOutput(
                     success=True,
                     message=f"Process killed: PID {pid}",
-                    data={"pid": pid, "killed": True}
+                    data={"pid": pid, "killed": True},
                 )
             else:
                 return TaskOutput(
                     success=False,
                     message=f"Failed to kill process {pid}",
-                    error="Failed to kill process"
+                    error="Failed to kill process",
                 )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to kill process",
-                error=str(e)
+                success=False, message="Failed to kill process", error=str(e)
             )
 
     def _execute_process_search(self, task: Task) -> TaskOutput:
@@ -723,7 +672,7 @@ class DesktopAgent:
                 return TaskOutput(
                     success=False,
                     message="Failed to search processes",
-                    error="Search name not provided"
+                    error="Search name not provided",
                 )
 
             processes = self.process_manager.find_process_by_name(name)
@@ -734,13 +683,11 @@ class DesktopAgent:
                 data={
                     "processes": [p.to_dict() for p in processes[:max_results]],
                     "count": len(processes),
-                    "search_name": name
-                }
+                    "search_name": name,
+                },
             )
 
         except Exception as e:
             return TaskOutput(
-                success=False,
-                message="Failed to search processes",
-                error=str(e)
+                success=False, message="Failed to search processes", error=str(e)
             )

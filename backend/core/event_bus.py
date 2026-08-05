@@ -1,7 +1,8 @@
+from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
-from collections import defaultdict
+from typing import Any
 
 EventCallback = Callable[["Event"], None]
 

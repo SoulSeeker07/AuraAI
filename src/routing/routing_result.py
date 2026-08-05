@@ -8,8 +8,9 @@ Its job is to choose the best capability to handle the request.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
-from .capability_types import CapabilityType, CapabilityPriority
+from typing import Any
+
+from .capability_types import CapabilityPriority, CapabilityType
 
 
 @dataclass
@@ -21,17 +22,18 @@ class RoutingResult:
     including which capability is best suited, confidence levels, and any
     required permissions or follow-up actions.
     """
+
     capability: CapabilityType
     confidence: float
     requires_ai: bool = False
     requires_permission: bool = False
     permission_level: str = "none"
-    estimated_steps: List[str] = field(default_factory=list)
-    plugins: List[str] = field(default_factory=list)
+    estimated_steps: list[str] = field(default_factory=list)
+    plugins: list[str] = field(default_factory=list)
     priority: CapabilityPriority = CapabilityPriority.MEDIUM
     risk_level: str = "low"
-    follow_up_actions: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    follow_up_actions: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         """String representation."""
@@ -68,12 +70,9 @@ class RoutingResult:
 
     def is_safe(self) -> bool:
         """Check if the routing is safe without confirmation."""
-        return (
-            self.permission_level == "none"
-            or self.permission_level == "low"
-        )
+        return self.permission_level == "none" or self.permission_level == "low"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "capability": self.capability.value,

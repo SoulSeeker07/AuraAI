@@ -8,13 +8,12 @@ handled by the execution pipeline.
 This manager ONLY contains Windows-specific code via PowerAdapters.
 """
 
-from typing import List, Dict, Any, Optional
 import logging
+from typing import Any
 
-from .base_manager import BaseNativeManager, HealthStatus, HealthCheckResult
-from ..desktop_result import DesktopResult, DesktopStatus
-from ..native_exceptions import NativeError
-from ..adapters.power_adapter import PowerAdapterFactory, PowerAdapter
+from ..adapters.power_adapter import PowerAdapter, PowerAdapterFactory
+from ..desktop_result import DesktopResult
+from .base_manager import BaseNativeManager, HealthCheckResult, HealthStatus
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class PowerManager(BaseNativeManager):
     PRIORITY = 20
     DEPENDENCIES = ["wmi", "ctypes"]
 
-    def __init__(self, adapter: Optional[PowerAdapter] = None):
+    def __init__(self, adapter: PowerAdapter | None = None):
         """Initialize power manager with optional injected adapter."""
         super().__init__()
         self._adapter = adapter
@@ -60,7 +59,7 @@ class PowerManager(BaseNativeManager):
         return self.NAME
 
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """Get list of capabilities supported by PowerManager."""
         return [
             "shutdown",
@@ -110,7 +109,7 @@ class PowerManager(BaseNativeManager):
         self,
         capability: str,
         goal: str = "",
-        arguments: Optional[Dict[str, Any]] = None,
+        arguments: dict[str, Any] | None = None,
         **kwargs,
     ) -> DesktopResult:
         """
@@ -139,7 +138,9 @@ class PowerManager(BaseNativeManager):
                 return self._handle_sleep_supported(goal=goal, capability=capability)
 
             elif cap_clean == "power.hibernate_supported":
-                return self._handle_hibernate_supported(goal=goal, capability=capability)
+                return self._handle_hibernate_supported(
+                    goal=goal, capability=capability
+                )
 
             elif cap_clean in ("lock", "power.lock"):
                 return self._handle_lock(goal=goal, capability=capability)
@@ -151,25 +152,32 @@ class PowerManager(BaseNativeManager):
                 return self._handle_hibernate(goal=goal, capability=capability)
 
             elif cap_clean in ("shutdown", "power.shutdown"):
-                return self._handle_shutdown(goal=goal, capability=capability, arguments=arguments)
+                return self._handle_shutdown(
+                    goal=goal, capability=capability, arguments=arguments
+                )
 
             elif cap_clean in ("restart", "power.restart"):
-                return self._handle_restart(goal=goal, capability=capability, arguments=arguments)
+                return self._handle_restart(
+                    goal=goal, capability=capability, arguments=arguments
+                )
 
             elif cap_clean in ("logoff", "power.logoff"):
-                return self._handle_logoff(goal=goal, capability=capability, arguments=arguments)
+                return self._handle_logoff(
+                    goal=goal, capability=capability, arguments=arguments
+                )
 
             else:
                 return DesktopResult.create_failure(
-                    goal=goal, capability=capability, manager=self.name,
-                    error=f"Capability '{capability}' not supported by PowerManager"
+                    goal=goal,
+                    capability=capability,
+                    manager=self.name,
+                    error=f"Capability '{capability}' not supported by PowerManager",
                 )
 
         except Exception as e:
             logger.error(f"PowerManager execution failed: {e}", exc_info=True)
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name,
-                error=str(e)
+                goal=goal, capability=capability, manager=self.name, error=str(e)
             )
 
     # ==================== Handler Implementations ====================
@@ -194,98 +202,152 @@ class PowerManager(BaseNativeManager):
 
     def _handle_sleep_supported(self, goal: str, capability: str) -> DesktopResult:
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
-            data={"supported": True, "backend": self.adapter.name}
+            goal=goal,
+            capability=capability,
+            manager=self.name,
+            data={"supported": True, "backend": self.adapter.name},
         )
 
     def _handle_hibernate_supported(self, goal: str, capability: str) -> DesktopResult:
         return DesktopResult.create_success(
-            goal=goal, capability=capability, manager=self.name,
-            data={"supported": True, "backend": self.adapter.name}
+            goal=goal,
+            capability=capability,
+            manager=self.name,
+            data={"supported": True, "backend": self.adapter.name},
         )
 
     def _handle_lock(self, goal: str, capability: str) -> DesktopResult:
         ok = self.adapter.lock_workstation()
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
+                goal=goal,
+                capability=capability,
+                manager=self.name,
                 data={"status": "locked", "backend": self.adapter.name},
-                events=["workstation_locked"]
+                events=["workstation_locked"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to lock workstation"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to lock workstation",
             )
 
     def _handle_sleep(self, goal: str, capability: str) -> DesktopResult:
         ok = self.adapter.sleep()
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
+                goal=goal,
+                capability=capability,
+                manager=self.name,
                 data={"status": "sleep_initiated", "backend": self.adapter.name},
-                events=["system_sleep"]
+                events=["system_sleep"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to put system to sleep"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to put system to sleep",
             )
 
     def _handle_hibernate(self, goal: str, capability: str) -> DesktopResult:
         ok = self.adapter.hibernate()
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
+                goal=goal,
+                capability=capability,
+                manager=self.name,
                 data={"status": "hibernate_initiated", "backend": self.adapter.name},
-                events=["system_hibernate"]
+                events=["system_hibernate"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to hibernate system"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to hibernate system",
             )
 
-    def _handle_shutdown(self, goal: str, capability: str, arguments: Dict[str, Any]) -> DesktopResult:
+    def _handle_shutdown(
+        self, goal: str, capability: str, arguments: dict[str, Any]
+    ) -> DesktopResult:
         force = bool(arguments.get("force", False))
         timeout = int(arguments.get("timeout", 0))
 
         ok = self.adapter.shutdown(force=force, timeout_sec=timeout)
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
-                data={"status": "shutdown_initiated", "force": force, "timeout": timeout, "backend": self.adapter.name},
-                events=["system_shutdown"]
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                data={
+                    "status": "shutdown_initiated",
+                    "force": force,
+                    "timeout": timeout,
+                    "backend": self.adapter.name,
+                },
+                events=["system_shutdown"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to initiate shutdown"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to initiate shutdown",
             )
 
-    def _handle_restart(self, goal: str, capability: str, arguments: Dict[str, Any]) -> DesktopResult:
+    def _handle_restart(
+        self, goal: str, capability: str, arguments: dict[str, Any]
+    ) -> DesktopResult:
         force = bool(arguments.get("force", False))
         timeout = int(arguments.get("timeout", 0))
 
         ok = self.adapter.restart(force=force, timeout_sec=timeout)
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
-                data={"status": "restart_initiated", "force": force, "timeout": timeout, "backend": self.adapter.name},
-                events=["system_restart"]
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                data={
+                    "status": "restart_initiated",
+                    "force": force,
+                    "timeout": timeout,
+                    "backend": self.adapter.name,
+                },
+                events=["system_restart"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to initiate restart"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to initiate restart",
             )
 
-    def _handle_logoff(self, goal: str, capability: str, arguments: Dict[str, Any]) -> DesktopResult:
+    def _handle_logoff(
+        self, goal: str, capability: str, arguments: dict[str, Any]
+    ) -> DesktopResult:
         force = bool(arguments.get("force", False))
 
         ok = self.adapter.logoff(force=force)
         if ok:
             return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name,
-                data={"status": "logoff_initiated", "force": force, "backend": self.adapter.name},
-                events=["system_logoff"]
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                data={
+                    "status": "logoff_initiated",
+                    "force": force,
+                    "backend": self.adapter.name,
+                },
+                events=["system_logoff"],
             )
         else:
             return DesktopResult.create_failure(
-                goal=goal, capability=capability, manager=self.name, error="Failed to logoff user"
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error="Failed to logoff user",
             )

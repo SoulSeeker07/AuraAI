@@ -5,23 +5,19 @@ Interface for building workflows visually or through natural language.
 Provides methods for constructing workflows, defining triggers, setting up variables, and adding steps.
 """
 
-
-import json
-from typing import Dict, Any, Optional, List, Callable, Union
-from enum import Enum, auto
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
+from typing import Any, Union
 
 from .models import (
-    WorkflowTriggerType,
-    WorkflowPriority,
-    StepType,
     ActionType,
     ConditionType,
-    LoopType,
     ErrorHandling,
-    DecisionOutcome,
-    WorkflowStatus
+    LoopType,
+    StepType,
+    WorkflowPriority,
+    WorkflowStatus,
+    WorkflowTriggerType,
 )
 from .workflow import Workflow
 from .workflow_step import WorkflowStep
@@ -35,17 +31,17 @@ class WorkflowBuilder:
 
     def __init__(self):
         """Initialize a new workflow builder."""
-        self._workflow: Optional[Workflow] = None
-        self._steps: List[WorkflowStep] = []
-        self._triggers: List[Dict[str, Any]] = []
+        self._workflow: Workflow | None = None
+        self._steps: list[WorkflowStep] = []
+        self._triggers: list[dict[str, Any]] = []
 
     def create_workflow(
         self,
         name: str,
         description: str = "",
         priority: WorkflowPriority = WorkflowPriority.NORMAL,
-        workflow_type: str = "custom"
-    ) -> 'WorkflowBuilder':
+        workflow_type: str = "custom",
+    ) -> "WorkflowBuilder":
         """
         Create a new workflow.
 
@@ -73,15 +69,13 @@ class WorkflowBuilder:
             variables={},
             conditions={},
             loops={},
-            error_handling=ErrorHandling.CONTINUE
+            error_handling=ErrorHandling.CONTINUE,
         )
         return self
 
     def set_trigger(
-        self,
-        trigger_type: Union[str, WorkflowTriggerType],
-        **trigger_data
-    ) -> 'WorkflowBuilder':
+        self, trigger_type: Union[str, WorkflowTriggerType], **trigger_data
+    ) -> "WorkflowBuilder":
         """
         Set a trigger for the workflow.
 
@@ -103,7 +97,7 @@ class WorkflowBuilder:
             "id": str(uuid.uuid4()),
             "type": trigger_type.value,
             "data": trigger_data,
-            "active": True
+            "active": True,
         }
 
         self._workflow.triggers.append(trigger)
@@ -114,8 +108,8 @@ class WorkflowBuilder:
         step_id: str,
         action_type: Union[str, ActionType],
         step_type: Union[str, StepType] = StepType.ACTION,
-        **kwargs
-    ) -> 'WorkflowBuilder':
+        **kwargs,
+    ) -> "WorkflowBuilder":
         """
         Add a step to the workflow.
 
@@ -142,23 +136,24 @@ class WorkflowBuilder:
             step_type=step_type.value,
             action_type=action_type.value,
             action_config=kwargs,
-            condition_type=ConditionType.ATTRIBUTE_CHECK.value if "condition" in kwargs.get("action_config", {}) else None,
+            condition_type=(
+                ConditionType.ATTRIBUTE_CHECK.value
+                if "condition" in kwargs.get("action_config", {})
+                else None
+            ),
             next_step=kwargs.get("next_step"),
             timeout=kwargs.get("timeout"),
             retries=kwargs.get("retries", 0),
             error_handling=kwargs.get("error_handling", ErrorHandling.CONTINUE).value,
-            metadata=kwargs.get("metadata", {})
+            metadata=kwargs.get("metadata", {}),
         )
 
         self._steps.append(step)
         return self
 
     def add_wait_step(
-        self,
-        step_id: str,
-        duration: Union[int, timedelta],
-        unit: str = "seconds"
-    ) -> 'WorkflowBuilder':
+        self, step_id: str, duration: Union[int, timedelta], unit: str = "seconds"
+    ) -> "WorkflowBuilder":
         """
         Add a wait/delay step.
 
@@ -178,7 +173,7 @@ class WorkflowBuilder:
             action_type=ActionType.WAIT,
             step_type=StepType.WAIT,
             duration=duration,
-            unit=unit
+            unit=unit,
         )
 
     def add_set_variable_step(
@@ -186,8 +181,8 @@ class WorkflowBuilder:
         step_id: str,
         variable_name: str,
         variable_value: Any,
-        set_if_empty: bool = True
-    ) -> 'WorkflowBuilder':
+        set_if_empty: bool = True,
+    ) -> "WorkflowBuilder":
         """
         Add a variable assignment step.
 
@@ -206,15 +201,12 @@ class WorkflowBuilder:
             step_type=StepType.SET_VARIABLE,
             variable_name=variable_name,
             variable_value=variable_value,
-            set_if_empty=set_if_empty
+            set_if_empty=set_if_empty,
         )
 
     def add_get_variable_step(
-        self,
-        step_id: str,
-        variable_name: str,
-        output_variable: str = "output"
-    ) -> 'WorkflowBuilder':
+        self, step_id: str, variable_name: str, output_variable: str = "output"
+    ) -> "WorkflowBuilder":
         """
         Add a variable retrieval step.
 
@@ -231,15 +223,15 @@ class WorkflowBuilder:
             action_type=ActionType.GET_VARIABLE,
             step_type=StepType.GET_VARIABLE,
             variable_name=variable_name,
-            output_variable=output_variable
+            output_variable=output_variable,
         )
 
     def add_condition_step(
         self,
         step_id: str,
         condition_type: Union[str, ConditionType],
-        condition_config: Dict[str, Any]
-    ) -> 'WorkflowBuilder':
+        condition_config: dict[str, Any],
+    ) -> "WorkflowBuilder":
         """
         Add a conditional step.
 
@@ -259,15 +251,12 @@ class WorkflowBuilder:
             action_type=ActionType.NONE,  # Conditions don't execute actions
             step_type=StepType.CONDITION,
             condition_type=condition_type.value,
-            condition_config=condition_config
+            condition_config=condition_config,
         )
 
     def add_loop_step(
-        self,
-        step_id: str,
-        loop_type: Union[str, LoopType],
-        loop_config: Dict[str, Any]
-    ) -> 'WorkflowBuilder':
+        self, step_id: str, loop_type: Union[str, LoopType], loop_config: dict[str, Any]
+    ) -> "WorkflowBuilder":
         """
         Add a loop step.
 
@@ -287,7 +276,7 @@ class WorkflowBuilder:
             action_type=ActionType.NONE,
             step_type=StepType.LOOP,
             loop_type=loop_type.value,
-            loop_config=loop_config
+            loop_config=loop_config,
         )
 
     def add_for_each_loop(
@@ -295,8 +284,8 @@ class WorkflowBuilder:
         step_id: str,
         collection: str,
         item_variable: str = "item",
-        next_step: str = "next"
-    ) -> 'WorkflowBuilder':
+        next_step: str = "next",
+    ) -> "WorkflowBuilder":
         """
         Add a for-each loop.
 
@@ -315,8 +304,8 @@ class WorkflowBuilder:
             loop_config={
                 "collection": collection,
                 "item_variable": item_variable,
-                "next_step": next_step
-            }
+                "next_step": next_step,
+            },
         )
 
     def add_while_loop(
@@ -324,8 +313,8 @@ class WorkflowBuilder:
         step_id: str,
         condition_variable: str,
         condition_operator: str = "==",
-        next_step: str = "next"
-    ) -> 'WorkflowBuilder':
+        next_step: str = "next",
+    ) -> "WorkflowBuilder":
         """
         Add a while loop.
 
@@ -344,16 +333,16 @@ class WorkflowBuilder:
             loop_config={
                 "condition_variable": condition_variable,
                 "condition_operator": condition_operator,
-                "next_step": next_step
-            }
+                "next_step": next_step,
+            },
         )
 
     def add_decision_step(
         self,
         step_id: str,
         condition_type: Union[str, ConditionType],
-        condition_config: Dict[str, Any]
-    ) -> 'WorkflowBuilder':
+        condition_config: dict[str, Any],
+    ) -> "WorkflowBuilder":
         """
         Add a decision step for branching.
 
@@ -373,7 +362,7 @@ class WorkflowBuilder:
             action_type=ActionType.NONE,
             step_type=StepType.DECISION,
             condition_type=condition_type.value,
-            condition_config=condition_config
+            condition_config=condition_config,
         )
 
     def add_prompt_user_step(
@@ -381,8 +370,8 @@ class WorkflowBuilder:
         step_id: str,
         prompt: str,
         output_variable: str = "user_input",
-        prompt_type: str = "text"
-    ) -> 'WorkflowBuilder':
+        prompt_type: str = "text",
+    ) -> "WorkflowBuilder":
         """
         Add a user prompt step.
 
@@ -401,15 +390,12 @@ class WorkflowBuilder:
             step_type=StepType.PROMPT_USER,
             prompt=prompt,
             output_variable=output_variable,
-            prompt_type=prompt_type
+            prompt_type=prompt_type,
         )
 
     def add_echo_step(
-        self,
-        step_id: str,
-        message: str,
-        log_level: str = "info"
-    ) -> 'WorkflowBuilder':
+        self, step_id: str, message: str, log_level: str = "info"
+    ) -> "WorkflowBuilder":
         """
         Add an echo/log step.
 
@@ -426,7 +412,7 @@ class WorkflowBuilder:
             action_type=ActionType.ECHO,
             step_type=StepType.ECHO,
             message=message,
-            log_level=log_level
+            log_level=log_level,
         )
 
     def add_merge_step(
@@ -434,8 +420,8 @@ class WorkflowBuilder:
         step_id: str,
         source: str,
         target: str,
-        merge_config: Dict[str, Any] = None
-    ) -> 'WorkflowBuilder':
+        merge_config: dict[str, Any] = None,
+    ) -> "WorkflowBuilder":
         """
         Add a merge step.
 
@@ -454,13 +440,12 @@ class WorkflowBuilder:
             step_type=StepType.MERGE,
             source=source,
             target=target,
-            merge_config=merge_config or {}
+            merge_config=merge_config or {},
         )
 
     def set_error_handling(
-        self,
-        error_handling: Union[str, ErrorHandling]
-    ) -> 'WorkflowBuilder':
+        self, error_handling: Union[str, ErrorHandling]
+    ) -> "WorkflowBuilder":
         """
         Set error handling strategy.
 
@@ -477,7 +462,7 @@ class WorkflowBuilder:
             self._workflow.error_handling = error_handling.value
         return self
 
-    def set_workflow_type(self, workflow_type: str) -> 'WorkflowBuilder':
+    def set_workflow_type(self, workflow_type: str) -> "WorkflowBuilder":
         """
         Set the workflow type.
 
@@ -491,7 +476,7 @@ class WorkflowBuilder:
             self._workflow.workflow_type = workflow_type
         return self
 
-    def set_workflow_description(self, description: str) -> 'WorkflowBuilder':
+    def set_workflow_description(self, description: str) -> "WorkflowBuilder":
         """
         Set workflow description.
 
@@ -545,14 +530,14 @@ class WorkflowBuilder:
         # Try to import the workflow
         try:
             manager.import_workflow(workflow.to_dict())
-        except Exception as e:
+        except Exception:
             # If import fails, just return the workflow
             pass
 
         return workflow
 
     @staticmethod
-    def from_workflow(workflow: Workflow) -> 'WorkflowBuilder':
+    def from_workflow(workflow: Workflow) -> "WorkflowBuilder":
         """
         Create a builder from an existing workflow.
 
@@ -577,7 +562,7 @@ def create_workflow(
     name: str,
     description: str = "",
     priority: WorkflowPriority = WorkflowPriority.NORMAL,
-    **kwargs
+    **kwargs,
 ) -> WorkflowBuilder:
     """
     Create a new workflow builder.
@@ -592,5 +577,7 @@ def create_workflow(
         WorkflowBuilder instance
     """
     builder = WorkflowBuilder()
-    builder.create_workflow(name=name, description=description, priority=priority, **kwargs)
+    builder.create_workflow(
+        name=name, description=description, priority=priority, **kwargs
+    )
     return builder

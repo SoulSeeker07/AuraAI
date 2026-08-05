@@ -11,39 +11,36 @@ Provides intelligent memory management for Aura with:
 - Sensitive data handling
 """
 
+from .memory_analyzer import MemoryAnalyzer
+from .memory_manager_v2 import MemoryManagerV2
 from .memory_types import (
+    CategoryType,
+    ConflictResult,
+    ForgettingResult,
+    ImportanceLevel,
+    MemoryAnalysisResult,
     MemoryFact,
     MemoryLayer,
-    CategoryType,
-    ImportanceLevel,
-    RiskLevel,
-    MemoryAnalysisResult,
     MemoryRetrievalResult,
-    ForgettingResult,
-    ConflictResult,
-    MemorySummary,
     MemoryStore,
+    MemorySummary,
+    RiskLevel,
 )
-
-from .memory_analyzer import MemoryAnalyzer
-
-from .memory_manager_v2 import MemoryManagerV2
 
 __all__ = [
     # Types
-    'MemoryFact',
-    'MemoryLayer',
-    'CategoryType',
-    'ImportanceLevel',
-    'RiskLevel',
-    'MemoryAnalysisResult',
-    'MemoryRetrievalResult',
-    'ForgettingResult',
-    'ConflictResult',
-    'MemorySummary',
-    'MemoryStore',
-    
+    "MemoryFact",
+    "MemoryLayer",
+    "CategoryType",
+    "ImportanceLevel",
+    "RiskLevel",
+    "MemoryAnalysisResult",
+    "MemoryRetrievalResult",
+    "ForgettingResult",
+    "ConflictResult",
+    "MemorySummary",
+    "MemoryStore",
     # Components
-    'MemoryAnalyzer',
-    'MemoryManagerV2',
+    "MemoryAnalyzer",
+    "MemoryManagerV2",
 ]

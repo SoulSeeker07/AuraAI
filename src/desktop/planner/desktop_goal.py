@@ -4,8 +4,8 @@ Represents high-level user intent decomposed into planning targets.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional
 from enum import Enum
+from typing import Any
 
 
 class GoalPriority(Enum):
@@ -20,15 +20,16 @@ class DesktopGoal:
     """
     Representation of a user desktop goal for the Desktop Planner.
     """
+
     goal: str
     category: str = "general"
     priority: GoalPriority = GoalPriority.NORMAL
-    context: Dict[str, Any] = field(default_factory=dict)
-    explicit_capability: Optional[str] = None
-    target_window: Optional[str] = None
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+    explicit_capability: str | None = None
+    target_window: str | None = None
+    parameters: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "goal": self.goal,
             "category": self.category,

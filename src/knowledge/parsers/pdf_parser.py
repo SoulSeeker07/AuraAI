@@ -5,7 +5,8 @@ Uses PyPDF2 or pdfplumber for PDF text extraction.
 """
 
 import re
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from ..models import DocumentChunk
 
 
@@ -34,8 +35,8 @@ class PDFParser:
     def parse(
         self,
         file_path: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> List[DocumentChunk]:
+        metadata: dict[str, Any] | None = None,
+    ) -> list[DocumentChunk]:
         """
         Parse a PDF file and extract text chunks.
 
@@ -64,8 +65,8 @@ class PDFParser:
     def _parse_with_pdfplumber(
         self,
         file_path: str,
-        metadata: Optional[Dict[str, Any]],
-    ) -> List[DocumentChunk]:
+        metadata: dict[str, Any] | None,
+    ) -> list[DocumentChunk]:
         """Parse PDF using pdfplumber."""
         try:
             import pdfplumber
@@ -107,15 +108,13 @@ class PDFParser:
     def _parse_with_pypdf2(
         self,
         file_path: str,
-        metadata: Optional[Dict[str, Any]],
-    ) -> List[DocumentChunk]:
+        metadata: dict[str, Any] | None,
+    ) -> list[DocumentChunk]:
         """Parse PDF using PyPDF2."""
         try:
             from PyPDF2 import PdfReader
         except ImportError:
-            raise ImportError(
-                "PyPDF2 is required. Install it with: pip install PyPDF2"
-            )
+            raise ImportError("PyPDF2 is required. Install it with: pip install PyPDF2")
 
         chunks = []
         metadata = metadata or {}
@@ -181,6 +180,5 @@ class PDFParser:
         Check if this parser supports the given file.
         """
         return any(
-            str(file_path).lower().endswith(ext)
-            for ext in self.supported_extensions
+            str(file_path).lower().endswith(ext) for ext in self.supported_extensions
         )

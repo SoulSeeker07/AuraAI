@@ -156,14 +156,21 @@ class OverlayWindow(QWidget):
         super().keyPressEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton and self._can_drag_from(event.position().toPoint()):
-            self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+        if event.button() == Qt.MouseButton.LeftButton and self._can_drag_from(
+            event.position().toPoint()
+        ):
+            self._drag_offset = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
             event.accept()
             return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._drag_offset is not None and event.buttons() & Qt.MouseButton.LeftButton:
+        if (
+            self._drag_offset is not None
+            and event.buttons() & Qt.MouseButton.LeftButton
+        ):
             self.move(event.globalPosition().toPoint() - self._drag_offset)
             self._has_custom_position = True
             event.accept()
@@ -171,7 +178,10 @@ class OverlayWindow(QWidget):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton and self._drag_offset is not None:
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self._drag_offset is not None
+        ):
             self._drag_offset = None
             self._keep_inside_screen()
             event.accept()
@@ -196,7 +206,10 @@ class OverlayWindow(QWidget):
         return child not in blocked and not isinstance(child, QPushButton)
 
     def _keep_inside_screen(self) -> None:
-        screen = QApplication.screenAt(self.frameGeometry().center()) or QApplication.primaryScreen()
+        screen = (
+            QApplication.screenAt(self.frameGeometry().center())
+            or QApplication.primaryScreen()
+        )
         if screen is None:
             return
 

@@ -5,11 +5,11 @@ Detects and reports conflicts between evidence from different sources.
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
+from typing import Any
 
-from .models import Evidence, SearchResult, normalize_trust_level
-from .evidence_merger import EvidenceMerger, EvidenceConflict
+from .evidence_merger import EvidenceMerger
+from .models import Evidence, normalize_trust_level
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SourceConflict:
     """Represents a conflict between sources."""
+
     conflict_type: str  # 'disagree', 'partial_overlap', 'confidence_loss'
     evidence1: str
     evidence1_source: str
@@ -31,8 +32,9 @@ class SourceConflict:
 @dataclass
 class ConflictReport:
     """Complete conflict report with all detected conflicts."""
+
     has_conflicts: bool
-    conflicts: List[SourceConflict]
+    conflicts: list[SourceConflict]
     resolution_strategy: str
     recommended_action: str
     confidence: float
@@ -41,12 +43,12 @@ class ConflictReport:
 class ConflictDetector:
     """
     Detects conflicts between evidence from different sources.
-    
+
     When multiple sources provide information about the same topic,
     Aura should detect if they disagree and handle it appropriately.
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         """
         Initialize conflict detector.
 
@@ -55,12 +57,9 @@ class ConflictDetector:
         """
         self.config = config or {}
         self.evidence_merger = EvidenceMerger(config)
-        self.conflict_threshold = self.config.get('conflict_threshold', 0.3)
+        self.conflict_threshold = self.config.get("conflict_threshold", 0.3)
 
-    def detect_conflicts(
-        self,
-        evidence_list: List[Evidence]
-    ) -> List[SourceConflict]:
+    def detect_conflicts(self, evidence_list: list[Evidence]) -> list[SourceConflict]:
         """
         Detect conflicts between evidence sources.
 
@@ -75,7 +74,9 @@ class ConflictDetector:
         if len(evidence_list) < 2:
             return conflicts
 
-        logger.info(f"Detecting conflicts between {len(evidence_list)} evidence sources")
+        logger.info(
+            f"Detecting conflicts between {len(evidence_list)} evidence sources"
+        )
 
         # Detect conflicts using evidence merger
         detected_conflicts = self.evidence_merger.detect_conflicts(evidence_list)
@@ -91,10 +92,8 @@ class ConflictDetector:
         return conflicts
 
     def _convert_to_source_conflict(
-        self,
-        conflict,
-        evidence_list: List[Evidence]
-    ) -> Optional[SourceConflict]:
+        self, conflict, evidence_list: list[Evidence]
+    ) -> SourceConflict | None:
         """
         Convert EvidenceConflict to SourceConflict.
 
@@ -106,8 +105,12 @@ class ConflictDetector:
             SourceConflict object or None
         """
         # Find evidence objects by source name
-        evidence1 = next((e for e in evidence_list if e.source == conflict.sources[0]), None)
-        evidence2 = next((e for e in evidence_list if e.source == conflict.sources[1]), None)
+        evidence1 = next(
+            (e for e in evidence_list if e.source == conflict.sources[0]), None
+        )
+        evidence2 = next(
+            (e for e in evidence_list if e.source == conflict.sources[1]), None
+        )
 
         if not evidence1 or not evidence2:
             return None
@@ -130,14 +133,11 @@ class ConflictDetector:
             evidence2_source=conflict.sources[1],
             evidence2_url=conflict.source_urls[1],
             resolution=resolution,
-            confidence=confidence
+            confidence=confidence,
         )
 
     def _determine_conflict_type(
-        self,
-        conflict,
-        evidence1: Evidence,
-        evidence2: Evidence
+        self, conflict, evidence1: Evidence, evidence2: Evidence
     ) -> str:
         """
         Determine type of conflict.
@@ -151,23 +151,23 @@ class ConflictDetector:
             Conflict type string
         """
         # Compare trust levels
-        trust_levels = [normalize_trust_level(evidence1.trust_level), normalize_trust_level(evidence2.trust_level)]
-        high_trust = [t for t in trust_levels if t in ['official', 'government']]
-        low_trust = [t for t in trust_levels if t not in ['official', 'government']]
+        trust_levels = [
+            normalize_trust_level(evidence1.trust_level),
+            normalize_trust_level(evidence2.trust_level),
+        ]
+        high_trust = [t for t in trust_levels if t in ["official", "government"]]
+        low_trust = [t for t in trust_levels if t not in ["official", "government"]]
 
         if high_trust and low_trust:
-            return 'disagree'  # High-trust sources disagree
+            return "disagree"  # High-trust sources disagree
 
         if len(set(trust_levels)) > 1:
-            return 'confidence_loss'  # Different trust levels
+            return "confidence_loss"  # Different trust levels
 
-        return 'partial_overlap'  # Sources agree but slightly different
+        return "partial_overlap"  # Sources agree but slightly different
 
     def _determine_resolution(
-        self,
-        conflict,
-        evidence1: Evidence,
-        evidence2: Evidence
+        self, conflict, evidence1: Evidence, evidence2: Evidence
     ) -> str:
         """
         Determine resolution strategy for conflict.
@@ -180,18 +180,21 @@ class ConflictDetector:
         Returns:
             Resolution strategy
         """
-        trust_levels = [normalize_trust_level(evidence1.trust_level), normalize_trust_level(evidence2.trust_level)]
+        trust_levels = [
+            normalize_trust_level(evidence1.trust_level),
+            normalize_trust_level(evidence2.trust_level),
+        ]
 
         # Priority order: official > government > github > stackoverflow > wikipedia > reddit > blog
         trust_priority = {
-            'official': 10,
-            'government': 9,
-            'github': 8,
-            'stackoverflow': 7,
-            'wikipedia': 6,
-            'reddit': 5,
-            'blog': 4,
-            'unknown': 1
+            "official": 10,
+            "government": 9,
+            "github": 8,
+            "stackoverflow": 7,
+            "wikipedia": 6,
+            "reddit": 5,
+            "blog": 4,
+            "unknown": 1,
         }
 
         max_trust = max([trust_priority.get(t, 0) for t in trust_levels])
@@ -199,18 +202,16 @@ class ConflictDetector:
 
         if len(max_sources) == 1:
             # Use the highest trust source
-            return f'use_{max_sources[0]}'
+            return f"use_{max_sources[0]}"
 
         if len(max_sources) >= 2:
             # Multiple sources agree
-            return 'merge'
+            return "merge"
 
-        return 'need_human'
+        return "need_human"
 
     def generate_report(
-        self,
-        conflicts: List[SourceConflict],
-        query: str
+        self, conflicts: list[SourceConflict], query: str
     ) -> ConflictReport:
         """
         Generate a comprehensive conflict report.
@@ -226,9 +227,9 @@ class ConflictDetector:
             return ConflictReport(
                 has_conflicts=False,
                 conflicts=[],
-                resolution_strategy='no_conflicts',
-                recommended_action='Continue with normal response',
-                confidence=1.0
+                resolution_strategy="no_conflicts",
+                recommended_action="Continue with normal response",
+                confidence=1.0,
             )
 
         # Determine overall resolution strategy
@@ -243,10 +244,10 @@ class ConflictDetector:
             conflicts=conflicts,
             resolution_strategy=resolution_strategy,
             recommended_action=recommended_action,
-            confidence=avg_confidence
+            confidence=avg_confidence,
         )
 
-    def _determine_resolution_strategy(self, conflicts: List[SourceConflict]) -> str:
+    def _determine_resolution_strategy(self, conflicts: list[SourceConflict]) -> str:
         """
         Determine overall resolution strategy.
 
@@ -257,20 +258,22 @@ class ConflictDetector:
             Resolution strategy string
         """
         # Count resolution types
-        use_evidence1_count = sum(1 for c in conflicts if c.resolution.startswith('use_'))
-        merge_count = sum(1 for c in conflicts if c.resolution == 'merge')
-        need_human_count = sum(1 for c in conflicts if c.resolution == 'need_human')
+        use_evidence1_count = sum(
+            1 for c in conflicts if c.resolution.startswith("use_")
+        )
+        merge_count = sum(1 for c in conflicts if c.resolution == "merge")
+        need_human_count = sum(1 for c in conflicts if c.resolution == "need_human")
 
         total = len(conflicts)
 
         if use_evidence1_count >= total * 0.7:
-            return 'prefer_trusted_sources'
+            return "prefer_trusted_sources"
         elif merge_count >= total * 0.7:
-            return 'merge_sources'
+            return "merge_sources"
         elif need_human_count >= total * 0.5:
-            return 'need_human_review'
+            return "need_human_review"
         else:
-            return 'weighted_merge'
+            return "weighted_merge"
 
     def _determine_recommended_action(self, resolution_strategy: str) -> str:
         """
@@ -283,13 +286,13 @@ class ConflictDetector:
             Recommended action string
         """
         strategies = {
-            'prefer_trusted_sources': 'Use evidence from official/government sources. Note discrepancies in response.',
-            'merge_sources': 'Combine information from all sources. Highlight where sources agree.',
-            'need_human_review': 'Alert user to conflicting information. Recommend gathering more evidence.',
-            'weighted_merge': 'Weight evidence by source trust. Note conflicts in confidence.'
+            "prefer_trusted_sources": "Use evidence from official/government sources. Note discrepancies in response.",
+            "merge_sources": "Combine information from all sources. Highlight where sources agree.",
+            "need_human_review": "Alert user to conflicting information. Recommend gathering more evidence.",
+            "weighted_merge": "Weight evidence by source trust. Note conflicts in confidence.",
         }
 
-        return strategies.get(resolution_strategy, 'Continue with normal response')
+        return strategies.get(resolution_strategy, "Continue with normal response")
 
     def get_confidence_adjustment(self, conflict_report: ConflictReport) -> float:
         """
@@ -310,7 +313,9 @@ class ConflictDetector:
 
         return adjustment
 
-    def generate_conflict_message(self, conflict_report: ConflictReport, query: str) -> str:
+    def generate_conflict_message(
+        self, conflict_report: ConflictReport, query: str
+    ) -> str:
         """
         Generate a human-readable conflict message.
 
@@ -330,7 +335,7 @@ class ConflictDetector:
             f"**Resolution Strategy:** {conflict_report.resolution_strategy}",
             f"**Recommended Action:** {conflict_report.recommended_action}",
             f"**Overall Confidence:** {conflict_report.confidence * 100:.0f}%",
-            ""
+            "",
         ]
 
         if conflict_report.conflicts:
@@ -338,17 +343,19 @@ class ConflictDetector:
             for i, conflict in enumerate(conflict_report.conflicts, 1):
                 lines.append(f"\n{i}. **{conflict.conflict_type.upper()}**")
                 lines.append(f"   - {conflict.evidence1[:100]}...")
-                lines.append(f"   - Sources: {conflict.evidence1_source} and {conflict.evidence2_source}")
+                lines.append(
+                    f"   - Sources: {conflict.evidence1_source} and {conflict.evidence2_source}"
+                )
                 lines.append(f"   - Suggested Resolution: {conflict.resolution}")
 
-        lines.append("\n*Please review these conflicts when formulating your response.*")
+        lines.append(
+            "\n*Please review these conflicts when formulating your response.*"
+        )
 
         return "\n".join(lines)
 
     def should_research(
-        self,
-        conflict_report: ConflictReport,
-        threshold: float = 0.6
+        self, conflict_report: ConflictReport, threshold: float = 0.6
     ) -> bool:
         """
         Determine if research should be performed based on conflicts.

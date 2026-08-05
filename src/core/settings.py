@@ -61,4 +61,8 @@ class Settings:
 
     @property
     def live_screen_interval_ms(self) -> int:
-        return int(self.get("live_screen_interval_ms", DEFAULT_SETTINGS["live_screen_interval_ms"]))
+        return int(
+            self.get(
+                "live_screen_interval_ms", DEFAULT_SETTINGS["live_screen_interval_ms"]
+            )
+        )

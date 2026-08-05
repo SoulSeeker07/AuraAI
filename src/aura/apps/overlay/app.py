@@ -17,7 +17,9 @@ class AuraOverlayApp:
 
     def run(self) -> None:
         self.engine.rootContext().setContextProperty("controller", self.controller)
-        self.engine.rootContext().setContextProperty("connectionManager", self.connection_manager)
+        self.engine.rootContext().setContextProperty(
+            "connectionManager", self.connection_manager
+        )
         self.engine.load(QUrl("qrc:/aura/frontend/overlay/Overlay.qml"))
         self.connection_manager.start()
         self.controller.show()

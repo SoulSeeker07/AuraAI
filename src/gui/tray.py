@@ -8,7 +8,6 @@ from core.config import APP_NAME, PROJECT_ROOT
 from core.logger import get_logger
 from core.settings import Settings
 
-
 logger = get_logger("tray")
 
 
@@ -16,7 +15,9 @@ class AuraTrayIcon(QSystemTrayIcon):
     show_overlay_requested = Signal()
     live_screen_toggled = Signal(bool)
 
-    def __init__(self, main_window, overlay_window, app: QApplication, settings: Settings):
+    def __init__(
+        self, main_window, overlay_window, app: QApplication, settings: Settings
+    ):
         super().__init__(main_window)
         self.main_window = main_window
         self.overlay_window = overlay_window
@@ -88,7 +89,9 @@ class AuraTrayIcon(QSystemTrayIcon):
         if script_path.exists():
             from PySide6.QtCore import QProcess
 
-            launched = QProcess.startDetached(executable, [str(script_path)], str(PROJECT_ROOT))
+            launched = QProcess.startDetached(
+                executable, [str(script_path)], str(PROJECT_ROOT)
+            )
 
         if launched:
             self.quit_app()
@@ -124,7 +127,9 @@ class AuraTrayIcon(QSystemTrayIcon):
     def set_live_screen_state(self, is_active: bool) -> None:
         self.live_screen_action.blockSignals(True)
         self.live_screen_action.setChecked(is_active)
-        self.live_screen_action.setText("Stop Live Screen" if is_active else "Live Screen")
+        self.live_screen_action.setText(
+            "Stop Live Screen" if is_active else "Live Screen"
+        )
         self.live_screen_action.blockSignals(False)
 
     def sync_visibility_actions(self) -> None:

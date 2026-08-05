@@ -4,18 +4,16 @@ This client owns a single QWebSocket instance, exposes Qt signals for the UI,
 and keeps the transport logic off the main thread. It does not implement
 reconnection by itself; the ConnectionManager is responsible for that.
 """
+
 from __future__ import annotations
 
-import json
-from typing import Optional
-
-from PySide6.QtCore import QObject, QTimer, Signal, QUrl
-from PySide6.QtWebSockets import QWebSocket
-from PySide6.QtNetwork import QAbstractSocket
 from loguru import logger
+from PySide6.QtCore import QObject, QTimer, QUrl, Signal
+from PySide6.QtNetwork import QAbstractSocket
+from PySide6.QtWebSockets import QWebSocket
 
-from .constants import HEARTBEAT_INTERVAL
 from ..shared import AuraMessage, MessageType, deserialize, serialize
+from .constants import HEARTBEAT_INTERVAL
 
 
 class AuraWebSocketClient(QObject):
@@ -27,8 +25,8 @@ class AuraWebSocketClient(QObject):
     def __init__(self, url: str = "ws://127.0.0.1:8765/ws") -> None:
         super().__init__()
         self.url = url
-        self._socket: Optional[QWebSocket] = None
-        self._heartbeatTimer: Optional[QTimer] = None
+        self._socket: QWebSocket | None = None
+        self._heartbeatTimer: QTimer | None = None
         self._connected = False
 
     def connect(self) -> None:

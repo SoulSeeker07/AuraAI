@@ -6,9 +6,9 @@ Decouples native managers from specific Windows APIs or third-party libraries
 (e.g., PyCAW, WMI, WinMM, CoreAudio, Bluetooth).
 """
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 import logging
+from abc import ABC, abstractmethod
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class BaseNativeAdapter(ABC):
 
     def __init__(self):
         """Initialize adapter."""
-        self._available: Optional[bool] = None
+        self._available: bool | None = None
 
     @property
     def name(self) -> str:
@@ -43,7 +43,7 @@ class BaseNativeAdapter(ABC):
         """
         raise NotImplementedError
 
-    def get_details(self) -> Dict[str, Any]:
+    def get_details(self) -> dict[str, Any]:
         """
         Get diagnostic details for this adapter.
 

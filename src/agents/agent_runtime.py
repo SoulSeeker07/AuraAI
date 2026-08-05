@@ -5,24 +5,23 @@ The main orchestrator for autonomous goal execution.
 Transforms Aura from a command executor to a goal-driven autonomous system.
 """
 
-
 import logging
-from typing import Optional, Dict, Any, Callable, List
-from datetime import datetime
 import threading
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
-from .goal import Goal
-from .task import Task
-from .execution_graph import ExecutionGraph
-from .scheduler import Scheduler, ExecutionStrategy
-from .dependency_manager import DependencyManager
 from .approval_manager import ApprovalManager
-from .recovery_manager import RecoveryManager
-from .progress_manager import ProgressManager, ProgressEvent
-from .execution_history import ExecutionHistory, EventType
+from .dependency_manager import DependencyManager
+from .execution_graph import ExecutionGraph
+from .execution_history import EventType, ExecutionHistory
+from .goal import Goal
+from .models import GoalStatus
 from .planner import Planner
-from .models import GoalStatus, TaskStatus
-
+from .progress_manager import ProgressManager
+from .recovery_manager import RecoveryManager
+from .scheduler import Scheduler
+from .task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +37,10 @@ class AgentRuntime:
 
     def __init__(
         self,
-        on_goal_start: Optional[Callable[['AgentRuntime', Goal], None]] = None,
-        on_goal_complete: Optional[Callable[['AgentRuntime', Goal], None]] = None,
-        on_goal_fail: Optional[Callable[['AgentRuntime', Goal, str], None]] = None,
-        on_agent_ready: Optional[Callable[['AgentRuntime'], None]] = None
+        on_goal_start: Callable[["AgentRuntime", Goal], None] | None = None,
+        on_goal_complete: Callable[["AgentRuntime", Goal], None] | None = None,
+        on_goal_fail: Callable[["AgentRuntime", Goal, str], None] | None = None,
+        on_agent_ready: Callable[["AgentRuntime"], None] | None = None,
     ):
         """
         Initialize Agent Runtime.
@@ -61,29 +60,29 @@ class AgentRuntime:
         # Core components
         self.planner = Planner(
             on_plan_generated=self._on_plan_generated,
-            on_task_created=self._on_task_created
+            on_task_created=self._on_task_created,
         )
         self.scheduler = Scheduler(
             on_task_complete=self._on_task_complete,
             on_task_fail=self._on_task_fail,
-            on_task_progress=self._on_task_progress
+            on_task_progress=self._on_task_progress,
         )
         self.dependency_manager = None
         self.approval_manager = ApprovalManager()
         self.recovery_manager = RecoveryManager(
             on_recover=self._on_recover,
             on_fail_permanently=self._on_fail_permanently,
-            on_pause=self._on_pause
+            on_pause=self._on_pause,
         )
         self.progress_manager = ProgressManager()
         self.execution_history = ExecutionHistory()
         self.goal_memory = None
 
         # State
-        self.current_goal: Optional[Goal] = None
-        self.execution_graph: Optional[ExecutionGraph] = None
+        self.current_goal: Goal | None = None
+        self.execution_graph: ExecutionGraph | None = None
         self.is_running = False
-        self.execution_thread: Optional[threading.Thread] = None
+        self.execution_thread: threading.Thread | None = None
 
         logger.info("Agent Runtime initialized")
 
@@ -101,10 +100,7 @@ class AgentRuntime:
         Returns:
             Goal ID
         """
-        goal = Goal(
-            description=description,
-            **kwargs
-        )
+        goal = Goal(description=description, **kwargs)
 
         self.execution_history.log_goal_created(goal.goal_id, description)
 
@@ -134,34 +130,38 @@ class AgentRuntime:
         self.dependency_manager = DependencyManager(graph)
 
         # Initialize goal memory
-        self.goal_memory = type('GoalMemory', (), {
-            'goal_id': goal_id,
-            'goal_description': description,
-            'variables': {},
-            'intermediate_results': {},
-            'generated_files': {},
-            'task_outputs': {},
-            'current_step': '',
-            'step_progress': 0.0,
-            'created_at': datetime.now(),
-            'last_accessed': datetime.now(),
-            'memory_size': 0,
-            'set_variable': lambda name, value, persistent=False: None,
-            'get_variable': lambda name: None,
-            'set_intermediate_result': lambda key, result, desc="": None,
-            'get_intermediate_result': lambda key: None,
-            'add_generated_file': lambda filename, filepath: None,
-            'get_generated_file': lambda filename: None,
-            'store_task_output': lambda task_id, output: None,
-            'get_task_output': lambda task_id: None,
-            'update_step': lambda step, progress: None,
-            'get_memory_summary': lambda: {},
-            'export_to_dict': lambda: {},
-            'get_persistent_data': lambda: {},
-            'get_context_for_task': lambda task_id: {},
-            '_update_memory_size': lambda: None,
-            'cleanup': lambda: None
-        })
+        self.goal_memory = type(
+            "GoalMemory",
+            (),
+            {
+                "goal_id": goal_id,
+                "goal_description": description,
+                "variables": {},
+                "intermediate_results": {},
+                "generated_files": {},
+                "task_outputs": {},
+                "current_step": "",
+                "step_progress": 0.0,
+                "created_at": datetime.now(),
+                "last_accessed": datetime.now(),
+                "memory_size": 0,
+                "set_variable": lambda name, value, persistent=False: None,
+                "get_variable": lambda name: None,
+                "set_intermediate_result": lambda key, result, desc="": None,
+                "get_intermediate_result": lambda key: None,
+                "add_generated_file": lambda filename, filepath: None,
+                "get_generated_file": lambda filename: None,
+                "store_task_output": lambda task_id, output: None,
+                "get_task_output": lambda task_id: None,
+                "update_step": lambda step, progress: None,
+                "get_memory_summary": lambda: {},
+                "export_to_dict": lambda: {},
+                "get_persistent_data": lambda: {},
+                "get_context_for_task": lambda task_id: {},
+                "_update_memory_size": lambda: None,
+                "cleanup": lambda: None,
+            },
+        )
 
         # Initialize progress manager
         self.progress_manager.reset_for_new_goal(goal)
@@ -204,9 +204,7 @@ class AgentRuntime:
         # Start execution
         self.is_running = True
         self.execution_thread = threading.Thread(
-            target=self._execution_loop,
-            args=(goal_id,),
-            daemon=True
+            target=self._execution_loop, args=(goal_id,), daemon=True
         )
         self.execution_thread.start()
 
@@ -232,7 +230,9 @@ class AgentRuntime:
         self.is_running = False
 
         goal.status = GoalStatus.PAUSED
-        self.execution_history.log_event(EventType.PAUSED, goal_id=goal_id, detail="Goal paused")
+        self.execution_history.log_event(
+            EventType.PAUSED, goal_id=goal_id, detail="Goal paused"
+        )
 
         logger.info(f"Paused goal {goal_id[:8]}")
         return True
@@ -254,13 +254,13 @@ class AgentRuntime:
         goal.status = GoalStatus.RUNNING
         self.is_running = True
         self.execution_thread = threading.Thread(
-            target=self._execution_loop,
-            args=(goal_id,),
-            daemon=True
+            target=self._execution_loop, args=(goal_id,), daemon=True
         )
         self.execution_thread.start()
 
-        self.execution_history.log_event(EventType.RESUMED, goal_id=goal_id, detail="Goal resumed")
+        self.execution_history.log_event(
+            EventType.RESUMED, goal_id=goal_id, detail="Goal resumed"
+        )
 
         logger.info(f"Resumed goal {goal_id[:8]}")
         return True
@@ -285,12 +285,14 @@ class AgentRuntime:
 
         # Mark goal as cancelled
         goal.mark_cancelled()
-        self.execution_history.log_event(EventType.GOAL_CANCELLED, goal_id=goal_id, detail="Goal cancelled")
+        self.execution_history.log_event(
+            EventType.GOAL_CANCELLED, goal_id=goal_id, detail="Goal cancelled"
+        )
 
         logger.info(f"Cancelled goal {goal_id[:8]}")
         return True
 
-    def get_progress(self, goal_id: str) -> Optional[float]:
+    def get_progress(self, goal_id: str) -> float | None:
         """
         Get goal progress.
 
@@ -302,7 +304,7 @@ class AgentRuntime:
         """
         return self.progress_manager.get_goal_progress(goal_id)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get runtime statistics.
 
@@ -310,12 +312,14 @@ class AgentRuntime:
             Statistics dictionary
         """
         return {
-            'is_running': self.is_running,
-            'current_goal_id': self.current_goal.goal_id if self.current_goal else None,
-            'execution_graph': self.execution_graph.to_dict() if self.execution_graph else {},
-            'scheduler_stats': self.scheduler.get_execution_stats(),
-            'progress_stats': self.progress_manager.get_statistics(),
-            'history_stats': self.execution_history.get_statistics()
+            "is_running": self.is_running,
+            "current_goal_id": self.current_goal.goal_id if self.current_goal else None,
+            "execution_graph": (
+                self.execution_graph.to_dict() if self.execution_graph else {}
+            ),
+            "scheduler_stats": self.scheduler.get_execution_stats(),
+            "progress_stats": self.progress_manager.get_statistics(),
+            "history_stats": self.execution_history.get_statistics(),
         }
 
     def _execution_loop(self, goal_id: str):
@@ -337,15 +341,23 @@ class AgentRuntime:
             # Check for failures
             failed_tasks = self.scheduler.get_failed_tasks()
             if failed_tasks:
-                logger.error(f"Goal {goal_id[:8]} completed with {len(failed_tasks)} failed tasks")
+                logger.error(
+                    f"Goal {goal_id[:8]} completed with {len(failed_tasks)} failed tasks"
+                )
                 self.current_goal.mark_failed(f"{len(failed_tasks)} tasks failed")
-                self.execution_history.log_goal_failed(goal_id, f"{len(failed_tasks)} tasks failed")
+                self.execution_history.log_goal_failed(
+                    goal_id, f"{len(failed_tasks)} tasks failed"
+                )
                 if self.on_goal_fail:
-                    self.on_goal_fail(self, self.current_goal, f"{len(failed_tasks)} tasks failed")
+                    self.on_goal_fail(
+                        self, self.current_goal, f"{len(failed_tasks)} tasks failed"
+                    )
             else:
                 logger.info(f"Goal {goal_id[:8]} completed successfully")
                 self.current_goal.mark_completed()
-                self.execution_history.log_goal_completed(goal_id, self.current_goal.duration.total_seconds())
+                self.execution_history.log_goal_completed(
+                    goal_id, self.current_goal.duration.total_seconds()
+                )
                 if self.on_goal_complete:
                     self.on_goal_complete(self, self.current_goal)
 
@@ -372,9 +384,7 @@ class AgentRuntime:
     def _on_task_created(self, planner: Planner, task: Task):
         """Called when task is created."""
         self.execution_history.log_task_created(
-            task.task_id,
-            graph.goal.goal_id,
-            task.goal
+            task.task_id, graph.goal.goal_id, task.goal
         )
 
     def _on_task_complete(self, scheduler: Scheduler, task: Task):
@@ -382,7 +392,7 @@ class AgentRuntime:
         self.execution_history.log_task_completed(
             task.task_id,
             graph.goal.goal_id,
-            task.duration.total_seconds() if task.duration else 0
+            task.duration.total_seconds() if task.duration else 0,
         )
 
         if self.current_goal:
@@ -391,28 +401,23 @@ class AgentRuntime:
     def _on_task_fail(self, scheduler: Scheduler, task: Task):
         """Called when task fails."""
         self.execution_history.log_task_failed(
-            task.task_id,
-            graph.goal.goal_id,
-            task.error or "Unknown error"
+            task.task_id, graph.goal.goal_id, task.error or "Unknown error"
         )
 
         # Handle recovery
         recovery_action = self.recovery_manager.handle_task_failure(task)
         self.execution_history.log_recovery_applied(
-            task.task_id,
-            graph.goal.goal_id,
-            recovery_action
+            task.task_id, graph.goal.goal_id, recovery_action
         )
 
     def _on_task_progress(self, scheduler: Scheduler, task: Task, progress: float):
         """Called when task progress updates."""
-        detail = self.progress_manager.get_progress_summary(task.task_id).get('last_detail', '')
+        detail = self.progress_manager.get_progress_summary(task.task_id).get(
+            "last_detail", ""
+        )
 
         self.execution_history.log_progress_update(
-            task.task_id,
-            graph.goal.goal_id,
-            progress,
-            detail
+            task.task_id, graph.goal.goal_id, progress, detail
         )
 
         self.progress_manager.update_task_progress(task, progress, detail)
@@ -430,7 +435,7 @@ class AgentRuntime:
         logger.warning(f"Task {task.task_id[:8]} paused")
 
     # Helper methods
-    def _get_goal(self, goal_id: str) -> Optional[Goal]:
+    def _get_goal(self, goal_id: str) -> Goal | None:
         """Get goal by ID."""
         if self.current_goal and self.current_goal.goal_id == goal_id:
             return self.current_goal

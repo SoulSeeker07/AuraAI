@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QUrl, QTimer, Signal
+from PySide6.QtCore import QObject, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -27,7 +27,9 @@ class AuraDesktopApp(QObject):
 
     def run(self) -> None:
         self.engine.rootContext().setContextProperty("controller", self.controller)
-        self.engine.rootContext().setContextProperty("connectionManager", self.connection_manager)
+        self.engine.rootContext().setContextProperty(
+            "connectionManager", self.connection_manager
+        )
         self.engine.load(QUrl("qrc:/aura/frontend/desktop/Main.qml"))
         self.connection_manager.start()
         self.controller.set_connection_state("Connecting")

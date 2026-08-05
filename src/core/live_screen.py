@@ -10,7 +10,9 @@ class LiveScreenSession(QObject):
     state_changed = Signal(bool)
     frame_captured = Signal(str, int)
 
-    def __init__(self, screen_context: ScreenContext, interval_ms: int = 1500, parent=None):
+    def __init__(
+        self, screen_context: ScreenContext, interval_ms: int = 1500, parent=None
+    ):
         super().__init__(parent)
         self.screen_context = screen_context
         self.interval_ms = interval_ms

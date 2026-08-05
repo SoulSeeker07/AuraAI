@@ -17,16 +17,15 @@ from __future__ import annotations
 from typing import Any
 
 from ai.provider_manager import ProviderManager
-from brain import models as core_models
+from brain.citation_builder import CitationBuilder
+from brain.live_search_engine import LiveSearchEngine
 from brain.models_extended import (
     IntentAnalysis,
     PageContent,
     WebSearchResult,
 )
-from brain.citation_builder import CitationBuilder
-from brain.live_search_engine import LiveSearchEngine, SearchOptions
 from brain.page_reader import PageReader
-from brain.research_agent import ResearchAgent, ResearchPlan, ResearchStep
+from brain.research_agent import ResearchAgent, ResearchPlan
 from brain.search_cache import SearchCache
 from brain.source_ranker import SourceRanker
 
@@ -46,7 +45,7 @@ class AuraSearchSystem:
     ):
         """
         Initialize the Aura search system.
-        
+
         Args:
             provider_manager: AI provider manager
             tavily_api_key: Tavily API key (optional, can use environment variable)
@@ -54,13 +53,12 @@ class AuraSearchSystem:
             cache_dir: Directory for search cache
         """
         self.provider_manager = provider_manager
-        
+
         # Initialize search engine
         self.live_search = LiveSearchEngine(
-            api_key=tavily_api_key,
-            max_results=max_results
+            api_key=tavily_api_key, max_results=max_results
         )
-        
+
         # Initialize other components
         self.intent_analyzer = None  # Will be initialized lazily
         self.knowledge_router = None
@@ -73,13 +71,13 @@ class AuraSearchSystem:
     def initialize_intent_analyzer(self, model: str = "llama3-70b-8192"):
         """
         Initialize the intent analyzer (lazy initialization).
-        
+
         Args:
             model: Model to use for intent analysis
         """
         if self.intent_analyzer is None:
             self.intent_analyzer = self._create_intent_analyzer(model)
-    
+
     def _create_intent_analyzer(self, model: str) -> Any:
         """Create intent analyzer instance."""
         # This would import the actual intent analyzer
@@ -89,15 +87,15 @@ class AuraSearchSystem:
     def analyze_intent(self, user_input: str) -> IntentAnalysis:
         """
         Analyze user intent for a query.
-        
+
         Args:
             user_input: User query
-            
+
         Returns:
             IntentAnalysis result
         """
         self.initialize_intent_analyzer()
-        
+
         if self.intent_analyzer:
             return self.intent_analyzer.analyze(user_input)
         else:
@@ -107,7 +105,7 @@ class AuraSearchSystem:
     def _simple_intent_analysis(self, user_input: str) -> IntentAnalysis:
         """Simple fallback intent analysis."""
         input_lower = user_input.lower()
-        
+
         # Check for news/weather keywords
         if any(word in input_lower for word in ["weather", "score", "stock", "news"]):
             return IntentAnalysis(
@@ -116,9 +114,11 @@ class AuraSearchSystem:
                 category="live",
                 needs_web_search=True,
             )
-        
+
         # Check for programming keywords
-        if any(word in input_lower for word in ["python", "javascript", "react", "code"]):
+        if any(
+            word in input_lower for word in ["python", "javascript", "react", "code"]
+        ):
             return IntentAnalysis(
                 intent="PROGRAMMING",
                 confidence=0.9,
@@ -126,7 +126,7 @@ class AuraSearchSystem:
                 needs_web_search=True,
                 specialized_sources=["github.com", "stackoverflow.com"],
             )
-        
+
         # Default
         return IntentAnalysis(
             intent="GENERAL_CHAT",
@@ -144,21 +144,20 @@ class AuraSearchSystem:
     ) -> list[WebSearchResult]:
         """
         Perform a web search using the integrated system.
-        
+
         Args:
             query: Search query
             intent_analysis: Intent analysis result (for routing)
             use_cache: Use cache if available
             max_results: Maximum number of results
-            
+
         Returns:
             List of WebSearchResult objects
         """
         # Check cache first
         if use_cache and intent_analysis:
             cached_results = self.cache.get(
-                query=query,
-                category=intent_analysis.category or "default"
+                query=query, category=intent_analysis.category or "default"
             )
             if cached_results:
                 # Convert to WebSearchResult objects
@@ -172,7 +171,7 @@ class AuraSearchSystem:
                     )
                     for r in cached_results
                 ]
-        
+
         # Perform live search
         if intent_analysis:
             routing_config = self.knowledge_router.get_routing_config(
@@ -181,20 +180,22 @@ class AuraSearchSystem:
             )
         else:
             routing_config = None
-        
+
         search_results = self.live_search.search(
             query=query,
             limit=max_results,
             routing_config=routing_config,
         )
-        
+
         # Rank results
         ranked_results = self.rank_results(
             results=[r.__dict__ for r in search_results],
             query=query,
-            specialized_sources=intent_analysis.specialized_sources if intent_analysis else None,
+            specialized_sources=(
+                intent_analysis.specialized_sources if intent_analysis else None
+            ),
         )
-        
+
         # Store in cache
         if use_cache and intent_analysis:
             self.cache.set(
@@ -202,7 +203,7 @@ class AuraSearchSystem:
                 results=[r.result for r in ranked_results],
                 category=intent_analysis.category or "default",
             )
-        
+
         # Return ranked results as WebSearchResult objects
         return [
             WebSearchResult(
@@ -223,12 +224,12 @@ class AuraSearchSystem:
     ) -> list[Any]:
         """
         Rank search results by authority and relevance.
-        
+
         Args:
             results: List of search result dicts
             query: Original search query
             specialized_sources: User-specified special domains
-            
+
         Returns:
             List of ranked results
         """
@@ -241,10 +242,10 @@ class AuraSearchSystem:
     def read_page(self, url: str) -> PageContent:
         """
         Read and extract content from a webpage.
-        
+
         Args:
             url: URL to read
-            
+
         Returns:
             PageContent object
         """
@@ -253,10 +254,10 @@ class AuraSearchSystem:
     def create_research_plan(self, query: str) -> ResearchPlan:
         """
         Create a research plan for a complex query.
-        
+
         Args:
             query: Research query
-            
+
         Returns:
             ResearchPlan object
         """
@@ -269,11 +270,11 @@ class AuraSearchSystem:
     ) -> dict[str, Any]:
         """
         Execute research on a query (plans + searches).
-        
+
         Args:
             query: Research query
             use_cache: Use cache if available
-            
+
         Returns:
             Research results
         """
@@ -290,7 +291,7 @@ class AuraSearchSystem:
                 intent_analysis=intent_analysis,
                 use_cache=use_cache,
             )
-            
+
             return {
                 "query": query,
                 "type": "simple",
@@ -305,50 +306,56 @@ class AuraSearchSystem:
     ) -> list[Any]:
         """
         Build citation list from search results.
-        
+
         Args:
             results: Search results
             max_citations: Maximum number of citations
-            
+
         Returns:
             List of citations
         """
         # Convert WebSearchResult to ranked result format
         ranked_results = [
-            type("RankedResult", (), {
-                "result": {
-                    "title": r.title,
-                    "url": r.url,
-                    "snippet": r.snippet,
+            type(
+                "RankedResult",
+                (),
+                {
+                    "result": {
+                        "title": r.title,
+                        "url": r.url,
+                        "snippet": r.snippet,
+                    },
+                    "score": r.score,
+                    "rank": r.source_rank,
+                    "reasons": ["ranked_result"],
                 },
-                "score": r.score,
-                "rank": r.source_rank,
-                "reasons": ["ranked_result"],
-            })()
+            )()
             for r in results
         ]
-        
-        return self.citation_builder.build_citations(ranked_results, max_citations=max_citations)
+
+        return self.citation_builder.build_citations(
+            ranked_results, max_citations=max_citations
+        )
 
     def get_search_summary(self, results: list[WebSearchResult]) -> str:
         """
         Generate a brief summary of search results.
-        
+
         Args:
             results: Search results
-            
+
         Returns:
             Summary string
         """
         if not results:
             return "No search results found."
-        
+
         return f"Found {len(results)} search results for your query."
 
     def get_cache_stats(self) -> dict[str, Any]:
         """
         Get cache statistics.
-        
+
         Returns:
             Cache statistics dict
         """

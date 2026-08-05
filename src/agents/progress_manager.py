@@ -4,15 +4,13 @@ Progress Manager
 Manages task progress tracking and reporting.
 """
 
-
 import logging
-from typing import Optional, Callable, Dict, Any, List
+from collections.abc import Callable
 from datetime import datetime
-from collections import defaultdict
+from typing import Any
 
-from .task import Task
 from .goal import Goal
-
+from .task import Task
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +24,7 @@ class ProgressEvent:
         task_id: str,
         progress: float,
         detail: str = "",
-        timestamp: Optional[datetime] = None
+        timestamp: datetime | None = None,
     ):
         """
         Initialize progress event.
@@ -55,10 +53,12 @@ class ProgressManager:
 
     def __init__(
         self,
-        on_progress_update: Optional[Callable[['ProgressManager', ProgressEvent], None]] = None,
-        on_goal_update: Optional[Callable[['ProgressManager', Goal, float], None]] = None,
-        on_task_complete: Optional[Callable[['ProgressManager', Task], None]] = None,
-        enable_console_logging: bool = True
+        on_progress_update: (
+            Callable[["ProgressManager", ProgressEvent], None] | None
+        ) = None,
+        on_goal_update: Callable[["ProgressManager", Goal, float], None] | None = None,
+        on_task_complete: Callable[["ProgressManager", Task], None] | None = None,
+        enable_console_logging: bool = True,
     ):
         """
         Initialize progress manager.
@@ -75,9 +75,9 @@ class ProgressManager:
         self.enable_console_logging = enable_console_logging
 
         # Progress state
-        self.tasks_progress: Dict[str, Dict[str, Any]] = {}  # task_id -> progress info
-        self.current_goals_progress: Dict[str, float] = {}  # goal_id -> progress
-        self.completed_tasks: List[str] = []
+        self.tasks_progress: dict[str, dict[str, Any]] = {}  # task_id -> progress info
+        self.current_goals_progress: dict[str, float] = {}  # goal_id -> progress
+        self.completed_tasks: list[str] = []
         self.total_completed_tasks: int = 0
 
         # Statistics
@@ -86,12 +86,7 @@ class ProgressManager:
 
         logger.debug("Initialized progress manager")
 
-    def update_task_progress(
-        self,
-        task: Task,
-        progress: float,
-        detail: str = ""
-    ):
+    def update_task_progress(self, task: Task, progress: float, detail: str = ""):
         """
         Update task progress.
 
@@ -106,20 +101,20 @@ class ProgressManager:
         # Update task progress info
         if task.task_id not in self.tasks_progress:
             self.tasks_progress[task.task_id] = {
-                'task_id': task.task_id,
-                'goal': task.goal,
-                'started_at': datetime.now(),
-                'last_update': datetime.now(),
-                'total_updates': 0
+                "task_id": task.task_id,
+                "goal": task.goal,
+                "started_at": datetime.now(),
+                "last_update": datetime.now(),
+                "total_updates": 0,
             }
 
         progress_info = self.tasks_progress[task.task_id]
-        progress_info['last_update'] = datetime.now()
-        progress_info['total_updates'] += 1
+        progress_info["last_update"] = datetime.now()
+        progress_info["total_updates"] += 1
 
         # Update progress
-        progress_info['current_progress'] = progress
-        progress_info['last_detail'] = detail
+        progress_info["current_progress"] = progress
+        progress_info["last_detail"] = detail
 
         self.total_progress_updates += 1
         self.total_progress_events += 1
@@ -131,11 +126,11 @@ class ProgressManager:
         # Notify callback
         if self.on_progress_update:
             event = ProgressEvent(
-                event_type='UPDATE',
+                event_type="UPDATE",
                 task_id=task.task_id,
                 progress=progress,
                 detail=detail,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             self.on_progress_update(self, event)
 
@@ -169,28 +164,28 @@ class ProgressManager:
         """
         if goal.goal_id not in self.current_goals_progress:
             self.current_goals_progress[goal.goal_id] = {
-                'goal_id': goal.goal_id,
-                'description': goal.description,
-                'started_at': datetime.now(),
-                'tasks_completed': 0,
-                'total_tasks': len(goal.tasks),
-                'last_update': datetime.now()
+                "goal_id": goal.goal_id,
+                "description": goal.description,
+                "started_at": datetime.now(),
+                "tasks_completed": 0,
+                "total_tasks": len(goal.tasks),
+                "last_update": datetime.now(),
             }
 
         goal_progress = self.current_goals_progress[goal.goal_id]
 
         # Update task completion count
-        completed = sum(1 for t in goal.tasks if t.status == 'COMPLETED')
-        goal_progress['tasks_completed'] = completed
-        goal_progress['last_update'] = datetime.now()
+        completed = sum(1 for t in goal.tasks if t.status == "COMPLETED")
+        goal_progress["tasks_completed"] = completed
+        goal_progress["last_update"] = datetime.now()
 
         # Update overall progress
         total_tasks = len(goal.tasks)
         if total_tasks > 0:
             progress = completed / total_tasks
-            self.current_goals_progress[goal.goal_id]['progress'] = progress
+            self.current_goals_progress[goal.goal_id]["progress"] = progress
         else:
-            self.current_goals_progress[goal.goal_id]['progress'] = 0.0
+            self.current_goals_progress[goal.goal_id]["progress"] = 0.0
 
         # Log progress if enabled
         if self.enable_console_logging:
@@ -200,7 +195,7 @@ class ProgressManager:
         if self.on_goal_update:
             self.on_goal_update(self, goal, progress)
 
-    def get_task_progress(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def get_task_progress(self, task_id: str) -> dict[str, Any] | None:
         """
         Get progress for a specific task.
 
@@ -212,7 +207,7 @@ class ProgressManager:
         """
         return self.tasks_progress.get(task_id)
 
-    def get_goal_progress(self, goal_id: str) -> Optional[Dict[str, Any]]:
+    def get_goal_progress(self, goal_id: str) -> dict[str, Any] | None:
         """
         Get progress for a specific goal.
 
@@ -224,7 +219,7 @@ class ProgressManager:
         """
         return self.current_goals_progress.get(goal_id)
 
-    def get_all_progress(self) -> Dict[str, Any]:
+    def get_all_progress(self) -> dict[str, Any]:
         """
         Get all progress information.
 
@@ -232,15 +227,15 @@ class ProgressManager:
             Complete progress information
         """
         return {
-            'tasks': list(self.tasks_progress.values()),
-            'goals': list(self.current_goals_progress.values()),
-            'completed_tasks': self.completed_tasks,
-            'total_completed_tasks': self.total_completed_tasks,
-            'total_progress_updates': self.total_progress_updates,
-            'total_progress_events': self.total_progress_events
+            "tasks": list(self.tasks_progress.values()),
+            "goals": list(self.current_goals_progress.values()),
+            "completed_tasks": self.completed_tasks,
+            "total_completed_tasks": self.total_completed_tasks,
+            "total_progress_updates": self.total_progress_updates,
+            "total_progress_events": self.total_progress_events,
         }
 
-    def get_progress_summary(self, task_id: str) -> Dict[str, Any]:
+    def get_progress_summary(self, task_id: str) -> dict[str, Any]:
         """
         Get formatted progress summary for a task.
 
@@ -252,20 +247,20 @@ class ProgressManager:
         """
         progress_info = self.tasks_progress.get(task_id)
         if not progress_info:
-            return {
-                'task_id': task_id,
-                'progress': 0.0,
-                'status': 'not_started'
-            }
+            return {"task_id": task_id, "progress": 0.0, "status": "not_started"}
 
         return {
-            'task_id': task_id,
-            'goal': progress_info.get('goal', ''),
-            'progress': progress_info.get('current_progress', 0.0),
-            'total_updates': progress_info.get('total_updates', 0),
-            'last_update': progress_info.get('last_update', None),
-            'last_detail': progress_info.get('last_detail', ''),
-            'status': 'completed' if progress_info.get('current_progress', 0.0) >= 1.0 else 'in_progress'
+            "task_id": task_id,
+            "goal": progress_info.get("goal", ""),
+            "progress": progress_info.get("current_progress", 0.0),
+            "total_updates": progress_info.get("total_updates", 0),
+            "last_update": progress_info.get("last_update", None),
+            "last_detail": progress_info.get("last_detail", ""),
+            "status": (
+                "completed"
+                if progress_info.get("current_progress", 0.0) >= 1.0
+                else "in_progress"
+            ),
         }
 
     def get_progress_bar(self, task_id: str, width: int = 30) -> str:
@@ -281,16 +276,16 @@ class ProgressManager:
         """
         progress_info = self.get_progress_summary(task_id)
 
-        if progress_info['status'] == 'completed':
+        if progress_info["status"] == "completed":
             return f"[{'=' * width}] 100%"
 
-        filled = int(width * progress_info['progress'])
-        bar = '[' + '=' * filled + ' ' * (width - filled) + ']'
+        filled = int(width * progress_info["progress"])
+        bar = "[" + "=" * filled + " " * (width - filled) + "]"
         percent = f"{progress_info['progress'] * 100:.1f}%"
 
         return f"{bar} {percent}"
 
-    def get_progress_summary_for_goals(self, width: int = 30) -> List[Dict[str, Any]]:
+    def get_progress_summary_for_goals(self, width: int = 30) -> list[dict[str, Any]]:
         """
         Get progress summaries for all goals.
 
@@ -303,26 +298,28 @@ class ProgressManager:
         summaries = []
 
         for goal_id, goal_info in self.current_goals_progress.items():
-            progress = goal_info.get('progress', 0.0)
+            progress = goal_info.get("progress", 0.0)
 
             if progress >= 1.0:
                 status = "completed"
-                bar = '=' * width
+                bar = "=" * width
             else:
                 status = "in_progress"
                 filled = int(width * progress)
-                bar = '=' * filled + ' ' * (width - filled)
+                bar = "=" * filled + " " * (width - filled)
 
-            summaries.append({
-                'goal_id': goal_id,
-                'description': goal_info.get('description', ''),
-                'progress': progress,
-                'completed_tasks': goal_info.get('tasks_completed', 0),
-                'total_tasks': goal_info.get('total_tasks', 0),
-                'status': status,
-                'bar': bar,
-                'percent': f"{progress * 100:.1f}%"
-            })
+            summaries.append(
+                {
+                    "goal_id": goal_id,
+                    "description": goal_info.get("description", ""),
+                    "progress": progress,
+                    "completed_tasks": goal_info.get("tasks_completed", 0),
+                    "total_tasks": goal_info.get("total_tasks", 0),
+                    "status": status,
+                    "bar": bar,
+                    "percent": f"{progress * 100:.1f}%",
+                }
+            )
 
         return summaries
 
@@ -339,7 +336,7 @@ class ProgressManager:
 
         logger.info(f"{bar} {progress * 100:.1f}% - {goal.current_step[:50]}")
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get progress manager statistics.
 
@@ -347,11 +344,17 @@ class ProgressManager:
             Statistics dictionary
         """
         return {
-            'total_progress_updates': self.total_progress_updates,
-            'total_progress_events': self.total_progress_events,
-            'total_completed_tasks': self.total_completed_tasks,
-            'active_tasks': len([t for t in self.tasks_progress.values() if t.get('current_progress', 0) < 1.0]),
-            'completed_tasks': len(self.completed_tasks)
+            "total_progress_updates": self.total_progress_updates,
+            "total_progress_events": self.total_progress_events,
+            "total_completed_tasks": self.total_completed_tasks,
+            "active_tasks": len(
+                [
+                    t
+                    for t in self.tasks_progress.values()
+                    if t.get("current_progress", 0) < 1.0
+                ]
+            ),
+            "completed_tasks": len(self.completed_tasks),
         }
 
     def reset_for_new_goal(self, goal: Goal):
@@ -371,23 +374,23 @@ class ProgressManager:
         # Initialize for new goal
         for task in goal.tasks:
             self.tasks_progress[task.task_id] = {
-                'task_id': task.task_id,
-                'goal': task.goal,
-                'started_at': datetime.now(),
-                'last_update': datetime.now(),
-                'total_updates': 0,
-                'current_progress': 0.0,
-                'last_detail': ''
+                "task_id": task.task_id,
+                "goal": task.goal,
+                "started_at": datetime.now(),
+                "last_update": datetime.now(),
+                "total_updates": 0,
+                "current_progress": 0.0,
+                "last_detail": "",
             }
 
         self.current_goals_progress[goal.goal_id] = {
-            'goal_id': goal.goal_id,
-            'description': goal.description,
-            'started_at': datetime.now(),
-            'tasks_completed': 0,
-            'total_tasks': len(goal.tasks),
-            'last_update': datetime.now(),
-            'progress': 0.0
+            "goal_id": goal.goal_id,
+            "description": goal.description,
+            "started_at": datetime.now(),
+            "tasks_completed": 0,
+            "total_tasks": len(goal.tasks),
+            "last_update": datetime.now(),
+            "progress": 0.0,
         }
 
         logger.info(f"Reset progress manager for goal {goal.goal_id[:8]}")

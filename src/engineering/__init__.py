@@ -20,27 +20,30 @@ The platform enables:
 - Engineering memory
 """
 
-from .engineering_manager import EngineeringManager
-from .repository_manager import RepositoryManager, RepositoryState
-from .ast_manager import ASTManager, ASTNode, ASTFile
-from .symbol_graph import SymbolGraph, Symbol
-from .dependency_graph import DependencyGraph, Dependency
-from .engineering_planner import EngineeringPlanner, PlanningPhase
-from .code_editor import CodeEditor
-from .refactoring_engine import RefactoringEngine, RefactoringOperation
-from .import_manager import ImportManager
-from .test_engine import TestEngine, TestResult
+from .ast_manager import ASTFile, ASTManager, ASTNode
 from .bug_repair import BugRepairLoop
-from .git_intelligence import GitIntelligence
-from .documentation_engine import DocumentationEngine
-from .quality_engine import QualityEngine
-from .engineering_memory import EngineeringMemory
+from .code_editor import CodeEditor
 from .dashboard import EngineeringDashboard
+from .dependency_graph import Dependency, DependencyGraph
+from .doctor import AuraDoctor, AuraVerifier
+from .documentation_engine import DocumentationEngine
+from .engineering_manager import EngineeringManager
+from .engineering_memory import EngineeringMemory
+from .engineering_planner import EngineeringPlanner, PlanningPhase
+from .git_intelligence import GitIntelligence
+from .import_manager import ImportManager
+from .inspector import AuraInspector
 from .lsp_manager import LSPManager
+from .quality_engine import QualityEngine
+from .refactoring_engine import RefactoringEngine, RefactoringOperation
+from .repository_manager import RepositoryManager, RepositoryState
 
 __version__ = "1.0.0"
 
 __all__ = [
+    "AuraDoctor",
+    "AuraVerifier",
+    "AuraInspector",
     "EngineeringManager",
     "RepositoryManager",
     "RepositoryState",

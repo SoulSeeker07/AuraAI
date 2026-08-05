@@ -3,16 +3,16 @@
 This class owns a single websocket client, manages connection state transitions,
 and handles reconnect/backoff without blocking the UI thread.
 """
+
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QTimer, Signal
 from loguru import logger
+from PySide6.QtCore import QObject, QTimer, Signal
 
-from .constants import RECONNECT_DELAY
-from .websocket_client import AuraWebSocketClient
 from ..shared import AuraMessage
+from .websocket_client import AuraWebSocketClient
 
 
 class ConnectionManager(QObject):
@@ -21,16 +21,16 @@ class ConnectionManager(QObject):
     def __init__(self, url: str = "ws://127.0.0.1:8765/ws") -> None:
         super().__init__()
         self.url = url
-        self._client: Optional[AuraWebSocketClient] = None
-        self._reconnect_timer: Optional[QTimer] = None
+        self._client: AuraWebSocketClient | None = None
+        self._reconnect_timer: QTimer | None = None
         self._running = False
         self._state = "Disconnected"
         self._backoff_index = 0
 
-        self._on_connected: Optional[Callable[[], None]] = None
-        self._on_disconnected: Optional[Callable[[], None]] = None
-        self._on_message: Optional[Callable[[object], None]] = None
-        self._on_error: Optional[Callable[[Exception], None]] = None
+        self._on_connected: Callable[[], None] | None = None
+        self._on_disconnected: Callable[[], None] | None = None
+        self._on_message: Callable[[object], None] | None = None
+        self._on_error: Callable[[Exception], None] | None = None
 
     def on_connected(self, cb: Callable[[], None]) -> None:
         self._on_connected = cb

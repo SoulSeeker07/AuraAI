@@ -4,19 +4,18 @@ Screenshot Manager
 Handles various types of screenshot captures for the Vision System.
 """
 
-
+import ctypes
 import logging
 import time
-import ctypes
-import win32gui
+from pathlib import Path
+
 import win32api
 import win32con
-from typing import Optional, Tuple, List
-from pathlib import Path
+import win32gui
 from PIL import ImageGrab
-from .models import ScreenshotSettings, VisionProvider
-from .preprocessing import ImagePreprocessor
 
+from .models import ScreenshotSettings
+from .preprocessing import ImagePreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class ScreenshotManager:
         """
         self.settings = settings or ScreenshotSettings()
         self.preprocessor = ImagePreprocessor()
-        self.last_capture: Optional[str] = None
+        self.last_capture: str | None = None
 
     def capture_full_screen(self) -> str:
         """
@@ -87,11 +86,13 @@ class ScreenshotManager:
         monitors = self._get_monitors()
 
         if monitor_index >= len(monitors):
-            logger.warning(f"Monitor index {monitor_index} out of range, using first monitor")
+            logger.warning(
+                f"Monitor index {monitor_index} out of range, using first monitor"
+            )
             monitor_index = 0
 
         monitor = monitors[monitor_index]
-        bbox = monitor['rect']
+        bbox = monitor["rect"]
 
         # Capture monitor
         screenshot = ImageGrab.grab(bbox=bbox)
@@ -313,7 +314,7 @@ class ScreenshotManager:
         self.last_capture = filepath
         return filepath
 
-    def _get_monitors(self) -> List[Dict]:
+    def _get_monitors(self) -> list[Dict]:
         """
         Get list of all connected monitors.
 
@@ -328,32 +329,42 @@ class ScreenshotManager:
             def monitor_enum_proc(hmonitor, hdc_monitor, lpret, lparam):
                 monitor_info = ctypes.create_string_buffer(40)
                 if user32.GetMonitorInfoA(hmonitor, monitor_info):
-                    monitors.append({
-                        'name': '',
-                        'rect': {
-                            'left': ctypes.c_int32.from_address(
-                                ctypes.addressof(monitor_info) + 4
+                    monitors.append(
+                        {
+                            "name": "",
+                            "rect": {
+                                "left": ctypes.c_int32.from_address(
+                                    ctypes.addressof(monitor_info) + 4
+                                ).value,
+                                "top": ctypes.c_int32.from_address(
+                                    ctypes.addressof(monitor_info) + 8
+                                ).value,
+                                "right": ctypes.c_int32.from_address(
+                                    ctypes.addressof(monitor_info) + 12
+                                ).value,
+                                "bottom": ctypes.c_int32.from_address(
+                                    ctypes.addressof(monitor_info) + 16
+                                ).value,
+                            },
+                            "depth": ctypes.c_int32.from_address(
+                                ctypes.addressof(monitor_info) + 36
                             ).value,
-                            'top': ctypes.c_int32.from_address(
-                                ctypes.addressof(monitor_info) + 8
-                            ).value,
-                            'right': ctypes.c_int32.from_address(
-                                ctypes.addressof(monitor_info) + 12
-                            ).value,
-                            'bottom': ctypes.c_int32.from_address(
-                                ctypes.addressof(monitor_info) + 16
-                            ).value,
-                        },
-                        'depth': ctypes.c_int32.from_address(
-                            ctypes.addressof(monitor_info) + 36
-                        ).value,
-                    })
+                        }
+                    )
                 return 1
 
-            user32.EnumDisplayMonitors(None, None, ctypes.WINFUNCTYPE(
-                ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
-                ctypes.c_void_p
-            )(monitor_enum_proc), None)
+            user32.EnumDisplayMonitors(
+                None,
+                None,
+                ctypes.WINFUNCTYPE(
+                    ctypes.c_int,
+                    ctypes.c_void_p,
+                    ctypes.c_void_p,
+                    ctypes.c_void_p,
+                    ctypes.c_void_p,
+                )(monitor_enum_proc),
+                None,
+            )
 
             return monitors
         except Exception as e:
@@ -361,7 +372,7 @@ class ScreenshotManager:
             # Fallback to screen info
             return self._get_monitors_fallback()
 
-    def _get_monitors_fallback(self) -> List[Dict]:
+    def _get_monitors_fallback(self) -> list[Dict]:
         """
         Fallback method to get monitor information.
 
@@ -369,8 +380,6 @@ class ScreenshotManager:
             List of monitor dictionaries
         """
         try:
-            from PIL import Image
-            import random
 
             # Create a pseudo monitor list based on screen info
             monitors = []
@@ -380,33 +389,37 @@ class ScreenshotManager:
             # Get all monitor handles
             monitors = []
             for monitor in range(win32api.GetSystemMetrics(80)):
-                hmon = win32api.MonitorFromPoint((0, 0), win32con.MONITOR_DEFAULTTONEAREST)
+                hmon = win32api.MonitorFromPoint(
+                    (0, 0), win32con.MONITOR_DEFAULTTONEAREST
+                )
 
                 try:
                     # Get monitor info
                     monitor_info = ctypes.create_string_buffer(40)
                     user32 = ctypes.windll.user32
                     if user32.GetMonitorInfoA(hmon, monitor_info):
-                        monitors.append({
-                            'name': f'Monitor {monitor}',
-                            'rect': {
-                                'left': ctypes.c_int32.from_address(
-                                    ctypes.addressof(monitor_info) + 4
+                        monitors.append(
+                            {
+                                "name": f"Monitor {monitor}",
+                                "rect": {
+                                    "left": ctypes.c_int32.from_address(
+                                        ctypes.addressof(monitor_info) + 4
+                                    ).value,
+                                    "top": ctypes.c_int32.from_address(
+                                        ctypes.addressof(monitor_info) + 8
+                                    ).value,
+                                    "right": ctypes.c_int32.from_address(
+                                        ctypes.addressof(monitor_info) + 12
+                                    ).value,
+                                    "bottom": ctypes.c_int32.from_address(
+                                        ctypes.addressof(monitor_info) + 16
+                                    ).value,
+                                },
+                                "depth": ctypes.c_int32.from_address(
+                                    ctypes.addressof(monitor_info) + 36
                                 ).value,
-                                'top': ctypes.c_int32.from_address(
-                                    ctypes.addressof(monitor_info) + 8
-                                ).value,
-                                'right': ctypes.c_int32.from_address(
-                                    ctypes.addressof(monitor_info) + 12
-                                ).value,
-                                'bottom': ctypes.c_int32.from_address(
-                                    ctypes.addressof(monitor_info) + 16
-                                ).value,
-                            },
-                            'depth': ctypes.c_int32.from_address(
-                                ctypes.addressof(monitor_info) + 36
-                            ).value,
-                        })
+                            }
+                        )
                 except Exception as e:
                     logger.warning(f"Failed to get monitor info: {e}")
 
@@ -458,7 +471,7 @@ class ScreenshotManager:
         else:
             raise ValueError(f"Unknown capture type: {capture_type}")
 
-    def get_last_capture(self) -> Optional[str]:
+    def get_last_capture(self) -> str | None:
         """
         Get the path of the last captured screenshot.
 

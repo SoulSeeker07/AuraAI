@@ -12,37 +12,34 @@ Tests cover:
 from __future__ import annotations
 
 import asyncio
-import pytest
 from pathlib import Path
 
-from src.agents.task_model import (
-    Task,
-    TaskStatus,
-    TaskPriority,
-    TaskType,
-    TaskInput,
-    TaskOutput
-)
-from src.agents.task_manager import TaskManager
+import pytest
+
 from src.agents.agent_registry import (
+    AgentCapability,
     AgentRegistry,
     AgentType,
-    AgentCapability,
-    register_builtin_agents
+    register_builtin_agents,
 )
-from src.agents.safety_layer import SafetyLayer, OperationType
-from src.agents.plugin_system import PluginRegistry, PluginBase
-from src.agents.skill_system import SkillRegistry, SkillCategory, SkillStep
-from src.agents.config import (
-    get_config_manager,
-    ConfigManager,
-    ProviderType
+from src.agents.config import ConfigManager, ProviderType, get_config_manager
+from src.agents.plugin_system import PluginBase, PluginRegistry
+from src.agents.safety_layer import OperationType, SafetyLayer
+from src.agents.skill_system import SkillCategory, SkillRegistry, SkillStep
+from src.agents.task_manager import TaskManager
+from src.agents.task_model import (
+    Task,
+    TaskInput,
+    TaskOutput,
+    TaskPriority,
+    TaskStatus,
+    TaskType,
 )
-
 
 # ========================================
 # Test Task Model
 # ========================================
+
 
 def test_task_creation():
     """Test task creation with basic data."""
@@ -52,7 +49,7 @@ def test_task_creation():
         title="Test Task",
         input={"query": "test"},
         priority=TaskPriority.MEDIUM,
-        description="Test task"
+        description="Test task",
     )
 
     assert task.id == "test_task"
@@ -63,12 +60,7 @@ def test_task_creation():
 
 def test_task_lifecycle():
     """Test task status transitions."""
-    task = Task(
-        id="test_task",
-        type=TaskType.RESEARCH_WEB,
-        title="Test Task",
-        input={}
-    )
+    task = Task(id="test_task", type=TaskType.RESEARCH_WEB, title="Test Task", input={})
 
     assert task.status == TaskStatus.PENDING
 
@@ -84,12 +76,7 @@ def test_task_lifecycle():
 
 def test_task_should_retry():
     """Test task retry logic."""
-    task = Task(
-        id="test_task",
-        type=TaskType.RESEARCH_WEB,
-        title="Test Task",
-        input={}
-    )
+    task = Task(id="test_task", type=TaskType.RESEARCH_WEB, title="Test Task", input={})
 
     # Should retry for failed tasks
     task.mark_failed("Error")
@@ -108,6 +95,7 @@ def test_task_should_retry():
 # Test Task Manager
 # ========================================
 
+
 @pytest.mark.asyncio
 async def test_task_manager_create():
     """Test task manager can create tasks."""
@@ -118,7 +106,7 @@ async def test_task_manager_create():
         title="Test Task",
         description="Test task description",
         input={"query": "test"},
-        priority=TaskPriority.MEDIUM
+        priority=TaskPriority.MEDIUM,
     )
 
     assert task.id in manager._tasks
@@ -134,7 +122,7 @@ async def test_task_manager_get():
         task_type=TaskType.RESEARCH_WEB,
         title="Test Task",
         description="Test task description",
-        input={"query": "test"}
+        input={"query": "test"},
     )
 
     retrieved = manager.get_task(task.id)
@@ -150,7 +138,7 @@ async def test_task_manager_get_by_status():
         task_type=TaskType.RESEARCH_WEB,
         title="Test Task 1",
         description="Test task 1",
-        input={"query": "test"}
+        input={"query": "test"},
     )
     task1.mark_completed()
 
@@ -158,7 +146,7 @@ async def test_task_manager_get_by_status():
         task_type=TaskType.RESEARCH_WEB,
         title="Test Task 2",
         description="Test task 2",
-        input={"query": "test2"}
+        input={"query": "test2"},
     )
 
     completed_tasks = manager.get_tasks_by_status(TaskStatus.COMPLETED)
@@ -175,7 +163,7 @@ async def test_task_manager_get_statistics():
         task_type=TaskType.RESEARCH_WEB,
         title="Test Task 1",
         description="Test task 1",
-        input={"query": "test"}
+        input={"query": "test"},
     )
     task1.mark_completed()
 
@@ -183,7 +171,7 @@ async def test_task_manager_get_statistics():
         task_type=TaskType.CODE_ANALYSIS,
         title="Test Task 2",
         description="Test task 2",
-        input={"query": "test"}
+        input={"query": "test"},
     )
     task2.mark_completed()
 
@@ -191,7 +179,7 @@ async def test_task_manager_get_statistics():
         task_type=TaskType.APP_OPEN,
         title="Test Task 3",
         description="Test task 3",
-        input={"query": "test"}
+        input={"query": "test"},
     )
     task3.mark_failed("Error")
 
@@ -205,6 +193,7 @@ async def test_task_manager_get_statistics():
 # ========================================
 # Test Agent Registry
 # ========================================
+
 
 def test_agent_registry_initialization():
     """Test agent registry can be initialized."""
@@ -238,12 +227,7 @@ def test_agent_registry_find_agent():
     registry = AgentRegistry()
     register_builtin_agents(registry)
 
-    task = Task(
-        id="test",
-        type=TaskType.RESEARCH_WEB,
-        title="Test Task",
-        input={}
-    )
+    task = Task(id="test", type=TaskType.RESEARCH_WEB, title="Test Task", input={})
 
     agent = registry.find_agent_for_task(task)
     assert agent is not None
@@ -254,9 +238,11 @@ def test_agent_registry_find_agent():
 # Test Safety Layer
 # ========================================
 
+
 @pytest.mark.asyncio
 async def test_safety_layer_require_confirmation(monkeypatch):
     """Test safety layer requires confirmation for destructive operations."""
+
     # Mock _ask_confirmation to return False
     async def mock_ask_confirmation(message, default_response=False):
         return False
@@ -266,8 +252,7 @@ async def test_safety_layer_require_confirmation(monkeypatch):
 
     # Critical operation
     result = await safety.require_confirmation(
-        OperationType.APPLICATION_CLOSE,
-        "Close Calculator application"
+        OperationType.APPLICATION_CLOSE, "Close Calculator application"
     )
 
     assert result.allowed is False
@@ -277,6 +262,7 @@ async def test_safety_layer_require_confirmation(monkeypatch):
 @pytest.mark.asyncio
 async def test_safety_layer_confirm_operation(monkeypatch):
     """Test safety layer confirms non-destructive operations."""
+
     # Mock _ask_confirmation to return True
     async def mock_ask_confirmation(message, default_response=False):
         return True
@@ -286,8 +272,7 @@ async def test_safety_layer_confirm_operation(monkeypatch):
 
     # Non-destructive operation (using NETWORK_ACCESS since web research involves network)
     result = await safety.require_confirmation(
-        OperationType.NETWORK_ACCESS,
-        "Search the web for information"
+        OperationType.NETWORK_ACCESS, "Search the web for information"
     )
 
     assert result.allowed is True
@@ -298,8 +283,10 @@ async def test_safety_layer_confirm_operation(monkeypatch):
 # Test Plugin System
 # ========================================
 
+
 def test_plugin_base():
     """Test plugin base class."""
+
     class TestPlugin(PluginBase):
         def get_plugin_name(self) -> str:
             return "test_plugin"
@@ -347,6 +334,7 @@ def test_plugin_registry():
 # Test Skill System
 # ========================================
 
+
 def test_skill_registry():
     """Test skill registry."""
     registry = SkillRegistry()
@@ -359,10 +347,10 @@ def test_skill_registry():
             {
                 "agent_type": "research",
                 "task_type": "web_research",
-                "input_template": {"query": "test"}
+                "input_template": {"query": "test"},
             }
         ],
-        description="Test skill"
+        description="Test skill",
     )
 
     assert registry.get_skill("test_skill") == skill
@@ -381,9 +369,9 @@ def test_skill_execution():
             {
                 "agent_type": "research",
                 "task_type": "research_web",
-                "input_template": {"query": "${query}"}
+                "input_template": {"query": "${query}"},
             }
-        ]
+        ],
     )
 
     tasks = skill.to_task_chain({"query": "hello"})
@@ -394,6 +382,7 @@ def test_skill_execution():
 # ========================================
 # Test Configuration
 # ========================================
+
 
 def test_config_manager():
     """Test configuration manager."""
@@ -428,6 +417,7 @@ def test_provider_settings():
 # Test Integration
 # ========================================
 
+
 @pytest.mark.asyncio
 async def test_agent_coordinator():
     """Test basic agent coordination."""
@@ -461,7 +451,7 @@ async def test_task_manager_lifecycle():
         task_type=TaskType.RESEARCH_WEB,
         title="Test Task",
         description="Test task",
-        input={"query": "test"}
+        input={"query": "test"},
     )
 
     assert task.status == TaskStatus.PENDING
@@ -495,7 +485,7 @@ def test_all_task_types():
         TaskType.SPEECH_TO_TEXT,
         TaskType.WORKFLOW_STORE,
         TaskType.FACT_RETRIEVE,
-        TaskType.GENERAL
+        TaskType.GENERAL,
     ]
 
     for task_type in task_types:

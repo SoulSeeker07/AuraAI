@@ -5,10 +5,8 @@ Plugin for integrating Vision System into Aura's Plugin System.
 Provides vision capabilities to Aura through the plugin interface.
 """
 
-
 import logging
-from typing import Optional, Dict, Any
-from pathlib import Path
+from typing import Any
 
 # Import plugin base class (assuming it exists in the project)
 try:
@@ -17,11 +15,12 @@ except ImportError:
     # Fallback if plugin base doesn't exist yet
     class Plugin:
         """Minimal Plugin base class for testing."""
+
         pass
 
-from .vision_manager import VisionManager
-from .models import ImageType, ScreenshotSettings, OCRSettings
 
+from .models import ImageType, OCRSettings, ScreenshotSettings
+from .vision_manager import VisionManager
 
 logger = logging.getLogger(__name__)
 
@@ -46,35 +45,35 @@ class VisionPlugin(Plugin):
         super().__init__()
 
         # Vision Manager instance
-        self.vision_manager: Optional[VisionManager] = None
+        self.vision_manager: VisionManager | None = None
 
         # Plugin configuration
         self.config = {
-            'enabled': True,
-            'screenshot_settings': {
-                'capture_type': 'full_screen',
-                'include_cursor': True,
-                'include_timestamp': False
+            "enabled": True,
+            "screenshot_settings": {
+                "capture_type": "full_screen",
+                "include_cursor": True,
+                "include_timestamp": False,
             },
-            'ocr_settings': {
-                'provider': 'local',
-                'language': 'eng',
-                'table_detection': False,
-                'code_detection': False,
-                'diagram_detection': False
+            "ocr_settings": {
+                "provider": "local",
+                "language": "eng",
+                "table_detection": False,
+                "code_detection": False,
+                "diagram_detection": False,
             },
-            'features': {
-                'object_detection': True,
-                'layout_analysis': True,
-                'ui_analysis': True,
-                'diagram_analysis': True,
-                'code_detection': True
-            }
+            "features": {
+                "object_detection": True,
+                "layout_analysis": True,
+                "ui_analysis": True,
+                "diagram_analysis": True,
+                "code_detection": True,
+            },
         }
 
         logger.info("Vision Plugin initialized")
 
-    def on_load(self, config: Dict[str, Any] = None) -> bool:
+    def on_load(self, config: dict[str, Any] = None) -> bool:
         """
         Called when the plugin is loaded.
 
@@ -91,14 +90,16 @@ class VisionPlugin(Plugin):
             self.config.update(config)
 
         # Check if enabled
-        if not self.config.get('enabled', True):
+        if not self.config.get("enabled", True):
             logger.warning("Vision Plugin is disabled")
             return False
 
         # Initialize Vision Manager
         try:
-            screenshot_settings = ScreenshotSettings(**self.config.get('screenshot_settings', {}))
-            ocr_settings = OCRSettings(**self.config.get('ocr_settings', {}))
+            screenshot_settings = ScreenshotSettings(
+                **self.config.get("screenshot_settings", {})
+            )
+            ocr_settings = OCRSettings(**self.config.get("ocr_settings", {}))
             self.vision_manager = VisionManager(screenshot_settings, ocr_settings)
 
             # Configure features
@@ -157,7 +158,7 @@ class VisionPlugin(Plugin):
         logger.info("Vision Plugin disabled")
         return True
 
-    def on_config_change(self, new_config: Dict[str, Any]) -> bool:
+    def on_config_change(self, new_config: dict[str, Any]) -> bool:
         """
         Called when plugin configuration changes.
 
@@ -192,29 +193,27 @@ class VisionPlugin(Plugin):
             return
 
         # Configure screenshot settings
-        screenshot_config = self.config.get('screenshot_settings', {})
+        screenshot_config = self.config.get("screenshot_settings", {})
         for key, value in screenshot_config.items():
             if hasattr(self.vision_manager.screenshot_settings, key):
                 setattr(self.vision_manager.screenshot_settings, key, value)
 
         # Configure OCR settings
-        ocr_config = self.config.get('ocr_settings', {})
+        ocr_config = self.config.get("ocr_settings", {})
         for key, value in ocr_config.items():
             if hasattr(self.vision_manager.ocr_settings, key):
                 setattr(self.vision_manager.ocr_settings, key, value)
 
         # Enable/disable specific features
-        features = self.config.get('features', {})
+        features = self.config.get("features", {})
         for feature, enabled in features.items():
             self.vision_manager.enable_feature(feature, enabled)
 
     # Public API methods
 
     def capture_and_analyze(
-        self,
-        capture_type: str = "full_screen",
-        **kwargs
-    ) -> Dict[str, Any]:
+        self, capture_type: str = "full_screen", **kwargs
+    ) -> dict[str, Any]:
         """
         Capture screen and analyze it.
 
@@ -226,7 +225,7 @@ class VisionPlugin(Plugin):
             Dictionary with analysis results
         """
         if not self.vision_manager:
-            return {'error': 'Vision Manager not initialized'}
+            return {"error": "Vision Manager not initialized"}
 
         try:
             context = self.vision_manager.capture_and_analyze(capture_type, **kwargs)
@@ -236,12 +235,11 @@ class VisionPlugin(Plugin):
             return result
         except Exception as e:
             logger.error(f"Capture and analyze failed: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def capture_active_window_and_analyze(
-        self,
-        window_title: str = None
-    ) -> Dict[str, Any]:
+        self, window_title: str = None
+    ) -> dict[str, Any]:
         """
         Capture active window and analyze it.
 
@@ -252,23 +250,23 @@ class VisionPlugin(Plugin):
             Dictionary with analysis results
         """
         if not self.vision_manager:
-            return {'error': 'Vision Manager not initialized'}
+            return {"error": "Vision Manager not initialized"}
 
         try:
-            context = self.vision_manager.capture_active_window_and_analyze(window_title)
+            context = self.vision_manager.capture_active_window_and_analyze(
+                window_title
+            )
 
             # Convert context to dictionary
             result = self._context_to_dict(context)
             return result
         except Exception as e:
             logger.error(f"Capture active window failed: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def analyze_image(
-        self,
-        image_path: str,
-        image_type: ImageType = None
-    ) -> Dict[str, Any]:
+        self, image_path: str, image_type: ImageType = None
+    ) -> dict[str, Any]:
         """
         Analyze an existing image file.
 
@@ -280,7 +278,7 @@ class VisionPlugin(Plugin):
             Dictionary with analysis results
         """
         if not self.vision_manager:
-            return {'error': 'Vision Manager not initialized'}
+            return {"error": "Vision Manager not initialized"}
 
         try:
             context = self.vision_manager.analyze_image(image_path, image_type)
@@ -290,9 +288,9 @@ class VisionPlugin(Plugin):
             return result
         except Exception as e:
             logger.error(f"Analyze image failed: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
-    def get_last_context_info(self) -> Dict[str, Any]:
+    def get_last_context_info(self) -> dict[str, Any]:
         """
         Get information about the last analyzed context.
 
@@ -300,11 +298,11 @@ class VisionPlugin(Plugin):
             Dictionary with context information
         """
         if not self.vision_manager:
-            return {'error': 'Vision Manager not initialized'}
+            return {"error": "Vision Manager not initialized"}
 
         return self.vision_manager.get_context_info()
 
-    def get_last_image_path(self) -> Optional[str]:
+    def get_last_image_path(self) -> str | None:
         """
         Get path of last analyzed image.
 
@@ -315,7 +313,7 @@ class VisionPlugin(Plugin):
             return None
         return self.vision_manager.get_last_image_path()
 
-    def get_last_context(self) -> Optional[Dict[str, Any]]:
+    def get_last_context(self) -> dict[str, Any] | None:
         """
         Get the last processed vision context.
 
@@ -330,7 +328,7 @@ class VisionPlugin(Plugin):
             return self._context_to_dict(context)
         return None
 
-    def get_capabilities(self) -> Dict[str, Any]:
+    def get_capabilities(self) -> dict[str, Any]:
         """
         Get plugin capabilities.
 
@@ -338,32 +336,32 @@ class VisionPlugin(Plugin):
             Dictionary with capabilities
         """
         return {
-            'name': 'Vision System',
-            'version': '1.0.0',
-            'description': 'Provides vision capabilities including screenshot analysis, object detection, layout analysis, UI element detection, diagram analysis, and code snippet detection.',
-            'capabilities': [
-                'Screenshot capture',
-                'Object detection',
-                'Layout analysis',
-                'UI element detection',
-                'Diagram analysis',
-                'Code snippet detection',
-                'OCR support'
+            "name": "Vision System",
+            "version": "1.0.0",
+            "description": "Provides vision capabilities including screenshot analysis, object detection, layout analysis, UI element detection, diagram analysis, and code snippet detection.",
+            "capabilities": [
+                "Screenshot capture",
+                "Object detection",
+                "Layout analysis",
+                "UI element detection",
+                "Diagram analysis",
+                "Code snippet detection",
+                "OCR support",
             ],
-            'features': self.config.get('features', {}),
-            'supported_image_types': [
-                'screenshot',
-                'document',
-                'diagram',
-                'code',
-                'ui',
-                'network',
-                'whiteboard',
-                'photo'
-            ]
+            "features": self.config.get("features", {}),
+            "supported_image_types": [
+                "screenshot",
+                "document",
+                "diagram",
+                "code",
+                "ui",
+                "network",
+                "whiteboard",
+                "photo",
+            ],
         }
 
-    def _context_to_dict(self, context) -> Dict[str, Any]:
+    def _context_to_dict(self, context) -> dict[str, Any]:
         """
         Convert VisionContext to dictionary.
 
@@ -373,13 +371,13 @@ class VisionPlugin(Plugin):
         Returns:
             Dictionary representation
         """
-        if not hasattr(context, '__dict__'):
+        if not hasattr(context, "__dict__"):
             return {}
 
         result = {}
         for key, value in context.__dict__.items():
             # Convert numpy arrays and complex objects to serializable formats
-            if hasattr(value, 'tolist'):
+            if hasattr(value, "tolist"):
                 result[key] = value.tolist()
             elif isinstance(value, (list, dict, str, int, float, bool)):
                 result[key] = value
@@ -389,7 +387,7 @@ class VisionPlugin(Plugin):
         return result
 
     @staticmethod
-    def get_plugin_info() -> Dict[str, Any]:
+    def get_plugin_info() -> dict[str, Any]:
         """
         Get plugin metadata.
 
@@ -397,10 +395,10 @@ class VisionPlugin(Plugin):
             Dictionary with plugin metadata
         """
         return {
-            'name': 'vision',
-            'version': '1.0.0',
-            'author': 'Aura AI',
-            'description': 'Vision System Plugin',
-            'category': 'vision',
-            'dependencies': ['opencv-python', 'numpy', 'Pillow']
+            "name": "vision",
+            "version": "1.0.0",
+            "author": "Aura AI",
+            "description": "Vision System Plugin",
+            "category": "vision",
+            "dependencies": ["opencv-python", "numpy", "Pillow"],
         }
