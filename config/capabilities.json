@@ -33,8 +33,28 @@
     },
     "browser.navigate@1": {
       "description": "Automated browser navigation and DOM interaction (v1)",
-      "planner": ["browser_planner"],
-      "backend": ["desktop_engine"]
+      "planner": ["browser"],
+      "backend": ["Playwright Browser Engine"]
+    },
+    "browser.scroll@1": {
+      "description": "Automated page scrolling and view alignment (v1)",
+      "planner": ["browser"],
+      "backend": ["Playwright Browser Engine"]
+    },
+    "shopping.search@1": {
+      "description": "E-commerce product search and price comparison (v1)",
+      "planner": ["browser"],
+      "backend": ["Playwright Browser Engine"]
+    },
+    "shopping.cart@1": {
+      "description": "Automated cart management and product selection (v1)",
+      "planner": ["browser"],
+      "backend": ["Playwright Browser Engine"]
+    },
+    "shopping.checkout@1": {
+      "description": "Critical order checkout workflow (v1)",
+      "planner": ["browser"],
+      "backend": ["Playwright Browser Engine"]
     }
   }
 }

@@ -10,8 +10,9 @@ import threading
 from collections.abc import Callable
 from typing import Any, Optional
 
-from .models import Workflow, WorkflowPriority, WorkflowStatus, WorkflowTriggerType
+from .models import WorkflowPriority, WorkflowStatus, WorkflowTriggerType
 from .trigger_manager import TriggerManager
+from .workflow import Workflow
 from .workflow_executor import WorkflowExecutor
 from .workflow_history import WorkflowHistory
 from .workflow_manager import WorkflowManager

@@ -2,7 +2,9 @@
 Tool Execution Engine
 """
 
-from .antigravity_backend import AntigravityBackend
+from core.backends.adapters import AntigravityBackendAdapter
+from core.orchestration import MasterOrchestrator
+
 from .cancellation import CancellationToken
 from .exceptions import (
     CancellationError,
@@ -19,7 +21,6 @@ from .exceptions import (
 from .execution_context import ExecutionContext
 from .execution_engine import ExecutionEngine
 from .execution_state import ExecutionState, ExecutionStateManager, ExecutionStatus
-from .orchestration_engine import MasterOrchestrator, OrchestrationResult
 from .permission_manager import PermissionContext, PermissionManager
 from .progress_tracker import ProgressTracker
 from .result import ExecutionResultManager, ToolExecutionResult
@@ -42,8 +43,7 @@ __all__ = [
     "ToolRegistry",
     "ToolManager",
     "MasterOrchestrator",
-    "OrchestrationResult",
-    "AntigravityBackend",
+    "AntigravityBackendAdapter",
     # Execution state
     "ExecutionState",
     "ExecutionStatus",
@@ -84,4 +84,3 @@ __all__ = [
     "ResultValidationError",
     "ParallelExecutionError",
 ]
-

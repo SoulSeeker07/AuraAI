@@ -1,0 +1,217 @@
+# ============================================================
+#  Aura Runtime Pipeline
+#  Documents the 7-stage Cognitive Orchestration Pipeline.
+#  Aura uses this to explain how it executes tasks.
+# ============================================================
+
+name: "Aura Cognitive Orchestration Pipeline"
+version: "1.0"
+component: MasterOrchestrator
+
+description: |
+  Every request Aura receives flows through a 7-stage cognitive pipeline.
+  This ensures reasoning before execution, memory continuity, and verifiable results.
+
+stages:
+  - stage: 1
+    name: "Memory Recall"
+    component: MemoryStore
+    description: |
+      Before reasoning, Aura recalls relevant facts from persistent memory.
+      This includes conversation history, user preferences, and past execution results.
+    input: "User goal text"
+    output: "memory_context dict (recalled_facts, preferences, session_id)"
+    timing: "Pre-decision — happens before any LLM call"
+
+  - stage: 2
+    name: "Executive Decision & Reasoning"
+    component: DecisionEngine
+    description: |
+      The DecisionEngine evaluates the goal and answers 5 questions:
+        Q1: Can this be answered from memory alone?
+        Q2: Can this be answered from system state/identity?
+        Q3: Does this need a multi-step planner?
+        Q4: Which planner should handle this?
+        Q5: Does this require an external backend or local engine?
+      Produces a DecisionOutcome with intent type, preferred planner, and budget constraints.
+    input: "goal, budget, memory_context"
+    output: "DecisionOutcome (intent_type, planner, backend flags, refusal decision)"
+    timing: "Fast — keyword matching + rule evaluation"
+
+  - stage: 3
+    name: "Task Graph Decomposition"
+    component: TaskDecomposer
+    description: |
+      Complex goals are decomposed into a dependency graph of SubTasks.
+      Each SubTask has a capability ID, required role, and parameter set.
+      The graph determines which tasks can run in parallel (same level) vs sequentially.
+    input: "goal, DecisionOutcome"
+    output: "TaskGraph (subtasks dict, execution_order levels)"
+    timing: "Fast — structural decomposition"
+
+  - stage: 4
+    name: "Supervisor Delegation"
+    component: SupervisorAgent
+    description: |
+      The SupervisorAgent inspects each SubTask and delegates it to the correct
+      planner via PlannerRegistry.
+      It maps PlannerRole (DESKTOP, RESEARCH, CODING, BROWSER) to a BasePlanner.
+    input: "SubTask, DecisionOutcome, shared_context"
+    output: "role_key, planner instance, plan_payload"
+    timing: "Per-subtask — registry lookup"
+
+  - stage: 5
+    name: "Backend Selection & Parallel Execution"
+    component: BackendRegistry
+    description: |
+      BackendRegistry selects the best available backend for each SubTask's capability.
+      Tasks at the same execution_order level run in parallel via asyncio.gather().
+      Each backend adapter executes the capability and returns an ExecutionResult.
+    input: "SubTask capability, plan_payload"
+    output: "ExecutionResult (success, observations, artifacts, data)"
+    timing: "Parallel per level — main execution time"
+
+  - stage: 6
+    name: "Result Fusion"
+    component: ResultMerger
+    description: |
+      ResultMerger combines all SubTask ExecutionResults into a single unified response.
+      It merges observations, artifacts, confidence scores, and execution metrics.
+      The final response is a coherent, readable answer to the original goal.
+    input: "AgentSession (all observations + artifacts)"
+    output: "Final ExecutionResult with merged data"
+    timing: "Post-execution — fast aggregation"
+
+  - stage: 7
+    name: "Unified Memory Write"
+    component: MemoryStore
+    description: |
+      The final ExecutionResult and session metadata are written to persistent memory.
+      This enables Aura to recall outcomes in future sessions.
+    input: "AgentSession, final ExecutionResult"
+    output: "Persisted memory entries"
+    timing: "Background write — non-blocking"
+
+# ── Flow diagram ──────────────────────────────────────────
+flow: |
+  User
+    ↓
+  Stage 1: Memory Recall
+    ↓
+  Stage 2: DecisionEngine
+    ↓
+  Stage 3: TaskDecomposer
+    ↓
+  Stage 4: SupervisorAgent → PlannerRegistry
+    ↓
+  Stage 5: BackendRegistry → Parallel Execution
+    ↓
+  Stage 6: ResultMerger
+    ↓
+  Stage 7: Memory Write
+    ↓
+  Final Response → User
+
+# ── Identity context injection point ─────────────────────
+identity_injection:
+  where: "Stage 2 — DecisionEngine"
+  how: |
+    Before evaluating any LLM-dependent decision,
+    the PromptBuilder injects the full system identity block
+    (identity, capabilities, planners, backends, pipeline)
+    as the LLM system context.
+    This ensures every decision is grounded in Aura's actual capabilities,
+    not a generic AI model's assumptions.
+
+# ── Planners ─────────────────────────────────────────────
+planners:
+  - name: DesktopPlanner
+    role: desktop
+    handles:
+      - "desktop.window.*"
+      - "desktop.clipboard.*"
+      - "desktop.audio.*"
+      - "desktop.display.*"
+      - "desktop.power.*"
+      - "desktop.network.*"
+      - "desktop.service.*"
+      - "desktop.registry.*"
+      - "voice.*"
+      - "vision.*"
+      - "memory.*"
+      - "workflow.*"
+      - "plugin.*"
+    backend: Native Desktop Engine
+
+  - name: ResearchPlanner
+    role: research
+    handles:
+      - "research.*"
+      - "reasoning.*"
+      - "citations.*"
+    backend: Gemini
+
+  - name: CodingPlanner
+    role: coding
+    handles:
+      - "coding.*"
+      - "git.*"
+      - "repository.*"
+      - "ast.*"
+    backend: Antigravity CLI
+
+  - name: BrowserPlanner
+    role: browser
+    handles:
+      - "browser.*"
+      - "web.*"
+      - "navigation.*"
+    backend: Native Desktop Engine
+
+# ── Backends ─────────────────────────────────────────────
+backends:
+  - name: Native Desktop Engine
+    type: local
+    internet_required: false
+    description: |
+      Executes all native Windows operations.
+      Handles window management, clipboard, audio, display, network, power, services, registry.
+      Zero latency. No API costs.
+    strengths:
+      - Local execution
+      - No internet required
+      - Native Windows API
+      - Real-time desktop control
+
+  - name: Groq
+    type: cloud
+    internet_required: true
+    description: |
+      Ultra-fast cloud LLM inference via Groq API.
+      Ideal for fast conversational responses and low-latency chat.
+    strengths:
+      - Very fast inference
+      - Low cost
+      - Good for conversation
+
+  - name: Gemini
+    type: cloud
+    internet_required: true
+    description: |
+      Google Gemini API for long-context reasoning, vision, and deep research.
+    strengths:
+      - Long context window
+      - Vision and multimodal
+      - Deep reasoning
+      - Research and analysis
+
+  - name: Antigravity CLI
+    type: local_agent
+    internet_required: false
+    description: |
+      Antigravity AI coding agent for repository understanding, refactoring, and code generation.
+    strengths:
+      - Repository-aware coding
+      - AST manipulation
+      - Git integration
+      - Code generation and refactoring

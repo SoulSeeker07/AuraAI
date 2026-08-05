@@ -1,8 +1,8 @@
 """
-Unit tests for TaskDecomposer (Milestone 16 Phase 1).
+Unit tests for TaskDecomposer (Cognitive Orchestration Layer).
 """
 
-from src.routing.task_decomposer import PlannerRole, TaskDecomposer
+from src.core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
 
 
 def test_task_decomposition_multi_intent():
@@ -14,7 +14,6 @@ def test_task_decomposition_multi_intent():
     assert len(graph.subtasks) >= 3
     assert len(graph.execution_order) >= 2
 
-    # Check for research subtask
     roles = [subtask.required_role for subtask in graph.subtasks.values()]
     assert PlannerRole.RESEARCH in roles
     assert PlannerRole.DESKTOP in roles
@@ -28,5 +27,4 @@ def test_task_graph_execution_levels():
     graph = decomposer.decompose(goal)
     level_1 = graph.execution_order[0]
 
-    # Level 1 should contain independent research and desktop subtasks running in parallel
     assert len(level_1) >= 2

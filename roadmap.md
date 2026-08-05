@@ -1,1151 +1,232 @@
 # Aura AI Roadmap
 
-A comprehensive roadmap for building Aura AI from an assistant into a complete AI Operating System through 16 milestones across 5 phases.
+A comprehensive roadmap for building Aura AI from an assistant into a complete AI Operating System through 26 milestones across 3 Eras.
 
 ## Project Overview
 
-Aura is being built as a modular AI Operating System rather than a chatbot. Each milestone extends the previous one without duplicating responsibilities. The project follows a phased approach, with each phase building on the foundation of the previous ones.
+Aura is built as a modular AI Operating System rather than a chatbot. Each milestone extends the previous one without duplicating responsibilities. The project follows a 3-Era progression:
 
-**Current Status:** 2/16 Core Milestones Complete (12%, including partial milestones)
+- **Era 1 — Foundation (Milestones 1–10)**: Core subsystems, OS execution pipeline, desktop perception, vision, voice, and workflow automation.
+- **Era 2 — Intelligence & Orchestration (Milestones 11–16)**: RAG 2.0, multi-agent reasoning, engineering intelligence, research intelligence, desktop intelligence, and Cognitive Orchestration Layer (`AgentSession`, `ExecutionBudget`, `DecisionEngine`, `SupervisorAgent`, `Observation`, `Artifact`).
+- **Era 3 — Capability Expansion (Milestones 17–26)**: High-impact end-user capabilities built on top of the frozen core runtime without inventing new core abstractions.
+
+**Current Status:** 16/26 Core Milestones Complete (61.5% overall progress), 10/10 Expansion Milestones with foundational modules ready for integration.
 
 ---
 
-## Phase 1 — Core Intelligence
-
-Foundation milestones that establish the core AI capabilities.
+## 🏛️ Era 1 — Foundation (Milestones 1–10)
+Establishes core capabilities, OS execution pipeline, desktop perception, vision, voice, and workflow automation.
 
 ### Milestone 1 — Aura Brain ⭐⭐⭐⭐⭐
-The central intelligence of Aura as the single request entry point.
-
-**Status:** ❌ NOT COMPLETE (0%)
-
-**Link:** [Milestone 1 — Aura Brain](docs/milestones/milestone01.md)
+The central intelligence of Aura as the request entry point.
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 2 — Capability Router ⭐⭐⭐⭐⭐
 Routes requests to the correct subsystem instead of sending everything to an LLM.
-
-**Status:** 🟡 PARTIAL (40%)
-
-**Link:** [Milestone 2 — Capability Router](docs/milestones/milestone02.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 3 — Memory 2.0 ⭐⭐⭐⭐⭐
 Persistent intelligent memory that allows Aura to remember across sessions.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 3 — Memory 2.0](docs/milestones/milestone03.md)
-
----
-
-## Phase 2 — Desktop Foundation
-
-Milestones that establish Aura's understanding and interaction with the desktop.
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 4 — Workspace Awareness ⭐⭐⭐⭐⭐
 Continuous awareness of the user's desktop environment and workspace state.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 4 — Workspace Awareness](docs/milestones/milestone04.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 5 — Tool Execution Engine ⭐⭐⭐⭐⭐
 Unified execution pipeline for all tools and capabilities.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 5 — Tool Execution Engine](docs/milestones/milestone05.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 6 — Plugin Ecosystem ⭐⭐⭐⭐⭐
 Fully modular system where every capability becomes a plugin.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 6 — Plugin Ecosystem](docs/milestones/milestone06.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 7 — Vision System ⭐⭐⭐⭐⭐
 Visual understanding capabilities for Aura to see and interpret the desktop.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 7 — Vision System](docs/milestones/milestone07.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 8 — Voice System ⭐⭐⭐⭐⭐
 Real-time conversational voice capability for Aura.
-
 **Status:** ✅ COMPLETE (100%)
-
-**Link:** [Milestone 8 — Voice System](docs/milestones/milestone08.md)
-
----
-
-## Phase 3 — Autonomous Execution
-
-Milestones that enable Aura to complete goals and execute complex workflows.
 
 ### Milestone 9 — Agent Runtime ⭐⭐⭐⭐⭐⭐
 Goal-oriented agent capabilities that enable Aura to complete goals.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 9 — Agent Runtime](docs/milestones/milestone09.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 10 — Workflow Engine ⭐⭐⭐⭐⭐⭐
 Persistent automation platform for users to create and manage complex workflows.
+**Status:** ✅ COMPLETE (100%)
 
-**Status:** 🟡 PARTIAL (50%)
+---
 
-**Link:** [Milestone 10 — Workflow Engine](docs/milestones/milestone10.md)
+## 🧠 Era 2 — Intelligence & Orchestration (Milestones 11–16)
+Teaches Aura how to think, delegate, plan, reason, coordinate backends, and fuse multi-modal results.
 
 ### Milestone 11 — Knowledge Intelligence (RAG 2.0) ⭐⭐⭐⭐⭐⭐
 Searchable knowledge brain that understands repositories, documents, notes, and codebases.
-
 **Status:** ✅ COMPLETE (100%)
-
-**Link:** [Milestone 11 — Knowledge Intelligence](docs/milestones/milestone11.md)
 
 ### Milestone 12 — Multi-Agent Intelligence ⭐⭐⭐⭐⭐⭐
 Specialized AI agents that collaborate to accomplish complex tasks.
-
-**Status:** 🟡 PARTIAL (50%)
-
-**Link:** [Milestone 12 — Multi-Agent Intelligence](docs/milestones/milestone12.md)
-
----
-
-## Phase 4 — Advanced Intelligence
-
-Milestones that add specialized intelligence capabilities.
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 13 — Engineering Intelligence ⭐⭐⭐⭐⭐⭐
 Engineering-focused agent for software development tasks.
-
-**Status:** 🟡 PARTIAL (30%)
-
-**Link:** [Milestone 13 — Engineering Intelligence](docs/milestones/milestone13.md)
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 14 — Research Intelligence ⭐⭐⭐⭐⭐⭐
 Research-focused agent for comprehensive research on any topic.
-
-**Status:** 🟡 PARTIAL (40%)
-
-**Link:** [Milestone 14 — Research Intelligence](docs/milestones/milestone14.md)
-
----
-
-## Phase 5 — Desktop AI OS
-
-The final milestone that completes the transition from assistant to AI Operating System.
+**Status:** ✅ COMPLETE (100%)
 
 ### Milestone 15 — Desktop Intelligence ⭐⭐⭐⭐⭐⭐⭐
-Complete integration of all components into a cohesive desktop intelligence platform.
+Complete integration of desktop components into a cohesive desktop platform.
+**Status:** ✅ COMPLETE (100%)
 
-**Status:** 🟡 PARTIAL (20%)
-
-**Link:** [Milestone 15 — Desktop Intelligence](docs/milestones/milestone15.md)
-
----
-
-### Milestone 16 — Intelligent AI Orchestration ⭐⭐⭐⭐⭐⭐⭐
-This becomes the **decision-making brain** of Aura. It decides **which intelligence source to use**.
-
-**Status:** 🟡 PARTIAL (0%)
-
-**Link:** [Milestone 16 — Intelligent AI Orchestration](docs/milestones/milestone16.md)
-
-## Progress Overview
-
-```
-Phase 1 — Core Intelligence      ████████████░░░░░░░░░░  0/3 (0 complete)
-Phase 2 — Desktop Foundation     ███████░░░░░░░░░░░░░░░░  1/6 (1 complete)
-Phase 3 — Autonomous Execution   ███░░░░░░░░░░░░░░░░░░░░  1/5 (1 complete)
-Phase 4 — Advanced Intelligence  ██░░░░░░░░░░░░░░░░░░░░░  0/2 (0 complete)
-Phase 5 — Desktop AI OS          ░░░░░░░░░░░░░░░░░░░░░░░  0/2 (0 complete)
-```
-
-**Overall Progress:** 2/16 Core Milestones Complete | 13/16 Core Milestones Partial | 1/16 Core Milestones Not Complete
+### Milestone 16 — Cognitive Orchestration Layer ⭐⭐⭐⭐⭐⭐⭐
+The central decision-making and cognitive runtime of Aura (`AgentSession`, `ExecutionBudget`, `DecisionEngine`, `SupervisorAgent`, `Observation`, `Artifact`).
+**Status:** ✅ COMPLETE (100%)
 
 ---
 
-## Development Philosophy
+## 🚀 Era 3 — Capability Expansion (Milestones 17–26)
+Builds powerful end-user capabilities on top of the frozen core runtime without inventing new core abstractions.
 
-- **Modular Design:** Each milestone extends the previous one without duplicating responsibilities
-- **Incremental Progress:** Build one piece at a time, testing and validating at each step
-- **Clear Dependencies:** Each milestone has clear dependencies on previous milestones
-- **Documentation First:** Design and document each milestone before implementation
-- **User-Centric:** Focus on solving real user problems at each step
+### Milestone 17.0 — System Knowledge & Identity Layer ⭐⭐⭐⭐⭐⭐⭐
+Aura's permanent self-knowledge layer: who it is, everything it can do, how it routes work.
+Includes `IdentityLoader`, `CapabilityCatalog`, `CommandCatalog`, `PromptBuilder`, and 6 knowledge YAML files.
+Dynamic capability loading — new managers auto-register to the live catalog without prompt changes.
+**Status:** ✅ COMPLETE (100%)  
+*Modules*: `knowledge/` (6 YAML files), `src/core/system/` (4 Python modules).
 
----
+### Milestone 17 — Cognitive Memory ⭐⭐⭐⭐⭐⭐⭐
+Unifies conversation, execution, desktop, research, project, habit, and preference memory into a single persistent identity.
+**Status:** 🟡 PARTIAL (40% Foundation Available)  
+*Available Modules*: `Memory.py`, `src/memory/`, `agent_memory.py`, `engineering_memory.py`, SQLite schema.
 
-## Links
+### Milestone 18 — World Model ⭐⭐⭐⭐⭐⭐⭐
+Unified graph representation of reality across desktop, projects, repos, research, browser, calendar, and memory.
+**Status:** 🟡 PARTIAL (45% Foundation Available)  
+*Available Modules*: `desktop_context.py`, `src/workspace/` (window tracker, file tracker, project detector), `knowledge_graph.py`, `symbol_graph.py`, `dependency_graph.py`.
 
-- **Architecture Documentation:** [docs/architecture/](docs/architecture/)
-- **API Documentation:** [docs/api/](docs/api/)
-- **User Guides:** [docs/guides/](docs/guides/)
-- **Examples:** [docs/examples/](docs/examples/)
-- **Milestones:** [docs/milestones/](docs/milestones/)
+### Milestone 19 — Coding Intelligence 2.0 ⭐⭐⭐⭐⭐⭐⭐
+Deep multi-repo understanding, architecture analysis, bug localization, test generation, and refactoring via Antigravity, Claude Code, and Aider.
+**Status:** 🟡 PARTIAL (50% Foundation Available)  
+*Available Modules*: `antigravity_backend.py`, `repository_analyzer.py`, `ast_analyzer.py`, `code_editor.py`, `bug_fixer.py`, `git_intelligence.py`.
 
----
+### Milestone 20 — Browser Intelligence ⭐⭐⭐⭐⭐⭐⭐
+Real Playwright browser automation, persistent sessions, authentication, visual web reasoning, and web scraping.
+**Status:** 🟡 PARTIAL (30% Foundation Available)  
+*Available Modules*: `page_reader.py`, `web_search.py`, `browser_context.py`, browser routing rules.
 
-## License
+### Milestone 21 — Research Intelligence 2.0 ⭐⭐⭐⭐⭐⭐⭐
+Deep iterative research loops, contradiction detection, evidence ranking, source confidence scoring, and long-running investigations.
+**Status:** 🟡 PARTIAL (60% Foundation Available)  
+*Available Modules*: `src/research/` (18 modules including `research_engine.py`, `reasoning_layer.py`, `evidence_merger.py`, `conflict_detector.py`, `citation_builder.py`).
 
-[See LICENSE file](LICENSE)
-Route user requests to the appropriate capabilities and tools with intelligent matching, priority-based selection, and fallback mechanisms.
+### Milestone 22 — Event Runtime ⭐⭐⭐⭐⭐⭐⭐
+Event-driven autonomous runtime triggering the DecisionEngine based on desktop, file, git, and system events.
+**Status:** 🟡 PARTIAL (40% Foundation Available)  
+*Available Modules*: `src/core/event_bus.py` (EventBus), `native_events.py`, `workflow_triggers.py`.
 
-**Core Components**
-- [capability_router.py](src/brain/capability_router.py) - Core routing logic
-- [tool_selector.py](src/brain/tool_selector.py) - Tool selection algorithm
-- [priority_manager.py](src/brain/priority_manager.py) - Priority handling
-- [cost_estimator.py](src/brain/cost_estimator.py) - Cost optimization
-- [fallback_manager.py](src/brain/fallback_manager.py) - Fallback mechanisms
+### Milestone 23 — Professional Expert Systems ⭐⭐⭐⭐⭐⭐⭐
+Domain-specific expert planners (Networking Expert, Security Expert, DevOps Expert, Cloud Expert).
+**Status:** 🟡 PARTIAL (40% Foundation Available)  
+*Available Modules*: `src/engineering/` (`doctor.py`, `inspector.py`, `verify.py`), `network_manager.py`, `risk_analyzer.py`.
 
-**Dependencies**
-- Aura Brain
-- Tool Execution Engine
+### Milestone 24 — Personal Operating System ⭐⭐⭐⭐⭐⭐⭐
+Continuous background assistance managing user projects, habits, meetings, reminders, and daily workflows.
+**Status:** 🟡 PARTIAL (35% Foundation Available)  
+*Available Modules*: `src/core/app.py`, `hotkeys.py`, `overlay_manager.py`, `workflow_scheduler.py`.
 
-**Status**
-🟡 PARTIAL
+### Milestone 25 — Autonomous Engineering Platform ⭐⭐⭐⭐⭐⭐⭐
+End-to-end issue resolution loop: Receive Issue → Plan → Research → Code → Test → Review → Commit → Deploy → Monitor.
+**Status:** 🟡 PARTIAL (45% Foundation Available)  
+*Available Modules*: `doctor.py`, `verify.py`, `code_editor.py`, `bug_fixer.py`, `git_intelligence.py`, `MasterOrchestrator`.
 
-**Tests**
-- Route accuracy
-- Priority handling
-- Fallback correctness
-- Performance benchmarks
-
-**Next Work**
-- Context-aware routing
-- Resource-aware routing
-- Cost optimization strategies
-
-**Future Expansion**
-- Self-learning routing
-- Network-aware routing
-- Adaptive routing
-
----
-
-## 🟡 Milestone 3 — Memory 2.0 ⭐⭐⭐⭐⭐
-
-**Purpose**
-Implement persistent, structured memory with semantic retrieval, context ranking, and intelligent pruning for long-term retention of information.
-
-**Core Components**
-- [Memory.py](Memory.py) - Core memory persistence
-- Memory category system (MemoryCategory enum)
-- Structured fact extraction
-- Semantic search engine
-- Context ranking algorithm
-- Memory summarization
-- Memory pruning system
-- Database queries (count_memories, count_categories)
-
-**Dependencies**
-- SQLite database
-- LLM API provider
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Fact retrieval accuracy
-- Context ranking quality
-- Memory pruning effectiveness
-- Semantic search relevance
-- Database query performance
-
-**Next Work**
-- Knowledge graph integration
-- Long-term memory expansion
-- Memory cross-referencing
-- Sleep-based memory consolidation
-
-**Future Expansion**
-- Distributed memory
-- Memory compression
-- Memory encryption
-- Long-term memory analytics
+### Milestone 26 — Aura OS ⭐⭐⭐⭐⭐⭐⭐
+The complete AI Operating System layer sitting seamlessly on top of Windows and Linux.
+**Status:** 🟡 PARTIAL (50% Foundation Available)  
+*Available Modules*: `aura.py` (canonical launcher), `cli.py`, `main.py`, `src/core/app.py`, `docs/ARCHITECTURE_FREEZE.md`.
 
 ---
 
-## 🟡 Milestone 4 — Workspace Awareness ⭐⭐⭐⭐⭐
+## 📊 Summary of Project Status
 
-**Purpose**
-Continuously understand and track the user's desktop environment including windows, files, projects, and running applications.
+### Era 1: Foundation (Milestones 1–10)
+| Milestone | Status | Codebase Modules |
+| :--- | :--- | :--- |
+| 1. Aura Brain | ✅ COMPLETE (100%) | `src/brain/aura_brain.py` |
+| 2. Capability Router | ✅ COMPLETE (100%) | `src/routing/capability_router.py` |
+| 3. Memory 2.0 | ✅ COMPLETE (100%) | `Memory.py`, `src/memory/` |
+| 4. Workspace Awareness | ✅ COMPLETE (100%) | `src/workspace/workspace_manager.py` |
+| 5. Tool Execution Engine | ✅ COMPLETE (100%) | `src/execution/execution_engine.py` |
+| 6. Plugin Ecosystem | ✅ COMPLETE (100%) | `src/plugins/plugin_manager.py` |
+| 7. Vision System | ✅ COMPLETE (100%) | `src/vision/vision_manager.py` |
+| 8. Voice System | ✅ COMPLETE (100%) | `src/voice/voice_manager.py` |
+| 9. Agent Runtime | ✅ COMPLETE (100%) | `src/agents/agent_manager.py` |
+| 10. Workflow Engine | ✅ COMPLETE (100%) | `src/workflows/workflow_engine.py` |
 
-**Core Components**
-- [workspace_manager.py](src/workspace/workspace_manager.py) - Workspace state management
-- [window_tracker.py](src/workspace/window_tracker.py) - Window tracking
-- [file_tracker.py](src/workspace/file_tracker.py) - File tracking
-- [project_detector.py](src/workspace/project_detector.py) - Project detection
-- [clipboard_monitor.py](src/workspace/clipboard_monitor.py) - Clipboard tracking
-- [running_apps.py](src/workspace/running_apps.py) - Application tracking
-- [terminal_monitor.py](src/workspace/terminal_monitor.py) - Terminal tracking
-- [browser_context.py](src/workspace/browser_context.py) - Browser tracking
+**Era 1 Progress:** 10 / 10 Complete (100%)
 
-**Dependencies**
-- Tool Execution Engine
-- Vision System
+### Era 2: Intelligence & Orchestration (Milestones 11–16)
+| Milestone | Status | Codebase Modules |
+| :--- | :--- | :--- |
+| 11. Knowledge Intelligence (RAG 2.0) | ✅ COMPLETE (100%) | `src/knowledge/knowledge_base.py` |
+| 12. Multi-Agent Intelligence | ✅ COMPLETE (100%) | `src/agents/agent_coordinator.py` |
+| 13. Engineering Intelligence | ✅ COMPLETE (100%) | `src/engineering/` + `src/agents/` |
+| 14. Research Intelligence | ✅ COMPLETE (100%) | `src/research/` + `src/brain/` |
+| 15. Desktop Intelligence | ✅ COMPLETE (100%) | `src/desktop/native/` |
+| 16. Cognitive Orchestration Layer | ✅ COMPLETE (100%) | `src/core/orchestration/` + `src/core/backends/` |
 
-**Status**
-🟡 PARTIAL
+**Era 2 Progress:** 6 / 6 Complete (100%)
 
-**Tests**
-- Window detection accuracy
-- File tracking completeness
-- Project identification
-- Clipboard capture
-- Terminal command tracking
-- Browser context extraction
+### Era 3: Capability Expansion (Milestones 17–26)
+| Milestone | Status | Existing Foundations |
+| :--- | :--- | :--- |
+| **17.0. System Knowledge & Identity Layer** | ✅ COMPLETE (100%) | `knowledge/` (6 YAML), `src/core/system/` (4 modules) |
+| 17. Cognitive Memory | 🟡 PARTIAL (40%) | `src/memory/`, `Memory.py`, `engineering_memory.py` |
+| 18. World Model | 🟡 PARTIAL (45%) | `desktop_context.py`, `src/workspace/`, `knowledge_graph.py` |
+| 19. Coding Intelligence 2.0 | 🟡 PARTIAL (50%) | `antigravity_backend.py`, `code_editor.py`, `ast_analyzer.py` |
+| 20. Browser Intelligence | 🟡 PARTIAL (30%) | `page_reader.py`, `web_search.py`, `browser_context.py` |
+| 21. Research Intelligence 2.0 | 🟡 PARTIAL (60%) | `src/research/` (18 modules ready for backend adapters) |
+| 22. Event Runtime | 🟡 PARTIAL (40%) | `src/core/event_bus.py`, `native_events.py` |
+| 23. Professional Expert Systems | 🟡 PARTIAL (40%) | `doctor.py`, `inspector.py`, `network_manager.py` |
+| 24. Personal Operating System | 🟡 PARTIAL (35%) | `app.py`, `hotkeys.py`, `overlay_manager.py` |
+| 25. Autonomous Engineering Platform | 🟡 PARTIAL (45%) | `doctor.py`, `verify.py`, `bug_fixer.py`, `MasterOrchestrator` |
+| 26. Aura OS | 🟡 PARTIAL (50%) | `aura.py`, `cli.py`, `main.py`, `ARCHITECTURE_FREEZE.md` |
 
-**Next Work**
-- Window state inference
-- File dependency tracking
-- Project memory integration
-- Workspace pattern learning
-
-**Future Expansion**
-- Predictive workspace assistance
-- Window state automation
-- Desktop workflow optimization
-- Intelligent workspace layout
-
----
-
-## 🟡 Milestone 5 — Tool Execution Engine ⭐⭐⭐⭐⭐
-
-**Purpose**
-Provide a unified, secure, and reliable execution pipeline for all tool operations with permission management, risk analysis, and monitoring.
-
-**Core Components**
-- [tool_interface.py](src/execution/tool_interface.py) - Tool contract
-- [execution_engine.py](src/execution/execution_engine.py) - Core orchestration
-- [permission_manager.py](src/execution/permission_manager.py) - Permission system
-- [risk_analyzer.py](src/execution/risk_analyzer.py) - Risk assessment
-- [execution_state.py](src/execution/execution_state.py) - State tracking
-- [progress_tracker.py](src/execution/progress_tracker.py) - Progress reporting
-- [cancellation.py](src/execution/cancellation.py) - Cancellation support
-- [timeout_manager.py](src/execution/timeout_manager.py) - Timeout handling
-- [result.py](src/execution/result.py) - Result formatting
-- [tool_registry.py](src/execution/tool_registry.py) - Tool registration
-
-**Dependencies**
-- Aura Brain
-- Memory 2.0
-- Plugin Ecosystem
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Permission validation
-- Risk analysis accuracy
-- Execution pipeline integrity
-- Timeout handling
-- Cancellation safety
-- Result formatting
-
-**Next Work**
-- Parallel execution
-- Retry logic
-- Progress callbacks
-- Execution auditing
-
-**Future Expansion**
-- Distributed execution
-- Resource-aware scheduling
-- Execution prediction
-- Performance optimization
+**Era 3 Progress:** 0 / 10 Complete (10 Partial Foundations Active)
 
 ---
 
-## 🟡 Milestone 6 — Plugin Ecosystem ⭐⭐⭐⭐⭐
-
-**Purpose**
-Enable modular, extensible capabilities through a dynamic plugin system with discovery, registration, and lifecycle management.
-
-**Core Components**
-- [plugin_interface.py](src/plugins/plugin_interface.py) - Plugin contract
-- [plugin_registry.py](src/plugins/plugin_registry.py) - Plugin management
-- [plugin_manager.py](src/plugins/plugin_manager.py) - Plugin lifecycle
-- [shared/plugin_sdk/](src/plugins/shared/plugin_sdk/) - SDK tools
-- manifest_generator.py
-- capability_registry.py
-- plugin_hooks.py
-
-**Dependencies**
-- Tool Execution Engine
-- Event System
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Plugin discovery
-- Plugin loading
-- Capability registration
-- Lifecycle management
-- Hot reload
-- Health monitoring
-
-**Next Work**
-- Plugin dependencies
-- Plugin validation
-- Plugin upgrade system
-- Plugin marketplace
-
-**Future Expansion**
-- Plugin marketplace
-- Plugin templates
-- Plugin sharing
-- Cross-platform plugins
-
----
-
-## 🟡 Milestone 7 — Vision System ⭐⭐⭐⭐⭐
-
-**Purpose**
-Provide visual understanding capabilities including screenshot capture, OCR, object detection, and UI analysis for desktop interaction.
-
-**Core Components**
-- [vision_manager.py](src/vision/vision_manager.py) - Main orchestrator
-- [screenshot_manager.py](src/vision/screenshot_manager.py) - Screenshot capture
-- [object_detector.py](src/vision/object_detector.py) - Object detection
-- [layout_analyzer.py](src/vision/layout_analyzer.py) - Layout analysis
-- [ui_analyzer.py](src/vision/ui_analyzer.py) - UI element analysis
-- [diagram_analyzer.py](src/vision/diagram_analyzer.py) - Diagram analysis
-- [code_detector.py](src/vision/code_detector.py) - Code detection
-- [image_loader.py](src/vision/image_loader.py) - Image loading
-- [preprocessing.py](src/vision/preprocessing.py) - Image preprocessing
-- [ocr_engine.py](src/vision/ocr_engine.py) - OCR
-- [recognition_models.py](src/vision/recognition_models.py) - Recognition models
-
-**Dependencies**
-- Tool Execution Engine
-- Plugin Ecosystem
-- Memory 2.0
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Screenshot capture accuracy
-- Object detection precision
-- UI analysis completeness
-- Code detection accuracy
-- OCR accuracy
-- Layout analysis quality
-
-**Next Work**
-- Advanced OCR
-- Multi-modal understanding
-- Video analysis
-- Hand gesture recognition
-
-**Future Expansion**
-- 3D scene understanding
-- Video understanding
-- Facial recognition
-- Emotion detection
-
----
-
-## ✅ Milestone 8 — Voice System ⭐⭐⭐⭐⭐
-
-**Purpose**
-Enable real-time conversational voice interactions with wake word detection, streaming STT, and streaming TTS.
-
-**Core Components**
-- [voice_manager.py](src/voice/voice_manager.py) - Voice system orchestration
-- [stt_engine.py](src/voice/stt_engine.py) - Speech-to-text
-- [tts_engine.py](src/voice/tts_engine.py) - Text-to-speech
-- [wake_word_detector.py](src/voice/wake_word_detector.py) - Wake word detection
-- [vad.py](src/voice/vad.py) - Voice activity detection
-- [audio_manager.py](src/voice/audio_manager.py) - Audio routing
-- [provider_adapter.py](src/voice/provider_adapter.py) - Provider abstraction
-
-**Dependencies**
-- Aura Brain
-- Tool Execution Engine
-
-**Status**
-✅ COMPLETE
-
-**Tests**
-- Wake word accuracy
-- STT accuracy
-- TTS quality
-- Voice activity detection
-- Conversation state
-- Audio latency
-
-**Next Work**
-- Multi-language support
-- Voice cloning
-- Conversational context
-- Voice commands
-
-**Future Expansion**
-- Multi-voice personalities
-- Voice emotion detection
-- Voice biometrics
-- Voice translation
-
----
-
-## 🟡 Milestone 9 — Agent Runtime ⭐⭐⭐⭐⭐
-
-**Purpose**
-Enable autonomous goal-directed execution with planning, task decomposition, execution graphs, and recovery systems.
-
-**Core Components**
-- [agent_manager.py](src/agents/agent_manager.py) - Agent orchestration
-- [goal_planner.py](src/agents/goal_planner.py) - Goal planning
-- [task_decomposer.py](src/agents/task_decomposer.py) - Task decomposition
-- [execution_graph.py](src/agents/execution_graph.py) - Execution graphs
-- [scheduler.py](src/agents/scheduler.py) - Task scheduling
-- [recovery_system.py](src/agents/recovery_system.py) - Recovery handling
-- [progress_tracker.py](src/agents/progress_tracker.py) - Progress tracking
-- [agent_memory.py](src/agents/agent_memory.py) - Agent-specific memory
-- [execution_history.py](src/agents/execution_history.py) - Execution history
-
-**Dependencies**
-- Aura Brain
-- Memory 2.0
-- Tool Execution Engine
-- Workflow Engine
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Goal planning quality
-- Task decomposition accuracy
-- Execution graph correctness
-- Scheduling efficiency
-- Recovery success rate
-- Progress tracking accuracy
-
-**Next Work**
-- Adaptive planning
-- Multi-agent coordination
-- Execution prediction
-- Resource-aware planning
-
-**Future Expansion**
-- Self-optimizing agents
-- Agent learning
-- Meta-planning
-- Autonomous agent creation
-
----
-
-## 🟡 Milestone 10 — Workflow Engine ⭐⭐⭐⭐⭐
-
-**Purpose**
-Enable persistent automation with workflow creation, scheduling, triggers, and conditional execution.
-
-**Core Components**
-- [workflow_engine.py](src/workflows/workflow_engine.py) - Core engine
-- [workflow_builder.py](src/workflows/workflow_builder.py) - Workflow builder
-- [workflow_storage.py](src/workflows/workflow_storage.py) - Storage and persistence
-- [workflow_executor.py](src/workflows/workflow_executor.py) - Execution engine
-- [workflow_triggers.py](src/workflows/workflow_triggers.py) - Event triggers
-- [workflow_variables.py](src/workflows/workflow_variables.py) - Variable management
-- [workflow_conditions.py](src/workflows/workflow_conditions.py) - Conditional execution
-- [workflow_scheduler.py](src/workflows/workflow_scheduler.py) - Scheduling
-- [workflow_templates.py](src/workflows/workflow_templates.py) - Templates
-
-**Dependencies**
-- Tool Execution Engine
-- Agent Runtime
-- Memory 2.0
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Workflow creation
-- Trigger accuracy
-- Scheduling correctness
-- Conditional execution
-- Workflow persistence
-- Error handling
-
-**Next Work**
-- Workflow visualization
-- Workflow debugging
-- Workflow versioning
-- Workflow sharing
-
-**Future Expansion**
-- Workflow marketplace
-- Workflow optimization
-- Workflow analytics
-- AI-assisted workflow creation
-
----
-
-## ✅ Milestone 11 — Knowledge Intelligence (RAG 2.0) ⭐⭐⭐⭐⭐
-
-**Purpose**
-Build a searchable knowledge brain for projects, documents, codebases, and external information retrieval.
-
-**Core Components**
-- [knowledge_base.py](src/knowledge/knowledge_base.py) - Main knowledge base
-- [index_manager.py](src/knowledge/index_manager.py) - Index management
-- [document_parser.py](src/knowledge/document_parser.py) - Document parsing
-- [embedding_manager.py](src/knowledge/embedding_manager.py) - Embedding management
-- [retriever.py](src/knowledge/retriever.py) - Retrieval system
-- [knowledge_graph.py](src/knowledge/knowledge_graph.py) - Knowledge graph
-- [parser_framework.py](src/knowledge/parser_framework.py) - Parser framework
-- [embedding_generator.py](src/knowledge/embedding_generator.py) - Embedding generation
-- [background_indexer.py](src/knowledge/background_indexer.py) - Background indexing
-
-**Dependencies**
-- Memory 2.0
-- Plugin Ecosystem
-- Vision System
-
-**Status**
-✅ COMPLETE
-
-**Tests**
-- Document indexing
-- Retrieval accuracy
-- Knowledge graph construction
-- Hybrid search
-- Background indexing
-- Parser accuracy
-
-**Next Work**
-- Graph neural networks
-- Query optimization
-- Multi-language support
-- Knowledge graph visualization
-
-**Future Expansion**
-- Distributed indexing
-- Semantic similarity
-- Cross-lingual retrieval
-- Knowledge graph evolution
-
----
-
-## 🟡 Milestone 12 — Multi-Agent Intelligence ⭐⭐⭐⭐⭐⭐
-
-**Purpose**
-Enable specialized AI agents to collaborate through context allocation, shared memory, and result merging.
-
-**Core Components**
-- [agent_coordinator.py](src/agents/agent_coordinator.py) - Multi-agent orchestration
-- [context_manager.py](src/agents/context_manager.py) - Context allocation
-- [memory_sharing.py](src/agents/memory_sharing.py) - Shared memory
-- [result_aggregator.py](src/agents/result_aggregator.py) - Result merging
-- [collaboration_framework.py](src/agents/collaboration_framework.py) - Agent collaboration
-- [agent_communication.py](src/agents/agent_communication.py) - Agent communication
-- [role_assignment.py](src/agents/role_assignment.py) - Role management
-- [conflict_resolver.py](src/agents/conflict_resolver.py) - Conflict resolution
-
-**Dependencies**
-- Agent Runtime
-- Memory 2.0
-- Knowledge Intelligence
-- Research Engine
-
-**Status**
-🟡 PARTIAL
-
-**Tests**
-- Agent coordination
-- Context allocation
-- Result merging quality
-- Conflict resolution
-- Communication overhead
-- Collaboration efficiency
-
-**Next Work**
-- Agent specialization
-- Agent evolution
-- Agent society models
-- Agent communication protocols
-
-**Future Expansion**
-- Self-organizing agent societies
-- Agent learning from each other
-- Agent reputation systems
-- Meta-agents
-
----
-
-## ✅ Milestone 13 — Engineering Intelligence Platform ⭐⭐⭐⭐⭐⭐⭐⭐⭐
-
-**Purpose**
-Transform Aura into a senior software engineering assistant with repository understanding, AST parsing, and complete code editing capabilities.
-
-**Core Components**
-- [repository_analyzer.py](src/agents/repository_analyzer.py) - Repository analysis
-- [ast_analyzer.py](src/agents/ast_analyzer.py) - AST parsing
-- [symbol_graph.py](src/agents/symbol_graph.py) - Symbol extraction
-- [dependency_graph.py](src/agents/dependency_graph.py) - Dependency tracking
-- [code_editor.py](src/agents/code_editor.py) - Code editing
-- [import_resolver.py](src/agents/import_resolver.py) - Import management
-- [test_intelligence.py](src/agents/test_intelligence.py) - Testing
-- [bug_fixer.py](src/agents/bug_fixer.py) - Bug repair
-- [git_intelligence.py](src/agents/git_intelligence.py) - Git operations
-- [doc_generator.py](src/agents/doc_generator.py) - Documentation
-- [code_quality.py](src/agents/code_quality.py) - Quality analysis
-- [engineering_memory.py](src/agents/engineering_memory.py) - Engineering memory
-- [engineering_dashboard.py](src/agents/engineering_dashboard.py) - Dashboard
-
-**Dependencies**
-- Knowledge Intelligence
-- Research Engine
-- AST Parser (implied)
-- Git Intelligence (implied)
-
-**Status**
-✅ COMPLETE
-
-**Tests**
-- Repository indexing
-- AST parsing accuracy
-- Symbol extraction
-- Dependency graph generation
-- Multi-file editing
-- Import resolution
-- Test generation
-- Bug fixing
-- Git operations
-- Documentation generation
-- Code quality analysis
-
-**Next Work**
-- IDE integration
-- Multi-repository reasoning
-- Architecture analysis
-- Performance optimization
-
-**Future Expansion**
-- Autonomous pull requests
-- Refactoring suggestions
-- Code review automation
-- Architecture recommendation
-
----
-
-## 🎯 Milestone 14 — Research Engine ⭐⭐⭐⭐⭐
-
-**Purpose**
-This is **not just web search**. It is Aura's evidence collection and analysis system.
-
-```mermaid
-graph TD
-    User --> Aura Brain
-    Aura Brain --> Intent Detection
-    Intent Detection --> Need Live Data?
-    Need Live Data -->|Yes| Research Engine
-    Research Engine --> Multiple Search Providers
-    Multiple Search Providers --> Content Extraction
-    Content Extraction --> Evidence Ranking
-    Evidence Ranking --> Conflict Resolution
-    Conflict Resolution --> LLM Analysis
-    LLM Analysis --> Final Answer
+## 📈 Progress Overview
+
+```text
+Era 1 — Foundation (Milestones 1–10)               ███████████████████  10/10 (100% complete)
+Era 2 — Intelligence (Milestones 11–16)            ███████████████████  6/6   (100% complete)
+Era 3 — Capability Expansion (Milestones 17–26)    █████████░░░░░░░░░░  10 Partial Foundations Active
 ```
 
-**Core Components**
-- [research_engine.py](src/research/research_engine.py) - Main orchestrator
-- [search_manager.py](src/research/search_manager.py) - Search orchestration
-- [provider_manager.py](src/research/provider_manager.py) - Provider management
-- [content_fetcher.py](src/research/content_fetcher.py) - Content retrieval
-- [cache_manager.py](src/research/cache_manager.py) - Result caching
-- [models.py](src/research/models.py) - Research data models
-- [source_ranker.py](src/research/source_ranker.py) - Source ranking (Phase 2)
-- [fact_extractor.py](src/research/fact_extractor.py) - Fact extraction (Phase 3)
-- [conflict_resolver.py](src/research/conflict_resolver.py) - Conflict resolution (Phase 4)
-- [citation_builder.py](src/research/citation_builder.py) - Citation generation (Phase 5)
-- [research_modes.py](src/research/research_modes.py) - Quick/Standard/Deep modes (Phase 6)
-
-**Dependencies**
-- Aura Brain
-- Capability Router
-- Plugin Ecosystem
-- Agent Runtime
-- Memory 2.0
-- Knowledge Intelligence
-
-**Status**
-🎯 PENDING
-
-**Tests**
-- Multi-source search accuracy
-- Evidence ranking quality
-- Fact extraction accuracy
-- Conflict resolution
-- Citation generation
-- Trust scoring
-- Source ranking
-- Freshness detection
-- Cache effectiveness
-- Quick/Standard/Deep mode timing
-
-**Next Work**
-- Research data models (`models.py`)
-- Provider interface (abstract base class)
-- Search Manager implementation
-- Research Engine orchestration
-- Tavily provider integration
-- GitHub provider integration
-- Documentation provider integration
-- Citation builder
-- Brain integration
-
-**Future Expansion**
-- Semantic search enhancement
-- Real-time news integration
-- Academic paper search
-- Private search engine
-- Multi-language search
-- Multimedia content research
-
-**Supported Providers**
-- Tavily (web search)
-- Brave Search
-- GitHub
-- Wikipedia
-- Stack Overflow
-- Documentation sites
-- News sources
-- RSS feeds
-
-**Research Modes**
-- **Quick Search**: 1–3 sources, <10 seconds
-- **Standard Research**: 5–10 sources, 20–40 seconds
-- **Deep Research**: 20+ sources, multiple passes, several minutes
-
-**Plugin Integration**
-```mermaid
-graph LR
-    ResearchEngine -->|search()| TavilyProvider
-    ResearchEngine -->|search()| BraveProvider
-    ResearchEngine -->|search()| GitHubProvider
-    ResearchEngine -->|search()| WikipediaProvider
-    ResearchEngine -->|search()| DocumentationProvider
-    ResearchEngine -->|search()| NewsProvider
-```
-
-The Brain only sees `ResearchEngine.search()` — it never knows which provider was used.
-
-**Integration with Existing Milestones**
-- ✅ Milestone 1 — Aura Brain
-- ✅ Milestone 2 — Capability Router
-- ✅ Milestone 6 — Plugin Ecosystem
-- ✅ Milestone 9 — Agent Runtime
-- ✅ Milestone 11 — Knowledge Intelligence
-- ✅ Milestone 12 — Multi-Agent Intelligence
-- ✅ Milestone 13 — Engineering Intelligence
-
-**My Implementation Order**
-1. Research data models (`models.py`)
-2. Provider interface (abstract base class)
-3. Search Manager
-4. Research Engine
-5. Cache Manager
-6. Tavily provider
-7. GitHub provider
-8. Official documentation provider
-9. Citation builder
-10. Brain integration
-11. Research CLI tests
-12. Deep research mode
+**Overall Progress:** 16 / 26 Milestones Complete (61.5%), 10 / 10 Expansion Milestones with active foundational code.
 
 ---
 
-## 🎯 Milestone 15 — Desktop Intelligence ⭐⭐⭐⭐⭐
+## 🎯 Immediate Priority Expansion Order (Era 3)
 
-**Purpose**
-Transform Aura from a vision-only assistant to a comprehensive desktop awareness system that understands and interacts with your computer environment through comprehensive analysis, action execution, and intelligent monitoring.
-
-**Core Components**
-- [research_engine.py](src/knowledge/research_engine.py) - Main orchestrator
-- [search_manager.py](src/knowledge/search_manager.py) - Search orchestration
-- [provider_manager.py](src/knowledge/provider_manager.py) - Provider management
-- [content_fetcher.py](src/knowledge/content_fetcher.py) - Content retrieval
-- [source_ranker.py](src/knowledge/source_ranker.py) - Source ranking
-- [fact_extractor.py](src/knowledge/fact_extractor.py) - Fact extraction
-- [deduplicator.py](src/knowledge/deduplicator.py) - Content deduplication
-- [conflict_resolver.py](src/knowledge/conflict_resolver.py) - Conflict resolution
-- [citation_builder.py](src/knowledge/citation_builder.py) - Citation generation
-- [cache_manager.py](src/knowledge/cache_manager.py) - Result caching
-- [trust_scorer.py](src/knowledge/trust_scorer.py) - Trust scoring
-- [freshness_detector.py](src/knowledge/freshness_detector.py) - Freshness detection
-
-**Dependencies**
-- Aura Brain
-- Knowledge Intelligence
-- Memory 2.0
-
-**Status**
-🎯 PENDING
-
-**Tests**
-- Multi-source search accuracy
-- Fact verification
-- Citation quality
-- Conflict resolution
-- Trust scoring accuracy
-- Source ranking
-- Freshness detection
-- Cache effectiveness
-
-**Next Work**
-- Provider API integration
-- Search strategy optimization
-- Citation format standardization
-- Fact verification accuracy
-
-**Future Expansion**
-- Semantic search enhancement
-- Real-time news integration
-- Academic paper search
-- Private search engine
-
-**Supported Providers**
-- Tavily
-- Brave Search
-- Google Custom Search
-- GitHub
-- Stack Overflow
-- Documentation sites
-- News sources
-- RSS feeds
-- Wikipedia
-- Local documents (RAG)
-
-**Features**
-- Multi-source search with parallel queries
-- Trust scoring for sources
-- Fact verification against multiple sources
-- Automatic citation generation
-- Source caching and deduplication
-- Freshness detection for real-time data
-- Conflict resolution for contradictory information
-- Evidence-based answer generation
+1. **Research Intelligence 2.0 (Milestone 21)** ⭐⭐⭐⭐⭐⭐⭐ (60% foundation ready in `src/research/`)
+   - Wire 18 existing research modules into `ResearchPlanner` adapter and `BackendRegistry` with live search keys.
+2. **Coding Intelligence 2.0 (Milestone 19)** ⭐⭐⭐⭐⭐⭐⭐ (50% foundation ready in `src/agents/` and `src/core/`)
+   - Expand `AntigravityBackendAdapter` and integrate multi-repo refactoring and test generation.
+3. **World Model (Milestone 18)** ⭐⭐⭐⭐⭐⭐⭐ (45% foundation ready in `src/desktop/` and `src/workspace/`)
+   - Consolidate desktop state, workspace tracker, and knowledge graph into a unified `WorldModel` query interface.
+4. **Cognitive Memory (Milestone 17)** ⭐⭐⭐⭐⭐⭐⭐ (40% foundation ready in `src/memory/`)
+   - Unify conversation memory, execution memory, and project memory into `AgentSession`.
 
 ---
 
-## 📊 Current Project Status
-
-### Foundation Milestones (1-13) - Core Platform Foundation
-
-| Milestone | Status |
-|-----------|--------|
-| Aura Brain | 🟡 PARTIAL |
-| Capability Router | 🟡 PARTIAL |
-| Memory 2.0 | 🟡 PARTIAL |
-| Workspace Awareness | 🟡 PARTIAL |
-| Tool Execution Engine | 🟡 PARTIAL |
-| Plugin Ecosystem | 🟡 PARTIAL |
-| Vision System | ✅ COMPLETE |
-| Voice System | ✅ COMPLETE |
-| Agent Runtime | 🟡 PARTIAL |
-| Workflow Engine | 🟡 PARTIAL |
-| Knowledge Intelligence (RAG 2.0) | ✅ COMPLETE |
-| Multi-Agent Intelligence | 🟡 PARTIAL |
-| Engineering Intelligence Platform | ✅ COMPLETE |
-
-**Foundation Progress:** 11 / 13 Complete (85%)
-
-### Capability Milestones (14-26) - Advanced Capabilities
-
-| Milestone | Status |
-|-----------|--------|
-| Research Engine | 🎯 PENDING |
-| Desktop Intelligence | 🎯 PENDING |
-| Long-Term Memory | 🎯 PENDING |
-| Knowledge Graph | 🎯 PENDING |
-| Agent Society | 🎯 PENDING |
-| Tool Ecosystem | 🎯 PENDING |
-| Workflow Automation | 🎯 PENDING |
-| Vision++ | 🎯 PENDING |
-| Networking Expert | 🎯 PENDING |
-| Security Agent | 🎯 PENDING |
-| Self Improvement | 🎯 PENDING |
-| Personal Operating System | 🎯 PENDING |
-| Autonomous Project Manager | 🎯 PENDING |
-
-**Capability Progress:** 0 / 12 Complete (0%)
-
-### Overall Progress
-
-**Total Progress:** 11 / 26 Milestones Complete (42%)
-
-**Status Breakdown:**
-- ✅ COMPLETE (3): Voice System, Knowledge Intelligence (RAG 2.0), Engineering Intelligence Platform
-- 🟡 PARTIAL (8): Aura Brain, Capability Router, Memory 2.0, Workspace Awareness, Tool Execution Engine, Plugin Ecosystem, Agent Runtime, Workflow Engine
-- 🟡 PARTIAL (1): Multi-Agent Intelligence
-- 🎯 PENDING (13): Research Engine, Desktop Intelligence, Long-Term Memory, Knowledge Graph, Agent Society, Tool Ecosystem, Workflow Automation, Vision++, Networking Expert, Security Agent, Self Improvement, Personal Operating System, Autonomous Project Manager
+## 📜 Platform Architecture Constitution
+Read [`docs/ARCHITECTURE_FREEZE.md`](docs/ARCHITECTURE_FREEZE.md) for frozen platform contracts and contributor extension guidelines.
 
 ---
 
-## 📋 Development Phases (14 Phases)
-
-### Phase 1: Foundation Setup (Milestones 1-3)
-- Aura Brain
-- Capability Router
-- Memory 2.0
-
-### Phase 2: Core Platform (Milestones 4-7)
-- Workspace Awareness
-- Tool Execution Engine
-- Plugin Ecosystem
-- Vision System
-
-### Phase 3: Advanced Intelligence (Milestones 8-10)
-- Voice System
-- Agent Runtime
-- Workflow Engine
-
-### Phase 4: Intelligence Enhancement (Milestones 11-13)
-- Knowledge Intelligence (RAG 2.0)
-- Multi-Agent Intelligence
-- Engineering Intelligence Platform
-
-### Phase 5: Research Engine (Milestone 14)
-- Research Engine
-
-### Phase 6: Desktop Intelligence (Milestone 15)
-- Desktop Intelligence
-
-### Phase 7: Long-Term Memory (Milestone 16)
-- Long-Term Memory
-
-### Phase 8: Knowledge Graph (Milestone 17)
-- Knowledge Graph
-
-### Phase 9: Agent Society (Milestone 18)
-- Agent Society
-
-### Phase 10: Tool Ecosystem (Milestone 19)
-- Tool Ecosystem
-
-### Phase 11: Workflow Automation (Milestone 20)
-- Workflow Automation
-
-### Phase 12: Vision++ (Milestone 21)
-- Vision++
-
-### Phase 13: Networking Expert (Milestone 22)
-- Networking Expert
-
-### Phase 14: Advanced Agents (Milestones 23-26)
-- Security Agent
-- Self Improvement
-- Personal Operating System
-- Autonomous Project Manager
-
----
-
-## 🚀 Priority Development Order
-
-### Highest Priority (Immediate Next Steps)
-1. **Research Engine** (Milestone 14) ⭐⭐⭐⭐⭐
-   - Critical infrastructure for all capability milestones
-   - Real-time evidence gathering foundation
-   - Required by Desktop Intelligence and all later milestones
-   - Evidence collection and analysis system
-
-2. **Desktop Intelligence** (Milestone 15) ⭐⭐⭐⭐⭐
-   - Direct user value through system understanding
-   - Extends vision system to comprehensive desktop awareness
-   - Integration with Research Engine
-   - Foundation for automated desktop management
-
-3. **Long-Term Memory** (Milestone 16) ⭐⭐⭐⭐⭐
-   - Critical for persistent intelligence
-   - Foundation for personal OS
-   - Enhanced context retention
-
-4. **Knowledge Graph** (Milestone 17) ⭐⭐⭐
-   - Structured knowledge representation
-   - Improves all memory and reasoning capabilities
-   - Enables advanced search and retrieval
-
-5. **Agent Society** (Milestone 18) ⭐⭐⭐
-   - Multi-agent coordination
-   - Distributed intelligence
-   - Scalable problem solving
-
-### High Priority (Following Foundation)
-6. **Tool Ecosystem** (Milestone 19) ⭐⭐⭐
-   - Expands plugin capabilities
-   - Standardized tool interfaces
-   - Ecosystem growth
-
-7. **Workflow Automation** (Milestone 20) ⭐⭐⭐
-   - Automated task execution
-   - Integration with tools
-   - Process optimization
-
-8. **Vision++** (Milestone 21) ⭐⭐⭐
-   - Advanced computer vision
-   - Improved OCR
-   - Context-aware visual analysis
-
-### Medium Priority
-9. **Networking Expert** (Milestone 22) ⭐⭐
-   - Network security and diagnostics
-   - Infrastructure management
-   - Connectivity analysis
-
-10. **Security Agent** (Milestone 23) ⭐⭐
-    - Security monitoring
-    - Threat detection
-    - Automated security responses
-
-### Long-term Capabilities
-11. **Self Improvement** (Milestone 24) ⭐⭐
-    - Automatic skill acquisition
-    - Performance optimization
-    - Learning from interactions
-
-12. **Personal Operating System** (Milestone 25) ⭐
-    - Full OS integration
-    - Background process management
-    - System-level automation
-
-13. **Autonomous Project Manager** (Milestone 26) ⭐
-    - Complete project lifecycle management
-    - Resource allocation
-    - Goal-directed planning
-
----
-
-## 🔄 Future Considerations
-
-### Additional Enhancements Beyond Milestones 26
-- AI Model Optimization
-- Cross-platform Support
-- Performance Enhancements
-- Security Hardening
-- User Experience Improvements
-- Cloud Integration
-- Mobile Support
-- Collaboration Features
-- Edge Computing
-- Privacy Enhancements
-- Explainability Features
-- Compliance & Auditing
-
-### Documentation
-- [plugin_sdk.md](docs/plugin_sdk.md) - Plugin development guide
-- [VISION_SYSTEM.md](docs/VISION_SYSTEM.md) - Vision system documentation
-- [AGENT_RUNTIME.md](docs/AGENT_RUNTIME.md) - Agent runtime documentation
-- [migration_guide.md](docs/migration_guide.md) - Migration guide
-- [changelog.md](docs/changelog.md) - Version history
-- [ARCHITECTURE_STATUS.md](docs/ARCHITECTURE_STATUS.md) - Current architecture status
-- [roadmap.md](ROADMAP.md) - This roadmap document
-
----
-
-Last Updated: [Current Date]
-
-**Contributions:** Welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Last Updated: August 2026

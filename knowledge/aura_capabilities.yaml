@@ -1,0 +1,491 @@
+# ============================================================
+#  Aura Capability Catalog
+#  Exhaustive listing of every capability Aura can perform.
+#  This file documents static, human-curated capabilities.
+#  Dynamic capabilities are discovered live from CapabilityRegistry.
+# ============================================================
+
+# Format per group:
+#   id_prefix: capability namespace prefix (e.g. desktop.window)
+#   planner:   which PlannerRegistry entry handles this
+#   backend:   which BackendRegistry entry executes this
+#   capabilities: list of what Aura can do in this group
+
+groups:
+
+  # ── DESKTOP: Window Management ──────────────────────────
+  - group: Desktop — Window Management
+    id_prefix: desktop.window
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: List Windows
+        id: desktop.window.list
+        description: List all open windows on the desktop
+        examples: ["show all windows", "list open apps", "what is running"]
+      - name: Get Window Info
+        id: desktop.window.get
+        description: Get detailed info about a specific window
+        examples: ["get info about Notepad", "window details for Chrome"]
+      - name: Activate Window
+        id: desktop.window.activate
+        description: Bring a window to the foreground
+        examples: ["switch to Notepad", "focus Chrome", "activate calculator"]
+      - name: Close Window
+        id: desktop.window.close
+        description: Close a window gracefully
+        examples: ["close Notepad", "quit Chrome", "close the browser"]
+      - name: Minimize Window
+        id: desktop.window.minimize
+        description: Minimize a window to the taskbar
+        examples: ["minimize Notepad", "minimize all", "hide Chrome"]
+      - name: Maximize Window
+        id: desktop.window.maximize
+        description: Maximize a window to fill the screen
+        examples: ["maximize Notepad", "make Chrome full screen"]
+      - name: Restore Window
+        id: desktop.window.restore
+        description: Restore a minimized or maximized window to normal size
+        examples: ["restore Notepad", "restore Chrome window"]
+      - name: Resize Window
+        id: desktop.window.resize
+        description: Resize a window to given dimensions
+        examples: ["resize Notepad to 800x600", "make the window smaller"]
+      - name: Move Window
+        id: desktop.window.move
+        description: Move a window to a given position
+        examples: ["move Notepad to top left", "reposition Chrome"]
+      - name: Launch Application
+        id: desktop.window.launch
+        description: Launch an application by name
+        examples: ["open Notepad", "launch Calculator", "start Paint", "open Task Manager"]
+      - name: Kill Process
+        id: desktop.window.kill
+        description: Force-terminate a process by name or PID
+        risk: high
+        examples: ["kill Chrome", "force quit Notepad", "terminate process 1234"]
+
+  # ── DESKTOP: Clipboard ──────────────────────────────────
+  - group: Desktop — Clipboard
+    id_prefix: desktop.clipboard
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Get Clipboard
+        id: desktop.clipboard.get
+        description: Read the current clipboard content
+        examples: ["what is in the clipboard", "read clipboard", "show clipboard"]
+      - name: Set Clipboard
+        id: desktop.clipboard.set
+        description: Write text to the clipboard
+        examples: ["copy hello world to clipboard", "set clipboard to this text"]
+      - name: Clear Clipboard
+        id: desktop.clipboard.clear
+        description: Clear the clipboard
+        examples: ["clear clipboard", "empty clipboard"]
+      - name: Monitor Clipboard
+        id: desktop.clipboard.monitor
+        description: Monitor clipboard for changes
+        examples: ["watch clipboard", "monitor clipboard changes"]
+      - name: Clipboard History
+        id: desktop.clipboard.history
+        description: View recent clipboard items
+        examples: ["show clipboard history", "recent copies"]
+
+  # ── DESKTOP: Audio ──────────────────────────────────────
+  - group: Desktop — Audio
+    id_prefix: desktop.audio
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Get Volume
+        id: desktop.audio.volume.get
+        description: Get the current system volume level
+        examples: ["what is the volume", "current volume level"]
+      - name: Set Volume
+        id: desktop.audio.volume.set
+        description: Set the system volume to a specific level
+        examples: ["set volume to 50", "volume 80%", "turn volume to 30"]
+      - name: Volume Up
+        id: desktop.audio.volume.up
+        description: Increase system volume by a step
+        examples: ["volume up", "increase volume", "louder"]
+      - name: Volume Down
+        id: desktop.audio.volume.down
+        description: Decrease system volume by a step
+        examples: ["volume down", "decrease volume", "quieter", "lower the volume"]
+      - name: Mute
+        id: desktop.audio.mute
+        description: Mute the system audio
+        examples: ["mute", "mute the sound", "silence"]
+      - name: Unmute
+        id: desktop.audio.unmute
+        description: Unmute the system audio
+        examples: ["unmute", "turn sound back on", "restore audio"]
+      - name: List Audio Devices
+        id: desktop.audio.devices.list
+        description: List all available audio input/output devices
+        examples: ["list audio devices", "show speakers", "what microphones are available"]
+
+  # ── DESKTOP: Display ────────────────────────────────────
+  - group: Desktop — Display
+    id_prefix: desktop.display
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Get Display Info
+        id: desktop.display.info
+        description: Get display resolution, refresh rate, and DPI
+        examples: ["display info", "screen resolution", "monitor settings"]
+      - name: Set Brightness
+        id: desktop.display.brightness.set
+        description: Set screen brightness to a percentage
+        examples: ["brightness 40%", "set brightness to 70", "make screen brighter"]
+      - name: List Monitors
+        id: desktop.display.monitors.list
+        description: List all connected monitors
+        examples: ["list monitors", "show screens", "how many monitors"]
+      - name: Set Resolution
+        id: desktop.display.resolution.set
+        description: Change display resolution
+        risk: moderate
+        examples: ["set resolution to 1920x1080", "change screen resolution"]
+
+  # ── DESKTOP: Power ──────────────────────────────────────
+  - group: Desktop — Power
+    id_prefix: desktop.power
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Get Battery Status
+        id: desktop.power.battery.status
+        description: Get battery level and charging state
+        examples: ["battery status", "how much battery", "is it charging"]
+      - name: Lock PC
+        id: desktop.power.lock
+        description: Lock the Windows session
+        examples: ["lock pc", "lock computer", "lock screen"]
+      - name: Sleep
+        id: desktop.power.sleep
+        description: Put the computer to sleep
+        risk: moderate
+        examples: ["sleep", "put computer to sleep", "hibernate"]
+      - name: Restart
+        id: desktop.power.restart
+        description: Restart Windows
+        risk: high
+        examples: ["restart", "reboot", "restart pc"]
+      - name: Shutdown
+        id: desktop.power.shutdown
+        description: Shut down Windows
+        risk: high
+        examples: ["shutdown", "shut down the computer", "turn off pc"]
+      - name: Get Power Plan
+        id: desktop.power.plan.get
+        description: Get the current Windows power plan
+        examples: ["power plan", "current power mode", "what is the power setting"]
+
+  # ── DESKTOP: Network ────────────────────────────────────
+  - group: Desktop — Network
+    id_prefix: desktop.network
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Network Status
+        id: desktop.network.status
+        description: Get current network connection status
+        examples: ["network status", "am I connected", "internet connection"]
+      - name: Get IP Address
+        id: desktop.network.ip
+        description: Get local and public IP addresses
+        examples: ["what is my ip", "show ip address", "local ip"]
+      - name: WiFi On
+        id: desktop.network.wifi.enable
+        description: Enable WiFi adapter
+        examples: ["turn wifi on", "enable wifi", "connect wifi"]
+      - name: WiFi Off
+        id: desktop.network.wifi.disable
+        description: Disable WiFi adapter
+        examples: ["turn wifi off", "disable wifi", "disconnect wifi"]
+      - name: List Network Adapters
+        id: desktop.network.adapters.list
+        description: List all network adapters and their status
+        examples: ["list network adapters", "show network interfaces", "adapters"]
+      - name: Ping
+        id: desktop.network.ping
+        description: Ping a host to test connectivity
+        examples: ["ping google.com", "ping 8.8.8.8", "test connectivity to host"]
+      - name: DNS Lookup
+        id: desktop.network.dns
+        description: Perform a DNS lookup for a hostname
+        examples: ["dns lookup google.com", "resolve hostname", "nslookup"]
+      - name: Firewall Status
+        id: desktop.network.firewall.status
+        description: Check Windows Firewall status
+        examples: ["firewall status", "is firewall on", "check firewall"]
+
+  # ── DESKTOP: Services ───────────────────────────────────
+  - group: Desktop — Services
+    id_prefix: desktop.service
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: List Services
+        id: desktop.service.list
+        description: List all Windows services and their status
+        examples: ["list services", "show windows services", "running services"]
+      - name: Start Service
+        id: desktop.service.start
+        description: Start a Windows service by name
+        risk: moderate
+        examples: ["start service", "enable Windows Update", "start print spooler"]
+      - name: Stop Service
+        id: desktop.service.stop
+        description: Stop a Windows service by name
+        risk: moderate
+        examples: ["stop service", "disable print spooler", "stop Windows Update"]
+      - name: Get Service Status
+        id: desktop.service.status
+        description: Check the status of a specific Windows service
+        examples: ["service status", "is print spooler running", "check service"]
+
+  # ── DESKTOP: Registry ───────────────────────────────────
+  - group: Desktop — Registry
+    id_prefix: desktop.registry
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Read Registry Key
+        id: desktop.registry.read
+        description: Read a Windows Registry key value
+        examples: ["read registry key", "registry HKLM\\SOFTWARE\\..."]
+      - name: Write Registry Key
+        id: desktop.registry.write
+        description: Write a value to a Windows Registry key
+        risk: high
+        examples: ["set registry key", "write to registry"]
+      - name: List Registry Keys
+        id: desktop.registry.list
+        description: List subkeys of a registry path
+        examples: ["list registry keys", "show subkeys"]
+
+  # ── RESEARCH ────────────────────────────────────────────
+  - group: Research
+    id_prefix: research
+    planner: ResearchPlanner
+    backend: Gemini
+    capabilities:
+      - name: Search Web
+        id: research.search
+        description: Perform a web search and summarize results
+        examples: ["search for", "look up", "find information about"]
+      - name: Deep Research
+        id: research.deep
+        description: Multi-source iterative research with evidence ranking and confidence scoring
+        examples: ["research", "deep research", "investigate", "comprehensive report on"]
+      - name: Compare Sources
+        id: research.compare
+        description: Compare multiple sources and detect conflicts
+        examples: ["compare sources", "fact check", "cross-reference"]
+      - name: Extract Evidence
+        id: research.evidence
+        description: Extract supporting evidence for a claim
+        examples: ["find evidence for", "support this claim", "evidence that"]
+      - name: Detect Conflicts
+        id: research.conflict
+        description: Detect contradictions across sources
+        examples: ["detect conflicts", "contradictions in", "conflicting information"]
+      - name: Generate Citations
+        id: research.citations
+        description: Generate properly formatted citations
+        examples: ["generate citations", "cite sources", "bibliography"]
+      - name: Summarize Article
+        id: research.summarize
+        description: Summarize a URL, article, or document
+        examples: ["summarize", "tldr", "brief summary of"]
+      - name: Generate Report
+        id: research.report
+        description: Generate a comprehensive research report on a topic
+        examples: ["generate report", "write report on", "research report"]
+      - name: Confidence Loop
+        id: research.confidence
+        description: Iteratively improve research confidence to a target threshold
+        examples: ["until confident", "high confidence research", "verify until sure"]
+
+  # ── CODING & ENGINEERING ─────────────────────────────────
+  - group: Coding & Engineering
+    id_prefix: coding
+    planner: CodingPlanner
+    backend: Antigravity CLI
+    capabilities:
+      - name: Explain Code
+        id: coding.explain
+        description: Explain what a piece of code does
+        examples: ["explain this code", "what does this function do", "walk me through"]
+      - name: Fix Bug
+        id: coding.fix
+        description: Identify and fix a bug in code
+        examples: ["fix bug", "fix auth.py", "there is a bug", "debug this"]
+      - name: Refactor
+        id: coding.refactor
+        description: Refactor code for clarity, performance, or structure
+        examples: ["refactor", "clean up this code", "improve this function"]
+      - name: Generate Tests
+        id: coding.tests
+        description: Generate unit tests for a function or module
+        examples: ["generate tests", "write unit tests", "test this function"]
+      - name: AST Analysis
+        id: coding.ast
+        description: Analyze code structure using AST parsing
+        examples: ["ast analysis", "analyze code structure", "parse this code"]
+      - name: Repository Analysis
+        id: coding.repo
+        description: Understand and summarize a repository's architecture
+        examples: ["analyze repo", "explain the codebase", "repository structure"]
+      - name: Code Review
+        id: coding.review
+        description: Review code and suggest improvements
+        examples: ["review this code", "code review", "PR review"]
+      - name: Git Operations
+        id: coding.git
+        description: Perform git operations (status, log, diff, commit)
+        examples: ["git status", "git log", "create a commit", "git diff"]
+      - name: Generate Code
+        id: coding.generate
+        description: Generate new code from a description
+        examples: ["write a function", "create a class", "generate code for"]
+      - name: Documentation
+        id: coding.docs
+        description: Generate or improve code documentation and docstrings
+        examples: ["document this", "add docstrings", "generate documentation"]
+      - name: Dependency Analysis
+        id: coding.deps
+        description: Analyze project dependencies and imports
+        examples: ["analyze dependencies", "import graph", "dependency tree"]
+
+  # ── VOICE ────────────────────────────────────────────────
+  - group: Voice
+    id_prefix: voice
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Start Listening
+        id: voice.listen.start
+        description: Activate speech-to-text listening
+        examples: ["start listening", "listen", "voice mode on"]
+      - name: Stop Listening
+        id: voice.listen.stop
+        description: Deactivate speech-to-text listening
+        examples: ["stop listening", "voice mode off", "stop voice"]
+      - name: Wake Word
+        id: voice.wake_word
+        description: Enable wake word detection ("Hey Aura")
+        examples: ["wake word on", "enable hey aura", "activate wake word"]
+      - name: Text-to-Speech
+        id: voice.tts
+        description: Speak a text string aloud
+        examples: ["say hello", "read this aloud", "speak this"]
+      - name: Voice Settings
+        id: voice.settings
+        description: Configure voice speed, pitch, and language
+        examples: ["voice settings", "change voice speed", "voice language"]
+
+  # ── VISION ───────────────────────────────────────────────
+  - group: Vision & Screen Analysis
+    id_prefix: vision
+    planner: DesktopPlanner
+    backend: Gemini
+    capabilities:
+      - name: Screenshot
+        id: vision.screenshot
+        description: Take a screenshot of the current screen
+        examples: ["take screenshot", "capture screen", "screenshot"]
+      - name: Analyze Screen
+        id: vision.analyze
+        description: Analyze the current screen and describe what is visible
+        examples: ["what do you see", "analyze screen", "describe the screen"]
+      - name: OCR
+        id: vision.ocr
+        description: Extract text from the screen or an image
+        examples: ["read text on screen", "ocr", "extract text from image"]
+      - name: Find Element
+        id: vision.find
+        description: Locate a UI element on the screen by description
+        examples: ["find the submit button", "where is the search box", "locate element"]
+      - name: Live Screen Monitor
+        id: vision.live
+        description: Monitor screen for changes in real time
+        examples: ["watch screen", "monitor screen", "alert me when screen changes"]
+
+  # ── MEMORY ───────────────────────────────────────────────
+  - group: Memory & Knowledge
+    id_prefix: memory
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Remember Fact
+        id: memory.remember
+        description: Store a fact or preference in persistent memory
+        examples: ["remember that", "remember my name is", "save this"]
+      - name: Recall Facts
+        id: memory.recall
+        description: Recall stored facts relevant to a query
+        examples: ["recall", "do you remember", "what do you know about"]
+      - name: Forget
+        id: memory.forget
+        description: Delete a stored memory entry
+        examples: ["forget that", "delete memory", "remove this from memory"]
+      - name: Show Facts
+        id: memory.show
+        description: Show all stored facts or a filtered subset
+        examples: ["show facts", "list memories", "what do you know about me"]
+      - name: Knowledge Base Query
+        id: memory.knowledge.query
+        description: Query the RAG 2.0 knowledge base
+        examples: ["search knowledge base", "find in documents", "knowledge base query"]
+
+  # ── WORKFLOW ─────────────────────────────────────────────
+  - group: Workflow Automation
+    id_prefix: workflow
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: Create Workflow
+        id: workflow.create
+        description: Define a named automation workflow
+        examples: ["create workflow", "new automation", "define workflow"]
+      - name: Run Workflow
+        id: workflow.run
+        description: Execute a named workflow
+        examples: ["run workflow", "execute automation", "start workflow"]
+      - name: List Workflows
+        id: workflow.list
+        description: List all defined workflows
+        examples: ["list workflows", "show automations", "my workflows"]
+      - name: Schedule Workflow
+        id: workflow.schedule
+        description: Schedule a workflow to run at a time or on a trigger
+        examples: ["schedule workflow", "run at 9am", "trigger on file change"]
+
+  # ── PLUGINS ──────────────────────────────────────────────
+  - group: Plugin Ecosystem
+    id_prefix: plugin
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    capabilities:
+      - name: List Plugins
+        id: plugin.list
+        description: List all installed Aura plugins
+        examples: ["list plugins", "show plugins", "what plugins are installed"]
+      - name: Enable Plugin
+        id: plugin.enable
+        description: Enable a plugin by name
+        examples: ["enable plugin", "activate plugin"]
+      - name: Disable Plugin
+        id: plugin.disable
+        description: Disable a plugin by name
+        examples: ["disable plugin", "deactivate plugin"]
+      - name: Plugin Info
+        id: plugin.info
+        description: Get detailed info about a specific plugin
+        examples: ["plugin info", "describe plugin", "what does plugin X do"]

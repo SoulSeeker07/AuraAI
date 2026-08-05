@@ -201,6 +201,9 @@ class DesktopExecutionEngine:
             logger.info("\n--- Stage: Pipeline Execute ---")
             self.diagnostics.start_stage(DiagnosticsStage.EXECUTION)
 
+            from src.core.orchestration.world_snapshot import WorldSnapshotProvider
+            before_snap = WorldSnapshotProvider().snapshot()
+
             target_manager = (
                 self.manager_registry.resolve(capability)
                 or self.manager
@@ -237,20 +240,30 @@ class DesktopExecutionEngine:
 
             self.diagnostics.complete_stage(DiagnosticsStage.EXECUTION)
 
+            after_snap = WorldSnapshotProvider().snapshot()
+
             result.goal = goal
             result.capability = capability
             result.manager = descriptor.manager
 
-            # Stage 5: Verification
+            # Stage 5: Real OS Verification
             logger.info("\n--- Stage: Verification ---")
             self.diagnostics.start_stage(DiagnosticsStage.VERIFICATION)
 
-            if self.config.enable_verification and result.success:
-                result.verification = self._verify_result(result, descriptor)
+            if self.config.enable_verification:
+                from .verification import ActionVerifier
+                result.verification = ActionVerifier.verify_action(
+                    capability=capability,
+                    goal=goal,
+                    before_snap=before_snap,
+                    after_snap=after_snap,
+                    result=result,
+                )
+                result.success = result.success and result.verification.get("passed", False)
             else:
                 result.verification = {
                     "passed": result.success,
-                    "skipped": not self.config.enable_verification,
+                    "skipped": True,
                 }
 
             logger.info(f"  Passed: {result.verification.get('passed', False)}")

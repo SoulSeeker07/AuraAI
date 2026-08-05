@@ -27,6 +27,24 @@ class BrowserRules:
                 "requires_permission": False,
             },
             {
+                "keywords": ["shop", "buy", "cart", "add to cart", "price", "amazon", "ebay", "flipkart"],
+                "confidence": 0.95,
+                "priority": CapabilityPriority.HIGH,
+                "requires_permission": False,
+            },
+            {
+                "keywords": ["order", "checkout", "place order"],
+                "confidence": 0.95,
+                "priority": CapabilityPriority.HIGH,
+                "requires_permission": True,
+            },
+            {
+                "keywords": ["scroll", "scroll down", "scroll up"],
+                "confidence": 0.90,
+                "priority": CapabilityPriority.MEDIUM,
+                "requires_permission": False,
+            },
+            {
                 "keywords": ["close", "quit"],
                 "confidence": 0.85,
                 "priority": CapabilityPriority.MEDIUM,

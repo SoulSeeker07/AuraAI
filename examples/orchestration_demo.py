@@ -1,16 +1,16 @@
 """
-Milestone 16 — End-to-End Multi-Agent Orchestration Demo
+Milestone 16 — Cognitive Orchestration Layer Demo
 
-Demonstrates the 6-phase pipeline:
-1. Intent & Task Decomposition (Task Graph)
-2. Role Planner Selection (Research + Desktop + Coding)
-3. Dynamic Backend Selection (Gemini/Groq + Native Engine + Antigravity CLI)
-4. Concurrent Task Execution
-5. Result Fusion & Response Synthesis
-6. Unified Memory Update
+Demonstrates the full 7-stage cognitive pipeline with OS Session & Budget management:
+1. Memory Recall (Context pre-fetch)
+2. Executive Decision & Reasoning (DecisionEngine + Risk + ExecutionBudget)
+3. Task Graph Decomposition (TaskDecomposer)
+4. Supervisor Delegation (SupervisorAgent -> PlannerRegistry)
+5. Backend Selection & Parallel Execution (BackendRegistry -> Antigravity CLI, Gemini, Native Desktop)
+6. Result Fusion & Observation Merging (ResultMerger)
+7. Unified Memory Write (Persist outcomes)
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -19,12 +19,15 @@ root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-from src.execution.orchestration_engine import MasterOrchestrator
+from src.core.backends.backend_registry import BackendRegistry
+from src.core.orchestration.agent_session import ExecutionBudget
+from src.core.orchestration.master_orchestrator import MasterOrchestrator
+from src.core.orchestration.planner_registry import PlannerRegistry
 
 
 def main():
     print("=" * 80)
-    print("      AURA AI OPERATING SYSTEM — MILESTONE 16 ORCHESTRATION DEMO")
+    print("     AURA AI OPERATING SYSTEM - COGNITIVE ORCHESTRATION LAYER DEMO")
     print("=" * 80)
 
     user_goal = (
@@ -32,43 +35,49 @@ def main():
         "create a markdown report, and ask Antigravity to update the affected files."
     )
 
-    print(f"\n[USER GOAL]: '{user_goal}'\n")
+    budget = ExecutionBudget(
+        max_time_seconds=30.0,
+        max_cost_usd=0.05,
+        max_backends=4,
+        allow_parallel=True,
+        local_only=False,
+    )
 
-    orchestrator = MasterOrchestrator()
-    result = orchestrator.execute_goal(user_goal)
+    print(f"\n[USER GOAL]: '{user_goal}'")
+    print(f"[EXECUTION BUDGET]: MaxTime={budget.max_time_seconds}s, MaxCost=${budget.max_cost_usd}, AllowParallel={budget.allow_parallel}\n")
+
+    MasterOrchestrator.reset_instance()
+    PlannerRegistry.reset_instance()
+    BackendRegistry.reset_instance()
+
+    orchestrator = MasterOrchestrator.get_instance()
+    result = orchestrator.process_request(user_goal, budget=budget)
 
     print("-" * 80)
-    print(f"EXECUTION STATUS: {result.status.upper()}")
-    print(f"TOTAL EXECUTION TIME: {result.execution_time_ms:.2f} ms")
+    print(f"EXECUTION STATUS: {'SUCCESS' if result.success else 'FAILED'}")
+    print(f"CONFIDENCE SCORE: {result.confidence:.2f}")
+    print(f"TOTAL EXECUTION TIME: {result.execution_time_seconds * 1000:.2f} ms")
+    print(f"AGENT SESSION ID: {result.data.get('session_id', 'N/A')}")
     print("-" * 80)
 
-    print("\n--- PHASE 1-4: UNIFIED EXECUTION TRACE ---")
-    for step in result.execution_trace:
-        print(f"  * [{step['task_id']}] {step['title']}")
-        print(f"    - Role Planner : {step['role']}")
-        print(f"    - Selected Backend : {step['backend']}")
-        print(f"    - Result Status: {step['status']}")
+    print("\n--- STAGE 2: EXECUTIVE DECISION ENGINE SUMMARY ---")
+    budget_dict = result.data.get("budget", {})
+    print(f"  Enforced Budget: {budget_dict}")
 
-    print("\n--- PHASE 5: RESULT FUSION ---")
-    print("Observations:")
+    print("\n--- STAGE 5 & 6: STRUCTURED OBSERVATIONS ---")
     for obs in result.observations:
         print(f"  + {obs}")
 
-    if result.modified_files:
-        print("\nModified Files:")
-        for f in result.modified_files:
-            print(f"  [FILE] {f}")
+    if result.artifacts:
+        print("\n--- UNIFIED ARTIFACT STORE ---")
+        for artifact in result.artifacts:
+            print(f"  [ARTIFACT] {artifact.get('artifact_id')} ({artifact.get('artifact_type')}): {artifact.get('location')} [Creator: {artifact.get('creator')}]")
 
-    if result.citations:
-        print("\nCitations:")
-        for c in result.citations:
-            print(f"  [CITE] {c}")
-
-    print("\n--- SUMMARY ---")
-    print(result.execution_summary)
+    metrics = result.data.get("metrics", {})
+    print("\n--- STAGE 7: AGENT SESSION METRICS ---")
+    print(f"Subtasks Completed: {metrics.get('subtasks_completed', 0)}/{metrics.get('subtasks_total', 0)}")
     print("=" * 80)
 
 
 if __name__ == "__main__":
     main()
-

@@ -38,7 +38,10 @@ class CLIClient:
             logger.warning(f"Failed to initialize autonomous coding agent: {e}")
             self.autonomous_coding_agent = None
             self.coding_agent_enabled = False
-            self.code_executor = None  # <-- added
+            self.code_executor = None
+        self.verbosity_mode = (
+            "normal"  # 'normal', 'developer', 'debug', 'benchmark', 'trace'
+        )
 
     def print_banner(self):
         """Print the AuraAI banner."""
@@ -54,7 +57,7 @@ class CLIClient:
         )
         print(f"Plugins : {self.aura_core.plugin_count} Loaded")
         print(f"Voice : {'Enabled' if self.aura_core.voice_enabled else 'Disabled'}")
-        print(f"Vision : {'Ready' if self.aura_core.vision_enabled else 'Not ready'}")
+        print(f"Vision : {'Ready' if self.aura_core.vision_enabled else 'Disabled (camera not detected)'}")
         print(
             f"AI Brain : {'Ready' if self.aura_core.llm_enabled else 'Not configured (set GROQ_API_KEY)'}"
         )
@@ -490,6 +493,16 @@ class CLIClient:
         print("  engineering:test <file> - Run tests")
         print("  engineering:docs <file> - Generate documentation")
 
+        print("\n" + "-" * 60)
+        print("OUTPUT MODES")
+        print("-" * 60)
+        print("  mode normal     - Clean user responses only")
+        print("  mode developer  - Medium trace info per request")
+        print("  mode debug      - Full verbose logs")
+        print("  mode benchmark  - Latency breakdown table")
+        print("  mode trace      - Live execution tree after each response")
+        print("  trace           - Show trace for last request")
+
         print("=" * 60)
 
     async def process_command(self, command: str):
@@ -737,6 +750,38 @@ class CLIClient:
             elif cmd == "doctor":
                 self.print_doctor_report()
 
+            elif cmd == "mode" or cmd.startswith("mode"):
+                parts = command.split()
+                valid_modes = ["normal", "developer", "debug", "benchmark", "trace"]
+                if len(parts) > 1 and parts[1].lower() in valid_modes:
+                    self.verbosity_mode = parts[1].lower()
+                    print(f"\n✓ Output verbosity set to '{self.verbosity_mode}' mode.")
+                    if self.verbosity_mode == "trace":
+                        print(
+                            "  Each response will display a live execution trace tree."
+                        )
+                else:
+                    print(f"\nCurrent Verbosity Mode: {self.verbosity_mode}")
+                    print(
+                        "Usage: mode [normal | developer | debug | benchmark | trace]"
+                    )
+
+            elif cmd == "trace":
+                # Show trace of the last executed request
+                try:
+                    from core.orchestration import MasterOrchestrator
+
+                    orch = MasterOrchestrator.get_instance()
+                    if orch._last_result:
+                        self._render_trace_tree(orch._last_result)
+                    else:
+                        print(
+                            "\n  No request has been processed yet. "
+                            "Send a message first, then run 'trace'."
+                        )
+                except Exception as e:
+                    print(f"\n✗ Could not render trace: {e}")
+
             elif cmd == "graph":
                 self.print_graph()
 
@@ -773,14 +818,140 @@ class CLIClient:
         """
         self.aura_core.add_to_conversation("user", user_input)
 
-        print("\nAura is thinking...")
-        response = await self.aura_core.get_ai_response(user_input)
+        print(f"\nAura is thinking... [Mode: {self.verbosity_mode}]")
+        response = await self.aura_core.process_request(user_input)
 
         self.aura_core.add_to_conversation("assistant", response)
         print(f"\nAura > {response}")
 
+        if self.verbosity_mode in ("benchmark", "trace"):
+            try:
+                from core.orchestration import MasterOrchestrator
+
+                orch = MasterOrchestrator.get_instance()
+                if orch._last_result:
+                    if self.verbosity_mode == "benchmark":
+                        m = orch._last_result.data.get("metrics", {})
+                        print("\n" + "─" * 60)
+                        print("                EXECUTION LATENCY BENCHMARK")
+                        print("─" * 60)
+                        print(
+                            f"  Memory Recall:    {m.get('memory_recall_ms', 0):.2f} ms"
+                        )
+                        print(
+                            f"  Decision Engine:  {m.get('decision_engine_ms', 0):.2f} ms"
+                        )
+                        print(
+                            f"  Decomposition:    {m.get('decomposition_ms', 0):.2f} ms"
+                        )
+                        print(f"  Execution:        {m.get('execution_ms', 0):.2f} ms")
+                        print(
+                            f"  Result Merger:    {m.get('result_merger_ms', 0):.2f} ms"
+                        )
+                        print(
+                            f"  Total Request:    {m.get('total_request_ms', 0):.2f} ms"
+                        )
+                        print("─" * 60)
+                    else:  # trace mode
+                        self._render_trace_tree(orch._last_result)
+            except Exception as e:
+                logger.warning(f"Could not render execution trace: {e}")
+
         # Check if response contains Python code blocks
         await self._handle_code_blocks(response)
+
+    # ──────────────────────────────────────────────────────────────
+    # Runtime Visualization
+    # ──────────────────────────────────────────────────────────────
+
+    def _render_trace_tree(self, result: object) -> None:  # type: ignore[override]
+        """
+        Render a tree-style execution trace for the last processed request.
+
+        Draws from ExecutionResult.data which contains 'metrics' and 'decision'
+        populated by MasterOrchestrator after every request.
+        """
+        data = getattr(result, "data", {}) or {}
+        metrics: dict = data.get("metrics", {})
+        decision: dict = data.get("decision", {})
+        success: bool = getattr(result, "success", True)
+        goal: str = getattr(result, "goal", "")
+        planner_name: str = getattr(result, "planner", "—")
+        confidence: float = getattr(result, "confidence", 0.0)
+
+        intent = decision.get("intent_type", "—").upper()
+        preferred_planner = decision.get("preferred_planner", planner_name or "—")
+        needs_backend = decision.get("needs_backend", False)
+        from_memory = decision.get("can_answer_from_memory", False)
+        from_system = decision.get("can_answer_from_system", False)
+        needs_planner = decision.get("needs_planner", True)
+
+        mem_read = "✓" if from_memory or from_system else "—"
+        mem_write = "✓" if metrics.get("subtasks_completed", 0) > 0 else "—"
+        backend_label = "Native + Cloud" if needs_backend else "Native"
+        status_icon = "✓" if success else "✗"
+
+        total_ms = metrics.get("total_request_ms", 0)
+        mem_ms = metrics.get("memory_recall_ms", 0)
+        dec_ms = metrics.get("decision_engine_ms", 0)
+        decomp_ms = metrics.get("decomposition_ms", 0)
+        exec_ms = metrics.get("execution_ms", 0)
+        merge_ms = metrics.get("result_merger_ms", 0)
+        subtasks_done = metrics.get("subtasks_completed", 0)
+        subtasks_total = metrics.get("subtasks_total", 0)
+
+        # Goal preview (truncated for readability)
+        goal_preview = (goal[:52] + "…") if len(goal) > 54 else goal
+
+        print("\n" + "─" * 62)
+        print(
+            f"  AURA RUNTIME TRACE    {status_icon} {'SUCCESS' if success else 'FAILED'}"
+        )
+        print("─" * 62)
+        print(f"  Goal  : {goal_preview}")
+        print(
+            f"  Result: confidence={confidence:.0%}  subtasks={subtasks_done}/{subtasks_total}"
+        )
+        print("─" * 62)
+        print("  USER")
+        print("  │")
+        print(f"  ├── Memory Read        [{mem_ms:6.1f} ms]  {mem_read}")
+        if from_memory:
+            print("  │     recalled from long-term store")
+        elif from_system:
+            print("  │     answered from system state")
+        else:
+            print("  │     no cached hit")
+        print("  │")
+        print(f"  ├── Decision Engine    [{dec_ms:6.1f} ms]")
+        print(f"  │     Intent  : {intent}")
+        print(f"  │     Memory? : {'Yes' if from_memory else 'No'}")
+        print(f"  │     System? : {'Yes' if from_system else 'No'}")
+        print(f"  │     Planner?: {'Yes' if needs_planner else 'No'}")
+        print("  │")
+        if needs_planner:
+            print(f"  ├── Decomposition      [{decomp_ms:6.1f} ms]")
+            print(f"  │     Planner : {preferred_planner.title()} Planner")
+            print("  │")
+            print(f"  ├── Execution          [{exec_ms:6.1f} ms]")
+            print(f"  │     Backend : {backend_label}")
+            if subtasks_total > 1:
+                print(
+                    f"  │     Tasks   : {subtasks_done}/{subtasks_total} completed (parallel)"
+                )
+            else:
+                print(f"  │     Tasks   : {subtasks_done}/{subtasks_total} completed")
+        else:
+            print("  ├── Execution          [  0.0 ms]")
+            print("  │     (No planner — answered directly)")
+        print("  │")
+        print(f"  ├── Result Merger      [{merge_ms:6.1f} ms]")
+        print(f"  │     Success : {'Yes' if success else 'No'}")
+        print("  │")
+        print(f"  └── Memory Write       [{mem_ms:6.1f} ms]  {mem_write}")
+        print("")
+        print(f"  Total wall time: {total_ms:.2f} ms")
+        print("─" * 62)
 
     async def _handle_code_blocks(self, response: str):
         """

@@ -15,6 +15,7 @@ import logging
 from enum import Enum
 from typing import Any
 
+from .browser_agent import BrowserAgent
 from .coding_agent import CodingAgent
 from .desktop_agent import DesktopAgent
 from .learning_agent import LearningAgent
@@ -58,6 +59,10 @@ class AgentCapability(Enum):
     FILE_OPERATIONS = "file_operations"
     SYSTEM_CONTROLS = "system_controls"
     BROWSER_MANAGEMENT = "browser_management"
+    BROWSER_SHOPPING = "browser_shopping"
+    BROWSER_SCROLLING = "browser_scrolling"
+    BROWSER_INTERACTION = "browser_interaction"
+    BROWSER_AUTOMATION = "browser_automation"
 
     ALL = "all"
 
@@ -72,6 +77,7 @@ class AgentType(Enum):
     VISION = "vision"
     VOICE = "voice"
     LEARNING = "learning"
+    BROWSER = "browser"
 
 
 class Agent:
@@ -474,4 +480,23 @@ def register_builtin_agents(registry: AgentRegistry):
         },
     )
 
-    logging.info("Registered 7 built-in agents")
+    # Browser Agent
+    registry.register_agent(
+        agent_id="browser",
+        agent_type=AgentType.BROWSER,
+        agent_class=BrowserAgent,
+        capabilities=[
+            AgentCapability.BROWSER_MANAGEMENT,
+            AgentCapability.BROWSER_SHOPPING,
+            AgentCapability.BROWSER_SCROLLING,
+            AgentCapability.BROWSER_INTERACTION,
+            AgentCapability.BROWSER_AUTOMATION,
+        ],
+        priority=80,
+        metadata={
+            "name": "Browser Agent",
+            "description": "Handles web browsing, shopping, cart, orders, and scrolling",
+        },
+    )
+
+    logging.info("Registered 8 built-in agents")

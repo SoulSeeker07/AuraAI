@@ -83,3 +83,11 @@ def get_logger(
 # Default logger: everything goes to Data/aura.log,
 # console only shows WARNING and above (clean CLI).
 logger = setup_logger("")
+
+info = logger.info
+error = logger.error
+warning = logger.warning
+debug = logger.debug
+critical = logger.critical
+exception = logger.exception
+

@@ -6,13 +6,18 @@ Main entry point for the routing system.
 Provides capability routing, workflow orchestration, and plugin discovery.
 """
 
-from .backend_registry import BackendMetadata, BackendRegistry, BaseBackend
+from ..core.backends import BackendRegistry
+from ..core.orchestration import (
+    PlannerRegistry,
+    PlannerRole,
+    SubTask,
+    TaskDecomposer,
+    TaskGraph,
+)
 from .capability_router import CapabilityRouter
 from .capability_types import CapabilityCategory, CapabilityPriority, CapabilityType
-from .planner_registry import BaseRolePlanner, PlannerRegistry
 from .plugin_registry import PluginCapability, PluginRegistry
 from .routing_result import RoutingResult
-from .task_decomposer import PlannerRole, SubTask, TaskDecomposer, TaskGraph
 from .workflow_orchestrator import WorkflowOrchestrator, WorkflowStep
 
 __all__ = [
@@ -30,9 +35,5 @@ __all__ = [
     "SubTask",
     "PlannerRole",
     "PlannerRegistry",
-    "BaseRolePlanner",
     "BackendRegistry",
-    "BaseBackend",
-    "BackendMetadata",
 ]
-

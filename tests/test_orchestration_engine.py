@@ -1,23 +1,45 @@
 """
-Unit tests for MasterOrchestrator (Milestone 16 Phases 1-6).
+Unit tests for MasterOrchestrator, DecisionEngine, and AgentSession (Cognitive Orchestration Layer).
 """
 
 import pytest
-from src.execution.orchestration_engine import MasterOrchestrator
+
+from src.core.backends.backend_registry import BackendRegistry
+from src.core.orchestration.agent_session import AgentSession, ExecutionBudget
+from src.core.orchestration.decision_engine import DecisionEngine
+from src.core.orchestration.master_orchestrator import MasterOrchestrator
+from src.core.orchestration.planner_registry import PlannerRegistry
 
 
-def test_master_orchestrator_end_to_end():
-    orchestrator = MasterOrchestrator()
+def test_decision_engine_evaluation():
+    engine = DecisionEngine()
+    budget = ExecutionBudget(max_time_seconds=15.0, local_only=True)
+    outcome = engine.evaluate(
+        "Research Python 3.14 changes and update code", budget=budget
+    )
+
+    assert outcome.should_search_first is False  # Local-only budget disables web search
+    assert outcome.budget.max_time_seconds == 15.0
+
+
+def test_master_orchestrator_agent_session():
+    MasterOrchestrator.reset_instance()
+    PlannerRegistry.reset_instance()
+    BackendRegistry.reset_instance()
+
+    orchestrator = MasterOrchestrator.get_instance()
     goal = "Research Python 3.14 changes, summarize them, open my VS Code project, create a markdown report, and ask Antigravity to update the affected files."
 
-    result = orchestrator.execute_goal(goal)
+    budget = ExecutionBudget(
+        max_time_seconds=20.0, max_cost_usd=0.05, allow_parallel=True
+    )
+    result = orchestrator.process_request(goal, budget=budget)
 
-    assert result.status == "success"
-    assert len(result.execution_trace) >= 3
-    assert len(result.observations) >= 2
-    assert "PYTHON_3_14_RELEASE_NOTES.md" in result.modified_files
+    assert result.success is True
+    assert result.planner == "cognitive_orchestrator"
+    assert len(result.observations) >= 3
+    assert result.data["metrics"]["subtasks_completed"] >= 3
 
-    # Verify backends executed in trace
-    backends_used = [t["backend"] for t in result.execution_trace]
-    assert "Antigravity CLI" in backends_used
-    assert "Native Desktop Engine" in backends_used
+    # Check observations and artifacts
+    assert len(result.artifacts) >= 2
+    assert any("DecisionEngine" in obs for obs in result.observations)

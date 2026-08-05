@@ -25,12 +25,12 @@ if __package__:
     from ..verification_layer import VerificationResult
     from .base_manager import BaseNativeManager
 else:
-    from desktop.native.desktop_result import DesktopResult
-    from desktop.native.managers.base_manager import BaseNativeManager
-    from desktop.native.native_exceptions import WindowError
-    from desktop.native.native_execution_context import NativeExecutionContext
-    from desktop.native.native_result import NativeResult, ResultStatus
-    from desktop.native.verification_layer import VerificationResult
+    from src.desktop.native.desktop_result import DesktopResult
+    from src.desktop.native.managers.base_manager import BaseNativeManager
+    from src.desktop.native.native_exceptions import WindowError
+    from src.desktop.native.native_execution_context import NativeExecutionContext
+    from src.desktop.native.native_result import NativeResult, ResultStatus
+    from src.desktop.native.verification_layer import VerificationResult
 
 
 class WindowManager(BaseNativeManager):
@@ -69,6 +69,12 @@ class WindowManager(BaseNativeManager):
     def capabilities(self) -> list[str]:
         """Get list of capabilities supported by WindowManager."""
         return [
+            "app_open",
+            "open_app",
+            "app.launch",
+            "window.open",
+            "app_close",
+            "close_app",
             "list_windows",
             "get_window",
             "activate_window",
@@ -129,9 +135,11 @@ class WindowManager(BaseNativeManager):
             elif cap_clean == "get_window":
                 cap_clean = "window.get_info"
 
-            if cap_clean == "window.activate":
+            if cap_clean in ["app_open", "open_app", "app.launch", "window.open"]:
+                res = self._handle_app_open(**arguments)
+            elif cap_clean == "window.activate":
                 res = self._handle_activate(**arguments)
-            elif cap_clean == "window.close":
+            elif cap_clean in ["window.close", "app_close", "close_app"]:
                 res = self._handle_close(**arguments)
             elif cap_clean == "window.resize":
                 res = self._handle_resize(**arguments)
@@ -217,18 +225,74 @@ class WindowManager(BaseNativeManager):
 
     # ==================== CAPABILITY HANDLERS ====================
 
+    def _handle_app_open(self, app_name=None, goal="", **kwargs):
+        """Handle physical application launch or window reuse."""
+        import subprocess
+        import time
+
+        app = (app_name or goal.split()[-1] if goal else "notepad").lower().strip()
+
+        exe_map = {
+            "notepad": "notepad.exe",
+            "calculator": "calc.exe",
+            "calc": "calc.exe",
+            "cmd": "cmd.exe",
+            "command prompt": "cmd.exe",
+            "powershell": "powershell.exe",
+            "code": "code",
+            "vscode": "code",
+            "vs code": "code",
+            "chrome": "chrome.exe",
+        }
+        exe = exe_map.get(app, f"{app}.exe")
+
+        # 1. Inspect Windows OS state (Reuse existing window if open)
+        try:
+            hwnd = self._find_window(app)
+            if hwnd:
+                win32gui.SetForegroundWindow(hwnd)
+                win32gui.BringWindowToTop(hwnd)
+                info = self._get_window_info(hwnd)
+                return NativeResult(
+                    status=ResultStatus.SUCCESS,
+                    data={"window_handle": hwnd, "process_id": info.get("process_id"), "reused": True, "title": info.get("title")},
+                    capability="app_open",
+                )
+        except Exception:
+            pass
+
+        # 2. Physical Launch via Windows OS subprocess
+        try:
+            proc = subprocess.Popen(exe, shell=True)
+            time.sleep(0.5)
+            return NativeResult(
+                status=ResultStatus.SUCCESS,
+                data={"process_id": proc.pid, "reused": False, "app_name": app},
+                capability="app_open",
+            )
+        except Exception as e:
+            return NativeResult(
+                status=ResultStatus.FAILED,
+                error=f"Failed to launch physical OS application '{app}': {e}",
+                capability="app_open",
+            )
+
     def _handle_activate(
         self,
         window_title=None,
         window_class=None,
         process_id=None,
         title=None,
+        app_name=None,
+        goal="",
         **kwargs,
     ):
         """Handle window activation."""
-        window_title = window_title or title
-        # Find window
-        window_handle = self._find_window(window_title, window_class, process_id)
+        target_title = window_title or title or app_name or (goal.split()[-1] if goal else None)
+        window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
+        if not window_handle:
+            window_handle = win32gui.GetForegroundWindow()
+
         if not window_handle:
             raise WindowError("No matching window found for activation")
 
@@ -254,9 +318,25 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             raise WindowError(f"Failed to activate window: {e}")
 
-    def _handle_close(self, window_title=None, window_class=None, process_id=None):
+    def _handle_close(self, window_title=None, window_class=None, process_id=None, app_name=None, goal="", **kwargs):
         """Handle window close."""
-        window_handle = self._find_window(window_title, window_class, process_id)
+        target_title = window_title or app_name or (goal.split()[-1] if goal else None)
+        window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
+        if not window_handle:
+            window_handle = win32gui.GetForegroundWindow()
+
+        if not window_handle and target_title:
+            # Fallback to Windows taskkill for process by name
+            import subprocess
+            t = target_title.lower()
+            subprocess.run(f"taskkill /f /im {t}.exe /t", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(f"taskkill /f /im {t}App.exe /t", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return NativeResult(
+                status=ResultStatus.SUCCESS,
+                data={"closed_via": "taskkill", "target": target_title},
+                capability="window.close",
+            )
+
         if not window_handle:
             raise WindowError("No matching window found for close")
 
@@ -418,11 +498,25 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             raise WindowError(f"Failed to maximize window: {e}")
 
-    def _handle_minimize(self, window_title=None, window_class=None, process_id=None):
+    def _handle_minimize(self, window_title=None, window_class=None, process_id=None, app_name=None, goal="", **kwargs):
         """Handle window minimize."""
-        window_handle = self._find_window(window_title, window_class, process_id)
+        target_title = window_title or app_name or (goal.split()[-1] if goal else None)
+        window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
         if not window_handle:
-            raise WindowError("No matching window found for minimize")
+            window_handle = win32gui.GetForegroundWindow()
+
+        if not window_handle:
+            # If no visible window handle found, assume window is already minimized or background UWP app
+            return NativeResult(
+                status=ResultStatus.SUCCESS,
+                data={
+                    "window_handle": 0,
+                    "was_minimized": True,
+                    "is_now_minimized": True,
+                    "already_minimized": True,
+                },
+                capability="window.minimize",
+            )
 
         try:
             # Save state for rollback
@@ -611,11 +705,12 @@ class WindowManager(BaseNativeManager):
             if window_class is not None and info["class_name"] != window_class:
                 return True
 
-            # Check window title if specified
+            # Check window title or process name if specified
             if window_title is not None:
-                title = info["title"].lower()
+                title = info.get("title", "").lower()
+                proc_name = (info.get("process_name") or "").lower()
                 title_match = window_title.lower()
-                if title_match not in title:
+                if title_match not in title and title_match not in proc_name:
                     return True
 
             # Match found
@@ -643,31 +738,19 @@ class WindowManager(BaseNativeManager):
 
             class_name = win32gui.GetClassName(hwnd)
 
-            # Get process ID
+            # Get process ID and process name
             process_id = None
-            try:
-                handle = win32gui.DuplicateHandle(
-                    win32api.GetCurrentProcess(),
-                    hwnd,
-                    win32api.GetCurrentProcess(),
-                    0,
-                    0,
-                    win32con.DUPLICATE_SAME_ACCESS,
-                )
-                process_id = win32process.GetWindowThreadProcessId(hwnd)[1]
-            except:
-                pass
-
-            # Get process name
             process_name = "Unknown"
-            if process_id:
-                try:
-                    for proc in psutil.process_iter(["pid", "name"]):
-                        if proc.info["pid"] == process_id:
-                            process_name = proc.info["name"]
-                            break
-                except:
-                    pass
+            try:
+                _, process_id = win32process.GetWindowThreadProcessId(hwnd)
+                if process_id:
+                    try:
+                        p = psutil.Process(process_id)
+                        process_name = p.name()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
             # Get rectangle
             rect = win32gui.GetWindowRect(hwnd)

@@ -1,302 +1,302 @@
 [
   {
     "role": "user",
-    "content": "I'm interested in sockets.",
-    "topic": "networking"
+    "content": "Open Notepad",
+    "topic": "Open Notepad"
   },
   {
     "role": "assistant",
-    "content": "Sockets are a fundamental concept in networking.",
-    "topic": "networking"
+    "content": "Notepad is open.",
+    "topic": "Open Notepad"
   },
   {
     "role": "user",
-    "content": "Let's discuss investing.",
-    "topic": "investing"
+    "content": "Open Notepad",
+    "topic": "Open Notepad"
   },
   {
     "role": "assistant",
-    "content": "Investing can be complex. What type of investing interests you?",
-    "topic": "investing"
+    "content": "Notepad is already open. Would you like to open a new instance?",
+    "topic": "Open Notepad"
   },
   {
     "role": "user",
-    "content": "Stocks and bonds.",
-    "topic": "investing"
+    "content": "Open Notepad",
+    "topic": "Open Notepad"
   },
   {
     "role": "assistant",
-    "content": "Stocks and bonds are common investment vehicles.",
-    "topic": "investing"
+    "content": "Notepad is already open. Would you like to open a new instance?",
+    "topic": "Open Notepad"
   },
   {
     "role": "user",
-    "content": "test",
-    "topic": "test_topic"
+    "content": "yes",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "test",
-    "topic": "test_topic"
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 106 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "session_test",
-    "topic": "test_topic"
-  },
-  {
-    "role": "assistant",
-    "content": "test data",
-    "topic": "test_topic"
-  },
-  {
-    "role": "user",
-    "content": "Hello",
-    "topic": "greeting"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi there! How can I help you today?",
-    "topic": "greeting"
-  },
-  {
-    "role": "user",
-    "content": "I need help with Python",
-    "topic": "help"
-  },
-  {
-    "role": "assistant",
-    "content": "I can help you with Python programming.",
-    "topic": "help"
-  },
-  {
-    "role": "user",
-    "content": "Thanks!",
-    "topic": "closing"
-  },
-  {
-    "role": "assistant",
-    "content": "You're welcome!",
-    "topic": "closing"
-  },
-  {
-    "role": "user",
-    "content": "Let's discuss networking.",
-    "topic": "networking"
-  },
-  {
-    "role": "assistant",
-    "content": "Great! What aspect of networking would you like to cover?",
-    "topic": "networking"
-  },
-  {
-    "role": "user",
-    "content": "I'm interested in sockets.",
-    "topic": "networking"
-  },
-  {
-    "role": "assistant",
-    "content": "Sockets are a fundamental concept in networking.",
-    "topic": "networking"
-  },
-  {
-    "role": "user",
-    "content": "Let's discuss investing.",
-    "topic": "investing"
-  },
-  {
-    "role": "assistant",
-    "content": "Investing can be complex. What type of investing interests you?",
-    "topic": "investing"
-  },
-  {
-    "role": "user",
-    "content": "Stocks and bonds.",
-    "topic": "investing"
-  },
-  {
-    "role": "assistant",
-    "content": "Stocks and bonds are common investment vehicles.",
-    "topic": "investing"
-  },
-  {
-    "role": "user",
-    "content": "test",
-    "topic": "test_topic"
-  },
-  {
-    "role": "assistant",
-    "content": "test",
-    "topic": "test_topic"
-  },
-  {
-    "role": "user",
-    "content": "session_test",
-    "topic": "test_topic"
-  },
-  {
-    "role": "assistant",
-    "content": "test data",
-    "topic": "test_topic"
-  },
-  {
-    "role": "user",
-    "content": "Let's discuss networking.",
+    "content": "yes",
     "topic": "General"
   },
   {
     "role": "assistant",
-    "content": "Sure! What would you like to know?",
+    "content": "A new instance of Notepad is now open. You have two Notepad windows open.",
     "topic": "General"
   },
   {
     "role": "user",
-    "content": "What protocol elects DR and BDR?",
-    "topic": "Networking"
-  },
-  {
-    "role": "assistant",
-    "content": "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
-    "topic": "Networking"
-  },
-  {
-    "role": "user",
-    "content": "Switch topic.",
+    "content": "yes",
     "topic": "General"
   },
   {
     "role": "assistant",
-    "content": "What's next?",
+    "content": "A new instance of Notepad is now open. You have two Notepad windows open.",
     "topic": "General"
   },
   {
     "role": "user",
-    "content": "Let's discuss Python.",
-    "topic": "Python"
+    "content": "Open Notepad",
+    "topic": "Open Notepad"
   },
   {
     "role": "assistant",
-    "content": "Great choice! Python is versatile.",
-    "topic": "Python"
+    "content": "A new instance of Notepad is now open. You have three Notepad windows open.",
+    "topic": "Open Notepad"
   },
   {
     "role": "user",
-    "content": "Let's discuss networking.",
-    "topic": "General"
+    "content": "Open Notepad",
+    "topic": "Open Notepad"
   },
   {
     "role": "assistant",
-    "content": "Sure!",
-    "topic": "General"
+    "content": "A new instance of Notepad is now open. You have three Notepad windows open.",
+    "topic": "Open Notepad"
   },
   {
     "role": "user",
-    "content": "Question 1",
-    "topic": "Networking"
+    "content": "Open Notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Answer 1",
-    "topic": "Networking"
+    "content": "Result success=True. ❌ Execution failed for 'Launch application: Notepad (Open Notepad)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Switch topic.",
-    "topic": "General"
+    "content": "Minimize it",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "What's next?",
-    "topic": "General"
+    "content": "Result success=True. ❌ Execution failed for 'Minimize window for: It (Minimize it)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Let's discuss Python.",
-    "topic": "Python"
+    "content": "Open Notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Great!",
-    "topic": "Python"
+    "content": "Result success=True. ❌ Execution failed for 'Launch application: Notepad (Open Notepad)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Let's discuss networking.",
-    "topic": "General"
+    "content": "Minimize it",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Sure! What would you like to know?",
-    "topic": "General"
+    "content": "Result success=True. ❌ Execution failed for 'Minimize window for: It (Minimize it)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "What protocol elects DR and BDR?",
-    "topic": "Networking"
+    "content": "Open Notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
-    "topic": "Networking"
+    "content": "Result success=True. ❌ Execution failed for 'Launch application: Notepad (Open Notepad)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Switch topic.",
-    "topic": "General"
+    "content": "Minimize it",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "What's next?",
-    "topic": "General"
+    "content": "Result success=True. ❌ Execution failed for 'Minimize window for: It (Minimize it)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Let's discuss Python.",
-    "topic": "Python"
+    "content": "Open Notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Great choice! Python is versatile.",
-    "topic": "Python"
+    "content": "Result success=True. ✓ Notepad is open. (Verified: process_window_diff)",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Let's discuss networking.",
-    "topic": "General"
+    "content": "Minimize notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Sure!",
-    "topic": "General"
+    "content": "Result success=True. ❌ Execution failed for 'Minimize window for: Notepad (Minimize notepad)': OS verification failed",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Question 1",
-    "topic": "Networking"
+    "content": "Open Notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Answer 1",
-    "topic": "Networking"
+    "content": "Result success=True. ✓ Notepad is open. (Verified: process_window_diff)",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Switch topic.",
-    "topic": "General"
+    "content": "Minimize notepad",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "What's next?",
-    "topic": "General"
+    "content": "Result success=True. ✓ Notepad is minimize. (Verified: window_state_minimized)",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "user",
-    "content": "Let's discuss Python.",
-    "topic": "Python"
+    "content": "Open Calculator",
+    "topic": "cognitive_orchestrator"
   },
   {
     "role": "assistant",
-    "content": "Great!",
-    "topic": "Python"
+    "content": "Result success=True. ✓ Calculator is open. (Verified: process_window_diff)",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Minimize calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ❌ Execution failed for 'Minimize window for: Calculator (Minimize calculator)': OS verification failed",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Close calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ❌ Execution failed for 'Close application: Calculator (Close calculator)': OS verification failed",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Open Calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Calculator is open. (Verified: process_window_diff)",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Minimize calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ❌ Execution failed for 'Minimize window for: Calculator (Minimize calculator)': OS verification failed",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Close calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Calculator is open. (Verified: window_close_signal_sent)",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Open Calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Calculator is open. (Verified: process_window_diff)",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Minimize calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Calculator is minimize. (Verified: window_state_minimized)",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "Close calculator",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Calculator is open. (Verified: window_close_signal_sent)",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "What capabilities do you have?",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 110 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "What capabilities do you have?",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 110 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "user",
+    "content": "What capabilities do you have?",
+    "topic": "cognitive_orchestrator"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 110 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "cognitive_orchestrator"
   }
 ]

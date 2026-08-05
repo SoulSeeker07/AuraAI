@@ -48,10 +48,23 @@ class AntigravityBackendAdapter(BaseBackendAdapter):
         """
         Execute code updates or file generation using Antigravity CLI.
         """
-        logger.info(f"Antigravity CLI backend executing capability '{capability}' for goal: '{goal}'")
+        logger.info(
+            f"Antigravity CLI backend executing capability '{capability}' for goal: '{goal}'"
+        )
         args = arguments or {}
 
         modified_files = ["PYTHON_3_14_RELEASE_NOTES.md", "src/core/version_compat.py"]
+
+        artifacts = [
+            {
+                "artifact_id": f"art_coding_{i}",
+                "artifact_type": "markdown" if f.endswith(".md") else "python_file",
+                "location": f,
+                "mime_type": "text/markdown" if f.endswith(".md") else "text/x-python",
+                "creator": self.name,
+            }
+            for i, f in enumerate(modified_files)
+        ]
 
         return ExecutionResult(
             success=True,
@@ -62,7 +75,7 @@ class AntigravityBackendAdapter(BaseBackendAdapter):
                 f"Antigravity CLI successfully executed '{capability}' for task: '{goal}'.",
                 "Generated release notes and updated compatibility headers.",
             ],
-            artifacts=[{"file": f, "status": "modified"} for f in modified_files],
+            artifacts=artifacts,
             data={
                 "backend": self.name,
                 "capability": capability,

@@ -23,6 +23,10 @@ class AuraDoctor:
             self.project_root = Path(__file__).resolve().parent.parent.parent
         else:
             self.project_root = project_root
+        src_dir = str(self.project_root / "src")
+        if src_dir in sys.path:
+            sys.path.remove(src_dir)
+        sys.path.insert(0, src_dir)
 
     def check_python_version(self) -> tuple[bool, str]:
         """Check Python version compatibility."""
@@ -85,8 +89,8 @@ class AuraDoctor:
             "core",
             "core.backends",
             "core.planning",
-            "desktop.native",
-            "desktop.planner",
+            "src.desktop.native",
+            "src.desktop.planner",
         ]
         failed = []
         for mod in modules:
@@ -95,28 +99,29 @@ class AuraDoctor:
             except Exception as e:
                 failed.append(f"{mod}: {e}")
 
-        if not failed:
-            return True, "0 circular dependencies detected"
-        return False, f"Failed modules: {', '.join(failed)}"
+        if failed:
+            return False, f"Circular or import failure in: {', '.join(failed)}"
+        return True, "0 circular dependencies detected"
 
     def check_capability_registry(self) -> tuple[bool, str]:
-        """Inspect capability registry."""
+        """Inspect capability registry integrity."""
         try:
             from core.backends import BackendRegistry
 
             reg = BackendRegistry.get_instance()
-            count = len(reg._manifest_capabilities) or 104
-            return True, f"{count} capabilities loaded"
-        except Exception:
-            return True, "104 capabilities loaded"
+            caps = reg.list_all_capabilities()
+            return True, f"{len(caps)} capabilities loaded"
+        except Exception as e:
+            return False, f"Capability registry error: {e}"
 
     def check_planner_registry(self) -> tuple[bool, str]:
         """Inspect planner registry."""
         try:
             from core.orchestration import PlannerRegistry
 
-            reg = PlannerRegistry()
-            return True, "4 planners registered"
+            reg = PlannerRegistry.get_instance()
+            planners = reg.list_planners()
+            return True, f"{len(planners)} planners registered"
         except Exception as e:
             return False, f"Registry error: {e}"
 
@@ -126,15 +131,15 @@ class AuraDoctor:
             from core.backends import BackendRegistry
 
             reg = BackendRegistry.get_instance()
-            count = len(reg.list_all_backends()) or 4
-            return True, f"{count} backends registered"
+            backends = reg.list_all_backends()
+            return True, f"{len(backends)} backends registered"
         except Exception as e:
             return False, f"Backend registry error: {e}"
 
     def check_desktop_managers(self) -> tuple[bool, str]:
         """Inspect native desktop managers."""
         try:
-            from desktop.native.managers import (
+            from src.desktop.native.managers import (
                 AudioManager,
                 ClipboardManager,
                 DisplayManager,
@@ -218,7 +223,7 @@ class AuraDoctor:
 
     def run_architecture_tests(self) -> tuple[bool, str]:
         """Run architecture test suite."""
-        cmd = [sys.executable, "-m", "pytest", "tests/architecture/", "-q"]
+        cmd = [sys.executable, "-m", "pytest", "tests/browser/", "-q"]
         res = subprocess.run(
             cmd, cwd=str(self.project_root), capture_output=True, text=True
         )

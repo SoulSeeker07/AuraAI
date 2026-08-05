@@ -17,7 +17,6 @@ class TestContextRegression:
     def memory_manager(self):
         """Create a MemoryManager instance for testing."""
         from core.memory.memory import Memory
-
         from core.memory.memory_manager import MemoryManager
 
         # Create a temporary memory instance

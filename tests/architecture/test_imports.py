@@ -21,6 +21,21 @@ from pathlib import Path
 import pytest
 
 SRC = Path(__file__).parent.parent.parent / "src"
+ROOT = Path(__file__).parent.parent.parent
+while "" in sys.path:
+    sys.path.remove("")
+while str(ROOT) in sys.path:
+    sys.path.remove(str(ROOT))
+while str(SRC) in sys.path:
+    sys.path.remove(str(SRC))
+
+sys.path.insert(0, str(SRC))
+sys.path.insert(1, str(ROOT))
+
+# Clear cached core modules if any were imported from ROOT
+to_remove = [mod for mod in sys.modules if mod == "core" or mod.startswith("core.")]
+for mod in to_remove:
+    sys.modules.pop(mod, None)
 
 
 # Packages that require unavailable system-level deps (optional features)

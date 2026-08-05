@@ -4,6 +4,8 @@ Desktop Rules
 Rules for routing desktop-related requests.
 """
 
+from typing import Optional
+
 from ..capability_types import CapabilityPriority, CapabilityType
 from ..routing_result import RoutingResult
 

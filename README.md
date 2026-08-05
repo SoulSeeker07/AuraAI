@@ -5,9 +5,13 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform Version](https://img.shields.io/badge/version-v0.15.0--core--platform-green.svg)](RELEASE.md)
-[![Build Status](https://img.shields.io/badge/tests-53%20passed-brightgreen.svg)](docs/engineering.md)
+[![Architecture Freeze](https://img.shields.io/badge/architecture-frozen-blue.svg)](docs/ARCHITECTURE_FREEZE.md)
+[![Build Status](https://img.shields.io/badge/tests-passed-brightgreen.svg)](docs/engineering.md)
 
 Aura AI is a modular, high-reliability **AI Operating Platform** built to unify autonomous planning, native OS control, deep research, and multi-backend LLM execution into a cohesive engineering system.
+
+Read the official [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs and contributor extension rules.
+
 
 ---
 

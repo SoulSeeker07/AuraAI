@@ -1,0 +1,179 @@
+# ============================================================
+#  Aura Skills
+#  User-facing skill descriptions.
+#
+#  IMPORTANT DISTINCTION:
+#    Capabilities = implementation (what CapabilityRegistry knows)
+#    Skills       = user-facing communication (what Aura tells users)
+#
+#  Skills are stable, human-readable, and version-controlled.
+#  Capabilities are dynamic and discovered from live registries.
+#
+#  When a user asks "What can you do?", Aura answers with Skills.
+#  When a planner needs to execute, it uses Capabilities.
+# ============================================================
+
+skills:
+
+  # ── DESKTOP CONTROL ──────────────────────────────────────
+  - domain: Desktop Control
+    emoji: "🖥️"
+    summary: >
+      Full control over the Windows desktop environment.
+      Open apps, manage windows, control audio, display, network,
+      power, clipboard, services, and registry.
+    skills:
+      - Open and close applications
+      - Switch between windows
+      - Minimize, maximize, restore windows
+      - Resize and reposition windows
+      - Read and write the clipboard
+      - Set system volume — mute, unmute, louder, quieter
+      - Adjust screen brightness
+      - Get display info and resolution
+      - Check battery status and charging state
+      - Lock the PC, sleep, restart, shutdown
+      - Check network connection and WiFi status
+      - Get IP address (local and public)
+      - Enable and disable WiFi adapters
+      - Ping hosts, DNS lookup, firewall status
+      - List, start, and stop Windows services
+      - Read and write Windows Registry keys
+      - List all running processes
+      - Kill processes by name or PID
+
+  # ── RESEARCH INTELLIGENCE ────────────────────────────────
+  - domain: Research Intelligence
+    emoji: "🔬"
+    summary: >
+      Deep multi-source research with evidence ranking,
+      conflict detection, citation building, and confidence scoring.
+    skills:
+      - Search the web and summarize results
+      - Deep research on any topic with multiple sources
+      - Compare sources and detect conflicting information
+      - Extract evidence for or against a claim
+      - Generate properly formatted citations and bibliographies
+      - Summarize articles, papers, and URLs
+      - Write comprehensive research reports
+      - Iterative confidence loops — research until confident
+      - Fact-check statements against multiple sources
+
+  # ── CODING & ENGINEERING ─────────────────────────────────
+  - domain: Coding & Engineering
+    emoji: "💻"
+    summary: >
+      Understand, fix, refactor, and generate code.
+      Repository analysis, AST parsing, Git operations,
+      test generation, and documentation via Antigravity CLI.
+    skills:
+      - Explain what code does
+      - Find and fix bugs
+      - Refactor code for clarity and performance
+      - Generate unit tests
+      - Review pull requests
+      - Analyze repository architecture and structure
+      - Perform AST (Abstract Syntax Tree) analysis
+      - Run Git operations — status, log, diff, commit
+      - Generate new code from a description
+      - Add or improve docstrings and documentation
+      - Analyze project dependencies and imports
+
+  # ── VOICE INTERFACE ───────────────────────────────────────
+  - domain: Voice Interface
+    emoji: "🎙️"
+    summary: >
+      Real-time voice control with wake word detection,
+      speech-to-text input, and text-to-speech output.
+    skills:
+      - Listen for voice commands
+      - Activate with wake word ("Hey Aura")
+      - Convert speech to text (STT)
+      - Speak responses aloud (TTS)
+      - Configure voice speed and language
+      - Toggle voice mode on or off
+
+  # ── VISION & SCREEN ANALYSIS ─────────────────────────────
+  - domain: Vision & Screen Analysis
+    emoji: "👁️"
+    summary: >
+      See and understand the current screen.
+      Screenshots, OCR, UI element detection, and live monitoring.
+    skills:
+      - Take screenshots
+      - Analyze and describe screen content
+      - Extract text from the screen (OCR)
+      - Find and locate UI elements by description
+      - Monitor the screen for changes in real time
+
+  # ── MEMORY & KNOWLEDGE ───────────────────────────────────
+  - domain: Memory & Knowledge
+    emoji: "🧠"
+    summary: >
+      Persistent memory across sessions.
+      Remember facts, recall preferences, query the RAG 2.0 knowledge base.
+    skills:
+      - Remember facts, names, preferences, and habits
+      - Recall stored information from previous sessions
+      - Forget specific memories on request
+      - Show all stored facts
+      - Query the indexed knowledge base (documents, notes, repos)
+      - Build context from conversation history
+
+  # ── WORKFLOW AUTOMATION ───────────────────────────────────
+  - domain: Workflow Automation
+    emoji: "⚙️"
+    summary: >
+      Define, run, and schedule multi-step automation workflows.
+      From morning routines to scheduled tasks.
+    skills:
+      - Create named automation workflows
+      - Run existing workflows on demand
+      - Schedule workflows by time or trigger
+      - List all defined workflows
+      - Combine multiple capabilities into a single workflow
+
+  # ── BROWSER INTELLIGENCE ─────────────────────────────────
+  - domain: Browser Intelligence
+    emoji: "🌐"
+    summary: >
+      Goal-oriented browser automation.
+      Navigate, search, interact with pages, and handle authentication.
+      (Milestone 20 — in progress)
+    skills:
+      - Open URLs in the browser
+      - Navigate to websites by name or description
+      - Detect and handle login/authentication states
+      - Navigate to user profiles (Instagram, GitHub, LinkedIn)
+      - Search within websites
+      - Read and extract page content
+    status: "in_progress"
+    milestone: 20
+
+  # ── PLUGIN ECOSYSTEM ─────────────────────────────────────
+  - domain: Plugin Ecosystem
+    emoji: "🔌"
+    summary: >
+      Fully modular plugin system.
+      Enable, disable, and inspect installed capability plugins.
+    skills:
+      - List all installed plugins
+      - Enable plugins by name
+      - Disable plugins by name
+      - Get detailed info about any plugin
+
+  # ── SYSTEM SELF-KNOWLEDGE ────────────────────────────────
+  - domain: System Self-Knowledge
+    emoji: "🤖"
+    summary: >
+      Aura knows itself — its identity, capabilities, planners, backends,
+      pipeline, and current health — and can explain any of them on request.
+    skills:
+      - Answer "Who are you?" with full identity
+      - Answer "What can you do?" from live registries
+      - Answer "Which planner handles X?"
+      - Answer "Why did you choose backend Y?"
+      - Show current system health via /about
+      - Explain the 7-stage cognitive pipeline
+      - Report active planners and backends
+      - Explain routing decisions using execution trace

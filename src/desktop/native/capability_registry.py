@@ -168,6 +168,57 @@ class CapabilityRegistry:
                 supports_undo=False,
             )
         )
+        self.register(
+            CapabilityDescriptor(
+                name="app_open",
+                description="Launch or activate an application",
+                manager="window",
+                category="window",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["app_opened"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="app_close",
+                description="Close an application",
+                manager="window",
+                category="window",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.MODERATE,
+                events_triggered=["app_closed"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="window.minimize",
+                description="Minimize a window to taskbar",
+                manager="window",
+                category="window",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["window_minimized"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="window.activate",
+                description="Activate and bring window to front",
+                manager="window",
+                category="window",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["window_activated"],
+            )
+        )
 
         self.register(
             CapabilityDescriptor(

@@ -26,7 +26,9 @@ class PluginManager:
     - Manages plugin dependencies and health
     """
 
-    def __init__(self, registry: PluginRegistry, enable_auto_discovery: bool = True):
+    def __init__(
+        self, registry: PluginRegistry | None = None, enable_auto_discovery: bool = True
+    ):
         """
         Initialize the plugin manager.
 
@@ -34,7 +36,8 @@ class PluginManager:
             registry: PluginRegistry instance
             enable_auto_discovery: Whether to scan and load plugins on startup
         """
-        self.registry = registry
+        self.registry = registry or PluginRegistry()
+
         self.enable_auto_discovery = enable_auto_discovery
         self._initialized = False
 

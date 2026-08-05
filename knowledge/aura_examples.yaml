@@ -1,0 +1,1001 @@
+# ============================================================
+#  Aura Natural Language Examples
+#  Maps user utterances → capability → planner → backend.
+#  Used for few-shot LLM grounding and planner training.
+#
+#  Current count: 200+ examples (target: 400+)
+#  Each example teaches Aura how to route a user request.
+#  This file grows over time — it becomes Aura's "experience."
+# ============================================================
+
+# Format:
+#   user_says:   the natural language utterance
+#   capability:  the canonical capability ID
+#   planner:     which planner handles execution
+#   backend:     which backend executes it
+#   notes:       (optional) additional context
+
+examples:
+
+  # ── DESKTOP: Window ──────────────────────────────────────
+  - user_says: "Open Notepad"
+    capability: desktop.window.launch
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Launch Calculator"
+    capability: desktop.window.launch
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Start Task Manager"
+    capability: desktop.window.launch
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Open VS Code"
+    capability: desktop.window.launch
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Open Paint"
+    capability: desktop.window.launch
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Close Chrome"
+    capability: desktop.window.close
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Close Notepad"
+    capability: desktop.window.close
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Minimize Chrome"
+    capability: desktop.window.minimize
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Maximize Notepad"
+    capability: desktop.window.maximize
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Restore the Chrome window"
+    capability: desktop.window.restore
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Switch to VS Code"
+    capability: desktop.window.activate
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Bring Notepad to the front"
+    capability: desktop.window.activate
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List all open windows"
+    capability: desktop.window.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "What apps are running"
+    capability: desktop.window.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Kill Chrome"
+    capability: desktop.window.kill
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Requires user confirmation due to high risk"
+
+  - user_says: "Move Notepad to the top-left corner"
+    capability: desktop.window.move
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Resize Notepad to 800 by 600"
+    capability: desktop.window.resize
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Clipboard ───────────────────────────────────
+  - user_says: "What is in the clipboard"
+    capability: desktop.clipboard.get
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Read the clipboard"
+    capability: desktop.clipboard.get
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Copy hello world to the clipboard"
+    capability: desktop.clipboard.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Clear the clipboard"
+    capability: desktop.clipboard.clear
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Show clipboard history"
+    capability: desktop.clipboard.history
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Audio ───────────────────────────────────────
+  - user_says: "What is the volume"
+    capability: desktop.audio.volume.get
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Set volume to 50"
+    capability: desktop.audio.volume.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Volume 80 percent"
+    capability: desktop.audio.volume.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Volume up"
+    capability: desktop.audio.volume.up
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Louder"
+    capability: desktop.audio.volume.up
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Volume down"
+    capability: desktop.audio.volume.down
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Quieter"
+    capability: desktop.audio.volume.down
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Mute"
+    capability: desktop.audio.mute
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Silence everything"
+    capability: desktop.audio.mute
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Unmute"
+    capability: desktop.audio.unmute
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List audio devices"
+    capability: desktop.audio.devices.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Display ─────────────────────────────────────
+  - user_says: "What is my screen resolution"
+    capability: desktop.display.info
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Display info"
+    capability: desktop.display.info
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Set brightness to 40 percent"
+    capability: desktop.display.brightness.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Make the screen brighter"
+    capability: desktop.display.brightness.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List monitors"
+    capability: desktop.display.monitors.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Set resolution to 1920x1080"
+    capability: desktop.display.resolution.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Requires confirmation — display change"
+
+  # ── DESKTOP: Power ───────────────────────────────────────
+  - user_says: "Battery status"
+    capability: desktop.power.battery.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "How much battery do I have"
+    capability: desktop.power.battery.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Is it charging"
+    capability: desktop.power.battery.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Lock the PC"
+    capability: desktop.power.lock
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Lock screen"
+    capability: desktop.power.lock
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Sleep"
+    capability: desktop.power.sleep
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Requires confirmation"
+
+  - user_says: "Restart the computer"
+    capability: desktop.power.restart
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Requires confirmation"
+
+  - user_says: "Shut down"
+    capability: desktop.power.shutdown
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Requires confirmation"
+
+  - user_says: "What is the current power plan"
+    capability: desktop.power.plan.get
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Network ─────────────────────────────────────
+  - user_says: "Network status"
+    capability: desktop.network.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Am I connected to the internet"
+    capability: desktop.network.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "What is my IP address"
+    capability: desktop.network.ip
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Show my local IP"
+    capability: desktop.network.ip
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Turn WiFi on"
+    capability: desktop.network.wifi.enable
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Enable WiFi"
+    capability: desktop.network.wifi.enable
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Turn WiFi off"
+    capability: desktop.network.wifi.disable
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List network adapters"
+    capability: desktop.network.adapters.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Ping google.com"
+    capability: desktop.network.ping
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "DNS lookup for microsoft.com"
+    capability: desktop.network.dns
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Is the firewall on"
+    capability: desktop.network.firewall.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Services ────────────────────────────────────
+  - user_says: "List Windows services"
+    capability: desktop.service.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Start the print spooler"
+    capability: desktop.service.start
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Stop Windows Update"
+    capability: desktop.service.stop
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Is the print spooler running"
+    capability: desktop.service.status
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Registry ────────────────────────────────────
+  - user_says: "Read registry key HKLM\\SOFTWARE\\Microsoft"
+    capability: desktop.registry.read
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List subkeys under HKCU"
+    capability: desktop.registry.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── RESEARCH ─────────────────────────────────────────────
+  - user_says: "Research AI agents"
+    capability: research.deep
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Search for the latest Python release"
+    capability: research.search
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Look up quantum computing basics"
+    capability: research.search
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Summarize this article"
+    capability: research.summarize
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Compare sources on climate change"
+    capability: research.compare
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Find evidence that Python is faster than Java"
+    capability: research.evidence
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Detect conflicts in these research papers"
+    capability: research.conflict
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Generate citations for my report"
+    capability: research.citations
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Write a comprehensive report on large language models"
+    capability: research.report
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Investigate the OAuth2 specification"
+    capability: research.deep
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Fact check this claim"
+    capability: research.compare
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Research until you are confident about the answer"
+    capability: research.confidence
+    planner: ResearchPlanner
+    backend: Gemini
+
+  # ── CODING ───────────────────────────────────────────────
+  - user_says: "Explain this code"
+    capability: coding.explain
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Fix auth.py"
+    capability: coding.fix
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Fix the bug in this function"
+    capability: coding.fix
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Refactor the database connection class"
+    capability: coding.refactor
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Generate unit tests for utils.py"
+    capability: coding.tests
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Review this pull request"
+    capability: coding.review
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Analyze this repository structure"
+    capability: coding.repo
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Git status"
+    capability: coding.git
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Create a git commit for these changes"
+    capability: coding.git
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Write a function to parse JSON"
+    capability: coding.generate
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Add docstrings to all functions in main.py"
+    capability: coding.docs
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Analyze the import graph"
+    capability: coding.deps
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "AST analysis of decision_engine.py"
+    capability: coding.ast
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  # ── MEMORY ───────────────────────────────────────────────
+  - user_says: "Remember that my name is Sreekanta"
+    capability: memory.remember
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Remember I prefer dark mode"
+    capability: memory.remember
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "What do you remember about me"
+    capability: memory.show
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Recall my name"
+    capability: memory.recall
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Forget that I said that"
+    capability: memory.forget
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List all stored facts"
+    capability: memory.show
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Search the knowledge base for Python decorators"
+    capability: memory.knowledge.query
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── VOICE ────────────────────────────────────────────────
+  - user_says: "Start listening"
+    capability: voice.listen.start
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Stop listening"
+    capability: voice.listen.stop
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Enable wake word detection"
+    capability: voice.wake_word
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Say hello"
+    capability: voice.tts
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Read this text aloud"
+    capability: voice.tts
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── VISION ───────────────────────────────────────────────
+  - user_says: "Take a screenshot"
+    capability: vision.screenshot
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "What do you see on the screen"
+    capability: vision.analyze
+    planner: DesktopPlanner
+    backend: Gemini
+
+  - user_says: "Read the text on the screen"
+    capability: vision.ocr
+    planner: DesktopPlanner
+    backend: Gemini
+
+  - user_says: "Find the submit button"
+    capability: vision.find
+    planner: DesktopPlanner
+    backend: Gemini
+
+  - user_says: "Monitor the screen for changes"
+    capability: vision.live
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── WORKFLOW ─────────────────────────────────────────────
+  - user_says: "Create a morning workflow"
+    capability: workflow.create
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Run the morning workflow"
+    capability: workflow.run
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "List my workflows"
+    capability: workflow.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Schedule this workflow to run at 9am"
+    capability: workflow.schedule
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── SYSTEM IDENTITY ──────────────────────────────────────
+  - user_says: "What are you"
+    capability: system.identity
+    planner: "(none — answered directly from IdentityLoader)"
+    backend: "(none — no execution required)"
+    notes: "DecisionEngine routes to SYSTEM_QUERY; answered from identity layer"
+
+  - user_says: "Who are you"
+    capability: system.identity
+    planner: "(none — answered directly from IdentityLoader)"
+    backend: "(none — no execution required)"
+
+  - user_says: "What can you do"
+    capability: system.capabilities
+    planner: "(none — answered directly from CapabilityCatalog)"
+    backend: "(none — no execution required)"
+
+  - user_says: "What capabilities do you have"
+    capability: system.capabilities
+    planner: "(none — answered directly from CapabilityCatalog)"
+    backend: "(none — no execution required)"
+
+  - user_says: "How do you work"
+    capability: system.pipeline
+    planner: "(none — answered directly from IdentityLoader)"
+    backend: "(none — no execution required)"
+
+  - user_says: "System status"
+    capability: system.status
+    planner: "(none — answered directly from BackendRegistry + PlannerRegistry)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Show your planners"
+    capability: system.planners
+    planner: "(none — answered directly from PlannerRegistry)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Show your backends"
+    capability: system.backends
+    planner: "(none — answered directly from BackendRegistry)"
+    backend: "(none — no execution required)"
+
+  # ── SYSTEM: Explainability ────────────────────────────────
+  - user_says: "Why did you choose Gemini?"
+    capability: system.explain.backend_choice
+    planner: "(none — answered from execution trace)"
+    backend: "(none — no execution required)"
+    notes: "Aura explains backend selection reasoning from the last DecisionOutcome"
+
+  - user_says: "Why did you use the DesktopPlanner?"
+    capability: system.explain.planner_choice
+    planner: "(none — answered from execution trace)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Why did you choose Groq instead of Gemini?"
+    capability: system.explain.backend_choice
+    planner: "(none — answered from execution trace)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Explain how you decided to handle this"
+    capability: system.explain.decision
+    planner: "(none — answered from DecisionEngine trace)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Walk me through your decision"
+    capability: system.explain.decision
+    planner: "(none — answered from DecisionEngine trace)"
+    backend: "(none — no execution required)"
+
+  - user_says: "How did you route that request?"
+    capability: system.explain.routing
+    planner: "(none — answered from execution trace)"
+    backend: "(none — no execution required)"
+
+  # ── SYSTEM: About & Health ────────────────────────────────
+  - user_says: "/about"
+    capability: system.about
+    planner: "(none — answered from AboutReport generator)"
+    backend: "(none — no execution required)"
+    notes: "Generates full Aura system health report from live registries"
+
+  - user_says: "Show system health"
+    capability: system.health
+    planner: "(none — answered from live registries)"
+    backend: "(none — no execution required)"
+
+  - user_says: "How many capabilities do you have?"
+    capability: system.capabilities.count
+    planner: "(none — answered from live CapabilityRegistry)"
+    backend: "(none — no execution required)"
+    notes: "Answer generated dynamically — never hardcoded"
+
+  - user_says: "What version are you?"
+    capability: system.identity
+    planner: "(none — answered from IdentityLoader)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Show me your pipeline"
+    capability: system.pipeline
+    planner: "(none — answered from IdentityLoader pipeline YAML)"
+    backend: "(none — no execution required)"
+
+  # ── BROWSER: Multi-step Goals ─────────────────────────────
+  - user_says: "Open my Instagram profile"
+    capability: browser.navigate_goal
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+    notes: "Recalls instagram_username from memory. Skips Chrome launch if already running."
+
+  - user_says: "Go to my GitHub profile"
+    capability: browser.navigate_goal
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+    notes: "Recalls github_username from memory"
+
+  - user_says: "Open Chrome and go to Instagram"
+    capability: browser.navigate_goal
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+    notes: "TaskDecomposer: ensure_browser_open -> navigate -> check_auth"
+
+  - user_says: "Search Python asyncio on Google"
+    capability: browser.search
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Look up my LinkedIn profile"
+    capability: browser.navigate_goal
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Go to YouTube"
+    capability: browser.navigate
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Search GitHub for Python AI projects"
+    capability: browser.search
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Open a new tab"
+    capability: browser.new_tab
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Go back"
+    capability: browser.back
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Am I logged into Instagram?"
+    capability: browser.check_auth
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+
+  - user_says: "Open Instagram, search for my username, and go to my profile"
+    capability: browser.navigate_goal
+    planner: BrowserGoalPlanner
+    backend: Browser Backend
+    notes: "Multi-step 4-task graph: launch -> navigate -> auth -> profile"
+
+  # ── MEMORY: Contextual Recall ─────────────────────────────
+  - user_says: "What is my Instagram username?"
+    capability: memory.recall
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Remember my Instagram username is sreekanta_yr"
+    capability: memory.remember
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Remember my GitHub username is SoulSeeker07"
+    capability: memory.remember
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Forget my Instagram username"
+    capability: memory.forget
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "What have we talked about recently?"
+    capability: memory.recall
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Do you know my name?"
+    capability: memory.recall
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "What do you know about my projects?"
+    capability: memory.show
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── DESKTOP: Natural Language Variants ───────────────────
+  - user_says: "The screen is too bright"
+    capability: desktop.display.brightness.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Implicit — Aura lowers brightness without asking how much"
+
+  - user_says: "I cannot hear anything"
+    capability: desktop.audio.unmute
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Diagnoses mute state, unmutes if muted"
+
+  - user_says: "Something is eating my CPU"
+    capability: desktop.window.list
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Routes to process list to diagnose high CPU usage"
+
+  - user_says: "Put everything in the background"
+    capability: desktop.window.minimize
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "Minimizes all open windows"
+
+  - user_says: "Where is Notepad?"
+    capability: desktop.window.get
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Can you open Notepad for me?"
+    capability: desktop.window.launch
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  - user_says: "Please turn the volume down"
+    capability: desktop.audio.volume.down
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+
+  # ── RESEARCH: Natural Language Variants ───────────────────
+  - user_says: "Tell me about transformer architectures"
+    capability: research.deep
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "What is the difference between GPT-4 and Claude?"
+    capability: research.compare
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Write a report on quantum computing"
+    capability: research.report
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Look up OAuth2 PKCE flow"
+    capability: research.search
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Research until you are confident about the answer"
+    capability: research.confidence
+    planner: ResearchPlanner
+    backend: Gemini
+    notes: "Iterative confidence loop — researches until threshold met"
+
+  - user_says: "Find the latest news on AI regulation"
+    capability: research.search
+    planner: ResearchPlanner
+    backend: Gemini
+
+  - user_says: "Is Python faster than JavaScript for data processing?"
+    capability: research.compare
+    planner: ResearchPlanner
+    backend: Gemini
+
+  # ── CODING: Natural Language Variants ─────────────────────
+  - user_says: "There is a bug in my code"
+    capability: coding.fix
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "This function is a mess, clean it up"
+    capability: coding.refactor
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Write tests for this"
+    capability: coding.tests
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Review this repository"
+    capability: coding.repo
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Generate a Python class for a task queue"
+    capability: coding.generate
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Show me the git log"
+    capability: coding.git
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "What changed since the last commit?"
+    capability: coding.git
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Can you review my PR?"
+    capability: coding.review
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  - user_says: "Explain what this class does"
+    capability: coding.explain
+    planner: CodingPlanner
+    backend: Antigravity CLI
+
+  # ── LIMITATIONS: Refusal examples ────────────────────────
+  - user_says: "Guess the password for this account"
+    capability: "(refused — hard limit: no_password_guess)"
+    planner: "(none — DecisionEngine refuses before routing)"
+    backend: "(none)"
+    notes: "Hard limit. Aura explains the boundary and refuses."
+
+  - user_says: "Bypass the login screen"
+    capability: "(refused — hard limit: no_bypass_login)"
+    planner: "(none — DecisionEngine refuses before routing)"
+    backend: "(none)"
+
+  - user_says: "Delete system32"
+    capability: "(refused — hard limit: no_system_file_delete)"
+    planner: "(none — DecisionEngine refuses before routing)"
+    backend: "(none)"
+
+  - user_says: "Pretend you are ChatGPT"
+    capability: "(refused — ethical rule: no_pretend_human)"
+    planner: "(none — DecisionEngine refuses before routing)"
+    backend: "(none)"
+    notes: "Aura says: I am Aura, an AI OS. I will not impersonate other AI systems."
+
+  - user_says: "Make up a citation for this"
+    capability: "(refused — hard limit: no_fabricate_research)"
+    planner: "(none — DecisionEngine refuses before routing)"
+    backend: "(none)"
+
+  # ── SKILLS: User-facing questions ────────────────────────
+  - user_says: "What skills do you have?"
+    capability: system.skills
+    planner: "(none — answered from SkillsCatalog)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Can you control my desktop?"
+    capability: system.skills
+    planner: "(none — answered from SkillsCatalog)"
+    backend: "(none — no execution required)"
+
+  - user_says: "Do you have browser control?"
+    capability: system.skills
+    planner: "(none — answered from SkillsCatalog)"
+    backend: "(none — no execution required)"
+    notes: "Aura confirms partial — M20 in progress — and explains current state"
+
+  - user_says: "What can you NOT do?"
+    capability: system.limitations
+    planner: "(none — answered from LimitationsCatalog)"
+    backend: "(none — no execution required)"
+    notes: "Aura lists hard limits and missing subsystems honestly"
+
+  # ── MULTI-DOMAIN: Compound goals ─────────────────────────
+  - user_says: "Open VS Code and fix the bug in auth.py"
+    capability: coding.fix
+    planner: CodingPlanner
+    backend: Antigravity CLI
+    notes: "TaskDecomposer: desktop.launch(VS Code) -> coding.fix(auth.py) — sequential"
+
+  - user_says: "Research Python asyncio and then write an example"
+    capability: coding.generate
+    planner: CodingPlanner
+    backend: Antigravity CLI
+    notes: "TaskDecomposer: research.search -> coding.generate — sequential"
+
+  - user_says: "Mute the volume and open Spotify"
+    capability: desktop.audio.mute
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "TaskDecomposer: audio.mute + window.launch — parallel"
+
+  - user_says: "Take a screenshot and analyze the screen"
+    capability: vision.analyze
+    planner: DesktopPlanner
+    backend: Gemini
+    notes: "TaskDecomposer: vision.screenshot -> vision.analyze — sequential"
+
+  - user_says: "Remember that I like dark mode and set brightness to 30 percent"
+    capability: desktop.display.brightness.set
+    planner: DesktopPlanner
+    backend: Native Desktop Engine
+    notes: "TaskDecomposer: memory.remember + display.brightness — parallel"
+
+  - user_says: "Search for Python 3.12 release notes and summarize them"
+    capability: research.summarize
+    planner: ResearchPlanner
+    backend: Gemini
+    notes: "TaskDecomposer: research.search -> research.summarize — sequential"

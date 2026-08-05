@@ -1,6 +1,9 @@
 """
 Result Merger
-Combines multi-planner ExecutionResults, traces, artifacts, and observations into a single coherent response.
+Location: src/core/orchestration/result_merger.py
+
+Combines observations, artifacts, execution traces, and subsystem results
+into a unified ExecutionResult and updates the AgentSession.
 """
 
 import uuid
@@ -8,23 +11,59 @@ from typing import Any
 
 from ..planning.execution_result import ExecutionResult
 from ..planning.execution_trace import ExecutionTrace
+from .agent_session import AgentSession
 
 
 class ResultMerger:
     """
-    Merges multiple ExecutionResult objects into a single aggregated ExecutionResult.
+    Merges multi-subsystem execution outcomes into a unified ExecutionResult.
     """
+
+    def merge_session(
+        self, session: AgentSession, success: bool = True
+    ) -> ExecutionResult:
+        """
+        Synthesize an ExecutionResult directly from an AgentSession.
+
+        Args:
+            session: AgentSession process object
+            success: Overall execution success flag
+
+        Returns:
+            Unified ExecutionResult
+        """
+        task_obs = [obs.content for obs in session.observations if obs.content and obs.obs_type != "system"]
+        sys_obs = [obs.content for obs in session.observations if obs.content and obs.obs_type == "system"]
+        
+        obs_texts = task_obs if task_obs else sys_obs
+        artifacts_dict = [art.to_dict() for art in session.artifacts]
+
+        avg_confidence = (
+            sum(obs.confidence for obs in session.observations)
+            / len(session.observations)
+            if session.observations
+            else 1.0
+        )
+
+        return ExecutionResult(
+            success=success,
+            planner="cognitive_orchestrator",
+            goal=session.goal,
+            confidence=avg_confidence,
+            trace=session.execution_trace,
+            artifacts=artifacts_dict,
+            observations=obs_texts,
+            data={
+                "session_id": session.session_id,
+                "metrics": session.metrics,
+                "budget": session.budget.to_dict(),
+                "system_observations": sys_obs,
+            },
+        )
 
     def merge(self, results: list[ExecutionResult], goal: str) -> ExecutionResult:
         """
         Merge a list of ExecutionResults into one unified ExecutionResult.
-
-        Args:
-            results: List of ExecutionResult objects
-            goal: Original user goal
-
-        Returns:
-            Merged ExecutionResult
         """
         if not results:
             return ExecutionResult(

@@ -436,10 +436,11 @@ class ResearchEngine:
         logger.info("\nProviders Used")
         logger.info("--------------")
         providers_used = (
-            list(self.search_manager.providers.keys())
+            [getattr(p, "name", str(p)) for p in self.search_manager.providers]
             if self.search_manager
             else ["None"]
         )
+
         for provider in providers_used:
             logger.info(f"  - {provider}")
 

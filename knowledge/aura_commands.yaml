@@ -1,0 +1,301 @@
+# ============================================================
+#  Aura Command Reference
+#  Man-page style command listing.
+#  Organized by domain → sub-domain → command.
+#  Every command maps to a capability ID.
+# ============================================================
+
+commands:
+
+  # ── DESKTOP ──────────────────────────────────────────────
+  Desktop:
+
+    Window Management:
+      - phrase: "Open Notepad"
+        capability: desktop.window.launch
+        notes: "Launches a named application"
+      - phrase: "Launch Calculator"
+        capability: desktop.window.launch
+      - phrase: "Open Task Manager"
+        capability: desktop.window.launch
+      - phrase: "Open Paint"
+        capability: desktop.window.launch
+      - phrase: "Start VS Code"
+        capability: desktop.window.launch
+      - phrase: "Close Chrome"
+        capability: desktop.window.close
+      - phrase: "Close Notepad"
+        capability: desktop.window.close
+      - phrase: "Minimize all windows"
+        capability: desktop.window.minimize
+      - phrase: "Minimize Chrome"
+        capability: desktop.window.minimize
+      - phrase: "Maximize Notepad"
+        capability: desktop.window.maximize
+      - phrase: "Restore Chrome"
+        capability: desktop.window.restore
+      - phrase: "Switch to VS Code"
+        capability: desktop.window.activate
+      - phrase: "Focus Calculator"
+        capability: desktop.window.activate
+      - phrase: "List all open windows"
+        capability: desktop.window.list
+      - phrase: "What apps are open"
+        capability: desktop.window.list
+      - phrase: "Kill Chrome"
+        capability: desktop.window.kill
+        notes: "Force-terminates a process (requires confirmation)"
+      - phrase: "Move Notepad to top left"
+        capability: desktop.window.move
+      - phrase: "Resize Notepad to 800x600"
+        capability: desktop.window.resize
+
+    Clipboard:
+      - phrase: "What is in the clipboard"
+        capability: desktop.clipboard.get
+      - phrase: "Read clipboard"
+        capability: desktop.clipboard.get
+      - phrase: "Copy hello world to clipboard"
+        capability: desktop.clipboard.set
+      - phrase: "Clear clipboard"
+        capability: desktop.clipboard.clear
+      - phrase: "Show clipboard history"
+        capability: desktop.clipboard.history
+
+    Audio:
+      - phrase: "What is the volume"
+        capability: desktop.audio.volume.get
+      - phrase: "Set volume to 50"
+        capability: desktop.audio.volume.set
+      - phrase: "Volume 80 percent"
+        capability: desktop.audio.volume.set
+      - phrase: "Volume up"
+        capability: desktop.audio.volume.up
+      - phrase: "Volume down"
+        capability: desktop.audio.volume.down
+      - phrase: "Louder"
+        capability: desktop.audio.volume.up
+      - phrase: "Quieter"
+        capability: desktop.audio.volume.down
+      - phrase: "Mute"
+        capability: desktop.audio.mute
+      - phrase: "Unmute"
+        capability: desktop.audio.unmute
+      - phrase: "Silence"
+        capability: desktop.audio.mute
+      - phrase: "List audio devices"
+        capability: desktop.audio.devices.list
+
+    Display:
+      - phrase: "Screen resolution"
+        capability: desktop.display.info
+      - phrase: "Display info"
+        capability: desktop.display.info
+      - phrase: "Brightness 40 percent"
+        capability: desktop.display.brightness.set
+      - phrase: "Make screen brighter"
+        capability: desktop.display.brightness.set
+      - phrase: "List monitors"
+        capability: desktop.display.monitors.list
+      - phrase: "Set resolution to 1920x1080"
+        capability: desktop.display.resolution.set
+
+    Network:
+      - phrase: "Network status"
+        capability: desktop.network.status
+      - phrase: "Am I connected"
+        capability: desktop.network.status
+      - phrase: "What is my IP"
+        capability: desktop.network.ip
+      - phrase: "Show IP address"
+        capability: desktop.network.ip
+      - phrase: "Turn WiFi on"
+        capability: desktop.network.wifi.enable
+      - phrase: "Enable WiFi"
+        capability: desktop.network.wifi.enable
+      - phrase: "Turn WiFi off"
+        capability: desktop.network.wifi.disable
+      - phrase: "Disable WiFi"
+        capability: desktop.network.wifi.disable
+      - phrase: "List network adapters"
+        capability: desktop.network.adapters.list
+      - phrase: "Ping google.com"
+        capability: desktop.network.ping
+      - phrase: "DNS lookup google.com"
+        capability: desktop.network.dns
+      - phrase: "Firewall status"
+        capability: desktop.network.firewall.status
+
+    Power:
+      - phrase: "Battery status"
+        capability: desktop.power.battery.status
+      - phrase: "How much battery"
+        capability: desktop.power.battery.status
+      - phrase: "Is it charging"
+        capability: desktop.power.battery.status
+      - phrase: "Lock PC"
+        capability: desktop.power.lock
+      - phrase: "Lock screen"
+        capability: desktop.power.lock
+      - phrase: "Sleep"
+        capability: desktop.power.sleep
+        notes: "Requires confirmation"
+      - phrase: "Restart"
+        capability: desktop.power.restart
+        notes: "Requires confirmation"
+      - phrase: "Shutdown"
+        capability: desktop.power.shutdown
+        notes: "Requires confirmation"
+      - phrase: "Power plan"
+        capability: desktop.power.plan.get
+
+    Services:
+      - phrase: "List services"
+        capability: desktop.service.list
+      - phrase: "Start print spooler"
+        capability: desktop.service.start
+      - phrase: "Stop Windows Update"
+        capability: desktop.service.stop
+      - phrase: "Is print spooler running"
+        capability: desktop.service.status
+
+    Registry:
+      - phrase: "Read registry key HKLM\\..."
+        capability: desktop.registry.read
+      - phrase: "List registry subkeys"
+        capability: desktop.registry.list
+      - phrase: "Write registry key"
+        capability: desktop.registry.write
+        notes: "Requires admin permission"
+
+  # ── RESEARCH ─────────────────────────────────────────────
+  Research:
+    - phrase: "Research AI agents"
+      capability: research.deep
+    - phrase: "Search for quantum computing"
+      capability: research.search
+    - phrase: "Summarize this article"
+      capability: research.summarize
+    - phrase: "Compare these sources"
+      capability: research.compare
+    - phrase: "Find evidence for this claim"
+      capability: research.evidence
+    - phrase: "Detect conflicts in this information"
+      capability: research.conflict
+    - phrase: "Generate citations"
+      capability: research.citations
+    - phrase: "Write a report on machine learning"
+      capability: research.report
+    - phrase: "Look up the latest news on Python 4"
+      capability: research.search
+    - phrase: "Investigate climate change causes"
+      capability: research.deep
+    - phrase: "Fact check this statement"
+      capability: research.compare
+
+  # ── CODING ───────────────────────────────────────────────
+  Coding:
+    - phrase: "Explain this code"
+      capability: coding.explain
+    - phrase: "Fix auth.py"
+      capability: coding.fix
+    - phrase: "Fix the bug in this function"
+      capability: coding.fix
+    - phrase: "Refactor this class"
+      capability: coding.refactor
+    - phrase: "Generate unit tests for utils.py"
+      capability: coding.tests
+    - phrase: "Review this PR"
+      capability: coding.review
+    - phrase: "Analyze this repository"
+      capability: coding.repo
+    - phrase: "Git status"
+      capability: coding.git
+    - phrase: "Create a commit"
+      capability: coding.git
+    - phrase: "Write a function to parse JSON"
+      capability: coding.generate
+    - phrase: "Add docstrings to this file"
+      capability: coding.docs
+    - phrase: "Analyze imports"
+      capability: coding.deps
+    - phrase: "AST analysis of main.py"
+      capability: coding.ast
+
+  # ── MEMORY ───────────────────────────────────────────────
+  Memory:
+    - phrase: "Remember that my name is Sreekanta"
+      capability: memory.remember
+    - phrase: "Remember I prefer dark mode"
+      capability: memory.remember
+    - phrase: "What do you remember about me"
+      capability: memory.show
+    - phrase: "Recall my preferences"
+      capability: memory.recall
+    - phrase: "Forget that"
+      capability: memory.forget
+    - phrase: "List all my stored facts"
+      capability: memory.show
+    - phrase: "Search knowledge base for Python decorators"
+      capability: memory.knowledge.query
+
+  # ── VOICE ────────────────────────────────────────────────
+  Voice:
+    - phrase: "Start listening"
+      capability: voice.listen.start
+    - phrase: "Stop listening"
+      capability: voice.listen.stop
+    - phrase: "Enable wake word"
+      capability: voice.wake_word
+    - phrase: "Say hello"
+      capability: voice.tts
+    - phrase: "Read this text aloud"
+      capability: voice.tts
+    - phrase: "Change voice speed"
+      capability: voice.settings
+
+  # ── VISION ───────────────────────────────────────────────
+  Vision:
+    - phrase: "Take a screenshot"
+      capability: vision.screenshot
+    - phrase: "What do you see on the screen"
+      capability: vision.analyze
+    - phrase: "Read the text on the screen"
+      capability: vision.ocr
+    - phrase: "Find the submit button"
+      capability: vision.find
+    - phrase: "Monitor the screen for changes"
+      capability: vision.live
+
+  # ── WORKFLOW ─────────────────────────────────────────────
+  Workflow:
+    - phrase: "Create a workflow"
+      capability: workflow.create
+    - phrase: "Run the morning workflow"
+      capability: workflow.run
+    - phrase: "List my workflows"
+      capability: workflow.list
+    - phrase: "Schedule workflow at 9am"
+      capability: workflow.schedule
+
+  # ── SYSTEM IDENTITY ──────────────────────────────────────
+  System Identity:
+    - phrase: "What are you"
+      capability: system.identity
+      notes: "Answered from identity layer — no planner required"
+    - phrase: "Who are you"
+      capability: system.identity
+    - phrase: "What can you do"
+      capability: system.capabilities
+    - phrase: "What capabilities do you have"
+      capability: system.capabilities
+    - phrase: "How do you work"
+      capability: system.pipeline
+    - phrase: "Aura status"
+      capability: system.status
+    - phrase: "System status"
+      capability: system.status
+    - phrase: "Show your planners"
+      capability: system.planners
+    - phrase: "Show your backends"
+      capability: system.backends

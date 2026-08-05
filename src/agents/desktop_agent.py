@@ -90,7 +90,7 @@ class DesktopAgent:
     # ========================================
 
     def _execute_app_open(self, task: Task) -> TaskOutput:
-        """Open an application."""
+        """Open or focus an application following state reuse principles."""
         app_name = task.input.get("app_name")
 
         if not app_name:
@@ -100,21 +100,46 @@ class DesktopAgent:
                 error="App name not provided",
             )
 
+        # State Reuse Check: If window is already open, focus existing window
+        try:
+            import win32gui
+            import win32con
+
+            matched_hwnd = None
+            def enum_window_cb(hwnd: int, extra: Any):
+                nonlocal matched_hwnd
+                if win32gui.IsWindowVisible(hwnd):
+                    title = win32gui.GetWindowText(hwnd)
+                    if title and app_name.lower() in title.lower():
+                        matched_hwnd = hwnd
+
+            win32gui.EnumWindows(enum_window_cb, None)
+
+            if matched_hwnd:
+                win32gui.ShowWindow(matched_hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(matched_hwnd)
+                return TaskOutput(
+                    success=True,
+                    message=f"Focused existing window for '{app_name}' (State Reused)",
+                    data={"app_name": app_name, "hwnd": matched_hwnd, "state_reused": True},
+                )
+        except Exception as e:
+            logger.debug(f"Window reuse check exception: {e}")
+
         if not self._require_confirmation("Open Application", f"Opening {app_name}"):
             return TaskOutput(success=False, message="Action cancelled by user")
 
-        # Windows command to open app
+        # Windows command to launch app if not running
         try:
             if app_name.lower().endswith(".exe"):
                 subprocess.Popen([app_name], shell=True)
             else:
-                # Try common launchers
                 subprocess.Popen(["start", app_name], shell=True)
 
             return TaskOutput(
                 success=True,
                 message=f"Application opened: {app_name}",
-                data={"app_name": app_name},
+                data={"app_name": app_name, "state_reused": False},
             )
 
         except Exception as e:

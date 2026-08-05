@@ -1,94 +1,80 @@
-# Milestone 16 — Intelligent Multi-Agent Coordination & Orchestration
+# Milestone 16 — Cognitive Orchestration Layer
 
 ## Goal
-Transform Aura from a collection of isolated capabilities into a cohesive, adaptive AI operating platform. Milestone 16 introduces **Intelligent Multi-Agent Coordination**, acting as the central decision-making brain that decomposes goals, selects role-based planners, routes to optimal execution backends, executes independent subtasks in parallel, merges multi-modal results, and updates unified memory.
+Transform Aura into a cohesive, adaptive AI operating platform. Milestone 16 introduces the **Cognitive Orchestration Layer**, acting as Aura's executive brain that evaluates budget limits, recalls memory, reasons and checks safety policies via a `DecisionEngine`, decomposes goals via a `Cognitive Supervisor`, routes to optimal backends, executes subtasks in parallel within an `AgentSession`, merges `Observation` and `Artifact` models, and persists outcomes.
 
 ---
 
-## Core Architectural Principles
+## Core Operating System Primitives
 
-1. **Infrastructure Freeze (`v0.15.0-core-platform`)**:
-   - Core platform infrastructure is stable. Only bug fixes, documentation, performance, and compatibility updates allowed under `v0.15.x`.
-   - Milestone 16 builds **on top** of existing registries and engines without refactoring core contracts.
+1. **Agent Session (`AgentSession`)**:
+   - Acts as Aura's **Operating System Process** ([`src/core/orchestration/agent_session.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/agent_session.py)).
+   - Carries session ID, goal, execution budget, memory context, observations, artifacts, trace, and metrics across the pipeline.
 
-2. **Role-Based Planners vs. Execution Backends**:
-   - **Planners (Roles)**: `Desktop Planner`, `Research Planner`, `Coding Planner`, `Browser Planner`. Planners express intent and required capabilities.
-   - **Backends (Executors)**: `Antigravity CLI`, `Claude Code`, `Aider`, `Groq`, `Gemini`, `Native Desktop Engine`. Backends fulfill specific capabilities.
-   - *Key Distinction*: `Antigravity CLI` is a **Coding Backend**, NOT a Planner. Planners are backend-agnostic.
+2. **Execution Budget (`ExecutionBudget`)**:
+   - Enforces execution limits: `max_time_seconds`, `max_cost_usd`, `max_backends`, `allow_parallel`, `local_only`, and `offline_mode`.
 
-3. **Unified Execution Flow**:
-   ```text
-   User Goal
-       │
-   Phase 1: Intent & Task Decomposition (Task Graph + Required Capabilities)
-       │
-   Phase 2: Planner Selection (Desktop, Research, Coding, Browser Planners)
-       │
-   Phase 3: Backend Selection (Score, Latency, Cost, Health -> Choose Backend)
-       │
-   Phase 4: Parallel Execution (Concurrent Planner Execution)
-       │
-   Phase 5: Result Fusion (Observations, Files, Citations, Unified Traces)
-       │
-   Phase 6: Unified Memory Update (Conversation, Execution, Desktop, Research)
-       │
-   Final Response
-   ```
+3. **Observation Model (`Observation`)**:
+   - Standardized observation model ([`src/core/orchestration/observation.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/observation.py)) returned by all role planners and backends instead of arbitrary dictionaries.
+
+4. **Unified Artifact Store (`Artifact`)**:
+   - Standardized artifact model ([`src/core/orchestration/artifact.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/artifact.py)) capturing created files, markdown reports, patches, screenshots, and citations.
+
+5. **Decision Engine (`DecisionEngine`)**:
+   - Executive decision engine ([`src/core/orchestration/decision_engine.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/decision_engine.py)) handling reasoning, risk checks, budget enforcement, and memory policies.
 
 ---
 
-## Detailed Roadmap Phases
+## Architecture & Single Sources of Truth
 
-### Phase 1 — Intent & Task Decomposition
-- **Focus**: Parse user goals into structured dependency graphs (Task Graphs) and required capability sets.
-- **Components**:
-  - `IntentClassifier`: Multi-intent detection & disambiguation.
-  - `TaskDecomposer`: Breaks down complex goals into DAG subtasks with dependency links.
-  - `CapabilityRequirementsMap`: Maps subtasks to abstract capability contracts.
-
-### Phase 2 — Planner Selection (Role-Based)
-- **Focus**: Route decomposed tasks to domain-specific role planners.
-- **Components**:
-  - `PlannerRegistry`: Central registry of role-based planners.
-  - `DesktopPlanner`: Windows desktop interaction & automation.
-  - `ResearchPlanner`: Live search, academic, and codebase RAG analysis.
-  - `CodingPlanner`: Code modification, refactoring, linting, and testing.
-  - `BrowserPlanner`: Web page navigation, interaction, and data extraction.
-
-### Phase 3 — Backend Routing & Selection
-- **Focus**: Dynamically map required capabilities to optimal backend providers.
-- **Components**:
-  - `BackendRegistry`: Extensible registry for backends (Groq, Gemini, Antigravity CLI, Native Desktop Engine, Aider, etc.).
-  - `BackendScorer`: Dynamic scoring based on Capability Fit, Latency, Cost, and Health/Availability.
-  - `FallbackRouter`: Graceful fallback if primary backend is unreachable or degraded.
-
-### Phase 4 — Parallel Execution Engine
-- **Focus**: Execute non-dependent planners concurrently to minimize end-to-end latency.
-- **Components**:
-  - `ConcurrentTaskExecutor`: Async graph runner for independent DAG nodes.
-  - `ExecutionMonitor`: Real-time state tracking and cancellation propagation across parallel branches.
-
-### Phase 5 — Result Fusion & Response Synthesis
-- **Focus**: Consolidate outputs from multiple backends into a coherent response.
-- **Components**:
-  - `ResultMerger`: Aggregates observations, file changes, search citations, and visual artifacts.
-  - `UnifiedTraceLogger`: Generates an end-to-end execution trace for auditability and debugging.
-
-### Phase 6 — Unified Memory Integration
-- **Focus**: Persist outcomes across all domain memories through a single unified API.
-- **Components**:
-  - `UnifiedMemoryAdapter`: Interface to update Conversation Memory, Execution Memory, Desktop Memory, and Research Memory atomically.
+- **Master Orchestrator**: [`src/core/orchestration/master_orchestrator.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/master_orchestrator.py)
+- **Planner Registry**: [`src/core/orchestration/planner_registry.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/planner_registry.py)
+- **Backend Registry**: [`src/core/backends/backend_registry.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/backend_registry.py)
+- **Antigravity CLI Adapter**: [`src/core/backends/adapters/antigravity_backend.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/adapters/antigravity_backend.py)
 
 ---
 
-## First Deliverable: End-to-End Orchestration Demo
+## 7-Stage Cognitive Execution Pipeline
 
-**Target Scenario**:
-> *"Research Python 3.14 changes, summarize them, open my VS Code project, create a markdown report, and ask Antigravity to update the affected files."*
+```text
+Goal + ExecutionBudget
+    │
+Stage 1: Memory Recall (Context pre-fetch)
+    │
+Stage 2: Executive Decision Engine (Reasoning, Risk, Budget, Policy)
+    │
+Stage 3: Task Graph Decomposition (TaskDecomposer DAG generation)
+    │
+Stage 4: Cognitive Supervisor Delegation (SupervisorAgent -> Role Planners)
+    │
+Stage 5: Backend Selection & Parallel Execution (BackendRegistry -> Adapters)
+    │
+Stage 6: Result Fusion & Observation Merging (ResultMerger -> AgentSession)
+    │
+Stage 7: Unified Memory Write (Persist outcomes)
+```
 
-**Verification Criteria**:
-1. Correct intent decomposition into Research + Desktop + Coding subtasks.
-2. Concurrent execution of Research Planner (Web/RAG) and Desktop Planner (VS Code launcher).
-3. Backend routing: Gemini/Groq for Research, Native Engine for Desktop, Antigravity CLI for Coding.
-4. Cohesive result fusion with unified trace output.
-5. Successful memory update across all memory layers.
+---
+
+## End-to-End Orchestration Demo
+
+**Run Command**:
+```bash
+.venv\Scripts\python examples/orchestration_demo.py
+```
+
+---
+
+## Status & Freeze Summary
+
+**Status:** ✅ COMPLETE (100%)
+
+The core contracts for the Cognitive Orchestration Layer are frozen:
+- `AgentSession` & `ExecutionBudget`
+- `Observation` & `Artifact`
+- `DecisionEngine` & `SupervisorAgent`
+- `PlannerRegistry` & `BackendRegistry`
+- `MasterOrchestrator` & `ResultMerger`
+
+Future milestones will build domain capabilities (Coding, Browser, Research, Event-driven runtime) on top of this stable foundation.
+

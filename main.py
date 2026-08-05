@@ -4,25 +4,34 @@ import io
 import sys
 from pathlib import Path
 
-# Configure stdout to UTF-8 BEFORE any other imports
-# This fixes Unicode encoding issues on Windows (cp1252 vs UTF-8)
+# Configure sys.path FIRST before any core imports
+PROJECT_ROOT = Path(__file__).resolve().parent
+SRC_DIR = PROJECT_ROOT / "src"
+
+while "" in sys.path:
+    sys.path.remove("")
+while str(PROJECT_ROOT) in sys.path:
+    sys.path.remove(str(PROJECT_ROOT))
+while str(SRC_DIR) in sys.path:
+    sys.path.remove(str(SRC_DIR))
+
+sys.path.insert(0, str(SRC_DIR))
+sys.path.insert(1, str(PROJECT_ROOT))
+if str(PROJECT_ROOT / "scripts") not in sys.path:
+    sys.path.insert(2, str(PROJECT_ROOT / "scripts"))
+
+
+# Configure stdout to UTF-8
 try:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 except Exception:
     pass  # If reconfiguration fails, keep the default
 
-# Import logger from core module
-from core import logger
-
-PROJECT_ROOT = Path(__file__).resolve().parent
-SRC_DIR = PROJECT_ROOT / "src"
-
-sys.path.insert(0, str(PROJECT_ROOT))  # project root first to find core/
-sys.path.insert(1, str(SRC_DIR))  # src second to find logger
-sys.path.insert(2, str(PROJECT_ROOT / "scripts"))  # scripts third to find utilities
-
 from clients.cli_client import CLIClient
 from clients.gui_client import GUIClient
+
+# Import logger from core module
+from core import logger
 from core.aura_core import AuraCore
 from scripts.aura_monitor import AuraMonitor
 
