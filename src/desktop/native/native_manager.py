@@ -17,7 +17,6 @@ from .native_models import (
     RegistryKey,
     ServiceInfo,
     WindowStyle,
-    EventType,
 )
 from .native_exceptions import (
     NativeError,
@@ -32,11 +31,14 @@ from .native_exceptions import (
     RegistryValueNotFoundError,
     ServiceNotFoundError,
     CapabilityNotAvailableError,
+    PermissionDeniedError,
 )
 from .native_events import (
     NativeEventBus,
     EventListener,
     get_event_bus,
+    EventType,
+    NativeEvent,
 )
 from .native_utils import (
     get_window_by_title,
@@ -476,8 +478,3 @@ class NativeManager:
             from .service_manager import ServiceManager
             self._service_manager = ServiceManager(self)
         return self._service_manager
-
-
-class PermissionDeniedError(NativeError):
-    """Raised when a permission check fails"""
-    pass

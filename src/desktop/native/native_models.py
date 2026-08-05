@@ -14,7 +14,7 @@ class WindowStyle(Enum):
     NORMAL = 0
     MINIMIZED = win32con.WS_MINIMIZE
     MAXIMIZED = win32con.WS_MAXIMIZE
-    HIDDEN = win32con.WS_HIDDEN
+    HIDDEN = 0  # No WS_VISIBLE flag (Windows has no WS_HIDDEN constant)
 
 
 class WindowState(Enum):

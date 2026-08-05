@@ -160,6 +160,32 @@ class InvalidCapabilityRequestError(NativeError):
     """Raised when a capability request is invalid"""
     pass
 
+class CapabilityNotFoundError(NativeError):
+    """Raised when a requested capability does not exist in the registry"""
+    pass
+
+
+class PermissionDeniedError(NativeError):
+    """Raised when a permission check fails"""
+    pass
+
+
+class OperationTimeoutError(NativeError):
+    """Raised when an operation exceeds its allotted time"""
+    pass
+
+
+class OperationCancelledError(NativeError):
+    """Raised when an operation is cancelled before completion"""
+    pass
+
+class VerificationError(NativeError):
+    """Raised when post-operation verification fails"""
+    pass
+
+class RollbackError(NativeError):
+    """Raised when a rollback operation fails"""
+    pass
 
 class EventPublishError(NativeError):
     """Raised when event publishing fails"""

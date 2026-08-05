@@ -2,12 +2,13 @@
 Registry Manager
 Manages Windows registry operations.
 """
-from typing import List, Optional
+from typing import List, Optional, Any
 import logging
 
 from .native_manager import NativeManager
 from .native_models import RegistryKey
 from .native_exceptions import RegistryKeyNotFoundError, RegistryValueNotFoundError
+
 
 logger = logging.getLogger(__name__)
 

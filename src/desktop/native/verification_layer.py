@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from .native_models import WindowInfo, ProcessInfo, ClipboardData, DisplayInfo, AudioDevice, NetworkInterface
 from .native_exceptions import VerificationError
 from .native_execution_context import NativeExecutionContext
+from enum import Enum
 
 
 class VerificationMode(Enum):

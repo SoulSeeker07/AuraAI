@@ -1,0 +1,1 @@
+"""Desktop execution pipeline tests."""

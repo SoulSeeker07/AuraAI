@@ -4,6 +4,7 @@ Event system for desktop operations.
 """
 from dataclasses import dataclass, field
 from typing import Optional, Any, List, Callable
+from .native_exceptions import EventPublishError
 from enum import Enum
 import json
 import time

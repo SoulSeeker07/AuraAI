@@ -109,16 +109,11 @@ from .native_diagnostics import (
     get_diagnostics,
     reset_diagnostics,
 )
-
-# Export managers
-from .window_manager import WindowManager
-from .clipboard_manager import ClipboardManager
-from .display_manager import DisplayManager
-from .power_manager import PowerManager
-from .audio_manager import AudioManager
-from .network_manager import NetworkManager
-from .registry_manager import RegistryManager
-from .service_manager import ServiceManager
+from .managers import (
+    BaseNativeManager,
+    WindowManager,
+    ClipboardManager,
+)
 
 # Export models
 from .native_models import (
@@ -149,6 +144,8 @@ from .native_exceptions import (
     PermissionDeniedError,
     OperationTimeoutError,
     OperationCancelledError,
+    VerificationError,
+    RollbackError,
 )
 
 __version__ = "1.0.0"
@@ -261,4 +258,14 @@ __all__ = [
     "OperationCancelledError",
     "VerificationError",
     "RollbackError",
+    # Managers
+    "BaseNativeManager",
+    "WindowManager",
+    "ClipboardManager",
+    "DisplayManager",
+    "AudioManager",
+    "PowerManager",
+    "NetworkManager",
+    "ServiceManager",
+    "RegistryManager",
 ]
