@@ -167,6 +167,18 @@ def test_execution_engine_registry_integration():
     print("[OK] ExecutionEngine + NativeManagerRegistry integration verified")
 
 
+def test_boot_report():
+    """Test Desktop Boot Report generation."""
+    manager_registry = NativeManagerRegistry.get_instance()
+    manager_registry.discover("src.desktop.native.managers")
+    report = manager_registry.get_boot_report(simulation_mode=True)
+    assert "Aura Desktop Boot" in report
+    assert "Simulation Mode" in report
+    assert "Enabled" in report
+    assert "Desktop Ready" in report
+
+
+
 def test_custom_manager_lifecycle():
     """Test full lifecycle of a custom mock manager."""
     class CustomTestManager(BaseNativeManager):

@@ -65,6 +65,8 @@ class ExecutionConfig:
     enable_diagnostics: bool = True
     enable_verification: bool = True
     enable_context_updates: bool = True
+    simulation_mode: bool = False
+
 
 
 class DesktopExecutionEngine:
@@ -183,11 +185,26 @@ class DesktopExecutionEngine:
             self.diagnostics.start_stage(DiagnosticsStage.EXECUTION)
 
             target_manager = self.manager_registry.resolve(capability) or self.manager or MockManager()
-            result = target_manager.execute(
-                capability=capability, goal=goal, arguments=arguments,
-            )
+
+            if self.config.simulation_mode and (
+                descriptor.is_destructive
+                or descriptor.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+            ):
+                logger.info(f"SIMULATION MODE ACTIVE: Bypassing physical execution of '{capability}'")
+                result = DesktopResult.create_success(
+                    goal=goal,
+                    capability=capability,
+                    manager=descriptor.manager,
+                    data={"simulated": True, "status": "simulated_execution", "capability": capability},
+                    events=descriptor.events_triggered,
+                )
+            else:
+                result = target_manager.execute(
+                    capability=capability, goal=goal, arguments=arguments,
+                )
 
             self.diagnostics.complete_stage(DiagnosticsStage.EXECUTION)
+
 
             result.goal = goal
             result.capability = capability
@@ -263,7 +280,8 @@ class DesktopExecutionEngine:
             "minimize_window": ["minimize", "hide window"],
             "maximize_window": ["maximize", "fullscreen", "full screen"],
             "restore_window": ["restore", "unminimize"],
-            "clipboard.read_text": ["read clipboard", "get clipboard", "paste clipboard", "read copied text"],
+            "clipboard.read_text": ["read clipboard", "get clipboard", "paste clipboard", "read copied text", "read text"],
+
             "clipboard.write_text": ["write clipboard", "set clipboard", "copy to clipboard", "copy text"],
             "clipboard.clear": ["clear clipboard", "empty clipboard"],
             "clipboard.read_image": ["read clipboard image", "get clipboard image", "read screenshot"],
@@ -278,14 +296,48 @@ class DesktopExecutionEngine:
             "clipboard.has_files": ["clipboard has files", "does clipboard have files"],
             "list_displays": ["list displays", "show displays", "monitors"],
             "get_primary_display": ["primary display", "main monitor", "main display"],
-            "set_volume": ["set volume", "change volume", "turn up", "turn down", "volume"],
+            "get_volume": ["get volume", "read volume", "master volume", "current volume", "check volume"],
+            "set_volume": ["set volume", "change volume", "turn up", "turn down", "adjust volume"],
             "toggle_mute": ["mute", "unmute", "toggle mute"],
+
             "list_audio_devices": ["list audio", "audio devices", "sound devices"],
-            "list_network_interfaces": ["list network", "network interfaces", "wifi", "ethernet"],
+            "list_network_interfaces": ["list network", "network interfaces", "show network adapters"],
+            "network.interfaces": ["get network interfaces", "all network adapters"],
+            "network.default_interface": ["default interface", "active adapter", "main network"],
+            "network.public_ip": ["public ip", "external ip", "my public ip", "what is my ip"],
+            "network.local_ip": ["local ip", "internal ip", "ip address", "my ip"],
+            "network.gateway": ["default gateway", "gateway address", "router ip"],
+            "network.dns": ["dns servers", "dns configuration", "what is my dns"],
+            "network.mac": ["mac address", "physical address", "hardware address"],
+            "network.hostname": ["hostname", "computer name"],
+            "network.connection_type": ["connection type", "am i on wifi"],
+            "network.wifi_name": ["wifi name", "ssid", "connected wifi"],
+            "network.signal_strength": ["signal strength", "wifi strength"],
+            "network.ping": ["ping", "ping google", "ping host"],
+            "network.traceroute": ["traceroute", "tracert", "trace route"],
+            "network.lookup": ["dns lookup", "nslookup", "domain lookup"],
+            "network.port_check": ["port check", "check port", "is port open"],
+            "network.internet": ["internet connection", "check internet", "is internet working", "internet is slow"],
+            "network.speed": ["speed test", "test speed", "internet speed"],
+            "network.latency": ["measure latency", "check latency", "ping latency"],
+            "network.packet_loss": ["packet loss", "check loss"],
+            "network.enable_adapter": ["enable adapter", "enable wifi"],
+            "network.disable_adapter": ["disable adapter", "disable wifi"],
+            "network.release_ip": ["release ip", "release dhcp"],
+            "network.renew_ip": ["renew ip", "renew dhcp"],
+            "network.flush_dns": ["flush dns", "clear dns cache"],
+            "network.disconnect_wifi": ["disconnect wifi", "disconnect wireless"],
+            "network.connect_wifi": ["connect wifi", "connect to wifi"],
+
+            "power.battery": ["battery", "battery level", "battery status", "get battery", "charge level"],
+            "power.ac_status": ["ac status", "ac power", "plugged in", "charger status"],
+            "power.power_plan": ["power plan", "power scheme", "active power plan"],
+
             "shutdown": ["shutdown", "turn off", "power off"],
             "restart": ["restart", "reboot"],
             "sleep": ["sleep", "hibernate", "standby"],
             "lock": ["lock", "lock screen", "lock computer"],
+
             "list_services": ["list services", "show services", "windows services"],
             "start_service": ["start service"],
             "stop_service": ["stop service", "kill service"],
@@ -423,7 +475,12 @@ class DesktopExecutionEngine:
     def get_diagnostics_report(self) -> str:
         return self.diagnostics.to_detailed_report()
 
+    def get_boot_report(self) -> str:
+        """Get human-readable boot report for Aura Desktop."""
+        return self.manager_registry.get_boot_report(simulation_mode=self.config.simulation_mode)
+
     def reset(self) -> None:
+
         self._execution_history.clear()
         self.diagnostics = NativeDiagnostics()
         if hasattr(self.manager, 'reset'):

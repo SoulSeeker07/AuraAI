@@ -264,3 +264,49 @@ class NativeManagerRegistry:
         self._capability_map.clear()
         self._health_cache.clear()
         self._auto_discovered = False
+
+    def get_boot_report(self, simulation_mode: bool = False) -> str:
+        """
+        Generate a human-readable Aura Desktop Boot Report.
+
+        Args:
+            simulation_mode: Whether DesktopExecutionEngine is in simulation mode.
+
+        Returns:
+            Formatted multiline boot report string.
+        """
+        health_data = self.health()
+        healthy_count = sum(1 for v in health_data.values() if v["status"] == HealthStatus.HEALTHY.value)
+        degraded_count = sum(1 for v in health_data.values() if v["status"] == HealthStatus.DEGRADED.value)
+
+        lines = [
+            "========================================",
+            "          Aura Desktop Boot             ",
+            "========================================",
+            "Loading managers...",
+        ]
+
+        for name, manager in self._managers.items():
+            adapter_info = ""
+            if hasattr(manager, "adapter"):
+                adapter_info = f" ({manager.adapter.name})"
+            h_info = health_data.get(name, {})
+            st_symbol = "✓" if h_info.get("status") == HealthStatus.HEALTHY.value else "⚠"
+            lines.append(f"  {st_symbol} {manager.__class__.__name__}{adapter_info}")
+
+        lines.extend([
+            "",
+            "Manager Registry",
+            f"  Managers Loaded: {len(self._managers)}",
+            f"  Capabilities Mapped: {len(self._capability_map)}",
+            f"  Healthy: {healthy_count} | Degraded: {degraded_count}",
+            "",
+            "Simulation Mode",
+            f"  {'Enabled' if simulation_mode else 'Disabled'}",
+            "",
+            "Desktop Ready",
+            "========================================",
+        ])
+
+        return "\n".join(lines)
+

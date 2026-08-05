@@ -20,12 +20,18 @@ Available Managers:
 from .base_manager import BaseNativeManager
 from .window_manager import WindowManager
 from .clipboard_manager import ClipboardManager
-
-# DisplayManager, AudioManager, PowerManager, NetworkManager, ServiceManager, RegistryManager
-# will be added as they are implemented
+from .display_manager import DisplayManager
+from .audio_manager import AudioManager
+from .power_manager import PowerManager
+from .network_manager import NetworkManager
 
 __all__ = [
     "BaseNativeManager",
     "WindowManager",
     "ClipboardManager",
+    "DisplayManager",
+    "AudioManager",
+    "PowerManager",
+    "NetworkManager",
 ]
+

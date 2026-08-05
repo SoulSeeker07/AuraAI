@@ -10,10 +10,11 @@ class NativeError(Exception):
     def __init__(
         self,
         message: str,
-        operation: str,
+        operation: str = "",
         win32_error: Optional[int] = None,
         details: Optional[Any] = None
     ):
+
         self.message = message
         self.operation = operation
         self.win32_error = win32_error

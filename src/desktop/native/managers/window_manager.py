@@ -215,12 +215,14 @@ class WindowManager(BaseNativeManager):
 
     # ==================== CAPABILITY HANDLERS ====================
 
-    def _handle_activate(self, window_title=None, window_class=None, process_id=None):
+    def _handle_activate(self, window_title=None, window_class=None, process_id=None, title=None, **kwargs):
         """Handle window activation."""
+        window_title = window_title or title
         # Find window
         window_handle = self._find_window(window_title, window_class, process_id)
         if not window_handle:
             raise WindowError("No matching window found for activation")
+
 
         # Activate window
         try:

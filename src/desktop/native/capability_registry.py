@@ -75,7 +75,13 @@ class CapabilityDescriptor:
     tags: List[str] = field(default_factory=list)
     usage_examples: List[str] = field(default_factory=list)
 
+    # Capability Graph Relationships (Planner Intelligence)
+    requires: List[str] = field(default_factory=list)
+    verifies: List[str] = field(default_factory=list)
+    rollback_capabilities: List[str] = field(default_factory=list)
+
     def get_permission_label(self) -> str:
+
         """Get human-readable permission label"""
         return self.permission_label or self.permission.value.title()
 
@@ -166,6 +172,9 @@ class CapabilityRegistry:
             rollback_description="Deactivate the window and restore previous foreground window",
             events_triggered=["window_activated"],
             usage_examples=["Switch to a specific application", "Bring a minimized window back"],
+            requires=["list_windows"],
+            verifies=["get_window"],
+            rollback_capabilities=["activate_window"],
         ))
 
         self.register(CapabilityDescriptor(
@@ -180,6 +189,8 @@ class CapabilityRegistry:
             is_destructive=True,
             supports_undo=False,
             usage_examples=["Close a specific window", "Close multiple windows"],
+            requires=["list_windows"],
+            verifies=["list_windows"],
         ))
 
         self.register(CapabilityDescriptor(
@@ -193,6 +204,9 @@ class CapabilityRegistry:
             supports_undo=True,
             rollback_description="Restore window to previous position",
             events_triggered=["window_moved"],
+            requires=["list_windows"],
+            verifies=["get_window"],
+            rollback_capabilities=["move_window"],
         ))
 
         self.register(CapabilityDescriptor(
@@ -206,6 +220,9 @@ class CapabilityRegistry:
             supports_undo=True,
             rollback_description="Restore window to previous size",
             events_triggered=["window_resized"],
+            requires=["list_windows"],
+            verifies=["get_window"],
+            rollback_capabilities=["resize_window"],
         ))
 
         self.register(CapabilityDescriptor(
@@ -219,6 +236,9 @@ class CapabilityRegistry:
             supports_undo=True,
             rollback_description="Restore window from minimized state",
             events_triggered=["window_minimized"],
+            requires=["list_windows"],
+            verifies=["get_window"],
+            rollback_capabilities=["restore_window"],
         ))
 
         self.register(CapabilityDescriptor(
@@ -232,6 +252,9 @@ class CapabilityRegistry:
             supports_undo=True,
             rollback_description="Restore window from maximized state",
             events_triggered=["window_maximized"],
+            requires=["list_windows"],
+            verifies=["get_window"],
+            rollback_capabilities=["restore_window"],
         ))
 
         self.register(CapabilityDescriptor(
@@ -244,7 +267,10 @@ class CapabilityRegistry:
             risk_level=RiskLevel.SAFE,
             supports_undo=False,
             events_triggered=["window_restored"],
+            requires=["list_windows"],
+            verifies=["get_window"],
         ))
+
 
     def _register_clipboard_capabilities(self) -> None:
         """Register clipboard capabilities - full clipboard surface"""
@@ -710,18 +736,68 @@ class CapabilityRegistry:
             ))
 
     def _register_network_capabilities(self) -> None:
-        """Register network capabilities"""
-        self.register(CapabilityDescriptor(
-            name="list_network_interfaces",
-            description="List all network interface adapters",
-            manager="network",
-            category="network",
-            permission=PermissionRequired.READ,
-            permission_label="Read",
-            risk_level=RiskLevel.LOW,
-            supports_undo=False,
-            usage_examples=["List network adapters", "Get network interface info"],
-        ))
+        """Register network capabilities - full network surface"""
+        # Information Capabilities (Read-only, Risk: SAFE or LOW)
+        info_caps = [
+            ("list_network_interfaces", "List all network interface adapters"),
+            ("network.interfaces", "List all network interface adapters"),
+            ("network.default_interface", "Get active default network interface"),
+            ("network.public_ip", "Get external public IP address"),
+            ("network.local_ip", "Get host local IP address"),
+            ("network.gateway", "Get default network gateway address"),
+            ("network.dns", "Get configured DNS servers"),
+            ("network.mac", "Get MAC address of default interface"),
+            ("network.hostname", "Get host machine name"),
+            ("network.connection_type", "Get connection type (Wi-Fi/Ethernet)"),
+            ("network.wifi_name", "Get connected Wi-Fi SSID"),
+            ("network.signal_strength", "Get Wi-Fi signal strength percentage"),
+        ]
+        for name, desc in info_caps:
+            self.register(CapabilityDescriptor(
+                name=name, description=desc, manager="network", category="network",
+                permission=PermissionRequired.READ, permission_label="Read",
+                risk_level=RiskLevel.SAFE if "name" in name or "type" in name or "hostname" in name else RiskLevel.LOW,
+                supports_undo=False, backend_required="netsh",
+            ))
+
+        # Diagnostic Capabilities (Read-only, Risk: SAFE or LOW)
+        diag_caps = [
+            ("network.ping", "Ping target host or IP"),
+            ("network.traceroute", "Perform traceroute to target host"),
+            ("network.lookup", "Perform DNS lookup for domain"),
+            ("network.port_check", "Check if specific port is open"),
+            ("network.internet", "Check internet connection status"),
+            ("network.speed", "Check network throughput speed"),
+            ("network.latency", "Measure latency to target host"),
+            ("network.packet_loss", "Measure packet loss percentage"),
+        ]
+        for name, desc in diag_caps:
+            self.register(CapabilityDescriptor(
+                name=name, description=desc, manager="network", category="network",
+                permission=PermissionRequired.READ, permission_label="Read",
+                risk_level=RiskLevel.LOW, supports_undo=False, backend_required="netsh",
+            ))
+
+        # Control Capabilities (Mutable, Risk: HIGH or CRITICAL)
+        ctrl_caps = [
+            ("network.enable_adapter", "Enable a network adapter interface", RiskLevel.HIGH, False, False, ["list_network_interfaces"], ["network.default_interface"], ["network.disable_adapter"]),
+            ("network.disable_adapter", "Disable a network adapter interface", RiskLevel.CRITICAL, True, True, ["list_network_interfaces"], ["network.interfaces"], ["network.enable_adapter"]),
+            ("network.release_ip", "Release DHCP IP lease for adapter", RiskLevel.HIGH, False, False, ["list_network_interfaces"], ["network.local_ip"], []),
+            ("network.renew_ip", "Renew DHCP IP lease for adapter", RiskLevel.HIGH, False, False, ["list_network_interfaces"], ["network.local_ip"], []),
+            ("network.flush_dns", "Flush DNS resolver cache", RiskLevel.MODERATE, False, False, ["network.dns"], ["network.lookup"], []),
+            ("network.disconnect_wifi", "Disconnect from Wi-Fi network", RiskLevel.HIGH, False, False, ["network.wifi_name"], ["network.wifi_name"], []),
+            ("network.connect_wifi", "Connect to specified Wi-Fi network", RiskLevel.HIGH, False, False, ["list_network_interfaces"], ["network.wifi_name"], ["network.disconnect_wifi"]),
+        ]
+        for name, desc, risk, confirm, dest, reqs, vers, rbs in ctrl_caps:
+            self.register(CapabilityDescriptor(
+                name=name, description=desc, manager="network", category="network",
+                permission=PermissionRequired.CONTROL, permission_label="Control",
+                risk_level=risk, requires_confirmation=confirm, is_destructive=dest,
+                supports_undo=bool(rbs), backend_required="netsh",
+                requires=reqs, verifies=vers, rollback_capabilities=rbs,
+            ))
+
+
 
     def _register_registry_capabilities(self) -> None:
         """Register registry capabilities"""
@@ -914,10 +990,30 @@ class CapabilityRegistry:
 
     def get_risk_levels(self) -> List[RiskLevel]:
         """Get all risk levels present in the registry"""
-        risks = set()
+        risk_levels = set()
         for cap in self._capabilities.values():
-            risks.add(cap.risk_level)
-        return sorted(risks, key=lambda x: x.value)
+            risk_levels.add(cap.risk_level)
+        return sorted(risk_levels, key=lambda x: x.value)
+
+    def get_capability_graph(self, capability: str) -> Dict[str, Any]:
+        """
+        Get capability graph relationship links (requires, verifies, rollback).
+
+        Args:
+            capability: Dot-separated or standard capability name.
+
+        Returns:
+            Dictionary containing requirement, verification, and rollback capability links.
+        """
+        desc = self.get(capability)
+        if not desc:
+            return {"capability": capability, "requires": [], "verifies": [], "rollback_capabilities": []}
+        return {
+            "capability": desc.name,
+            "requires": list(desc.requires),
+            "verifies": list(desc.verifies),
+            "rollback_capabilities": list(desc.rollback_capabilities),
+        }
 
 
 # Global capability registry instance

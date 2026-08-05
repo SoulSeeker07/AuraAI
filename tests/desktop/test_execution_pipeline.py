@@ -782,6 +782,27 @@ class TestArchitectureValidation:
             assert result.success is True, \
                 f"Goal '{goal}' failed: {result.error}"
 
+    def test_simulation_mode_execution(self, registry):
+        """Verify simulation_mode automatically intercepts destructive actions."""
+        sim_engine = DesktopExecutionEngine(
+            registry=registry,
+            config=ExecutionConfig(simulation_mode=True),
+        )
+        res = sim_engine.execute(goal="shutdown computer", capability="shutdown")
+        assert res.success is True
+        assert res.data.get("simulated") is True
+
+    def test_capability_graph_metadata(self, registry):
+        """Verify capability graph dependency links."""
+        graph = registry.get_capability_graph("activate_window")
+        assert graph["capability"] == "activate_window"
+        assert "list_windows" in graph["requires"]
+        assert "get_window" in graph["verifies"]
+        assert "activate_window" in graph["rollback_capabilities"]
+
+
+
+
 
 # ==================== Main Entry Point ====================
 
