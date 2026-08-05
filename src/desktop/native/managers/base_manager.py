@@ -25,6 +25,29 @@ from ..verification_layer import VerificationLayer
 from ..rollback_framework import RollbackFunctions
 
 
+from enum import Enum
+from dataclasses import dataclass, field
+
+class HealthStatus(Enum):
+    """Health status of a native manager."""
+    HEALTHY = "HEALTHY"
+    DEGRADED = "DEGRADED"
+    UNAVAILABLE = "UNAVAILABLE"
+    DISABLED = "DISABLED"
+
+
+@dataclass
+class HealthCheckResult:
+    """Detailed health check diagnostics for a native manager."""
+    manager_name: str
+    status: HealthStatus
+    missing_dependencies: List[str] = field(default_factory=list)
+    available_fallbacks: List[str] = field(default_factory=list)
+    total_capabilities: int = 0
+    available_capabilities: int = 0
+    details: Dict[str, Any] = field(default_factory=dict)
+
+
 class BaseNativeManager(ABC):
     """
     Abstract base class for all native desktop managers.
@@ -34,11 +57,59 @@ class BaseNativeManager(ABC):
     (permissions, logging, metrics, verification, rollback, diagnostics).
     """
 
+    # Class metadata for auto-discovery and dependency resolution
+    NAME: str = "base"
+    VERSION: str = "1.0"
+    PRIORITY: int = 100
+    DEPENDENCIES: List[str] = []
+
     def __init__(self):
         """Initialize the manager with capability registry and verification layer."""
         self._capabilities: List[str] = []
         self._verification_layer: Optional[VerificationLayer] = None
         self._rollback_functions: Optional[RollbackFunctions] = None
+        self._initialized: bool = False
+
+    @property
+    def name(self) -> str:
+        """Get manager name."""
+        return getattr(self, "NAME", self.__class__.__name__.lower())
+
+    def initialize(self) -> None:
+        """Initialize the manager resources."""
+        self._initialized = True
+
+    def shutdown(self) -> None:
+        """Shutdown the manager and clean up resources."""
+        self._initialized = False
+
+    def health_check(self) -> HealthCheckResult:
+        """
+        Perform a health check on the manager and its dependencies.
+
+        Returns:
+            HealthCheckResult with detailed status.
+        """
+        missing = []
+        for dep in getattr(self, "DEPENDENCIES", []):
+            try:
+                __import__(dep)
+            except ImportError:
+                missing.append(dep)
+
+        if missing:
+            status = HealthStatus.DEGRADED if len(missing) < len(self.DEPENDENCIES) else HealthStatus.UNAVAILABLE
+        else:
+            status = HealthStatus.HEALTHY
+
+        return HealthCheckResult(
+            manager_name=self.name,
+            status=status,
+            missing_dependencies=missing,
+            available_fallbacks=[],
+            total_capabilities=len(self.capabilities),
+            available_capabilities=len(self.capabilities) if status == HealthStatus.HEALTHY else 0,
+        )
 
     @property
     def capabilities(self) -> List[str]:

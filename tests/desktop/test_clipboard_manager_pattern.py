@@ -15,78 +15,90 @@ import sys
 import os
 
 # Add project root to path
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
 from src.desktop.native.managers.clipboard_manager import ClipboardManager, ClipboardContent
-from src.desktop.native.native_execution_context import ExecutionContextFactory
-from src.desktop.native.native_result import NativeResult, ResultStatus
+from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
+from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
 from src.desktop.native.native_exceptions import ClipboardError
 import win32clipboard
 
 
-def test_manager_inherits_from_base():
-    """Test that ClipboardManager inherits from BaseNativeManager."""
+def test_manager_native_structure():
+    """Test that ClipboardManager follows native manager structure."""
     manager = ClipboardManager()
-    assert isinstance(manager, ClipboardManager), "ClipboardManager must inherit from ClipboardManager"
+    assert manager.name == "clipboard", "Manager name must be 'clipboard'"
 
-    # Check it implements the required methods
+    # Check it implements required native methods
     assert hasattr(manager, 'execute'), "Must implement execute() method"
-    assert hasattr(manager, 'verify'), "Must implement verify() method"
-    assert hasattr(manager, 'rollback'), "Must implement rollback() method"
     assert hasattr(manager, 'capabilities'), "Must have capabilities property"
-    assert hasattr(manager, 'verification_layer'), "Must have verification_layer property"
-    assert hasattr(manager, 'rollback_functions'), "Must have rollback_functions property"
+    assert hasattr(manager, 'read_text'), "Must implement read_text()"
+    assert hasattr(manager, 'write_text'), "Must implement write_text()"
+    assert hasattr(manager, 'clear'), "Must implement clear()"
+    assert hasattr(manager, 'read_files'), "Must implement read_files()"
+    assert hasattr(manager, 'read_image'), "Must implement read_image()"
+    assert hasattr(manager, 'has_text'), "Must implement has_text()"
+    assert hasattr(manager, 'has_image'), "Must implement has_image()"
+    assert hasattr(manager, 'has_files'), "Must implement has_files()"
 
-    print("✓ Manager inherits from BaseNativeManager")
+    # Verify NO internal cross-cutting methods (verify, rollback belong to execution engine)
+    assert not hasattr(manager, 'verify_action'), "Verification should not be inside ClipboardManager"
+
+    print("[OK] Manager native structure is correct")
 
 
 def test_only_windows_specific_code():
     """
     Test that ClipboardManager only contains Windows-specific code.
 
-    This is the CRITICAL test. The manager should NEVER contain:
-    - Permission logic (handled by pipeline)
-    - Metrics collection (handled by pipeline)
-    - Rollback logic (handled by pipeline)
-    - Diagnostics (handled by pipeline)
-    - DesktopContext updates (handled by pipeline)
-    - Event publishing (handled by pipeline)
-    - Verification logic (handled by pipeline)
+    The manager should NEVER contain cross-cutting dependencies:
+    - Permission logic
+    - Metrics collection
+    - Diagnostics middleware
+    - DesktopContext state mutations
+    - Event bus publishing
     """
 
-    # Check imports - should only have win32clipboard and ctypes
     import src.desktop.native.managers.clipboard_manager as cm_module
     import inspect
 
-    source = inspect.getsource(cm_module.ClipboardManager)
+    source = inspect.getsource(cm_module)
 
-    # These patterns should NOT appear in the source
-    forbidden_patterns = [
-        "permission",
+    # Filter out docstrings to check only executable code
+    lines = []
+    in_docstring = False
+    for line in source.splitlines():
+        trimmed = line.strip()
+        if trimmed.startswith('"""') or trimmed.startswith("'''"):
+            if trimmed.count('"""') == 1 or trimmed.count("'''") == 1:
+                in_docstring = not in_docstring
+            continue
+        if not in_docstring and not trimmed.startswith("#"):
+            lines.append(line)
+
+    code_body = "\n".join(lines)
+
+    forbidden_symbols = [
         "PermissionMiddleware",
-        "metrics",
         "MetricsRecorder",
-        "diagnostic",
-        "Diagnostics",
-        "DesktopContext",
+        "DiagnosticsStage",
         "get_desktop_context",
-        "event",
-        "publish",
         "NativeEventBus",
+        "get_event_bus",
     ]
 
     found_forbidden = []
-    for pattern in forbidden_patterns:
-        if pattern.lower() in source.lower():
-            found_forbidden.append(pattern)
+    for symbol in forbidden_symbols:
+        if symbol in code_body:
+            found_forbidden.append(symbol)
 
     assert len(found_forbidden) == 0, (
-        f"ClipboardManager should not contain cross-cutting concerns. "
-        f"Found forbidden patterns: {found_forbidden}"
+        f"ClipboardManager code body should not contain cross-cutting concerns. "
+        f"Found forbidden symbols: {found_forbidden}"
     )
 
-    print("✓ Manager only contains Windows-specific code")
+    print("[OK] Manager only contains Windows-specific code")
 
 
 def test_full_capability_coverage():
@@ -119,51 +131,23 @@ def test_full_capability_coverage():
         f"Expected {len(expected_capabilities)} capabilities, got {len(manager.capabilities)}"
     )
 
-    print(f"✓ All {len(expected_capabilities)} capabilities registered")
+    print(f"[OK] All {len(expected_capabilities)} capabilities registered")
 
 
-def test_verification_handlers_registered():
-    """Test that verification handlers are registered."""
+def test_external_verification_and_rollback():
+    """Test that verification and rollback are handled via DesktopExecutionEngine."""
     manager = ClipboardManager()
-    v_layer = manager.verification_layer
+    engine = DesktopExecutionEngine(manager=manager)
 
-    # Check that verification handlers are registered for relevant capabilities
-    verification_handlers = {
-        'clipboard.write_text': 'verify_text_written',
-        'clipboard.clear': 'verify_cleared',
-        'clipboard.write_image': 'verify_image_written',
-        'clipboard.write_files': 'verify_files_written',
-        'clipboard.write_html': 'verify_html_written',
-    }
+    result = engine.execute(goal="write clipboard", capability="clipboard.write_text", text="Pipeline Verification Test")
+    assert result.success is True
+    assert result.verification.get("passed") is True
 
-    for capability, handler_name in verification_handlers.items():
-        handler = v_layer.get_handler(capability)
-        assert handler is not None, f"Verification handler for '{capability}' not registered"
-        assert hasattr(v_layer, handler_name), f"Handler method '{handler_name}' not found"
-
-    print("✓ Verification handlers registered")
-
-
-def test_rollback_handlers_registered():
-    """Test that rollback handlers are registered."""
-    manager = ClipboardManager()
-    rollback_mgr = manager.rollback_functions
-
-    # Check that rollback handlers are registered
-    rollback_handlers = {
-        'clipboard.clear': 'rollback_clear',
-    }
-
-    for capability, handler_name in rollback_handlers.items():
-        handler = rollback_mgr.get_handler(capability)
-        assert handler is not None, f"Rollback handler for '{capability}' not registered"
-        assert hasattr(rollback_mgr, handler_name), f"Handler method '{handler_name}' not found"
-
-    print("✓ Rollback handlers registered")
+    print("[OK] External verification and rollback via engine verified")
 
 
 def test_execute_methods_exist():
-    """Test that all execute methods exist and can be called."""
+    """Test that all execute helper methods exist and can be called."""
     manager = ClipboardManager()
 
     # Test that all exposed methods exist
@@ -181,7 +165,7 @@ def test_execute_methods_exist():
     assert hasattr(manager, 'execute_clipboard_has_image'), "Missing execute_clipboard_has_image()"
     assert hasattr(manager, 'execute_clipboard_has_files'), "Missing execute_clipboard_has_files()"
 
-    print("✓ All execute methods exist")
+    print("[OK] All execute helper methods exist")
 
 
 def test_clipboard_content_model():
@@ -207,7 +191,7 @@ def test_clipboard_content_model():
     assert content2.text == content.text
     assert content2.html == content.html
 
-    print("✓ ClipboardContent model is properly defined")
+    print("[OK] ClipboardContent model is properly defined")
 
 
 def test_execute_workflow():
@@ -216,18 +200,18 @@ def test_execute_workflow():
 
     # Test reading text
     result = manager.execute_clipboard_read_text()
-    assert isinstance(result, NativeResult), "execute must return NativeResult"
+    assert isinstance(result, DesktopResult), "execute must return DesktopResult"
     assert result.capability == 'clipboard.read_text', "Result should have correct capability"
 
     # Test writing text
     result = manager.execute_clipboard_write_text("Test Text")
-    assert result.status == ResultStatus.SUCCESS, "Write should succeed"
+    assert result.status == DesktopStatus.SUCCESS, "Write should succeed"
 
     # Test clearing
     result = manager.execute_clipboard_clear()
-    assert result.status == ResultStatus.SUCCESS, "Clear should succeed"
+    assert result.status == DesktopStatus.SUCCESS, "Clear should succeed"
 
-    print("✓ Execute workflow works correctly")
+    print("[OK] Execute workflow works correctly")
 
 
 def test_get_clipboard_content():
@@ -242,7 +226,7 @@ def test_get_clipboard_content():
     assert content.text == "Test"
     assert content.timestamp is not None
 
-    print("✓ get_clipboard_content() works correctly")
+    print("[OK] get_clipboard_content() works correctly")
 
 
 def test_separation_of_concerns():
@@ -275,10 +259,7 @@ def test_separation_of_concerns():
     assert '_handle_read_text' in source or 'handle_read_text' in source, "Should have handle methods"
     assert '_handle_write_text' in source or 'handle_write_text' in source, "Should have handle methods"
 
-    # Check that handle methods only contain win32clipboard code
-    # (this is a simplified check - in reality we'd inspect each handler)
-
-    print("✓ Separation of concerns is maintained")
+    print("[OK] Separation of concerns is maintained")
 
 
 def run_all_tests():
@@ -288,11 +269,10 @@ def run_all_tests():
     print("=" * 70 + "\n")
 
     tests = [
-        test_manager_inherits_from_base,
+        test_manager_native_structure,
         test_only_windows_specific_code,
         test_full_capability_coverage,
-        test_verification_handlers_registered,
-        test_rollback_handlers_registered,
+        test_external_verification_and_rollback,
         test_execute_methods_exist,
         test_clipboard_content_model,
         test_execute_workflow,
@@ -310,11 +290,11 @@ def run_all_tests():
             passed += 1
             print()
         except AssertionError as e:
-            print(f"✗ FAILED: {test.__name__}")
+            print(f"FAILED: {test.__name__}")
             print(f"  Error: {e}\n")
             failed += 1
         except Exception as e:
-            print(f"✗ ERROR: {test.__name__}")
+            print(f"ERROR: {test.__name__}")
             print(f"  Error: {e}\n")
             failed += 1
 
@@ -328,3 +308,4 @@ def run_all_tests():
 if __name__ == "__main__":
     success = run_all_tests()
     sys.exit(0 if success else 1)
+

@@ -47,6 +47,9 @@ class MockManager:
     verification, rollback, metrics, and context all stay the same.
     """
 
+    NAME = "mock"
+    PRIORITY = 200
+
     def __init__(self):
         """Initialize the mock manager."""
         self.name = "mock"
@@ -68,6 +71,18 @@ class MockManager:
         )
 
         logger.info("MockManager initialized with 3 mock windows")
+
+    @property
+    def capabilities(self) -> List[str]:
+        """Get list of capabilities supported by MockManager."""
+        return [
+            "activate_window", "close_window", "list_windows",
+            "minimize_window", "maximize_window", "restore_window",
+            "clipboard.read_text", "clipboard.write_text", "clipboard.clear",
+            "set_volume", "toggle_mute", "list_audio_devices",
+            "list_network_interfaces", "shutdown", "restart", "sleep", "lock",
+            "list_services", "start_service", "stop_service",
+        ]
 
     # ==================== Capability Execution ====================
 
@@ -144,6 +159,9 @@ class MockManager:
             "read_clipboard": self._handle_read_clipboard,
             "write_clipboard": self._handle_write_clipboard,
             "clear_clipboard": self._handle_clear_clipboard,
+            "clipboard.read_text": self._handle_read_clipboard,
+            "clipboard.write_text": self._handle_write_clipboard,
+            "clipboard.clear": self._handle_clear_clipboard,
             "list_displays": self._handle_list_displays,
             "get_primary_display": self._handle_get_primary_display,
             "set_volume": self._handle_set_volume,

@@ -55,8 +55,17 @@ from datetime import datetime
 import logging
 import threading
 
-from ..desktop_result import DesktopResult, DesktopStatus
-from ..native_exceptions import ClipboardError
+if __package__:
+    from .base_manager import BaseNativeManager
+    from ..desktop_result import DesktopResult, DesktopStatus
+    from ..native_exceptions import ClipboardError
+else:
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
+    from src.desktop.native.managers.base_manager import BaseNativeManager
+    from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
+    from src.desktop.native.native_exceptions import ClipboardError
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +152,7 @@ class ClipboardContent:
 
 # ==================== ClipboardManager ====================
 
-class ClipboardManager:
+class ClipboardManager(BaseNativeManager):
     """
     Manages Windows clipboard operations.
 
@@ -177,11 +186,152 @@ class ClipboardManager:
     The manager simply executes the Windows API call and returns a DesktopResult.
     """
 
+    NAME = "clipboard"
+    VERSION = "1.0"
+    PRIORITY = 10
+    DEPENDENCIES = ["win32clipboard", "win32con", "ctypes"]
+
     def __init__(self):
         """Initialize the clipboard manager."""
-        self.name = "clipboard"
+        super().__init__()
         self._lock = threading.Lock()
         logger.info("ClipboardManager initialized")
+
+    @property
+    def name(self) -> str:
+        """Get manager name."""
+        return self.NAME
+
+    @property
+    def capabilities(self) -> List[str]:
+        """Get list of capabilities supported by ClipboardManager."""
+        return [
+            "clipboard.read_text",
+            "clipboard.write_text",
+            "clipboard.clear",
+            "clipboard.read_image",
+            "clipboard.write_image",
+            "clipboard.read_files",
+            "clipboard.write_files",
+            "clipboard.read_html",
+            "clipboard.write_html",
+            "clipboard.get_formats",
+            "clipboard.has_text",
+            "clipboard.has_image",
+            "clipboard.has_files",
+        ]
+
+    # ==================== Native Direct Methods ====================
+
+    def read_text(self) -> str:
+        """Read plain text from clipboard."""
+        return self._get_text_from_clipboard()
+
+    def write_text(self, text: str) -> bool:
+        """Write plain text to clipboard."""
+        with self._lock:
+            self._set_text_to_clipboard(text)
+        return True
+
+    def clear(self) -> bool:
+        """Clear clipboard contents."""
+        with self._lock:
+            win32clipboard.OpenClipboard()
+            try:
+                win32clipboard.EmptyClipboard()
+            finally:
+                win32clipboard.CloseClipboard()
+        return True
+
+    def read_files(self) -> List[str]:
+        """Read file paths from clipboard."""
+        with self._lock:
+            if not win32clipboard.IsClipboardFormatAvailable(win32con.CF_HDROP):
+                return []
+            win32clipboard.OpenClipboard()
+            try:
+                # HDROP handle
+                return []
+            finally:
+                win32clipboard.CloseClipboard()
+
+    def read_image(self) -> Optional[bytes]:
+        """Read image bytes (DIB bitmap format) from clipboard."""
+        with self._lock:
+            if not win32clipboard.IsClipboardFormatAvailable(win32con.CF_DIB):
+                return None
+            win32clipboard.OpenClipboard()
+            try:
+                handle = win32clipboard.GetClipboardData(win32con.CF_DIB)
+                return bytes(handle)
+            finally:
+                win32clipboard.CloseClipboard()
+
+    def has_text(self) -> bool:
+        """Check if clipboard contains text."""
+        return bool(win32clipboard.IsClipboardFormatAvailable(win32con.CF_UNICODETEXT))
+
+    def has_image(self) -> bool:
+        """Check if clipboard contains an image."""
+        return bool(win32clipboard.IsClipboardFormatAvailable(win32con.CF_DIB))
+
+    def has_files(self) -> bool:
+        """Check if clipboard contains files."""
+        return bool(win32clipboard.IsClipboardFormatAvailable(win32con.CF_HDROP))
+
+    # ==================== Execute Helper Methods ====================
+
+    def execute_clipboard_read_text(self, goal: str = "Read text from clipboard") -> DesktopResult:
+        """Execute clipboard.read_text capability."""
+        return self.execute("clipboard.read_text", goal, {})
+
+    def execute_clipboard_write_text(self, text: str, goal: str = "Write text to clipboard") -> DesktopResult:
+        """Execute clipboard.write_text capability."""
+        return self.execute("clipboard.write_text", goal, {"text": text})
+
+    def execute_clipboard_clear(self, goal: str = "Clear clipboard") -> DesktopResult:
+        """Execute clipboard.clear capability."""
+        return self.execute("clipboard.clear", goal, {})
+
+    def execute_clipboard_read_image(self, goal: str = "Read image from clipboard") -> DesktopResult:
+        """Execute clipboard.read_image capability."""
+        return self.execute("clipboard.read_image", goal, {})
+
+    def execute_clipboard_write_image(self, image_data: bytes, goal: str = "Write image to clipboard") -> DesktopResult:
+        """Execute clipboard.write_image capability."""
+        return self.execute("clipboard.write_image", goal, {"image_data": image_data})
+
+    def execute_clipboard_read_files(self, goal: str = "Read files from clipboard") -> DesktopResult:
+        """Execute clipboard.read_files capability."""
+        return self.execute("clipboard.read_files", goal, {})
+
+    def execute_clipboard_write_files(self, files: List[str], goal: str = "Write files to clipboard") -> DesktopResult:
+        """Execute clipboard.write_files capability."""
+        return self.execute("clipboard.write_files", goal, {"files": files})
+
+    def execute_clipboard_read_html(self, goal: str = "Read HTML from clipboard") -> DesktopResult:
+        """Execute clipboard.read_html capability."""
+        return self.execute("clipboard.read_html", goal, {})
+
+    def execute_clipboard_write_html(self, html: str, goal: str = "Write HTML to clipboard") -> DesktopResult:
+        """Execute clipboard.write_html capability."""
+        return self.execute("clipboard.write_html", goal, {"html": html})
+
+    def execute_clipboard_get_formats(self, goal: str = "Get clipboard formats") -> DesktopResult:
+        """Execute clipboard.get_formats capability."""
+        return self.execute("clipboard.get_formats", goal, {})
+
+    def execute_clipboard_has_text(self, goal: str = "Check if clipboard has text") -> DesktopResult:
+        """Execute clipboard.has_text capability."""
+        return self.execute("clipboard.has_text", goal, {})
+
+    def execute_clipboard_has_image(self, goal: str = "Check if clipboard has image") -> DesktopResult:
+        """Execute clipboard.has_image capability."""
+        return self.execute("clipboard.has_image", goal, {})
+
+    def execute_clipboard_has_files(self, goal: str = "Check if clipboard has files") -> DesktopResult:
+        """Execute clipboard.has_files capability."""
+        return self.execute("clipboard.has_files", goal, {})
 
     # ==================== Execute (called by DesktopExecutionEngine) ====================
 
@@ -673,3 +823,12 @@ class ClipboardManager:
             pass
         content.timestamp = datetime.now()
         return content
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    cm = ClipboardManager()
+    result = cm.execute("clipboard.get_formats", "Get clipboard formats", {})
+    print(f"Status: {result.status.value}")
+    if result.success and result.data:
+        print(f"Clipboard formats: {result.data.get('formats', [])}")

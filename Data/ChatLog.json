@@ -48,5 +48,85 @@
     "role": "assistant",
     "content": "Goodbye, Sreekanta.",
     "topic": "Exit"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss networking.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "Sure! What would you like to know?",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "What protocol elects DR and BDR?",
+    "topic": "Networking"
+  },
+  {
+    "role": "assistant",
+    "content": "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
+    "topic": "Networking"
+  },
+  {
+    "role": "user",
+    "content": "Switch topic.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "What's next?",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss Python.",
+    "topic": "Python"
+  },
+  {
+    "role": "assistant",
+    "content": "Great choice! Python is versatile.",
+    "topic": "Python"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss networking.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "Sure!",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "Question 1",
+    "topic": "Networking"
+  },
+  {
+    "role": "assistant",
+    "content": "Answer 1",
+    "topic": "Networking"
+  },
+  {
+    "role": "user",
+    "content": "Switch topic.",
+    "topic": "General"
+  },
+  {
+    "role": "assistant",
+    "content": "What's next?",
+    "topic": "General"
+  },
+  {
+    "role": "user",
+    "content": "Let's discuss Python.",
+    "topic": "Python"
+  },
+  {
+    "role": "assistant",
+    "content": "Great!",
+    "topic": "Python"
   }
 ]

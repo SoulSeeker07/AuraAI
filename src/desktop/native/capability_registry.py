@@ -67,9 +67,9 @@ class CapabilityDescriptor:
     supports_undo: bool = False
     rollback_description: Optional[str] = None
 
-    # Platform support
-    supported_platforms: List[str] = field(default_factory=lambda: ["windows"])
-    requires_elevation: bool = False
+    # Hardware / Platform requirements
+    backend_required: Optional[str] = None
+    minimum_windows_version: Optional[str] = "10"
 
     # Additional metadata
     tags: List[str] = field(default_factory=list)
@@ -429,6 +429,17 @@ class CapabilityRegistry:
         ))
 
         self.register(CapabilityDescriptor(
+            name="display.list",
+            description="List all connected display monitors",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
+            risk_level=RiskLevel.SAFE,
+            supports_undo=False,
+        ))
+
+        self.register(CapabilityDescriptor(
             name="get_primary_display",
             description="Get information about the primary monitor",
             manager="display",
@@ -440,7 +451,18 @@ class CapabilityRegistry:
         ))
 
         self.register(CapabilityDescriptor(
-            name="get_display",
+            name="display.primary",
+            description="Get information about the primary monitor",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
+            risk_level=RiskLevel.SAFE,
+            supports_undo=False,
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="get_display_info",
             description="Get information about a specific display",
             manager="display",
             category="display",
@@ -450,112 +472,242 @@ class CapabilityRegistry:
             supports_undo=False,
         ))
 
-    def _register_power_capabilities(self) -> None:
-        """Register power capabilities"""
         self.register(CapabilityDescriptor(
-            name="shutdown",
-            description="Shutdown the system",
-            manager="power",
-            category="power",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
-            risk_level=RiskLevel.CRITICAL,
-            requires_confirmation=True,
-            is_destructive=True,
-            requires_admin=True,
-            usage_examples=["Shutdown computer", "Turn off system"],
-        ))
-
-        self.register(CapabilityDescriptor(
-            name="restart",
-            description="Restart the system",
-            manager="power",
-            category="power",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
-            risk_level=RiskLevel.CRITICAL,
-            requires_confirmation=True,
-            is_destructive=True,
-            requires_admin=True,
-            usage_examples=["Restart computer", "Reboot system"],
-        ))
-
-        self.register(CapabilityDescriptor(
-            name="sleep",
-            description="Put system to sleep mode",
-            manager="power",
-            category="power",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
-            risk_level=RiskLevel.LOW,
-            is_destructive=False,
-            usage_examples=["Put to sleep", "Hibernate"],
-        ))
-
-        self.register(CapabilityDescriptor(
-            name="lock",
-            description="Lock the screen",
-            manager="power",
-            category="power",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
-            risk_level=RiskLevel.SAFE,
-            is_destructive=False,
-            usage_examples=["Lock screen", "Lock workstation"],
-        ))
-
-        self.register(CapabilityDescriptor(
-            name="logoff",
-            description="Log off the current user",
-            manager="power",
-            category="power",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
-            risk_level=RiskLevel.MODERATE,
-            requires_confirmation=True,
-            is_destructive=False,
-            usage_examples=["Log off user", "Switch user"],
-        ))
-
-    def _register_audio_capabilities(self) -> None:
-        """Register audio capabilities"""
-        self.register(CapabilityDescriptor(
-            name="list_audio_devices",
-            description="List all audio output and input devices",
-            manager="audio",
-            category="audio",
+            name="display.info",
+            description="Get information about a specific display",
+            manager="display",
+            category="display",
             permission=PermissionRequired.READ,
             permission_label="Read",
             risk_level=RiskLevel.SAFE,
             supports_undo=False,
-            usage_examples=["List audio devices", "Get speaker and microphone info"],
         ))
 
         self.register(CapabilityDescriptor(
-            name="set_volume",
-            description="Set volume level for an audio device",
-            manager="audio",
-            category="audio",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
+            name="get_display_layout",
+            description="Get virtual desktop layout geometry",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
             risk_level=RiskLevel.SAFE,
-            supports_undo=True,
-            rollback_description="Restore previous volume level",
-            events_triggered=["audio_volume_changed"],
+            supports_undo=False,
         ))
 
         self.register(CapabilityDescriptor(
-            name="toggle_mute",
-            description="Mute or unmute an audio device",
-            manager="audio",
-            category="audio",
-            permission=PermissionRequired.CONTROL,
-            permission_label="Control",
+            name="display.layout",
+            description="Get virtual desktop layout geometry",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
             risk_level=RiskLevel.SAFE,
-            supports_undo=True,
-            rollback_description="Restore previous mute state",
-            events_triggered=["audio_volume_changed"],
+            supports_undo=False,
         ))
+
+        self.register(CapabilityDescriptor(
+            name="get_dpi",
+            description="Get monitor DPI awareness and scale factor",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
+            risk_level=RiskLevel.SAFE,
+            supports_undo=False,
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="display.dpi",
+            description="Get monitor DPI awareness and scale factor",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
+            risk_level=RiskLevel.SAFE,
+            supports_undo=False,
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="get_brightness",
+            description="Get display brightness level",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
+            risk_level=RiskLevel.SAFE,
+            supports_undo=False,
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="display.brightness",
+            description="Get display brightness level",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.READ,
+            permission_label="Read",
+            risk_level=RiskLevel.SAFE,
+            supports_undo=False,
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="set_brightness",
+            description="Set display brightness level",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.WRITE,
+            permission_label="Write",
+            risk_level=RiskLevel.LOW,
+            supports_undo=True,
+            events_triggered=["brightness_changed"],
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="display.set_brightness",
+            description="Set display brightness level",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.WRITE,
+            permission_label="Write",
+            risk_level=RiskLevel.LOW,
+            supports_undo=True,
+            events_triggered=["brightness_changed"],
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="set_resolution",
+            description="Set display resolution",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.WRITE,
+            permission_label="Write",
+            risk_level=RiskLevel.MODERATE,
+            supports_undo=True,
+            events_triggered=["resolution_changed"],
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="display.set_resolution",
+            description="Set display resolution",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.WRITE,
+            permission_label="Write",
+            risk_level=RiskLevel.MODERATE,
+            supports_undo=True,
+            events_triggered=["resolution_changed"],
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="set_orientation",
+            description="Set display orientation",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.WRITE,
+            permission_label="Write",
+            risk_level=RiskLevel.MODERATE,
+            supports_undo=True,
+            events_triggered=["orientation_changed"],
+        ))
+
+        self.register(CapabilityDescriptor(
+            name="display.set_orientation",
+            description="Set display orientation",
+            manager="display",
+            category="display",
+            permission=PermissionRequired.WRITE,
+            permission_label="Write",
+            risk_level=RiskLevel.MODERATE,
+            supports_undo=True,
+            events_triggered=["orientation_changed"],
+        ))
+
+    def _register_power_capabilities(self) -> None:
+        """Register power capabilities - full power surface"""
+        # Read-only Stage 1
+        read_caps = [
+            ("power.battery", "Get battery level and charging status"),
+            ("power.ac_status", "Get AC power line status"),
+            ("power.power_plan", "Get active power plan scheme"),
+            ("power.sleep_supported", "Check if sleep mode is supported"),
+            ("power.hibernate_supported", "Check if hibernate mode is supported"),
+        ]
+        for name, desc in read_caps:
+            self.register(CapabilityDescriptor(
+                name=name, description=desc, manager="power", category="power",
+                permission=PermissionRequired.READ, permission_label="Read",
+                risk_level=RiskLevel.SAFE, supports_undo=False, backend_required="wmi",
+            ))
+
+        # Safe Actions Stage 2
+        safe_caps = [
+            ("lock", "Lock workstation screen", "power.lock"),
+            ("power.lock", "Lock workstation screen", None),
+            ("sleep", "Put system to sleep mode", "power.sleep"),
+            ("power.sleep", "Put system to sleep mode", None),
+        ]
+        for name, desc, fallback in safe_caps:
+            self.register(CapabilityDescriptor(
+                name=name, description=desc, manager="power", category="power",
+                permission=PermissionRequired.CONTROL, permission_label="Control",
+                risk_level=RiskLevel.LOW, supports_undo=False, fallback_capability=fallback,
+                events_triggered=["workstation_locked"] if "lock" in name else ["system_sleep"],
+                backend_required="wmi",
+            ))
+
+        # Destructive Actions Stage 3
+        dest_caps = [
+            ("shutdown", "Shutdown the system", "power.shutdown", RiskLevel.CRITICAL, True),
+            ("power.shutdown", "Shutdown the system", None, RiskLevel.CRITICAL, True),
+            ("restart", "Restart the system", "power.restart", RiskLevel.CRITICAL, True),
+            ("power.restart", "Restart the system", None, RiskLevel.CRITICAL, True),
+            ("power.hibernate", "Put system to hibernate mode", None, RiskLevel.MODERATE, False),
+            ("logoff", "Log off the current user", "power.logoff", RiskLevel.MODERATE, True),
+            ("power.logoff", "Log off the current user", None, RiskLevel.MODERATE, True),
+        ]
+        for name, desc, fallback, risk, confirm in dest_caps:
+            self.register(CapabilityDescriptor(
+                name=name, description=desc, manager="power", category="power",
+                permission=PermissionRequired.CONTROL, permission_label="Control",
+                risk_level=risk, requires_confirmation=confirm, is_destructive=True,
+                fallback_capability=fallback, backend_required="wmi",
+                events_triggered=["system_shutdown"] if "shutdown" in name else (["system_restart"] if "restart" in name else []),
+            ))
+
+    def _register_audio_capabilities(self) -> None:
+        """Register audio capabilities - full audio surface"""
+        audio_caps = [
+            ("list_audio_devices", "List all audio output and input devices", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("audio.list_devices", "List all audio output and input devices", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("get_default_audio_device", "Get default output audio device", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("audio.default_device", "Get default output audio device", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("get_volume", "Get master volume level and mute status", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("audio.volume", "Get master volume level and mute status", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("is_muted", "Check if audio is muted", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("audio.is_muted", "Check if audio is muted", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("list_microphones", "List input microphone devices", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("audio.microphones", "List input microphone devices", "READ", PermissionRequired.READ, RiskLevel.SAFE, False),
+            ("set_volume", "Set volume level for an audio device (0-100)", "CONTROL", PermissionRequired.CONTROL, RiskLevel.SAFE, True),
+            ("audio.set_volume", "Set volume level for an audio device (0-100)", "CONTROL", PermissionRequired.CONTROL, RiskLevel.SAFE, True),
+            ("toggle_mute", "Mute or unmute an audio device", "CONTROL", PermissionRequired.CONTROL, RiskLevel.SAFE, True),
+            ("audio.toggle_mute", "Mute or unmute an audio device", "CONTROL", PermissionRequired.CONTROL, RiskLevel.SAFE, True),
+            ("set_default_output", "Set default audio output endpoint", "CONTROL", PermissionRequired.CONTROL, RiskLevel.LOW, False),
+            ("audio.set_default_output", "Set default audio output endpoint", "CONTROL", PermissionRequired.CONTROL, RiskLevel.LOW, False),
+        ]
+
+        for name, desc, perm_lbl, perm_req, risk, undo in audio_caps:
+            self.register(CapabilityDescriptor(
+                name=name,
+                description=desc,
+                manager="audio",
+                category="audio",
+                permission=perm_req,
+                permission_label=perm_lbl,
+                risk_level=risk,
+                supports_undo=undo,
+                backend_required="pycaw",
+                minimum_windows_version="10",
+                events_triggered=["volume_changed"] if "volume" in name else (["mute_toggled"] if "mute" in name else []),
+            ))
 
     def _register_network_capabilities(self) -> None:
         """Register network capabilities"""

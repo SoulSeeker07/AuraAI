@@ -11,17 +11,31 @@ This manager ONLY contains Windows-specific code.
 import win32gui
 import win32con
 import win32api
+import win32process
 import psutil
 import time
 from typing import List, Dict, Any, Optional
 import logging
 
-from .base_manager import BaseNativeManager
-from ..native_execution_context import NativeExecutionContext
-from ..native_result import NativeResult, ResultStatus
-from ..native_exceptions import WindowError, NativeError
-from ..verification_layer import VerificationLayer, VerificationResult
-from ..rollback_framework import RollbackFunctions, RollbackContext, RollbackAction
+if __package__:
+    from .base_manager import BaseNativeManager
+    from ..native_execution_context import NativeExecutionContext
+    from ..native_result import NativeResult, ResultStatus
+    from ..desktop_result import DesktopResult, DesktopStatus
+    from ..native_exceptions import WindowError, NativeError
+    from ..verification_layer import VerificationLayer, VerificationResult
+    from ..rollback_framework import RollbackFunctions, RollbackContext, RollbackAction
+else:
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
+    from src.desktop.native.managers.base_manager import BaseNativeManager
+    from src.desktop.native.native_execution_context import NativeExecutionContext
+    from src.desktop.native.native_result import NativeResult, ResultStatus
+    from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
+    from src.desktop.native.native_exceptions import WindowError, NativeError
+    from src.desktop.native.verification_layer import VerificationLayer, VerificationResult
+    from src.desktop.native.rollback_framework import RollbackFunctions, RollbackContext, RollbackAction
 
 
 class WindowManager(BaseNativeManager):
@@ -41,260 +55,127 @@ class WindowManager(BaseNativeManager):
     Uses Win32 GUI API for window management operations.
     """
 
+    NAME = "window"
+    VERSION = "1.0"
+    PRIORITY = 10
+    DEPENDENCIES = ["win32gui", "win32con", "win32api", "win32process", "psutil"]
+
     def __init__(self):
         """Initialize the window manager."""
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
-    def register_capabilities(self) -> None:
-        """
-        Register all window management capabilities with verification and rollback handlers.
-        """
-        capabilities = [
-            'window.activate',
-            'window.close',
-            'window.resize',
-            'window.move',
-            'window.maximize',
-            'window.minimize',
-            'window.list',
-            'window.get_info',
+    @property
+    def name(self) -> str:
+        """Get manager name."""
+        return self.NAME
+
+    @property
+    def capabilities(self) -> List[str]:
+        """Get list of capabilities supported by WindowManager."""
+        return [
+            "list_windows",
+            "get_window",
+            "activate_window",
+            "close_window",
+            "move_window",
+            "resize_window",
+            "minimize_window",
+            "maximize_window",
+            "restore_window",
+            "window.list",
+            "window.activate",
+            "window.close",
+            "window.move",
+            "window.resize",
+            "window.maximize",
+            "window.minimize",
+            "window.restore",
+            "window.get_info",
         ]
-
-        # Verification handlers
-        verification_handlers = {
-            'window.activate': self._verify_window_activated,
-            'window.close': self._verify_window_closed,
-            'window.resize': self._verify_window_resized,
-            'window.move': self._verify_window_moved,
-            'window.maximize': self._verify_window_maximized,
-            'window.minimize': self._verify_window_minimized,
-        }
-
-        # Rollback handlers
-        rollback_handlers = {
-            'window.activate': self._rollback_window_activated,
-            'window.close': self._rollback_window_closed,
-            'window.resize': self._rollback_window_resized,
-            'window.move': self._rollback_window_moved,
-            'window.maximize': self._rollback_window_maximized,
-            'window.minimize': self._rollback_window_minimized,
-        }
-
-        super().register_capabilities(
-            capabilities=capabilities,
-            verification_handlers=verification_handlers,
-            rollback_handlers=rollback_handlers,
-        )
-
-    # ==================== EXPOSED CAPABILITIES ====================
-
-    def execute_window_activate(
-        self,
-        window_title: Optional[str] = None,
-        window_class: Optional[str] = None,
-        process_id: Optional[int] = None,
-    ) -> NativeResult:
-        """
-        Activate (focus) a window.
-
-        Args:
-            window_title: Optional window title to match.
-            window_class: Optional window class name to match.
-            process_id: Optional process ID to match.
-
-        Returns:
-            NativeResult with success status and window info.
-
-        Raises:
-            WindowError: If no matching window found or activation fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.activate'
-        return self.execute(capability, context, window_title=window_title,
-                           window_class=window_class, process_id=process_id)
-
-    def execute_window_close(
-        self,
-        window_title: Optional[str] = None,
-        window_class: Optional[str] = None,
-        process_id: Optional[int] = None,
-    ) -> NativeResult:
-        """
-        Close a window.
-
-        Args:
-            window_title: Optional window title to match.
-            window_class: Optional window class name to match.
-            process_id: Optional process ID to match.
-
-        Returns:
-            NativeResult with success status.
-
-        Raises:
-            WindowError: If no matching window found or close fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.close'
-        return self.execute(capability, context, window_title=window_title,
-                           window_class=window_class, process_id=process_id)
-
-    def execute_window_resize(
-        self,
-        window_title: Optional[str] = None,
-        window_class: Optional[str] = None,
-        process_id: Optional[int] = None,
-        width: int = 800,
-        height: int = 600,
-        left: Optional[int] = None,
-        top: Optional[int] = None,
-    ) -> NativeResult:
-        """
-        Resize a window to specified dimensions.
-
-        Args:
-            window_title: Optional window title to match.
-            window_class: Optional window class name to match.
-            process_id: Optional process ID to match.
-            width: New width in pixels.
-            height: New height in pixels.
-            left: Optional x position (None = keep current).
-            top: Optional y position (None = keep current).
-
-        Returns:
-            NativeResult with success status and new dimensions.
-
-        Raises:
-            WindowError: If no matching window found or resize fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.resize'
-        return self.execute(capability, context, window_title=window_title,
-                           window_class=window_class, process_id=process_id,
-                           width=width, height=height, left=left, top=top)
-
-    def execute_window_move(
-        self,
-        window_title: Optional[str] = None,
-        window_class: Optional[str] = None,
-        process_id: Optional[int] = None,
-        left: int = 0,
-        top: int = 0,
-    ) -> NativeResult:
-        """
-        Move a window to specified position.
-
-        Args:
-            window_title: Optional window title to match.
-            window_class: Optional window class name to match.
-            process_id: Optional process ID to match.
-            left: New x position.
-            top: New y position.
-
-        Returns:
-            NativeResult with success status and new position.
-
-        Raises:
-            WindowError: If no matching window found or move fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.move'
-        return self.execute(capability, context, window_title=window_title,
-                           window_class=window_class, process_id=process_id,
-                           left=left, top=top)
-
-    def execute_window_maximize(
-        self,
-        window_title: Optional[str] = None,
-        window_class: Optional[str] = None,
-        process_id: Optional[int] = None,
-    ) -> NativeResult:
-        """
-        Maximize a window.
-
-        Args:
-            window_title: Optional window title to match.
-            window_class: Optional window class name to match.
-            process_id: Optional process ID to match.
-
-        Returns:
-            NativeResult with success status.
-
-        Raises:
-            WindowError: If no matching window found or maximize fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.maximize'
-        return self.execute(capability, context, window_title=window_title,
-                           window_class=window_class, process_id=process_id)
-
-    def execute_window_minimize(
-        self,
-        window_title: Optional[str] = None,
-        window_class: Optional[str] = None,
-        process_id: Optional[int] = None,
-    ) -> NativeResult:
-        """
-        Minimize a window to taskbar.
-
-        Args:
-            window_title: Optional window title to match.
-            window_class: Optional window class name to match.
-            process_id: Optional process ID to match.
-
-        Returns:
-            NativeResult with success status.
-
-        Raises:
-            WindowError: If no matching window found or minimize fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.minimize'
-        return self.execute(capability, context, window_title=window_title,
-                           window_class=window_class, process_id=process_id)
-
-    def execute_window_list(self) -> NativeResult:
-        """
-        List all open windows with basic information.
-
-        Returns:
-            NativeResult with list of window information dicts.
-
-        Raises:
-            WindowError: If listing windows fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.list'
-        return self.execute(capability, context)
-
-    def execute_window_get_info(
-        self,
-        window_handle: int,
-    ) -> NativeResult:
-        """
-        Get detailed information about a specific window.
-
-        Args:
-            window_handle: Window handle (HWND).
-
-        Returns:
-            NativeResult with detailed window info.
-
-        Raises:
-            WindowError: If window handle is invalid or info retrieval fails.
-        """
-        context = ExecutionContextFactory.create()
-        capability = 'window.get_info'
-        return self.execute(capability, context, window_handle=window_handle)
 
     # ==================== EXECUTE IMPLEMENTATION ====================
 
     def execute(
         self,
         capability: str,
-        context: NativeExecutionContext,
+        goal: str = "",
+        arguments: Optional[Dict[str, Any]] = None,
+        context: Optional[Any] = None,
         **kwargs,
-    ) -> NativeResult:
+    ) -> DesktopResult:
+        """
+        Execute the native operation for the given capability.
+
+        Returns DesktopResult.
+        """
+        arguments = arguments or {}
+        arguments.update(kwargs)
+        try:
+            self.logger.info(f"Executing {capability}")
+
+            cap_clean = capability
+            if cap_clean == "list_windows":
+                cap_clean = "window.list"
+            elif cap_clean == "activate_window":
+                cap_clean = "window.activate"
+            elif cap_clean == "close_window":
+                cap_clean = "window.close"
+            elif cap_clean == "move_window":
+                cap_clean = "window.move"
+            elif cap_clean == "resize_window":
+                cap_clean = "window.resize"
+            elif cap_clean == "maximize_window":
+                cap_clean = "window.maximize"
+            elif cap_clean == "minimize_window":
+                cap_clean = "window.minimize"
+            elif cap_clean == "restore_window":
+                cap_clean = "window.restore"
+            elif cap_clean == "get_window":
+                cap_clean = "window.get_info"
+
+            if cap_clean == 'window.activate':
+                res = self._handle_activate(**arguments)
+            elif cap_clean == 'window.close':
+                res = self._handle_close(**arguments)
+            elif cap_clean == 'window.resize':
+                res = self._handle_resize(**arguments)
+            elif cap_clean == 'window.move':
+                res = self._handle_move(**arguments)
+            elif cap_clean == 'window.maximize':
+                res = self._handle_maximize(**arguments)
+            elif cap_clean == 'window.minimize':
+                res = self._handle_minimize(**arguments)
+            elif cap_clean == 'window.list':
+                res = self._handle_list()
+            elif cap_clean == 'window.get_info':
+                res = self._handle_get_info(**arguments)
+            else:
+                return DesktopResult.create_failure(
+                    goal=goal, capability=capability, manager=self.name,
+                    error=f"Unknown capability: {capability}"
+                )
+
+            if isinstance(res, NativeResult):
+                if res.status == ResultStatus.SUCCESS:
+                    return DesktopResult.create_success(
+                        goal=goal, capability=capability, manager=self.name,
+                        data=res.data, events=["window_action_completed"],
+                    )
+                else:
+                    return DesktopResult.create_failure(
+                        goal=goal, capability=capability, manager=self.name,
+                        error=res.error or "Operation failed",
+                    )
+            return DesktopResult.create_success(
+                goal=goal, capability=capability, manager=self.name, data=res
+            )
+
+        except Exception as e:
+            self.logger.error(f"Error executing {capability}: {e}")
+            return DesktopResult.create_failure(
+                goal=goal, capability=capability, manager=self.name, error=str(e)
+            )
         """
         Execute the native operation for the given capability.
 
@@ -1026,3 +907,13 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             self.logger.error(f"Rollback minimize failed: {e}")
             return False
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    wm = WindowManager()
+    result = wm.execute("window.list", "List open windows", {})
+    print(f"Status: {result.status.value}")
+    if result.success and result.data:
+        print(f"Found {result.data.get('count', 0)} windows.")
+

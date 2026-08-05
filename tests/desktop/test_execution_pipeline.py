@@ -378,7 +378,7 @@ class TestDesktopExecutionEngine:
         """Test executing with keyword arguments."""
         result = engine.execute(
             goal="Write to clipboard",
-            capability="write_clipboard",
+            capability="clipboard.write_text",
             text="Hello from kwargs",
         )
 
@@ -400,7 +400,7 @@ class TestDesktopExecutionEngine:
     def test_capability_discovery_clipboard(self, engine):
         """Test capability discovery for clipboard operations."""
         result = engine.execute(goal="write clipboard")
-        assert result.capability == "write_clipboard"
+        assert result.capability == "clipboard.write_text"
         assert result.success is True
 
     def test_capability_discovery_volume(self, engine):
@@ -555,7 +555,7 @@ class TestFullPipeline:
         )
 
         assert result.success is True
-        assert result.capability == "write_clipboard"
+        assert result.capability == "clipboard.write_text"
         assert result.data["text"] == "Test text"
         assert "clipboard_changed" in result.events
         assert result.rollback_available is True
@@ -575,7 +575,7 @@ class TestFullPipeline:
         # Op 3: Write clipboard
         r3 = engine.execute(goal="write clipboard", text="Hello")
         assert r3.success is True
-        assert r3.capability == "write_clipboard"
+        assert r3.capability == "clipboard.write_text"
 
         # Op 4: List displays
         r4 = engine.execute(goal="list displays")
@@ -765,7 +765,7 @@ class TestArchitectureValidation:
         """Verify discovery works for all capability categories."""
         test_cases = [
             ("list windows", "list_windows", "window"),
-            ("write clipboard", "write_clipboard", "clipboard"),
+            ("write clipboard", "clipboard.write_text", "clipboard"),
             ("list displays", "list_displays", "display"),
             ("set volume", "set_volume", "audio"),
             ("list network", "list_network_interfaces", "network"),

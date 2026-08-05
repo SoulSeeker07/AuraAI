@@ -32,6 +32,7 @@ from .capability_registry import (
     CapabilityRegistry, CapabilityDescriptor,
     PermissionRequired, RiskLevel,
 )
+from .managers.native_manager_registry import NativeManagerRegistry
 from .native_events import EventType, NativeEvent, NativeEventBus, get_event_bus
 from .desktop_context import DesktopContext, get_desktop_context
 from .metrics import MetricsRecorder, MetricsLevel, get_metrics_recorder
@@ -81,10 +82,17 @@ class DesktopExecutionEngine:
     def __init__(
         self,
         manager: Optional[Any] = None,
+        manager_registry: Optional[NativeManagerRegistry] = None,
         registry: Optional[CapabilityRegistry] = None,
         config: Optional[ExecutionConfig] = None,
     ):
+        self.manager_registry = manager_registry or NativeManagerRegistry.get_instance()
+        if not self.manager_registry.list():
+            self.manager_registry.discover("src.desktop.native.managers")
+
         self.manager = manager or MockManager()
+        self.manager_registry.register(self.manager)
+
         self.registry = registry or CapabilityRegistry()
         self.config = config or ExecutionConfig()
         self.event_bus = get_event_bus()
@@ -122,9 +130,10 @@ class DesktopExecutionEngine:
             DesktopResult with all execution metadata
         """
         if not self.config.enabled:
+            fallback_name = self.manager.name if self.manager else "unknown"
             return DesktopResult.create_failure(
                 goal=goal, capability=capability or "unknown",
-                manager=self.manager.name, error="Engine is disabled",
+                manager=fallback_name, error="Engine is disabled",
             )
 
         arguments = arguments or {}
@@ -173,7 +182,8 @@ class DesktopExecutionEngine:
             logger.info(f"\n--- Stage: Pipeline Execute ---")
             self.diagnostics.start_stage(DiagnosticsStage.EXECUTION)
 
-            result = self.manager.execute(
+            target_manager = self.manager_registry.resolve(capability) or self.manager or MockManager()
+            result = target_manager.execute(
                 capability=capability, goal=goal, arguments=arguments,
             )
 
