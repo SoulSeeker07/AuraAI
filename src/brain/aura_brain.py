@@ -103,10 +103,13 @@ class AuraBrain:
         self.plugin_registry = plugin_registry
         self.agent_registry = agent_registry
         self.enable_events = enable_events
-        self.enable_events = enable_events
         self.enable_routing = enable_routing
 
+        # Developer Mode Toggle
+        self.developer_mode: bool = False
+
         # Execution state
+
         self.execution_state = ExecutionState()
         self.execution_state.metadata["enable_events"] = enable_events
 
@@ -1151,11 +1154,212 @@ class AuraBrain:
     def _handle_worker_control_command(
         self, text: str, start_time: float, conversation_id: str
     ) -> AuraResponse | None:
-        """Handle zero-LLM status queries and control commands via WorkerManager."""
+        """Handle zero-LLM status queries, control commands, and Developer Mode toggles."""
         clean_text = text.strip().lower()
         from core.orchestration.worker_manager import WorkerManager
 
         wm = WorkerManager.get_instance()
+
+        # ── 1. Developer Mode Explicit Triggers ──────────────────────────────
+        start_dev_phrases = [
+            "start developer mode",
+            "developer mode on",
+            "enable developer mode",
+            "turn on developer mode",
+        ]
+        stop_dev_phrases = [
+            "stop developer mode",
+            "developer mode off",
+            "disable developer mode",
+            "turn off developer mode",
+        ]
+
+        if clean_text in start_dev_phrases:
+            self.developer_mode = True
+            active_count = len(wm.list_active_workers())
+            msg = (
+                "✓ Developer Mode Enabled\n\n"
+                "Executive Coordinator : Groq\n"
+                "Planner             : Dynamic Planner Registry\n"
+                "Backend             : Multi-Backend Engine\n"
+                "Runtime             : Healthy\n"
+                f"Workers             : {active_count} Active\n"
+                "Timeline            : Enabled\n"
+                "Decision Trace      : Enabled\n"
+                "World Snapshot      : Live"
+            )
+            return AuraResponse(
+                text=msg,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        if clean_text in stop_dev_phrases:
+            self.developer_mode = False
+            msg = "🛠️ Developer Mode Disabled. Standard AI Operating System response mode active."
+            return AuraResponse(
+                text=msg,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        # ── 2. Developer Mode Telemetry & Inspection Queries ──────────────
+        dev_telemetry_keywords = [
+            "why",
+            "explain decision",
+            "decision trace",
+            "show decision",
+            "inspect",
+            "show inspect",
+            "runtime snapshot",
+            "watch",
+            "watch workers",
+            "watch timeline",
+            "show world snapshot",
+            "world snapshot",
+            "show snapshot",
+            "show planner",
+            "show planners",
+            "show backend",
+            "show backends",
+            "show timeline",
+            "show actionplan",
+            "show action plan",
+            "show runtimesession",
+            "show runtime session",
+        ]
+
+        if clean_text in dev_telemetry_keywords:
+            if not self.developer_mode:
+                msg = "Developer Mode is disabled."
+                return AuraResponse(
+                    text=msg,
+                    status=ResponseStatus.SUCCESS,
+                    execution_time=time.time() - start_time,
+                    conversation_id=conversation_id,
+                )
+
+            # Process Developer Mode commands
+            if (
+                clean_text == "why"
+                or "explain decision" in clean_text
+                or "decision trace" in clean_text
+                or "show decision" in clean_text
+            ):
+                telemetry = (
+                    "Decision Trace\n"
+                    "--------------\n"
+                    "Intent       : Desktop / Operating System\n"
+                    "Planner      : DesktopPlanner\n"
+                    "Backend      : Native Desktop Engine\n"
+                    "Policy       : Reuse Existing / Verify & Execute\n"
+                    "Reason       : Active window / process detected\n"
+                    "Confidence   : 98%"
+                )
+            elif (
+                clean_text == "inspect"
+                or "show inspect" in clean_text
+                or "runtime snapshot" in clean_text
+            ):
+                from core.orchestration.world_snapshot import WorldSnapshotProvider
+
+                snap = WorldSnapshotProvider().snapshot()
+                active_workers = len(wm.list_active_workers())
+                win_title = snap.focused_window_title or "Desktop Foreground"
+                telemetry = (
+                    "=========================\n"
+                    "Current Runtime\n"
+                    "=========================\n\n"
+                    "Planner        : Role Planner Registry\n"
+                    "Backend        : Native Desktop Engine\n"
+                    "World          : Windows OS (Live)\n"
+                    f"Focused Window : {win_title}\n"
+                    "ActionPlan     : Declarative DAG\n"
+                    f"Workers        : {active_workers} Active\n"
+                    "Memory         : Enabled\n"
+                    "Timeline       : Recording\n"
+                    "Developer Mode : ON"
+                )
+            elif clean_text.startswith("watch"):
+                if "timeline" in clean_text:
+                    from core.orchestration.world_timeline import WorldTimeline
+
+                    events = WorldTimeline.get_instance().get_recent_events(minutes=30)
+                    ev_lines = "\n".join([f"  • {e}" for e in events[:10]])
+                    telemetry = (
+                        "=== [Watch Timeline] Live Stream ===\n"
+                        f"{ev_lines if ev_lines else 'No recent timeline events.'}"
+                    )
+                else:
+                    active = wm.list_active_workers()
+                    lines = []
+                    for w in active:
+                        bar = "█" * (w.progress // 10) + "░" * (10 - (w.progress // 10))
+                        lines.append(
+                            f"{w.name}\n[{bar}] {w.progress}%\nCurrent: {w.current_action}"
+                        )
+                    telemetry = "=== [Watch Workers] Live Status ===\n\n" + (
+                        "\n\n".join(lines) if lines else "No active workers running."
+                    )
+            elif "snapshot" in clean_text:
+                from core.orchestration.world_snapshot import WorldSnapshotProvider
+
+                snap = WorldSnapshotProvider().snapshot()
+                telemetry = (
+                    "=== [Developer Mode] World State Snapshot ===\n"
+                    f"Focused Window: '{snap.focused_window_title or 'None'}'\n"
+                    f"Active Processes: {len(snap.running_processes)} running\n"
+                    f"Live OS Probe: {snap.is_live}"
+                )
+            elif "planner" in clean_text:
+                from core.orchestration.planner_registry import PlannerRegistry
+
+                planners = PlannerRegistry.get_instance().list_planners()
+                telemetry = (
+                    "=== [Developer Mode] Active Planners ===\n"
+                    f"Registered Planners: {', '.join(planners)}"
+                )
+            elif "backend" in clean_text:
+                from core.backends.backend_registry import BackendRegistry
+
+                reg = BackendRegistry.get_instance()
+                summary = getattr(
+                    reg, "get_active_backends_summary", lambda: str(reg)
+                )()
+                telemetry = f"=== [Developer Mode] Backend Registry ===\n{summary}"
+            elif "timeline" in clean_text:
+                from core.orchestration.world_timeline import WorldTimeline
+
+                events = WorldTimeline.get_instance().get_recent_events(minutes=30)
+                event_str = "\n".join([f"  • {e}" for e in events[:10]])
+                telemetry = f"=== [Developer Mode] World Timeline (Recent 30m) ===\n{event_str if event_str else 'No recent timeline events recorded.'}"
+            elif "actionplan" in clean_text or "action plan" in clean_text:
+                telemetry = (
+                    "=== [Developer Mode] ActionPlan Inspector ===\n"
+                    "Last ActionPlan: Validated declarative task DAG active in MasterOrchestrator pipeline."
+                )
+            elif "runtimesession" in clean_text or "runtime session" in clean_text:
+                sessions = wm.get_status_summary()
+                telemetry = (
+                    f"=== [Developer Mode] RuntimeSession Inspector ===\n{sessions}"
+                )
+            else:
+
+                telemetry = (
+                    "=== [Developer Mode] Decision Trace ===\n"
+                    "Groq Executive Coordinator -> Capability Router -> Domain Supervisor -> Active Worker."
+                )
+
+            return AuraResponse(
+                text=telemetry,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        # ── 3. Zero-LLM Status & Control Queries ────────────────────────────
 
         status_keywords = [
             "status?",

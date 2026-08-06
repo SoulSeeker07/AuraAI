@@ -44,7 +44,7 @@ class DecisionEngine:
         memory_manager: MemoryManager,
         tool_router: ToolRouter,
         workspace_manager: WorkspaceManager,
-        response_coordinator: ResponseCoordinator,
+        response_coordinator: ResponseCoordinator = None,
         agent_registry: AgentRegistry = None,
         enable_logging: bool = True,
     ):

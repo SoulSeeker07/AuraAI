@@ -24,11 +24,14 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest",
+  "pytest-cov",
   "ruff",
   "black",
   "isort",
   "mypy",
   "import-linter",
+  "bandit",
+  "pip-audit",
   "psutil",
 ]
 

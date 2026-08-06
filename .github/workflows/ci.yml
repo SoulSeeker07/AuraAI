@@ -2,43 +2,124 @@ name: Aura Architectural & Code Quality CI
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [main, master, dev]
   pull_request:
-    branches: [ main, master, dev ]
+    branches: [main, master, dev]
 
 jobs:
-  quality-and-architecture:
+  lint:
+    name: Code Linting & Formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[dev]
+          pip install -e ".[dev]"
 
-      - name: Run Ruff Linting
+      - name: Ruff Lint
         run: ruff check .
 
-      - name: Check Code Formatting (Black)
+      - name: Black Format Check
         run: black --check .
 
-      - name: Check Import Order (isort)
-        run: isort --check .
+      - name: isort Import Check
+        run: isort --check-only .
 
-      - name: Check Layer Import Contracts (import-linter)
+  type-check:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: MyPy Type Check
+        run: mypy src core tests
+
+  architecture:
+    name: Architecture & Import Rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Import Linter
         run: lint-imports
 
-      - name: Run Static Type Check (mypy)
-        run: mypy src tests
+      - name: Architecture Tests
+        run: pytest tests/architecture -v
 
-      - name: Run Architecture & Contract Tests
-        run: pytest tests/architecture/
+  security:
+    name: Security & Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Run Full Test Suite
-        run: pytest
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Bandit Security Check
+        run: bandit -r src core -x tests,venv,.venv --severity-level medium -q || true
+
+      - name: Dependency Audit
+        run: pip-audit || true
+
+  test:
+    name: Test Suite & Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Unit & Integration Tests
+        run: pytest -v --cov=src --cov=core --cov-report=term-missing

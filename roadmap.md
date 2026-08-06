@@ -8,11 +8,26 @@ Aura is built as a modular AI Operating System rather than a chatbot. Each miles
 
 - **Era 1 — Foundation (Milestones 1–10)**: Core subsystems, OS execution pipeline, desktop perception, vision, voice, and workflow automation.
 - **Era 2 — Intelligence & Orchestration (Milestones 11–16)**: RAG 2.0, multi-agent reasoning, engineering intelligence, research intelligence, desktop intelligence, and Cognitive Orchestration Layer (`AgentSession`, `ExecutionBudget`, `DecisionEngine`, `SupervisorAgent`, `Observation`, `Artifact`).
-- **Era 3 — Capability Expansion (Milestones 17–26)**: High-impact end-user capabilities built on top of the frozen core runtime without inventing new core abstractions.
+- **Era 3 — Capability Expansion & Runtime (Milestones 17–26)**: High-impact end-user capabilities built on top of the frozen core runtime without inventing new core abstractions.
 
-**Current Status:** 16/26 Core Milestones Complete (61.5% overall progress), 10/10 Expansion Milestones with foundational modules ready for integration.
+### 🚩 Platform Maturity Progression
+
+| Version | Milestone Title | Primary Scope | Status |
+| :--- | :--- | :--- | :--- |
+| `v0.16.0` | Cognitive Orchestration | DecisionEngine, Groq Executive Coordinator, SupervisorAgent | ✅ Stable |
+| `v0.17.0` | Runtime Architecture | RuntimeSession Base, WorkerManager, SoftwareEngineeringSupervisor | ✅ Stable |
+| `v0.18.0` | Runtime Stabilization | SafetyPolicy, Zero-LLM Interception, ADRs, Definition of Done | 🔒 **Frozen** |
+| `v0.18.5` | Cleanup Sprint | Technical debt reduction, naming consistency, log refinement | ⏳ **In Progress** |
+| `v0.19.0` | Cognitive Memory | Cross-domain persistent identity & conversational memory | 🎯 **Next** |
+| `v0.20.0` | Voice Runtime | Streaming STT, Interruptible TTS, Barge-in, VAD, Mic Arbitration | 📋 Planned |
+| `v0.21.0` | Browser Intelligence | Playwright session persistence & visual web reasoning | 📋 Planned |
+| `v0.22.0` | GUI Runtime | Native Desktop GUI, overlay manager, interactive widgets | 📋 Planned |
+| `v1.0.0`  | Aura OS Release | The First Stable AI Operating System Runtime | 🏁 Target Release |
+
+**Current Status:** 18/26 Core Milestones & Runtime Extensions Complete (69.2% overall progress).
 
 ---
+
 
 ## 🏛️ Era 1 — Foundation (Milestones 1–10)
 Establishes core capabilities, OS execution pipeline, desktop perception, vision, voice, and workflow automation.
@@ -113,10 +128,11 @@ Deep multi-repo understanding, architecture analysis, bug localization, test gen
 **Status:** 🟡 PARTIAL (50% Foundation Available)  
 *Available Modules*: `antigravity_backend.py`, `repository_analyzer.py`, `ast_analyzer.py`, `code_editor.py`, `bug_fixer.py`, `git_intelligence.py`.
 
-### Milestone 20 — Browser Intelligence ⭐⭐⭐⭐⭐⭐⭐
-Real Playwright browser automation, persistent sessions, authentication, visual web reasoning, and web scraping.
-**Status:** 🟡 PARTIAL (30% Foundation Available)  
-*Available Modules*: `page_reader.py`, `web_search.py`, `browser_context.py`, browser routing rules.
+### Milestone 20 — Voice Runtime (Listen + Speak) ⭐⭐⭐⭐⭐⭐⭐
+Complete audio operating subsystem: Wake word management, Streaming STT, Interruptible TTS (barge-in), Audio session management, VAD, Microphone arbitration, TTS queueing & cancellation.
+**Status:** 🟡 PARTIAL (50% Foundation Available)  
+*Available Modules*: `src/voice/` (`voice_manager.py`, `stt_engine.py`, `tts_engine.py`, `wake_word_detector.py`).
+
 
 ### Milestone 21 — Research Intelligence 2.0 ⭐⭐⭐⭐⭐⭐⭐
 Deep iterative research loops, contradiction detection, evidence ranking, source confidence scoring, and long-running investigations.
