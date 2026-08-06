@@ -20,18 +20,22 @@ logger = logging.getLogger(__name__)
 PLAYWRIGHT_AVAILABLE = False
 try:
     from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     async_playwright = None
     Browser = None
     BrowserContext = None
     Page = None
-    logger.warning("Playwright is not installed. BrowserEngine will operate in fallback mode.")
+    logger.warning(
+        "Playwright is not installed. BrowserEngine will operate in fallback mode."
+    )
 
 
 @dataclass
 class ElementInfo:
     """Information extracted from a DOM element."""
+
     tag_name: str
     text: str
     attributes: dict[str, str] = field(default_factory=dict)
@@ -81,10 +85,14 @@ class BrowserEngine:
             )
             self._page = await self._context.new_page()
             self.is_active = True
-            logger.info(f"BrowserEngine started ({self.browser_type_name}, headless={self.headless})")
+            logger.info(
+                f"BrowserEngine started ({self.browser_type_name}, headless={self.headless})"
+            )
             return True
         except Exception as e:
-            logger.warning(f"Failed to start Playwright browser ({e}). Falling back to HTTP engine.")
+            logger.warning(
+                f"Failed to start Playwright browser ({e}). Falling back to HTTP engine."
+            )
             self._page = None
             self._context = None
             self._browser = None
@@ -118,7 +126,9 @@ class BrowserEngine:
             self.is_active = False
             logger.info("BrowserEngine closed.")
 
-    async def navigate(self, url: str, wait_until: str = "domcontentloaded", timeout_ms: int = 30000) -> dict[str, Any]:
+    async def navigate(
+        self, url: str, wait_until: str = "domcontentloaded", timeout_ms: int = 30000
+    ) -> dict[str, Any]:
         """Navigate to target URL."""
         if not url.startswith(("http://", "https://")):
             url = f"https://{url}"
@@ -126,11 +136,17 @@ class BrowserEngine:
         if not self.is_active:
             started = await self.start()
             if not started:
-                return {"success": False, "url": url, "error": "Browser engine failed to start"}
+                return {
+                    "success": False,
+                    "url": url,
+                    "error": "Browser engine failed to start",
+                }
 
         if self._page:
             try:
-                response = await self._page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                response = await self._page.goto(
+                    url, wait_until=wait_until, timeout=timeout_ms
+                )
                 status = response.status if response else 200
                 title = await self._page.title()
                 current_url = self._page.url
@@ -145,7 +161,12 @@ class BrowserEngine:
                 return {"success": False, "url": url, "error": str(e)}
         else:
             # Fallback HTTP request representation
-            return {"success": True, "url": url, "title": f"Page at {url} (Fallback Mode)", "status_code": 200}
+            return {
+                "success": True,
+                "url": url,
+                "title": f"Page at {url} (Fallback Mode)",
+                "status_code": 200,
+            }
 
     async def scroll_down(self, pixels: int = 500) -> dict[str, Any]:
         """Scroll down by specified pixels."""
@@ -153,8 +174,18 @@ class BrowserEngine:
             await self._page.evaluate(f"window.scrollBy(0, {pixels});")
             await asyncio.sleep(0.3)
             scroll_y = await self._page.evaluate("window.scrollY")
-            return {"success": True, "action": "scroll_down", "pixels": pixels, "scroll_y": scroll_y}
-        return {"success": True, "action": "scroll_down", "pixels": pixels, "mode": "fallback"}
+            return {
+                "success": True,
+                "action": "scroll_down",
+                "pixels": pixels,
+                "scroll_y": scroll_y,
+            }
+        return {
+            "success": True,
+            "action": "scroll_down",
+            "pixels": pixels,
+            "mode": "fallback",
+        }
 
     async def scroll_up(self, pixels: int = 500) -> dict[str, Any]:
         """Scroll up by specified pixels."""
@@ -162,8 +193,18 @@ class BrowserEngine:
             await self._page.evaluate(f"window.scrollBy(0, -{pixels});")
             await asyncio.sleep(0.3)
             scroll_y = await self._page.evaluate("window.scrollY")
-            return {"success": True, "action": "scroll_up", "pixels": pixels, "scroll_y": scroll_y}
-        return {"success": True, "action": "scroll_up", "pixels": pixels, "mode": "fallback"}
+            return {
+                "success": True,
+                "action": "scroll_up",
+                "pixels": pixels,
+                "scroll_y": scroll_y,
+            }
+        return {
+            "success": True,
+            "action": "scroll_up",
+            "pixels": pixels,
+            "mode": "fallback",
+        }
 
     async def scroll_to_bottom(self) -> dict[str, Any]:
         """Scroll directly to the bottom of the page."""
@@ -180,25 +221,47 @@ class BrowserEngine:
             try:
                 element = self._page.locator(selector).first
                 await element.scroll_into_view_if_needed(timeout=5000)
-                return {"success": True, "action": "scroll_to_element", "selector": selector}
+                return {
+                    "success": True,
+                    "action": "scroll_to_element",
+                    "selector": selector,
+                }
             except Exception as e:
-                return {"success": False, "action": "scroll_to_element", "selector": selector, "error": str(e)}
-        return {"success": True, "action": "scroll_to_element", "selector": selector, "mode": "fallback"}
+                return {
+                    "success": False,
+                    "action": "scroll_to_element",
+                    "selector": selector,
+                    "error": str(e),
+                }
+        return {
+            "success": True,
+            "action": "scroll_to_element",
+            "selector": selector,
+            "mode": "fallback",
+        }
 
-    async def infinite_scroll(self, max_scrolls: int = 5, pause_sec: float = 1.0) -> dict[str, Any]:
+    async def infinite_scroll(
+        self, max_scrolls: int = 5, pause_sec: float = 1.0
+    ) -> dict[str, Any]:
         """Perform infinite scroll to dynamically load content."""
         scroll_count = 0
         last_height = 0
         if self._page:
             for i in range(max_scrolls):
                 last_height = await self._page.evaluate("document.body.scrollHeight")
-                await self._page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
+                await self._page.evaluate(
+                    "window.scrollTo(0, document.body.scrollHeight);"
+                )
                 await asyncio.sleep(pause_sec)
                 new_height = await self._page.evaluate("document.body.scrollHeight")
                 scroll_count += 1
                 if new_height == last_height:
                     break
-            return {"success": True, "scrolls_completed": scroll_count, "final_height": last_height}
+            return {
+                "success": True,
+                "scrolls_completed": scroll_count,
+                "final_height": last_height,
+            }
         return {"success": True, "scrolls_completed": max_scrolls, "mode": "fallback"}
 
     async def click(self, selector: str, timeout_ms: int = 5000) -> dict[str, Any]:
@@ -214,10 +277,22 @@ class BrowserEngine:
                     await text_locator.click(timeout=timeout_ms)
                     return {"success": True, "action": "click_text", "text": selector}
                 except Exception as ex:
-                    return {"success": False, "action": "click", "selector": selector, "error": f"{e}; text_click: {ex}"}
-        return {"success": True, "action": "click", "selector": selector, "mode": "fallback"}
+                    return {
+                        "success": False,
+                        "action": "click",
+                        "selector": selector,
+                        "error": f"{e}; text_click: {ex}",
+                    }
+        return {
+            "success": True,
+            "action": "click",
+            "selector": selector,
+            "mode": "fallback",
+        }
 
-    async def type_text(self, selector: str, text: str, clear: bool = True, timeout_ms: int = 5000) -> dict[str, Any]:
+    async def type_text(
+        self, selector: str, text: str, clear: bool = True, timeout_ms: int = 5000
+    ) -> dict[str, Any]:
         """Fill or type text into input field."""
         if self._page:
             try:
@@ -226,10 +301,26 @@ class BrowserEngine:
                     await locator.fill(text, timeout=timeout_ms)
                 else:
                     await locator.type(text, timeout=timeout_ms)
-                return {"success": True, "action": "type_text", "selector": selector, "text": text}
+                return {
+                    "success": True,
+                    "action": "type_text",
+                    "selector": selector,
+                    "text": text,
+                }
             except Exception as e:
-                return {"success": False, "action": "type_text", "selector": selector, "error": str(e)}
-        return {"success": True, "action": "type_text", "selector": selector, "text": text, "mode": "fallback"}
+                return {
+                    "success": False,
+                    "action": "type_text",
+                    "selector": selector,
+                    "error": str(e),
+                }
+        return {
+            "success": True,
+            "action": "type_text",
+            "selector": selector,
+            "text": text,
+            "mode": "fallback",
+        }
 
     async def press_key(self, key: str) -> dict[str, Any]:
         """Press a keyboard key (e.g. 'Enter', 'Tab', 'Escape')."""
@@ -244,7 +335,11 @@ class BrowserEngine:
             try:
                 screenshot_bytes = await self._page.screenshot(full_page=full_page)
                 b64_img = base64.b64encode(screenshot_bytes).decode("utf-8")
-                return {"success": True, "image_b64": b64_img, "size_bytes": len(screenshot_bytes)}
+                return {
+                    "success": True,
+                    "image_b64": b64_img,
+                    "size_bytes": len(screenshot_bytes),
+                }
             except Exception as e:
                 return {"success": False, "error": str(e)}
         return {"success": False, "error": "No active page for screenshot"}

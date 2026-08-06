@@ -180,7 +180,7 @@ class AutonomousCodingAgent:
             return None
 
         try:
-            model = getattr(self.aura_core, "groq_model", "llama-3.3-70b-versatile")
+            model = getattr(self.aura_core, "groq_model", "openai/gpt-oss-120b")
 
             # Run the blocking Groq SDK call in a thread so we don't block the event loop
             response = await asyncio.to_thread(

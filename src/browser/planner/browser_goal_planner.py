@@ -11,7 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from src.core.planning.base_planner import BasePlanner
+from core.planning.base_planner import BasePlanner
+
 from .browser_goal import BrowserGoal
 from .site_registry import SiteRegistry
 
@@ -51,10 +52,12 @@ class BrowserGoalPlanner(BasePlanner):
         capability: str | None = None,
         parameters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        from src.browser.world_model import BrowserStateProbe, BrowserWorldModel
+        from browser.world_model import BrowserStateProbe, BrowserWorldModel
 
         params = parameters or {}
-        world_model: BrowserWorldModel = params.get("browser_world") or BrowserStateProbe.probe_state()
+        world_model: BrowserWorldModel = (
+            params.get("browser_world") or BrowserStateProbe.probe_state()
+        )
         goal = self.resolve_goal(goal_text, params)
 
         steps: list[dict[str, Any]] = []
@@ -63,12 +66,20 @@ class BrowserGoalPlanner(BasePlanner):
 
         # Handle Close Intents ("Close Instagram", "Close Chrome", "Close everything you opened", "Close documentation tabs")
         if "close" in goal_lower:
-            from src.core.orchestration.ownership_tracker import ResourceOwner
+            from core.orchestration.ownership_tracker import ResourceOwner
 
             site_target = goal.site
             matching_tabs = world_model.find_tabs(site_target)
 
-            if any(phrase in goal_lower for phrase in ["everything you opened", "all aura tabs", "aura opened", "clean up aura"]):
+            if any(
+                phrase in goal_lower
+                for phrase in [
+                    "everything you opened",
+                    "all aura tabs",
+                    "aura opened",
+                    "clean up aura",
+                ]
+            ):
                 aura_tabs = world_model.find_tabs_by_owner(ResourceOwner.AURA)
                 steps.append(
                     {
@@ -85,7 +96,10 @@ class BrowserGoalPlanner(BasePlanner):
                         "step_id": f"step_{step_id}",
                         "description": f"Close all documentation tabs ({len(doc_tabs)} tabs found)",
                         "capability": "browser.close_semantic_category",
-                        "parameters": {"category": "documentation", "matching_tabs": [t.to_dict() for t in doc_tabs]},
+                        "parameters": {
+                            "category": "documentation",
+                            "matching_tabs": [t.to_dict() for t in doc_tabs],
+                        },
                     }
                 )
             elif "every" in goal_lower or "all" in goal_lower:
@@ -94,10 +108,17 @@ class BrowserGoalPlanner(BasePlanner):
                         "step_id": f"step_{step_id}",
                         "description": f"Close all matching {site_target} tabs across all browsers ({len(matching_tabs)} tabs found)",
                         "capability": "browser.close_all_tabs",
-                        "parameters": {"site": site_target, "matching_tabs": [t.to_dict() for t in matching_tabs]},
+                        "parameters": {
+                            "site": site_target,
+                            "matching_tabs": [t.to_dict() for t in matching_tabs],
+                        },
                     }
                 )
-            elif "chrome" in goal_lower and "tab" not in goal_lower and site_target == "google":
+            elif (
+                "chrome" in goal_lower
+                and "tab" not in goal_lower
+                and site_target == "google"
+            ):
                 steps.append(
                     {
                         "step_id": f"step_{step_id}",
@@ -144,7 +165,10 @@ class BrowserGoalPlanner(BasePlanner):
                 "planner_role": "browser",
                 "goal": goal_text,
                 "steps": steps,
-                "metadata": {"browser_goal": goal.to_dict(), "state_reuse": "tab_close"},
+                "metadata": {
+                    "browser_goal": goal.to_dict(),
+                    "state_reuse": "tab_close",
+                },
             }
 
         # Handle Open / Navigation / Shopping Intents (State Reuse Rule 1-6)
@@ -157,7 +181,10 @@ class BrowserGoalPlanner(BasePlanner):
                     "step_id": f"step_{step_id}",
                     "description": f"Reuse existing open {goal.site} tab in {target_tab.browser_name} (Focus window/tab)",
                     "capability": "browser.switch_tab",
-                    "parameters": {"tab": target_tab.to_dict(), "action": "focus_existing_tab"},
+                    "parameters": {
+                        "tab": target_tab.to_dict(),
+                        "action": "focus_existing_tab",
+                    },
                 }
             )
             step_id += 1
@@ -167,7 +194,11 @@ class BrowserGoalPlanner(BasePlanner):
                     "step_id": f"step_{step_id}",
                     "description": f"Reuse running browser and open new tab for {goal.target_url or goal.site}",
                     "capability": "browser.navigate",
-                    "parameters": {"site": goal.site, "target_url": goal.target_url, "action": "open_new_tab"},
+                    "parameters": {
+                        "site": goal.site,
+                        "target_url": goal.target_url,
+                        "action": "open_new_tab",
+                    },
                 }
             )
             step_id += 1
@@ -177,7 +208,11 @@ class BrowserGoalPlanner(BasePlanner):
                     "step_id": f"step_{step_id}",
                     "description": f"Launch preferred browser and navigate to {goal.target_url or goal.site}",
                     "capability": "browser.navigate",
-                    "parameters": {"site": goal.site, "target_url": goal.target_url, "action": "launch_browser"},
+                    "parameters": {
+                        "site": goal.site,
+                        "target_url": goal.target_url,
+                        "action": "launch_browser",
+                    },
                 }
             )
             step_id += 1
@@ -226,7 +261,11 @@ class BrowserGoalPlanner(BasePlanner):
             "metadata": {
                 "browser_goal": goal.to_dict(),
                 "world_state": world_model.to_dict(),
-                "reuse_decision": "focused_tab" if matching_tabs else ("new_tab" if world_model.has_browser() else "launch_browser"),
+                "reuse_decision": (
+                    "focused_tab"
+                    if matching_tabs
+                    else ("new_tab" if world_model.has_browser() else "launch_browser")
+                ),
             },
         }
 
@@ -248,9 +287,7 @@ class BrowserGoalPlanner(BasePlanner):
             "steps": plan.get("steps", []),
         }
 
-    def resolve_goal(
-        self, goal_text: str, parameters: dict[str, Any]
-    ) -> BrowserGoal:
+    def resolve_goal(self, goal_text: str, parameters: dict[str, Any]) -> BrowserGoal:
         goal_lower = goal_text.lower()
 
         detected_site = "google"
@@ -260,14 +297,20 @@ class BrowserGoalPlanner(BasePlanner):
                 break
 
         site_profile = SiteRegistry.get_site(detected_site)
-        username = parameters.get("username") or parameters.get("recalled_username") or ""
+        username = (
+            parameters.get("username") or parameters.get("recalled_username") or ""
+        )
 
         if "buy" in goal_lower or "order" in goal_lower or "checkout" in goal_lower:
             intent = "order"
-            target_url = site_profile.base_url if site_profile else "https://www.amazon.com"
+            target_url = (
+                site_profile.base_url if site_profile else "https://www.amazon.com"
+            )
         elif "add to cart" in goal_lower or "cart" in goal_lower:
             intent = "add_to_cart"
-            target_url = site_profile.base_url if site_profile else "https://www.amazon.com"
+            target_url = (
+                site_profile.base_url if site_profile else "https://www.amazon.com"
+            )
         elif "shop" in goal_lower or "product" in goal_lower or "price" in goal_lower:
             intent = "shopping"
             query = parameters.get("query", goal_text)
@@ -278,7 +321,9 @@ class BrowserGoalPlanner(BasePlanner):
             )
         elif "scroll" in goal_lower:
             intent = "scroll"
-            target_url = site_profile.base_url if site_profile else "https://www.google.com"
+            target_url = (
+                site_profile.base_url if site_profile else "https://www.google.com"
+            )
         elif "profile" in goal_lower or "my account" in goal_lower:
             intent = "profile"
             target_url = (
@@ -296,7 +341,9 @@ class BrowserGoalPlanner(BasePlanner):
             )
         else:
             intent = "navigate"
-            target_url = site_profile.base_url if site_profile else "https://www.google.com"
+            target_url = (
+                site_profile.base_url if site_profile else "https://www.google.com"
+            )
 
         return BrowserGoal(
             site=detected_site,
@@ -304,5 +351,9 @@ class BrowserGoalPlanner(BasePlanner):
             target_url=target_url,
             auth_required=site_profile.auth_required if site_profile else False,
             parameters={"username": username, "goal_text": goal_text},
-            fallback_prompt=f"Please provide your {detected_site} username" if intent == "profile" and not username else "",
+            fallback_prompt=(
+                f"Please provide your {detected_site} username"
+                if intent == "profile" and not username
+                else ""
+            ),
         )

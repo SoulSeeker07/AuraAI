@@ -1,10 +1,11 @@
 import os
+
+import torch
+from diffusers import StableDiffusionPipeline
+from dotenv import load_dotenv
 from huggingface_hub import HfApi, Repository
 from huggingface_hub.inference import InferenceClient
-from dotenv import load_dotenv
-import torch
 from PIL import Image
-from diffusers import StableDiffusionPipeline
 
 # Load environment variables from .env file
 load_dotenv()

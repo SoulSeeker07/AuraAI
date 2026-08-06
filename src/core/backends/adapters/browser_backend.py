@@ -13,8 +13,9 @@ import asyncio
 import logging
 from typing import Any
 
-from src.browser.engine import BrowserEngine
-from src.browser.shopping import ShoppingManager
+from browser.engine import BrowserEngine
+from browser.shopping import ShoppingManager
+
 from ...planning.execution_result import ExecutionResult
 from ..base_backend import BaseBackendAdapter
 
@@ -69,7 +70,9 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
         """
         Execute browser navigation, page scrolling, element interaction, or shopping task.
         """
-        logger.info(f"{self.name} executing capability '{capability}' for goal: '{goal}'")
+        logger.info(
+            f"{self.name} executing capability '{capability}' for goal: '{goal}'"
+        )
         args = arguments or {}
 
         # Run async engine operations via asyncio loop
@@ -77,10 +80,15 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 import nest_asyncio
+
                 nest_asyncio.apply()
-                res = loop.run_until_complete(self._async_execute(capability, goal, args))
+                res = loop.run_until_complete(
+                    self._async_execute(capability, goal, args)
+                )
             else:
-                res = loop.run_until_complete(self._async_execute(capability, goal, args))
+                res = loop.run_until_complete(
+                    self._async_execute(capability, goal, args)
+                )
         except Exception:
             res = asyncio.run(self._async_execute(capability, goal, args))
 
@@ -92,7 +100,11 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
         cap_clean = capability.lower().replace("@1", "")
 
         if cap_clean in ["browser", "browser.navigate"]:
-            url = arguments.get("url") or arguments.get("target_url") or "https://www.google.com"
+            url = (
+                arguments.get("url")
+                or arguments.get("target_url")
+                or "https://www.google.com"
+            )
             res = await self._engine.navigate(url)
             return ExecutionResult(
                 success=res.get("success", True),
@@ -113,7 +125,11 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 goal=goal,
                 confidence=0.90,
                 observations=[f"Performed web search for '{query}'"],
-                data={"backend": self.name, "query": query, "content_snippet": content[:500]},
+                data={
+                    "backend": self.name,
+                    "query": query,
+                    "content_snippet": content[:500],
+                },
             )
         elif cap_clean == "browser.scroll":
             direction = arguments.get("direction", "down")
@@ -142,7 +158,9 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 planner="browser",
                 goal=goal,
                 confidence=0.92,
-                observations=[f"Found {res.get('products_found', 0)} products for '{query}' on {platform}"],
+                observations=[
+                    f"Found {res.get('products_found', 0)} products for '{query}' on {platform}"
+                ],
                 data={"backend": self.name, "shopping_result": res},
             )
         elif cap_clean == "shopping.cart":

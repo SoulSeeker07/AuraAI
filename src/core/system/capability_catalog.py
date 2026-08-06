@@ -44,8 +44,14 @@ class CatalogEntry:
 
     def to_text_line(self) -> str:
         """Single-line text representation for LLM context."""
-        examples_str = f" (e.g. {self.usage_examples[0]})" if self.usage_examples else ""
-        risk_str = f" [risk:{self.risk_level}]" if self.risk_level not in ("safe", "low") else ""
+        examples_str = (
+            f" (e.g. {self.usage_examples[0]})" if self.usage_examples else ""
+        )
+        risk_str = (
+            f" [risk:{self.risk_level}]"
+            if self.risk_level not in ("safe", "low")
+            else ""
+        )
         return f"  ✓ {self.name}: {self.description}{examples_str}{risk_str}"
 
 
@@ -69,17 +75,24 @@ class CapabilityCatalog:
         """Lazy-load the CapabilityRegistry. Only imports on first call."""
         if not self._registry_loaded:
             try:
-                from src.desktop.native.capability_registry import (
+                from desktop.native.capability_registry import (
                     CapabilityRegistry,
                 )
+
                 self._registry = CapabilityRegistry()
                 self._registry_loaded = True
-                logger.debug("CapabilityCatalog: CapabilityRegistry loaded successfully.")
+                logger.debug(
+                    "CapabilityCatalog: CapabilityRegistry loaded successfully."
+                )
             except ImportError as e:
-                logger.warning(f"CapabilityCatalog: CapabilityRegistry not available: {e}")
+                logger.warning(
+                    f"CapabilityCatalog: CapabilityRegistry not available: {e}"
+                )
                 self._registry_loaded = True  # mark as attempted
             except Exception as e:
-                logger.error(f"CapabilityCatalog: error loading CapabilityRegistry: {e}")
+                logger.error(
+                    f"CapabilityCatalog: error loading CapabilityRegistry: {e}"
+                )
                 self._registry_loaded = True
         return self._registry
 
@@ -108,7 +121,9 @@ class CapabilityCatalog:
                     permission=getattr(
                         getattr(cap_desc, "permission", None), "value", "read"
                     ),
-                    requires_confirmation=getattr(cap_desc, "requires_confirmation", False),
+                    requires_confirmation=getattr(
+                        cap_desc, "requires_confirmation", False
+                    ),
                     is_destructive=getattr(cap_desc, "is_destructive", False),
                     usage_examples=list(getattr(cap_desc, "usage_examples", [])),
                     tags=list(getattr(cap_desc, "tags", [])),
@@ -117,7 +132,9 @@ class CapabilityCatalog:
         except Exception as e:
             logger.error(f"CapabilityCatalog: error iterating registry: {e}")
 
-        logger.debug(f"CapabilityCatalog.export_live(): {len(entries)} capabilities exported.")
+        logger.debug(
+            f"CapabilityCatalog.export_live(): {len(entries)} capabilities exported."
+        )
         return entries
 
     def export_by_category(self) -> dict[str, list[CatalogEntry]]:
@@ -160,7 +177,9 @@ class CapabilityCatalog:
                 lines.append(f"  ... and {len(entries) - max_per_category} more")
 
         total = sum(len(v) for v in grouped.values())
-        lines.append(f"\nTotal: {total} live capabilities across {len(grouped)} categories.")
+        lines.append(
+            f"\nTotal: {total} live capabilities across {len(grouped)} categories."
+        )
         return "\n".join(lines)
 
     def count(self) -> int:

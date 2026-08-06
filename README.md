@@ -1,51 +1,70 @@
 # Aura AI
 
-**The AI Operating Platform**
+**The Autonomous AI Operating System Platform**
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.15.0--core--platform-green.svg)](RELEASE.md)
-[![Architecture Freeze](https://img.shields.io/badge/architecture-frozen-blue.svg)](docs/ARCHITECTURE_FREEZE.md)
-[![Build Status](https://img.shields.io/badge/tests-passed-brightgreen.svg)](docs/engineering.md)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![Platform Version](https://img.shields.io/badge/version-v0.18.0--runtime--stabilization-green.svg)](RELEASE.md)
+[![Platform Progress](https://img.shields.io/badge/milestones-17%2F26%20Complete-green.svg)](roadmap.md)
+[![Architecture Status](https://img.shields.io/badge/cognitive--orchestration-frozen-blue.svg)](docs/ARCHITECTURE_FREEZE.md)
+[![Runtime Acceptance](https://img.shields.io/badge/runtime--acceptance-verified-brightgreen.svg)](docs/RUNTIME_ACCEPTANCE.md)
+[![Build Status](https://img.shields.io/badge/tests-100%25%20passed-brightgreen.svg)](docs/engineering.md)
 
-Aura AI is a modular, high-reliability **AI Operating Platform** built to unify autonomous planning, native OS control, deep research, and multi-backend LLM execution into a cohesive engineering system.
+Aura AI is a modular, high-reliability **AI Operating System Platform** built to unify cognitive orchestration, autonomous planning, native OS execution, deep research, and long-running engineering sessions into a unified operating runtime.
 
-Read the official [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs and contributor extension rules.
+> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. Groq acts as the Executive Coordinator, deciding *what* should happen, while specialized supervisors and workers perform the work. Desktop operations are handled by the Native Desktop Engine, browser tasks by Playwright, research by Gemini, and software engineering by Antigravity CLI. Long-running tasks are managed through `RuntimeSessions` and `WorkerManager`, enabling progress tracking, pause/resume, explainability, and safe execution.
+
+Read the official [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs and runtime extension rules, and consult [Runtime Acceptance](docs/RUNTIME_ACCEPTANCE.md) for manual release gates.
 
 
 ---
 
 ## 🏛️ System Architecture
 
-Aura enforces a strict 6-layer architectural hierarchy with contract-tested boundaries and declarative capability router manifests.
+Aura operates as an AI Operating System where **Groq serves as the Executive Cognitive Coordinator (Project Manager)** while execution is delegated to long-running domain supervisors and specialized workers (`Antigravity CLI`, `Playwright Browser`, `Native Desktop Engine`, `Gemini Research Engine`).
 
+```text
+                                  USER
+                                    │
+                                    ▼
+                         Aura Decision Engine
+                        (Executive Brain - Groq)
+                         Cognitive Coordinator
+                                    │
+         ┌──────────────────────────┼──────────────────────────┐
+         │                          │                          │
+  Desktop Operator           Browser Operator           Research Analyst
+(Native Desktop Engine)     (Playwright Engine)        (Gemini Research)
+                                    │
+                                    ▼
+                     Software Engineering Supervisor
+                                    │
+                                    ▼
+                     WorkerManager / RuntimeSession
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+            AntigravityWorker  PytestWorker   GitDiffWorker
+             (Lead Engineer)     (Pytest)      (Ruff & Git)
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Master Orchestrator                      │
-│                  (Unified Coordination)                     │
-└─────────────────────────────────────────────────────────────┘
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       │                       │                       │
-┌──────▼──────┐         ┌──────▼──────┐         ┌──────▼──────┐
-│  Desktop    │         │  Research   │         │   Coding    │
-│  Planner    │         │  Planner    │         │   Planner   │
-└──────┬──────┘         └──────┬──────┘         └──────┬──────┘
-       │                       │                       │
-┌──────▼──────┐         ┌──────▼──────┐         ┌──────▼──────┐
-│ Native OS   │         │ Deep Reason │         │ Engineering │
-│ Engine      │         │ Engine      │         │ Engine      │
-└──────┬──────┘         └──────┬──────┘         └──────┬──────┘
-       │                       │                       │
-       └───────────────────────┼───────────────────────┘
-                               │
-             ┌─────────────────┴─────────────────┐
-             │                                   │
-   ┌─────────▼─────────┐               ┌─────────▼─────────┐
-   │ Backend Registry  │               │ Capability Router │
-   │ (Groq/Gemini/CLI) │               │   (Adaptive)      │
-   └───────────────────┘               └───────────────────┘
-```
+
+---
+
+## 🧠 Core Subsystems & Runtime Architecture
+
+### 👔 Cognitive Orchestration & Executive Coordination
+- **Groq as Executive Coordinator**: Groq acts exclusively as the Project Manager — understanding user intent, allocating resources, supervising execution streams, and summarizing completed artifacts without directly outputting raw code snippets into chat.
+- **Zero-LLM Control Interception**: Deterministic handling of system controls (`"status?"`, `"How's it going?"`, `"Show active workers"`, `"Pause engineering"`, `"Resume engineering"`, `"Cancel worker X"`) resolved instantly via `WorkerManager` without LLM calls.
+
+### 🛠️ Software Engineering Supervisor & Antigravity CLI
+- **`EngineeringSession` State Machine**: Stateful single source of truth for software development tasks, inheriting from `RuntimeSession` to track progress, modified files, test outputs (`pytest`), and artifacts.
+- **Concurrent Validation Workers**: Asynchronous execution of `PytestWorker`, `RuffWorker`, and `GitDiffWorker` alongside `Antigravity CLI` for real-time validation.
+
+### 🛡️ Configurable SafetyPolicy Engine
+- **Application & OS Protection**: Hardened policy engine (`src/execution/safety_policy.py` & `config/safety_policy.yaml`) protecting critical IDE and OS processes (`Code.exe`, `vscode`, `explorer.exe`, `System`) from termination or destructive manipulation.
+
+### 🌐 System-Wide WorkerManager & Unified Session Hierarchy
+- **`RuntimeSession` Base Architecture**: Universal session abstraction for all long-running domain tasks (`EngineeringSession`, `BrowserSession`, `DesktopSession`, `ResearchSession`).
+- **Worker Management**: Centralized registration, monitoring, pause, resume, and cancellation across all domain workers.
 
 ---
 
@@ -53,20 +72,15 @@ Aura enforces a strict 6-layer architectural hierarchy with contract-tested boun
 
 ### 🖥️ Native Desktop Engine
 - **Hardware & OS Control**: Windows-native managers for window placement, active clipboard monitoring, display metrics, audio streams, power management, and network interfaces.
-- **Contract Enforcement**: Every native manager implements standard lifecycle hooks (`initialize()`, `execute()`, `verify()`, `rollback()`, `health_check()`).
+- **Safety Bounds**: SafetyPolicy pre-execution checks enforce protected process rules before calling Win32 APIs.
 
 ### 🔍 Autonomous Research Engine
 - **Query Decomposition**: Breaks complex research topics into parallel execution sub-queries.
 - **Evidence Evaluation**: Performs trust scoring, conflict resolution, recency weighting, and multi-style citation generation (APA, MLA, IEEE).
 
-### 🤖 Multi-Backend LLM Routing
-- **Declarative Backends**: Built-in adapters for Groq, Gemini 2.0 Flash, Antigravity CLI, and Desktop Native Engine.
-- **Adaptive Negotiation**: Dynamic capability matching with moving-average latency, success rate, and load tracking (`negotiate_capabilities()`).
-
-### ⚙️ Engineering & Diagnostics (`aura.py`)
-- **Aura Doctor (`--doctor`)**: 22 automated system diagnostic checks for dependencies, API keys, memory footprint, startup time, and circular imports.
-- **Aura Inspector (`--inspect`)**: Real-time CLI telemetry dashboard displaying active planners, backends, capability availability, and event throughput.
-- **Verification Runner (`--verify`)**: One-command CI runner enforcing Ruff linting, Black formatting, Isort import order, Mypy type checking, and architecture tests.
+### 🤖 Multi-Backend LLM & Engine Routing
+- **Declarative Backends**: Built-in adapters for Groq, Gemini 2.0 Flash, Antigravity CLI, Playwright Browser Engine, and Desktop Native Engine.
+- **Adaptive Negotiation**: Dynamic capability negotiation with moving-average latency, success rate, and load tracking (`negotiate_capabilities()`).
 
 ---
 
@@ -91,7 +105,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3. Running Diagnostics & Applications
+### 3. Running System & Applications
 ```bash
 # Run system diagnostic doctor
 python aura.py --doctor
@@ -123,23 +137,14 @@ Detailed technical guides and architecture specifications are available in the [
 - 🔍 [**Research Engine**](docs/research.md) — Autonomous evidence evaluation, conflict resolution, and citations.
 - 🛠️ [**Engineering & Diagnostics**](docs/engineering.md) — Aura Doctor, Inspector dashboard, and CI verification pipeline.
 - 🧩 [**Plugin Ecosystem**](docs/plugins.md) — Modular plugin registry and declarative auto-discovery.
-- 🗺️ [**Platform Roadmap**](docs/roadmap.md) — Complete roadmap from Core Platform to AI Operating System.
-
----
-
-## 📜 Version History & Releases
-
-For detailed release notes and milestone milestones, consult [`RELEASE.md`](RELEASE.md).
-
-- **`v0.15.0-core-platform`** *(Current)* — Engineering platform stabilization, canonical launcher, manifests, backend registry, doctor, inspector, and CI pipeline.
-- **`v0.16.0`** *(Upcoming)* — Master Orchestrator, multi-planner coordination, and agent collaboration.
+- 🗺️ [**Platform Roadmap**](roadmap.md) — Complete roadmap from Era 1 Foundation to Era 3 Aura OS.
 
 ---
 
 ## 🤝 Contributing
 
 Contributions follow strict architectural contracts:
-1. Files in `src/` must never use `from src.` import prefixes.
+1. Files in `src/` must never use `from src.` import prefixes when imported internally.
 2. Lower architectural layers (`core`) must not import upper layers (`desktop`, `gui`).
 3. Run `python aura.py --verify` prior to submitting pull requests.
 
@@ -149,4 +154,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for full details.
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the [`LICENSE`](LICENSE) file for details.
+This software is proprietary and confidential — see the [`LICENSE`](LICENSE) file for complete terms:
+
+**AuraAI Proprietary Software License Version 1.0**  
+Copyright (c) 2026 Sreekanta YR. All Rights Reserved.

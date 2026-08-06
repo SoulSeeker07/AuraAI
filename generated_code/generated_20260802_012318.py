@@ -1,5 +1,7 @@
 import csv
+
 import numpy as np
+
 
 def calculate_average(filename, column_index):
     """

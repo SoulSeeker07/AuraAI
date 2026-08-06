@@ -58,6 +58,21 @@ Contributors **MUST NOT** alter the core signatures or introduce duplicate abstr
 
 ---
 
+## 📜 Architecture Decision Records (ADRs) & Release Gate
+
+All major architectural design choices are formally documented in [`docs/adr/`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/):
+- **[ADR 0001: 5-Layer AI Operating System Architecture](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/0001-5-layer-architecture.md)**
+- **[ADR 0002: Cognitive Orchestration Layer & Groq Executive Role](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/0002-cognitive-orchestration.md)**
+- **[ADR 0003: Unified RuntimeSession Hierarchy](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/0003-runtime-session.md)**
+- **[ADR 0004: System-Wide WorkerManager Subsystem](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/0004-worker-manager.md)**
+- **[ADR 0005: Software Engineering Supervisor & Antigravity Worker](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/0005-antigravity-supervisor.md)**
+- **[ADR 0006: Configurable SafetyPolicy Engine](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/adr/0006-safety-policy.md)**
+
+Every future milestone must satisfy the **[Definition of Done](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/DEFINITION_OF_DONE.md)** and pass manual acceptance gates in **[Runtime Acceptance](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/RUNTIME_ACCEPTANCE.md)** before merging into release branches.
+
+---
+
+
 ## 🚫 Non-Negotiable Architectural Rules
 
 1. **Zero Duplicate Registries**:

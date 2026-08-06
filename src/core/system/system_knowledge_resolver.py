@@ -11,8 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from src.core.backends.backend_registry import BackendRegistry
-from src.core.orchestration.planner_registry import PlannerRegistry
+from core.backends.backend_registry import BackendRegistry
+from core.orchestration.planner_registry import PlannerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,10 @@ class SystemKnowledgeResolver:
         q = query.lower().strip()
 
         # 1. Limitations Queries ("What can't you do?")
-        if any(w in q for w in ["can't you do", "cannot do", "limitation", "what can you not"]):
+        if any(
+            w in q
+            for w in ["can't you do", "cannot do", "limitation", "what can you not"]
+        ):
             return (
                 "Here are my current system limitations and unsupported domains:\n\n"
                 "  • Android & iOS mobile automation\n"
@@ -38,10 +41,17 @@ class SystemKnowledgeResolver:
             )
 
         # 2. Capabilities Queries ("What can you do?", "What are your capabilities?")
-        if any(w in q for w in ["capability", "capabilities", "what can you do", "features"]):
+        if any(
+            w in q
+            for w in ["capability", "capabilities", "what can you do", "features"]
+        ):
             backend_registry = BackendRegistry.get_instance()
             backends = backend_registry.list_all_backends()
-            total_caps = sum(len(b.get("capabilities", [])) for b in backends) if isinstance(backends, list) else 0
+            total_caps = (
+                sum(len(b.get("capabilities", [])) for b in backends)
+                if isinstance(backends, list)
+                else 0
+            )
 
             return (
                 f"I currently support {total_caps} registered capabilities across 4 core domains:\n\n"
@@ -66,10 +76,15 @@ class SystemKnowledgeResolver:
         if "planner" in q:
             planners = PlannerRegistry.get_instance().list_planners()
             if isinstance(planners, list):
-                p_names = [p.title() if isinstance(p, str) else p.get("role", "").title() for p in planners]
+                p_names = [
+                    p.title() if isinstance(p, str) else p.get("role", "").title()
+                    for p in planners
+                ]
                 planner_str = "\n".join(f"  • {p} Planner" for p in p_names)
             else:
-                planner_str = "\n".join(f"  • {k.title()} Planner" for k in planners.keys())
+                planner_str = "\n".join(
+                    f"  • {k.title()} Planner" for k in planners.keys()
+                )
             return f"I have active role planners registered:\n\n{planner_str}"
 
         # 4. Backends Queries ("What backends do you have?")
@@ -80,19 +95,37 @@ class SystemKnowledgeResolver:
                 for b_info in backends:
                     if isinstance(b_info, dict):
                         caps = b_info.get("capabilities", [])
-                        caps_str = ", ".join(caps[:6]) + ("..." if len(caps) > 6 else "")
-                        b_lines.append(f"  • {b_info.get('name', 'Backend')} ({len(caps)} capabilities)\n    [{caps_str}]")
+                        caps_str = ", ".join(caps[:6]) + (
+                            "..." if len(caps) > 6 else ""
+                        )
+                        b_lines.append(
+                            f"  • {b_info.get('name', 'Backend')} ({len(caps)} capabilities)\n    [{caps_str}]"
+                        )
                     else:
                         b_lines.append(f"  • {b_info}")
             elif isinstance(backends, dict):
                 for b_id, b_info in backends.items():
-                    caps = b_info.get("capabilities", []) if isinstance(b_info, dict) else []
+                    caps = (
+                        b_info.get("capabilities", [])
+                        if isinstance(b_info, dict)
+                        else []
+                    )
                     caps_str = ", ".join(caps[:6]) + ("..." if len(caps) > 6 else "")
-                    b_lines.append(f"  • {b_info.get('name', b_id) if isinstance(b_info, dict) else b_id} ({len(caps)} capabilities)\n    [{caps_str}]")
-            return f"I have registered execution backends:\n\n" + "\n\n".join(b_lines)
+                    b_lines.append(
+                        f"  • {b_info.get('name', b_id) if isinstance(b_info, dict) else b_id} ({len(caps)} capabilities)\n    [{caps_str}]"
+                    )
+            return "I have registered execution backends:\n\n" + "\n\n".join(b_lines)
 
         # 5. Identity Queries ("Who are you?", "What are you?")
-        if any(w in q for w in ["who are you", "what are you", "tell me about yourself", "who am i"]):
+        if any(
+            w in q
+            for w in [
+                "who are you",
+                "what are you",
+                "tell me about yourself",
+                "who am i",
+            ]
+        ):
             return (
                 "I am Aura, an AI Operating System designed to manage desktop state, "
                 "browser operations, and cognitive workflows. I inspect your world state before acting, "

@@ -201,7 +201,8 @@ class DesktopExecutionEngine:
             logger.info("\n--- Stage: Pipeline Execute ---")
             self.diagnostics.start_stage(DiagnosticsStage.EXECUTION)
 
-            from src.core.orchestration.world_snapshot import WorldSnapshotProvider
+            from core.orchestration.world_snapshot import WorldSnapshotProvider
+
             before_snap = WorldSnapshotProvider().snapshot()
 
             target_manager = (
@@ -252,6 +253,7 @@ class DesktopExecutionEngine:
 
             if self.config.enable_verification:
                 from .verification import ActionVerifier
+
                 result.verification = ActionVerifier.verify_action(
                     capability=capability,
                     goal=goal,
@@ -259,7 +261,9 @@ class DesktopExecutionEngine:
                     after_snap=after_snap,
                     result=result,
                 )
-                result.success = result.success and result.verification.get("passed", False)
+                result.success = result.success and result.verification.get(
+                    "passed", False
+                )
             else:
                 result.verification = {
                     "passed": result.success,

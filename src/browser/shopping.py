@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProductItem:
     """Structured e-commerce product representation."""
+
     title: str
     price: str
     rating: str = ""
@@ -83,10 +84,14 @@ class ShoppingManager:
     def __init__(self, browser_engine: BrowserEngine):
         self.engine = browser_engine
 
-    async def search_products(self, query: str, platform: str = "amazon", max_results: int = 5) -> dict[str, Any]:
+    async def search_products(
+        self, query: str, platform: str = "amazon", max_results: int = 5
+    ) -> dict[str, Any]:
         """Search for products on specified e-commerce platform."""
         platform_key = platform.lower().strip()
-        url_template = self.SEARCH_TEMPLATES.get(platform_key, self.SEARCH_TEMPLATES["google_shopping"])
+        url_template = self.SEARCH_TEMPLATES.get(
+            platform_key, self.SEARCH_TEMPLATES["google_shopping"]
+        )
         formatted_query = query.replace(" ", "+")
         search_url = url_template.format(query=formatted_query)
 
@@ -107,7 +112,9 @@ class ShoppingManager:
             "products": [p.to_dict() for p in products],
         }
 
-    async def _parse_products(self, platform: str, query: str, max_results: int) -> list[ProductItem]:
+    async def _parse_products(
+        self, platform: str, query: str, max_results: int
+    ) -> list[ProductItem]:
         """Extract product listings from DOM or generate structured product representation."""
         products: list[ProductItem] = []
 
@@ -115,12 +122,20 @@ class ShoppingManager:
             try:
                 # Platform-specific extraction heuristics
                 if platform == "amazon":
-                    items = await self.engine._page.locator("div[data-component-type='s-search-result']").all()
+                    items = await self.engine._page.locator(
+                        "div[data-component-type='s-search-result']"
+                    ).all()
                     for item in items[:max_results]:
                         try:
-                            title = await item.locator("h2 a span").inner_text(timeout=1000)
-                            price_whole = await item.locator(".a-price-whole").first.inner_text(timeout=1000)
-                            price_fraction = await item.locator(".a-price-fraction").first.inner_text(timeout=500)
+                            title = await item.locator("h2 a span").inner_text(
+                                timeout=1000
+                            )
+                            price_whole = await item.locator(
+                                ".a-price-whole"
+                            ).first.inner_text(timeout=1000)
+                            price_fraction = await item.locator(
+                                ".a-price-fraction"
+                            ).first.inner_text(timeout=500)
                             price = f"${price_whole}.{price_fraction}".replace("\n", "")
                             link = await item.locator("h2 a").get_attribute("href")
                             full_url = f"https://www.amazon.com{link}" if link else ""
@@ -148,18 +163,27 @@ class ShoppingManager:
                     reviews_count="1,240 reviews",
                     platform=platform,
                     availability="In Stock",
-                    url=self.engine._page.url if self.engine._page else f"https://www.{platform}.com/search?q={query}",
+                    url=(
+                        self.engine._page.url
+                        if self.engine._page
+                        else f"https://www.{platform}.com/search?q={query}"
+                    ),
                 )
             )
 
         return products
 
-    async def add_to_cart(self, product_url: str | None = None, selector: str | None = None) -> dict[str, Any]:
+    async def add_to_cart(
+        self, product_url: str | None = None, selector: str | None = None
+    ) -> dict[str, Any]:
         """Navigate to product page if needed and click 'Add to Cart'."""
         if product_url:
             nav_result = await self.engine.navigate(product_url)
             if not nav_result.get("success"):
-                return {"success": False, "error": f"Could not navigate to product page: {product_url}"}
+                return {
+                    "success": False,
+                    "error": f"Could not navigate to product page: {product_url}",
+                }
 
         # Try custom selector first if provided
         selectors_to_try = [selector] if selector else self.ADD_TO_CART_SELECTORS

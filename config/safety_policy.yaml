@@ -1,0 +1,16 @@
+# Aura AI Safety Policy Configuration
+# Defines protected applications, system processes, and restricted directories
+
+protected_applications:
+  - Code.exe
+  - vscode
+  - visual studio code
+  - explorer.exe
+  - System
+  - python.exe
+  - cmd.exe
+  - powershell.exe
+
+protected_directories:
+  - C:\Windows
+  - C:\System32

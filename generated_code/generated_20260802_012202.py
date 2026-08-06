@@ -1,10 +1,11 @@
 import os
+
+import dotenv
+import numpy as np
+import torch
 from huggingface_hub import HfApi, Repository
 from huggingface_hub.inference import InferenceClient
 from PIL import Image
-import numpy as np
-import dotenv
-import torch
 
 # Load environment variables from .env file
 dotenv.load_dotenv()

@@ -25,12 +25,12 @@ if __package__:
     from ..verification_layer import VerificationResult
     from .base_manager import BaseNativeManager
 else:
-    from src.desktop.native.desktop_result import DesktopResult
-    from src.desktop.native.managers.base_manager import BaseNativeManager
-    from src.desktop.native.native_exceptions import WindowError
-    from src.desktop.native.native_execution_context import NativeExecutionContext
-    from src.desktop.native.native_result import NativeResult, ResultStatus
-    from src.desktop.native.verification_layer import VerificationResult
+    from ..desktop_result import DesktopResult
+    from ..native_exceptions import WindowError
+    from ..native_execution_context import NativeExecutionContext
+    from ..native_result import NativeResult, ResultStatus
+    from ..verification_layer import VerificationResult
+    from .base_manager import BaseNativeManager
 
 
 class WindowManager(BaseNativeManager):
@@ -255,7 +255,12 @@ class WindowManager(BaseNativeManager):
                 info = self._get_window_info(hwnd)
                 return NativeResult(
                     status=ResultStatus.SUCCESS,
-                    data={"window_handle": hwnd, "process_id": info.get("process_id"), "reused": True, "title": info.get("title")},
+                    data={
+                        "window_handle": hwnd,
+                        "process_id": info.get("process_id"),
+                        "reused": True,
+                        "title": info.get("title"),
+                    },
                     capability="app_open",
                 )
         except Exception:
@@ -288,8 +293,14 @@ class WindowManager(BaseNativeManager):
         **kwargs,
     ):
         """Handle window activation."""
-        target_title = window_title or title or app_name or (goal.split()[-1] if goal else None)
-        window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
+        target_title = (
+            window_title or title or app_name or (goal.split()[-1] if goal else None)
+        )
+        window_handle = (
+            self._find_window(target_title, window_class, process_id)
+            if target_title
+            else None
+        )
         if not window_handle:
             window_handle = win32gui.GetForegroundWindow()
 
@@ -318,19 +329,65 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             raise WindowError(f"Failed to activate window: {e}")
 
-    def _handle_close(self, window_title=None, window_class=None, process_id=None, app_name=None, goal="", **kwargs):
-        """Handle window close."""
+    def _handle_close(
+        self,
+        window_title=None,
+        window_class=None,
+        process_id=None,
+        app_name=None,
+        goal="",
+        **kwargs,
+    ):
+        """Handle window close using configurable SafetyPolicy."""
+        from execution.safety_policy import SafetyPolicy
+
+        sp = SafetyPolicy.get_instance()
+
+        target = window_title or app_name or goal or ""
+        if sp.is_protected_app(target):
+            raise WindowError(
+                f"Safety constraint: AuraAI is prohibited from closing protected application '{target}'."
+            )
+
         target_title = window_title or app_name or (goal.split()[-1] if goal else None)
-        window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
+        window_handle = (
+            self._find_window(target_title, window_class, process_id)
+            if target_title
+            else None
+        )
         if not window_handle:
             window_handle = win32gui.GetForegroundWindow()
+
+        if window_handle:
+            info = self._get_window_info(window_handle)
+            w_title = info.get("title") or ""
+            if sp.is_protected_app(w_title):
+                raise WindowError(
+                    f"Safety constraint: AuraAI is prohibited from closing protected window '{w_title}'."
+                )
 
         if not window_handle and target_title:
             # Fallback to Windows taskkill for process by name
             import subprocess
+
+            if sp.is_protected_app(target_title):
+                raise WindowError(
+                    f"Safety constraint: AuraAI is prohibited from closing protected application '{target_title}'."
+                )
             t = target_title.lower()
-            subprocess.run(f"taskkill /f /im {t}.exe /t", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(f"taskkill /f /im {t}App.exe /t", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(
+                f"taskkill /f /im {t}.exe /t",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                f"taskkill /f /im {t}App.exe /t",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
             return NativeResult(
                 status=ResultStatus.SUCCESS,
                 data={"closed_via": "taskkill", "target": target_title},
@@ -498,10 +555,22 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             raise WindowError(f"Failed to maximize window: {e}")
 
-    def _handle_minimize(self, window_title=None, window_class=None, process_id=None, app_name=None, goal="", **kwargs):
+    def _handle_minimize(
+        self,
+        window_title=None,
+        window_class=None,
+        process_id=None,
+        app_name=None,
+        goal="",
+        **kwargs,
+    ):
         """Handle window minimize."""
         target_title = window_title or app_name or (goal.split()[-1] if goal else None)
-        window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
+        window_handle = (
+            self._find_window(target_title, window_class, process_id)
+            if target_title
+            else None
+        )
         if not window_handle:
             window_handle = win32gui.GetForegroundWindow()
 

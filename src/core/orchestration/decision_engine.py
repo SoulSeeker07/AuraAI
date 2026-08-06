@@ -24,6 +24,7 @@ class IntentType(str, Enum):
 @dataclass
 class DecisionTrace:
     """Detailed reasoning trace explaining WHY a decision was made."""
+
     goal: str
     reasoning_steps: list[str] = field(default_factory=list)
     policy_applied: str = ""
@@ -176,10 +177,32 @@ class DecisionEngine:
         is_browser = any(
             w in goal_lower
             for w in [
-                "browse", "web page", "navigate", "url", "playwright", "instagram",
-                "github", "amazon", "chatgpt", "youtube", "twitter", "reddit", "facebook",
-                "linkedin", "shopping", "cart", "buy", "tab", "website", "http", "https",
-                "site", "browser", "chrome", "edge", "firefox"
+                "browse",
+                "web page",
+                "navigate",
+                "url",
+                "playwright",
+                "instagram",
+                "github",
+                "amazon",
+                "chatgpt",
+                "youtube",
+                "twitter",
+                "reddit",
+                "facebook",
+                "linkedin",
+                "shopping",
+                "cart",
+                "buy",
+                "tab",
+                "website",
+                "http",
+                "https",
+                "site",
+                "browser",
+                "chrome",
+                "edge",
+                "firefox",
             ]
         )
 
@@ -247,7 +270,7 @@ class DecisionEngine:
             f"Evaluated memory recall: can_from_memory={can_from_mem}.",
             f"Evaluated system identity: can_from_system={can_from_sys}.",
             f"Evaluated planner requirement: needs_planner={needs_planner}, selected planner='{planner}'.",
-            f"Evaluated execution policy: State Reuse Policy & Ownership Protection active.",
+            "Evaluated execution policy: State Reuse Policy & Ownership Protection active.",
         ]
 
         trace = DecisionTrace(
@@ -255,7 +278,11 @@ class DecisionEngine:
             reasoning_steps=reasoning_steps,
             policy_applied="Inspect World -> Reuse State -> Protect User Resources",
             chosen_planner=planner,
-            chosen_backend="Playwright Browser Engine" if intent == IntentType.BROWSER else "Native Desktop Engine",
+            chosen_backend=(
+                "Playwright Browser Engine"
+                if intent == IntentType.BROWSER
+                else "Native Desktop Engine"
+            ),
             confidence=0.95,
             expected_outcome=f"Execute goal using {planner} planner and state reuse rules",
         )

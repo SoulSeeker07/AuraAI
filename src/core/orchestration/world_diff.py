@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .world_snapshot import DesktopStateSnapshot
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class WorldDiff:
     """Represents differences between two consecutive DesktopStateSnapshots."""
+
     new_processes: list[str] = field(default_factory=list)
     closed_processes: list[str] = field(default_factory=list)
     new_tabs: list[str] = field(default_factory=list)
@@ -40,7 +41,9 @@ class WorldDiff:
         if self.closed_tabs:
             changes.append(f"Closed tabs: {', '.join(self.closed_tabs)}")
         if self.focused_window_changed:
-            changes.append(f"Focus changed from '{self.previous_focused}' to '{self.current_focused}'")
+            changes.append(
+                f"Focus changed from '{self.previous_focused}' to '{self.current_focused}'"
+            )
 
         return "; ".join(changes) if changes else "No desktop state changes detected."
 
@@ -81,7 +84,9 @@ class WorldDiffEngine:
         new_tabs = sorted(list(curr_tabs - prev_tabs))
         closed_tabs = sorted(list(prev_tabs - curr_tabs))
 
-        focused_changed = (prev_snap.focused_window_title != current_snap.focused_window_title)
+        focused_changed = (
+            prev_snap.focused_window_title != current_snap.focused_window_title
+        )
 
         return WorldDiff(
             new_processes=new_procs,

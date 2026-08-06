@@ -59,10 +59,11 @@ class DefaultNativeDesktopAdapter(BaseBackendAdapter):
     def execute(
         self, capability: str, goal: str, arguments: dict[str, Any] | None = None
     ) -> Any:
-        from ..planning.execution_result import ExecutionResult
         from .adapters.desktop_backend import DesktopEngineBackend
 
-        return DesktopEngineBackend().execute(capability=capability, goal=goal, arguments=arguments)
+        return DesktopEngineBackend().execute(
+            capability=capability, goal=goal, arguments=arguments
+        )
 
 
 class DefaultGeminiResearchAdapter(BaseBackendAdapter):
@@ -126,6 +127,7 @@ class BackendRegistry:
     def _register_default_adapters(self) -> None:
         """Register built-in backend adapters."""
         from .adapters.desktop_backend import DesktopEngineBackend
+
         self.register(DesktopEngineBackend())
         self.register(DefaultNativeDesktopAdapter())
         self.register(DefaultGeminiResearchAdapter())

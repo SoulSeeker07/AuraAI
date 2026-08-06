@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # This is robust against different working directories.
 _THIS_FILE = Path(__file__).resolve()
 
+
 def _find_knowledge_dir() -> Path:
     """Walk up from src/core/system/ to find the project root knowledge/ dir containing aura_identity.yaml."""
     search = _THIS_FILE.parent
@@ -116,8 +117,12 @@ class IdentityContext:
         """Live capability groups from CapabilityCatalog."""
         try:
             from .capability_catalog import CapabilityCatalog
+
             grouped = CapabilityCatalog().export_by_category()
-            return [{"group": cat, "capabilities": [e.name for e in entries]} for cat, entries in grouped.items()]
+            return [
+                {"group": cat, "capabilities": [e.name for e in entries]}
+                for cat, entries in grouped.items()
+            ]
         except Exception:
             return []
 
@@ -200,11 +205,13 @@ class IdentityLoader:
     _instance: IdentityLoader | None = None
 
     def __init__(self, knowledge_dir: Path | str | None = None):
-        self._knowledge_dir = Path(knowledge_dir) if knowledge_dir else _find_knowledge_dir()
+        self._knowledge_dir = (
+            Path(knowledge_dir) if knowledge_dir else _find_knowledge_dir()
+        )
         self._context: IdentityContext | None = None
 
     @classmethod
-    def get_instance(cls) -> "IdentityLoader":
+    def get_instance(cls) -> IdentityLoader:
         """Singleton accessor."""
         if cls._instance is None:
             cls._instance = cls()
@@ -241,13 +248,13 @@ class IdentityLoader:
             return ctx
 
         file_map = {
-            "aura_identity.yaml":     "identity",
-            "aura_commands.yaml":     "commands",
-            "aura_examples.yaml":     "examples",
-            "aura_personality.yaml":  "personality",
-            "aura_pipeline.yaml":     "pipeline",
-            "aura_skills.yaml":       "skills",
-            "aura_limitations.yaml":  "limitations",
+            "aura_identity.yaml": "identity",
+            "aura_commands.yaml": "commands",
+            "aura_examples.yaml": "examples",
+            "aura_personality.yaml": "personality",
+            "aura_pipeline.yaml": "pipeline",
+            "aura_skills.yaml": "skills",
+            "aura_limitations.yaml": "limitations",
             # NOTE: aura_capabilities.yaml is intentionally excluded.
             # Capabilities are loaded dynamically from CapabilityRegistry.
             # See CapabilityCatalog for live capability discovery.

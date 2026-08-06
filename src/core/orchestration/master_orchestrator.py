@@ -56,6 +56,9 @@ class MasterOrchestrator:
         self.supervisor = supervisor_agent or SupervisorAgent(self.planner_registry)
         self.result_merger = result_merger or ResultMerger()
         self._last_result: Any = None
+        self._last_session: Any = (
+            None  # AgentSession — used for session-scoped confirmation
+        )
 
         # Milestone 17.0: Build the identity layer at startup.
         # The PromptBuilder reads knowledge/ YAMLs + live registries and assembles
@@ -74,7 +77,9 @@ class MasterOrchestrator:
             self._prompt_builder = None  # type: ignore[assignment]
             self._identity_context = "(identity layer unavailable)"
 
-        logger.info("MasterOrchestrator initialized (Cognitive Orchestration Layer v17.0)")
+        logger.info(
+            "MasterOrchestrator initialized (Cognitive Orchestration Layer v17.0)"
+        )
 
     @classmethod
     def get_instance(cls) -> "MasterOrchestrator":
@@ -85,6 +90,95 @@ class MasterOrchestrator:
     @classmethod
     def reset_instance(cls) -> None:
         cls._instance = None
+
+    def check_pending_confirmation(self) -> Any | None:
+        """
+        Returns the ActionPlanConfirmation from the last session, if any is pending.
+        Used by AuraCore to detect yes/no turns without raw string matching.
+        """
+        if self._last_session is None:
+            return None
+        conf = getattr(self._last_session, "pending_confirmation", None)
+        if conf is None or conf.resolved or conf.is_expired():
+            return None
+        return conf
+
+    def resolve_pending_confirmation(self, user_answer: str) -> ExecutionResult | None:
+        """
+        Resolve a pending session-scoped confirmation with the user's answer.
+        Returns an ExecutionResult if resolved, else None.
+        """
+        conf = self.check_pending_confirmation()
+        if conf is None:
+            return None
+
+        from ..planning.execution_result import ExecutionResult as _ER
+        from .execution_policy import ExecutionPolicy, PolicyAction
+
+        conf.resolve(user_answer)
+        self._last_session.pending_confirmation = None  # clear after resolve
+
+        if conf.is_yes:
+            # Launch the new instance — re-run via execute_plan with CONFIRMED_LAUNCH
+            try:
+                from ..planning.action_plan import ActionPlan
+
+                plan = conf.action_plan
+                # Strip reuse flag so engine actually launches
+                new_plan = ActionPlan(
+                    action=plan.action,
+                    target=plan.target,
+                    goal=plan.goal,
+                    capability=plan.capability,
+                    arguments=plan.arguments,
+                    reuse_existing=False,
+                    verify=True,
+                    ownership="aura",
+                    policy_action=PolicyAction.CONFIRMED_LAUNCH.value,
+                    session_id=plan.session_id,
+                    metadata={},
+                )
+                backend = self.backend_registry.select_best_backend(plan.capability)
+                if backend:
+                    logger.info(
+                        f"[MasterOrchestrator] Confirmation YES → {new_plan.log_summary()}"
+                    )
+                    return backend.execute_plan(new_plan)
+            except Exception as exc:
+                logger.error(
+                    f"[MasterOrchestrator] Confirmed launch failed: {exc}",
+                    exc_info=True,
+                )
+            return _ER(
+                success=False,
+                planner="desktop",
+                goal=conf.action_plan.goal,
+                data={},
+                observations=[
+                    f"Confirmed launch of '{conf.action_plan.target}' failed."
+                ],
+            )
+        else:
+            # User said no — bring existing window to front
+            try:
+                policy = ExecutionPolicy.get_instance()
+                running = policy._get_running_windows(conf.action_plan.target, None)
+                if running:
+                    import win32gui
+
+                    win32gui.SetForegroundWindow(running[0])
+                    win32gui.BringWindowToTop(running[0])
+            except Exception:
+                pass
+            return _ER(
+                success=True,
+                planner="desktop",
+                goal=conf.action_plan.goal,
+                data={"policy_action": "reuse_existing"},
+                observations=[
+                    f"OK — keeping existing {conf.action_plan.target.title()} window."
+                ],
+            )
 
     def process_request(
         self,
@@ -110,6 +204,7 @@ class MasterOrchestrator:
         """
         start_t = datetime.now().timestamp()
         session = AgentSession(goal=goal_text, budget=budget or ExecutionBudget())
+        self._last_session = session  # for session-scoped confirmation resolution
         self._log_pipeline_start(goal_text, session.session_id)
 
         # Stage 1: Memory Recall
@@ -122,9 +217,12 @@ class MasterOrchestrator:
         # Stage 1.5: Conversational Reference Resolution ("Minimize it" -> "Minimize Notepad")
         try:
             from .reference_resolver import ReferenceResolver
+
             resolved_goal, ref_meta = ReferenceResolver.resolve_references(goal_text)
             if ref_meta.get("resolved"):
-                logger.info(f"MasterOrchestrator resolved goal '{goal_text}' -> '{resolved_goal}'")
+                logger.info(
+                    f"MasterOrchestrator resolved goal '{goal_text}' -> '{resolved_goal}'"
+                )
                 goal_text = resolved_goal
                 session.goal = resolved_goal
                 session.metrics["reference_resolved"] = ref_meta
@@ -154,6 +252,7 @@ class MasterOrchestrator:
 
         try:
             from .world_timeline import WorldTimeline
+
             WorldTimeline.get_instance().record_event(
                 event_type="session_start",
                 description=f"Session started for goal: '{goal_text}'",
@@ -164,8 +263,8 @@ class MasterOrchestrator:
 
         # Stage 2.5: Desktop World State Snapshot & WorldDiff
         try:
-            from .world_snapshot import WorldSnapshotProvider
             from .ownership_tracker import ResourceOwnershipTracker
+            from .world_snapshot import WorldSnapshotProvider
 
             world_snap, world_diff = WorldSnapshotProvider().snapshot_with_diff()
             shared_world_state = world_snap.to_context_dict()
@@ -204,7 +303,10 @@ class MasterOrchestrator:
             "aura_identity": self._identity_context,
             "capability_catalog": self.backend_registry.list_all_backends(),
             "planner_catalog": self.planner_registry.list_planners(),
-            "resource_ownership": [r.to_dict() for r in ResourceOwnershipTracker.get_instance().get_aura_resources()],
+            "resource_ownership": [
+                r.to_dict()
+                for r in ResourceOwnershipTracker.get_instance().get_aura_resources()
+            ],
         }
 
         # Stage 4 & 5: Supervisor Delegation, Backend Routing & Parallel Execution
@@ -252,13 +354,15 @@ class MasterOrchestrator:
                         session.add_observation(
                             Observation(
                                 obs_type=subtask.required_role.value,
-                                source=res_data.get("backend", getattr(res, "planner", "desktop")),
+                                source=res_data.get(
+                                    "backend", getattr(res, "planner", "desktop")
+                                ),
                                 confidence=res.confidence,
                                 content=obs_text,
                             )
                         )
 
-                    for art_data in (res.artifacts or []):
+                    for art_data in res.artifacts or []:
                         if isinstance(art_data, dict):
                             session.add_artifact(
                                 Artifact(
@@ -273,6 +377,45 @@ class MasterOrchestrator:
                             )
 
                     shared_context["previous_results"][t_id] = res
+
+                    # Session-Scoped Confirmation: if backend returned ASK_USER, attach to session
+                    if res_data.get("policy_action") == "ask_user":
+                        try:
+                            from ..planning.action_plan import ActionPlan
+                            from .confirmation import ActionPlanConfirmation
+
+                            # Reconstruct a minimal ActionPlan from result data for the confirmation
+                            plan_id = res_data.get("plan_id", f"plan_{t_id}")
+                            target = res_data.get(
+                                "action_target"
+                            ) or subtask.parameters.get("app_name", "app")
+                            capability = res_data.get("capability", subtask.capability)
+                            pending_plan = ActionPlan(
+                                action=capability,
+                                target=target,
+                                goal=subtask.description,
+                                capability=capability,
+                                arguments=subtask.parameters or {},
+                                reuse_existing=False,
+                                policy_action="ask_user",
+                                session_id=session.session_id,
+                            )
+                            prompt_text = (
+                                res.observations[0]
+                                if res.observations
+                                else f"{target.title()} is already open. Open another instance? (yes / no)"
+                            )
+                            session.pending_confirmation = ActionPlanConfirmation(
+                                session_id=session.session_id,
+                                action_plan=pending_plan,
+                                prompt=prompt_text,
+                            )
+                            logger.info(
+                                f"[MasterOrchestrator] Stored pending confirmation on session "
+                                f"[{session.session_id}] for '{target}'"
+                            )
+                        except Exception as conf_exc:
+                            logger.debug(f"Confirmation attachment skipped: {conf_exc}")
 
         session.metrics["execution_ms"] = round(
             (datetime.now().timestamp() - t3) * 1000, 2
@@ -334,18 +477,37 @@ class MasterOrchestrator:
                 planner=role_key,
                 goal=subtask.description,
                 confidence=0.0,
+                data={},
                 observations=[
                     f"No backend available for capability '{subtask.capability}'"
                 ],
             )
 
-        logger.info(f"Subtask [{task_id}] executing via backend '{backend.name}'")
-        await asyncio.sleep(0.02)
-        exec_res = backend.execute(
-            capability=subtask.capability,
-            goal=subtask.description,
-            arguments=subtask.parameters,
-        )
+        # Build structured ActionPlan from SubTask
+        try:
+            from ..planning.action_plan import ActionPlan
+
+            session = context.get("session")
+            session_id = getattr(session, "session_id", task_id)
+            action_plan = ActionPlan.from_subtask(subtask, session_id=session_id)
+            logger.info(
+                f"Subtask [{task_id}] → {action_plan.log_summary()} via backend '{backend.name}'"
+            )
+            await asyncio.sleep(0.02)
+            exec_res = backend.execute_plan(action_plan)
+        except Exception as plan_exc:
+            # Graceful fallback: if ActionPlan construction fails, use raw execute()
+            logger.warning(
+                f"Subtask [{task_id}] ActionPlan build failed ({plan_exc}), "
+                f"falling back to execute()"
+            )
+            await asyncio.sleep(0.02)
+            exec_res = backend.execute(
+                capability=subtask.capability,
+                goal=subtask.description,
+                arguments=subtask.parameters,
+            )
+
         return exec_res
 
     def _recall_memory(self, goal: str) -> dict[str, Any]:
@@ -353,18 +515,24 @@ class MasterOrchestrator:
         logger.info(f"Stage 1 Memory Recall for goal: '{goal[:30]}...'")
         try:
             from Memory import Memory as AuraMemory
+
             mem = AuraMemory()
             facts = mem.search(goal)
             all_facts = mem.facts()
             context_str = mem.build_context(user_input=goal)
             return {
                 "recalled_facts": [f.value for f in facts],
-                "all_facts": [{"category": f.category, "key": f.key, "value": f.value} for f in all_facts],
+                "all_facts": [
+                    {"category": f.category, "key": f.key, "value": f.value}
+                    for f in all_facts
+                ],
                 "context_string": context_str,
                 "session_id": "current_session",
             }
         except Exception as exc:
-            logger.warning(f"Memory recall failed, falling back to empty context: {exc}")
+            logger.warning(
+                f"Memory recall failed, falling back to empty context: {exc}"
+            )
             return {"recalled_facts": [], "session_id": "current_session"}
 
     def _write_memory(self, session: AgentSession, result: ExecutionResult) -> None:
@@ -374,8 +542,13 @@ class MasterOrchestrator:
         )
         try:
             from Memory import Memory as AuraMemory
+
             mem = AuraMemory()
-            obs_summary = "; ".join(result.observations[:3]) if result.observations else "No observations"
+            obs_summary = (
+                "; ".join(result.observations[:3])
+                if result.observations
+                else "No observations"
+            )
             mem.remember_exchange(
                 query=session.goal,
                 answer=f"Result success={result.success}. {obs_summary}",
@@ -390,6 +563,7 @@ class MasterOrchestrator:
         proc_count = 0
         try:
             import win32gui
+
             hwnd = win32gui.GetForegroundWindow()
             if hwnd:
                 focused_window = win32gui.GetWindowText(hwnd) or "unknown"
@@ -397,6 +571,7 @@ class MasterOrchestrator:
             pass
         try:
             import psutil
+
             proc_count = len(list(psutil.process_iter()))
         except Exception:
             pass
@@ -404,7 +579,7 @@ class MasterOrchestrator:
         divider = "═" * 52
         logger.info(
             f"\n{divider}\n"
-            f" AURA PIPELINE — \"{goal}\"\n"
+            f' AURA PIPELINE — "{goal}"\n'
             f" Session : {session_id}\n"
             f"──────────────────────────────────────────────────────\n"
             f" World Snapshot\n"

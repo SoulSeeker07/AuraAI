@@ -27,7 +27,16 @@ class BrowserRules:
                 "requires_permission": False,
             },
             {
-                "keywords": ["shop", "buy", "cart", "add to cart", "price", "amazon", "ebay", "flipkart"],
+                "keywords": [
+                    "shop",
+                    "buy",
+                    "cart",
+                    "add to cart",
+                    "price",
+                    "amazon",
+                    "ebay",
+                    "flipkart",
+                ],
                 "confidence": 0.95,
                 "priority": CapabilityPriority.HIGH,
                 "requires_permission": False,

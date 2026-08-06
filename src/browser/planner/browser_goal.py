@@ -15,9 +15,10 @@ from typing import Any
 class BrowserGoal:
     """
     Structured representation of a page goal.
-    
+
     Expresses intent and parameters without specifying exact DOM clicks/selectors.
     """
+
     site: str
     intent: str  # e.g., "profile", "search", "navigate", "feed", "check_auth"
     target_url: str = ""

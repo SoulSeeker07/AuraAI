@@ -84,10 +84,13 @@ class PlannerRegistry:
         self.register(PlannerRole.CODING.value, DefaultRolePlanner("coding", "coding"))
 
         try:
-            from src.browser.planner.browser_goal_planner import BrowserGoalPlanner
+            from browser.planner.browser_goal_planner import BrowserGoalPlanner
+
             self.register(PlannerRole.BROWSER.value, BrowserGoalPlanner())
         except Exception as e:
-            logger.warning(f"Failed to load BrowserGoalPlanner, using default fallback: {e}")
+            logger.warning(
+                f"Failed to load BrowserGoalPlanner, using default fallback: {e}"
+            )
             self.register(
                 PlannerRole.BROWSER.value, DefaultRolePlanner("browser", "browser")
             )
@@ -99,8 +102,22 @@ class PlannerRegistry:
         logger.info(f"Registered role planner '{key}'")
 
     def get_planner(self, name: str) -> BasePlanner | None:
-        """Get planner by name or role string."""
+        """Retrieve a registered BasePlanner by role name."""
         return self._planners.get(name.lower())
+
+    def list_planners(self) -> list[str]:
+        """List all registered planner role names."""
+        return list(self._planners.keys())
+
+    def get_engineering_supervisor(self):
+        """Retrieve or instantiate the SoftwareEngineeringSupervisor."""
+        try:
+            from .software_engineering_supervisor import SoftwareEngineeringSupervisor
+
+            return SoftwareEngineeringSupervisor()
+        except Exception as e:
+            logger.warning(f"Could not load SoftwareEngineeringSupervisor: {e}")
+            return None
 
     def find_planners_for_goal(self, goal_text: str) -> list[tuple[str, BasePlanner]]:
         """Find all registered planners that can handle a goal."""
@@ -109,7 +126,3 @@ class PlannerRegistry:
             for name, planner in self._planners.items()
             if planner.can_handle(goal_text)
         ]
-
-    def list_planners(self) -> list[str]:
-        """List names of all registered planners."""
-        return list(self._planners.keys())

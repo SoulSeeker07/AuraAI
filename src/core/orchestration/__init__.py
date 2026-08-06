@@ -5,6 +5,7 @@ Multi-planner registry, master orchestrator, and result merger.
 
 from .agent_session import AgentSession, ExecutionBudget
 from .artifact import Artifact
+from .confirmation import ActionPlanConfirmation
 from .decision_engine import DecisionEngine, DecisionOutcome, IntentType
 from .execution_policy import ExecutionPolicy, PolicyAction, PolicyDecision
 from .master_orchestrator import MasterOrchestrator
@@ -22,6 +23,7 @@ __all__ = [
     "ExecutionPolicy",
     "PolicyAction",
     "PolicyDecision",
+    "ActionPlanConfirmation",
     "TaskDecomposer",
     "TaskGraph",
     "SubTask",

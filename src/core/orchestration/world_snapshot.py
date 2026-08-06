@@ -23,11 +23,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any
+
+from browser.world_model import BrowserContext, BrowserStateProbe
 
 logger = logging.getLogger(__name__)
-
-
-from src.browser.world_model import BrowserContext, BrowserStateProbe, BrowserWorldModel
 
 
 @dataclass
@@ -123,11 +123,13 @@ class WorldSnapshotProvider:
 
         return snap
 
-    def snapshot_with_diff(self, playwright_engine: Any = None) -> tuple[DesktopStateSnapshot, Any]:
+    def snapshot_with_diff(
+        self, playwright_engine: Any = None
+    ) -> tuple[DesktopStateSnapshot, Any]:
         """
         Capture a snapshot and compute the WorldDiff against the previous snapshot.
         """
-        from src.core.orchestration.world_diff import WorldDiffEngine
+        from .world_diff import WorldDiffEngine
 
         prev_snap = WorldSnapshotProvider._last_snapshot
         current_snap = self.snapshot(playwright_engine=playwright_engine)
@@ -140,10 +142,16 @@ class WorldSnapshotProvider:
         """Get normalized list of running process names via psutil."""
         try:
             import psutil  # type: ignore[import]
+
             names: list[str] = []
             for proc in psutil.process_iter(["name"]):
                 try:
-                    name = (proc.info.get("name") or "").lower().replace(".exe", "").strip()
+                    name = (
+                        (proc.info.get("name") or "")
+                        .lower()
+                        .replace(".exe", "")
+                        .strip()
+                    )
                     if name:
                         names.append(name)
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -160,6 +168,7 @@ class WorldSnapshotProvider:
         """Get the title of the currently focused window via win32gui."""
         try:
             import win32gui  # type: ignore[import]
+
             hwnd = win32gui.GetForegroundWindow()
             return win32gui.GetWindowText(hwnd) or ""
         except ImportError:

@@ -13,7 +13,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.core.orchestration.ownership_tracker import ResourceOwner, ResourceOwnershipTracker
+from core.orchestration.ownership_tracker import (
+    ResourceOwner,
+    ResourceOwnershipTracker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BrowserTab:
     """Represents a single detected browser tab with rich state & ownership metadata."""
+
     tab_id: str
     title: str
     url: str = ""
@@ -31,7 +35,9 @@ class BrowserTab:
     is_active: bool = False
     logged_in: bool = False
     owner: ResourceOwner = ResourceOwner.USER
-    semantic_category: str = "general"  # "documentation", "social", "shopping", "code", "entertainment", "general"
+    semantic_category: str = (
+        "general"  # "documentation", "social", "shopping", "code", "entertainment", "general"
+    )
     history: list[str] = field(default_factory=list)
     media_playing: bool = False
     shopping_cart: list[dict[str, Any]] = field(default_factory=list)
@@ -60,6 +66,7 @@ class BrowserTab:
 @dataclass
 class BrowserContext:
     """Immutable representation of browser context and tab state across the OS."""
+
     running_browsers: list[str] = field(default_factory=list)
     open_tabs: list[BrowserTab] = field(default_factory=list)
     focused_tab: BrowserTab | None = None
@@ -106,7 +113,9 @@ class BrowserContext:
             "open_tabs_count": len(self.open_tabs),
             "open_tabs": [t.to_dict() for t in self.open_tabs],
             "focused_tab": self.focused_tab.to_dict() if self.focused_tab else None,
-            "last_active_tab": self.last_active_tab.to_dict() if self.last_active_tab else None,
+            "last_active_tab": (
+                self.last_active_tab.to_dict() if self.last_active_tab else None
+            ),
         }
 
 
@@ -141,8 +150,11 @@ class BrowserStateProbe:
         # 1. Probe running process list via psutil
         try:
             import psutil
+
             for proc in psutil.process_iter(["name", "pid"]):
-                pname = (proc.info.get("name") or "").lower().replace(".exe", "").strip()
+                pname = (
+                    (proc.info.get("name") or "").lower().replace(".exe", "").strip()
+                )
                 for b_key in cls.KNOWN_BROWSERS:
                     if b_key in pname and b_key not in running_browsers:
                         running_browsers.append(b_key)
@@ -177,8 +189,18 @@ class BrowserStateProbe:
 
                     cleaned_title = title
                     for b_name in cls.KNOWN_BROWSERS.values():
-                        cleaned_title = re.sub(rf"\s*-\s*{re.escape(b_name)}$", "", cleaned_title, flags=re.IGNORECASE)
-                        cleaned_title = re.sub(rf"\s*—\s*{re.escape(b_name)}$", "", cleaned_title, flags=re.IGNORECASE)
+                        cleaned_title = re.sub(
+                            rf"\s*-\s*{re.escape(b_name)}$",
+                            "",
+                            cleaned_title,
+                            flags=re.IGNORECASE,
+                        )
+                        cleaned_title = re.sub(
+                            rf"\s*—\s*{re.escape(b_name)}$",
+                            "",
+                            cleaned_title,
+                            flags=re.IGNORECASE,
+                        )
 
                     domain = cls._infer_domain_from_title(cleaned_title)
                     category = cls._infer_semantic_category(cleaned_title, domain)
@@ -210,7 +232,11 @@ class BrowserStateProbe:
             logger.debug(f"Win32 window probe error: {e}")
 
         # 3. Incorporate active Playwright engine tabs if available
-        if playwright_engine and getattr(playwright_engine, "is_active", False) and getattr(playwright_engine, "_context", None):
+        if (
+            playwright_engine
+            and getattr(playwright_engine, "is_active", False)
+            and getattr(playwright_engine, "_context", None)
+        ):
             try:
                 pages = playwright_engine._context.pages
                 for i, page in enumerate(pages):
@@ -218,7 +244,9 @@ class BrowserStateProbe:
                     domain = cls._infer_domain_from_title(page.url)
                     category = cls._infer_semantic_category(page.url, domain)
                     tab_id = f"pw_{i}"
-                    owner = ownership_tracker.get_owner("tab", tab_id) or ResourceOwner.AURA
+                    owner = (
+                        ownership_tracker.get_owner("tab", tab_id) or ResourceOwner.AURA
+                    )
 
                     p_tab = BrowserTab(
                         tab_id=tab_id,
@@ -274,14 +302,37 @@ class BrowserStateProbe:
     def _infer_semantic_category(title: str, domain: str) -> str:
         """Infer semantic category (documentation, social, shopping, code, entertainment, general)."""
         txt = f"{title} {domain}".lower()
-        if any(w in txt for w in ["doc", "docs", "documentation", "mdn", "python docs", "api reference", "manual", "guide"]):
+        if any(
+            w in txt
+            for w in [
+                "doc",
+                "docs",
+                "documentation",
+                "mdn",
+                "python docs",
+                "api reference",
+                "manual",
+                "guide",
+            ]
+        ):
             return "documentation"
-        elif any(w in txt for w in ["amazon", "ebay", "flipkart", "shop", "cart", "store", "buy"]):
+        elif any(
+            w in txt
+            for w in ["amazon", "ebay", "flipkart", "shop", "cart", "store", "buy"]
+        ):
             return "shopping"
-        elif any(w in txt for w in ["instagram", "facebook", "twitter", "x.com", "linkedin", "reddit"]):
+        elif any(
+            w in txt
+            for w in ["instagram", "facebook", "twitter", "x.com", "linkedin", "reddit"]
+        ):
             return "social"
-        elif any(w in txt for w in ["github", "gitlab", "vscode", "stackoverflow", "stack overflow"]):
+        elif any(
+            w in txt
+            for w in ["github", "gitlab", "vscode", "stackoverflow", "stack overflow"]
+        ):
             return "code"
-        elif any(w in txt for w in ["youtube", "netflix", "spotify", "twitch", "prime video"]):
+        elif any(
+            w in txt for w in ["youtube", "netflix", "spotify", "twitch", "prime video"]
+        ):
             return "entertainment"
         return "general"

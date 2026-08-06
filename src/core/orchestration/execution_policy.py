@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 class PolicyAction(Enum):
     """What the execution policy decided to do."""
+
     REUSE_EXISTING = "reuse_existing"
     LAUNCH_NEW = "launch_new"
     ASK_USER = "ask_user"
@@ -43,6 +44,7 @@ class PolicyAction(Enum):
 @dataclass
 class PolicyDecision:
     """Decision returned by ExecutionPolicy.evaluate()."""
+
     action: PolicyAction
     message: str
     app_name: str
@@ -54,6 +56,7 @@ class PolicyDecision:
 @dataclass
 class PendingConfirmation:
     """A stored pending confirmation waiting for user yes/no."""
+
     key: str
     app_name: str
     goal: str
@@ -71,13 +74,13 @@ class ExecutionPolicy:
     Holds pending confirmations across turns.
     """
 
-    _instance: "ExecutionPolicy | None" = None
+    _instance: ExecutionPolicy | None = None
 
     def __init__(self) -> None:
         self._pending: dict[str, PendingConfirmation] = {}
 
     @classmethod
-    def get_instance(cls) -> "ExecutionPolicy":
+    def get_instance(cls) -> ExecutionPolicy:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -155,8 +158,20 @@ class ExecutionPolicy:
         del self._pending[conf.key]
 
         answer = user_answer.strip().lower()
-        if answer in ["yes", "y", "yeah", "yep", "sure", "ok", "okay", "open", "another"]:
-            logger.info(f"ExecutionPolicy: YES → CONFIRMED_LAUNCH for '{conf.app_name}'")
+        if answer in [
+            "yes",
+            "y",
+            "yeah",
+            "yep",
+            "sure",
+            "ok",
+            "okay",
+            "open",
+            "another",
+        ]:
+            logger.info(
+                f"ExecutionPolicy: YES → CONFIRMED_LAUNCH for '{conf.app_name}'"
+            )
             return PolicyDecision(
                 action=PolicyAction.CONFIRMED_LAUNCH,
                 message=f"Opening new {conf.app_name.title()} instance...",
@@ -203,9 +218,9 @@ class ExecutionPolicy:
         Returns a list of HWNDs matching this application (may be empty).
         """
         try:
+            import psutil
             import win32gui
             import win32process
-            import psutil
 
             app_lower = app_name.lower()
             matches: list[int] = []
@@ -221,7 +236,11 @@ class ExecutionPolicy:
                 except Exception:
                     proc_name = ""
                     proc_base = ""
-                if app_lower in title or app_lower in proc_base or app_lower in proc_name:
+                if (
+                    app_lower in title
+                    or app_lower in proc_base
+                    or app_lower in proc_name
+                ):
                     matches.append(hwnd)
                 return True
 
@@ -232,14 +251,18 @@ class ExecutionPolicy:
             # Fallback: psutil process list
             try:
                 import psutil
+
                 app_lower = app_name.lower()
                 procs = [
-                    p for p in psutil.process_iter(["pid", "name"])
+                    p
+                    for p in psutil.process_iter(["pid", "name"])
                     if app_lower in (p.info.get("name") or "").lower()
                 ]
                 return [p.pid for p in procs]
             except Exception:
                 return []
         except Exception as exc:
-            logger.debug(f"ExecutionPolicy._get_running_windows({app_name}) error: {exc}")
+            logger.debug(
+                f"ExecutionPolicy._get_running_windows({app_name}) error: {exc}"
+            )
             return []

@@ -4,11 +4,19 @@ Location: tests/browser/test_decision_trace_and_timeline.py
 """
 
 import pytest
-from src.core.orchestration.decision_engine import DecisionEngine, DecisionTrace, DecisionOutcome
-from src.core.orchestration.world_timeline import WorldTimeline, TimelineEvent
-from src.core.orchestration.session_replay import SessionReplay
+
 from src.core.orchestration.agent_session import AgentSession
-from src.core.orchestration.ownership_tracker import ResourceOwnershipTracker, ResourceOwner
+from src.core.orchestration.decision_engine import (
+    DecisionEngine,
+    DecisionOutcome,
+    DecisionTrace,
+)
+from src.core.orchestration.ownership_tracker import (
+    ResourceOwner,
+    ResourceOwnershipTracker,
+)
+from src.core.orchestration.session_replay import SessionReplay
+from src.core.orchestration.world_timeline import TimelineEvent, WorldTimeline
 
 
 def test_decision_trace_generation():
@@ -29,8 +37,15 @@ def test_world_timeline_logging():
     timeline = WorldTimeline.get_instance()
     timeline.clear()
 
-    evt1 = timeline.record_event("process_start", "Chrome process launched", resource_id="chrome_123", owner="aura")
-    evt2 = timeline.record_event("tab_focus", "Instagram tab focused", resource_id="win_456", owner="aura")
+    evt1 = timeline.record_event(
+        "process_start",
+        "Chrome process launched",
+        resource_id="chrome_123",
+        owner="aura",
+    )
+    evt2 = timeline.record_event(
+        "tab_focus", "Instagram tab focused", resource_id="win_456", owner="aura"
+    )
 
     recent = timeline.get_recent_events(minutes=15)
     assert len(recent) == 2
@@ -50,7 +65,11 @@ def test_session_replay_explanation():
 
     timeline = WorldTimeline.get_instance()
     timeline.clear()
-    timeline.record_event("session_start", "Session started for goal: 'Open Instagram'", session_id=session.session_id)
+    timeline.record_event(
+        "session_start",
+        "Session started for goal: 'Open Instagram'",
+        session_id=session.session_id,
+    )
 
     explanation = SessionReplay.explain_session(session)
 
@@ -65,7 +84,12 @@ def test_session_replay_resource_protection_explanation():
     tracker.clear()
 
     tracker.register_resource("tab", "user_tab_spotify", owner=ResourceOwner.USER)
-    tracker.register_resource("tab", "aura_tab_chrome", owner=ResourceOwner.AURA, details={"reason": "Research Python"})
+    tracker.register_resource(
+        "tab",
+        "aura_tab_chrome",
+        owner=ResourceOwner.AURA,
+        details={"reason": "Research Python"},
+    )
 
     user_exp = SessionReplay.explain_resource_protection("user_tab_spotify", "tab")
     aura_exp = SessionReplay.explain_resource_protection("aura_tab_chrome", "tab")

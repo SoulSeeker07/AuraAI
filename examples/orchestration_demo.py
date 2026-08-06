@@ -44,7 +44,9 @@ def main():
     )
 
     print(f"\n[USER GOAL]: '{user_goal}'")
-    print(f"[EXECUTION BUDGET]: MaxTime={budget.max_time_seconds}s, MaxCost=${budget.max_cost_usd}, AllowParallel={budget.allow_parallel}\n")
+    print(
+        f"[EXECUTION BUDGET]: MaxTime={budget.max_time_seconds}s, MaxCost=${budget.max_cost_usd}, AllowParallel={budget.allow_parallel}\n"
+    )
 
     MasterOrchestrator.reset_instance()
     PlannerRegistry.reset_instance()
@@ -71,11 +73,15 @@ def main():
     if result.artifacts:
         print("\n--- UNIFIED ARTIFACT STORE ---")
         for artifact in result.artifacts:
-            print(f"  [ARTIFACT] {artifact.get('artifact_id')} ({artifact.get('artifact_type')}): {artifact.get('location')} [Creator: {artifact.get('creator')}]")
+            print(
+                f"  [ARTIFACT] {artifact.get('artifact_id')} ({artifact.get('artifact_type')}): {artifact.get('location')} [Creator: {artifact.get('creator')}]"
+            )
 
     metrics = result.data.get("metrics", {})
     print("\n--- STAGE 7: AGENT SESSION METRICS ---")
-    print(f"Subtasks Completed: {metrics.get('subtasks_completed', 0)}/{metrics.get('subtasks_total', 0)}")
+    print(
+        f"Subtasks Completed: {metrics.get('subtasks_completed', 0)}/{metrics.get('subtasks_total', 0)}"
+    )
     print("=" * 80)
 
 

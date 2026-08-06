@@ -16,7 +16,7 @@ import logging
 import re
 from typing import Any
 
-from .ownership_tracker import ResourceOwner, ResourceOwnershipTracker
+from .ownership_tracker import ResourceOwnershipTracker
 from .world_timeline import WorldTimeline
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,9 @@ class ReferenceResolver:
     ]
 
     @classmethod
-    def resolve_references(cls, goal_text: str, context: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+    def resolve_references(
+        cls, goal_text: str, context: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
         """
         Resolve ambiguous pronouns in goal_text using:
         1. OS-reported focused window (win32gui.GetForegroundWindow)  ← highest confidence
@@ -60,9 +62,9 @@ class ReferenceResolver:
 
         # ── Priority 1: Focused window from live Windows OS ────────────────
         try:
+            import psutil
             import win32gui
             import win32process
-            import psutil
 
             hwnd = win32gui.GetForegroundWindow()
             if hwnd:
@@ -70,16 +72,29 @@ class ReferenceResolver:
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
                 proc_name = ""
                 try:
-                    proc_name = psutil.Process(pid).name().replace(".exe", "").replace("App", "")
+                    proc_name = (
+                        psutil.Process(pid)
+                        .name()
+                        .replace(".exe", "")
+                        .replace("App", "")
+                    )
                 except Exception:
                     pass
 
                 # Prefer process name (more stable than window title)
                 candidate = proc_name or title.split("-")[0].strip()
-                if candidate and candidate.lower() not in ["explorer", "taskbar", "searchhost", "unknown", ""]:
+                if candidate and candidate.lower() not in [
+                    "explorer",
+                    "taskbar",
+                    "searchhost",
+                    "unknown",
+                    "",
+                ]:
                     target_name = candidate
                     target_source = f"focused_window:hwnd={hwnd},pid={pid}"
-                    logger.info(f"ReferenceResolver: focused window → '{target_name}' (pid={pid})")
+                    logger.info(
+                        f"ReferenceResolver: focused window → '{target_name}' (pid={pid})"
+                    )
         except Exception as exc:
             logger.debug(f"ReferenceResolver: focused window probe failed: {exc}")
 
@@ -88,8 +103,26 @@ class ReferenceResolver:
             try:
                 timeline = WorldTimeline.get_instance().get_recent_events(minutes=30)
                 for evt in reversed(timeline):
-                    if any(w in evt.event_type for w in ["process", "tab", "window", "app", "open", "launch", "activate", "minimize"]):
-                        if evt.resource_id and evt.resource_id.lower() not in ["session", "hi", "it", "unknown", ""]:
+                    if any(
+                        w in evt.event_type
+                        for w in [
+                            "process",
+                            "tab",
+                            "window",
+                            "app",
+                            "open",
+                            "launch",
+                            "activate",
+                            "minimize",
+                        ]
+                    ):
+                        if evt.resource_id and evt.resource_id.lower() not in [
+                            "session",
+                            "hi",
+                            "it",
+                            "unknown",
+                            "",
+                        ]:
                             target_name = evt.resource_id
                             target_source = f"timeline:{evt.event_type}"
                             break
@@ -97,7 +130,12 @@ class ReferenceResolver:
                         m = re.search(r"['\"]([^'\"]+)['\"]", desc)
                         if m:
                             candidate = m.group(1).strip()
-                            if candidate and candidate.lower() not in ["everything you opened", "session", "hi", "it"]:
+                            if candidate and candidate.lower() not in [
+                                "everything you opened",
+                                "session",
+                                "hi",
+                                "it",
+                            ]:
                                 target_name = candidate
                                 target_source = f"timeline_desc:{evt.event_type}"
                                 break
@@ -107,7 +145,9 @@ class ReferenceResolver:
         # ── Priority 3: Aura-owned resources ───────────────────────────────
         if not target_name:
             try:
-                aura_resources = ResourceOwnershipTracker.get_instance().get_aura_resources()
+                aura_resources = (
+                    ResourceOwnershipTracker.get_instance().get_aura_resources()
+                )
                 if aura_resources:
                     last_res = aura_resources[-1]
                     target_name = (

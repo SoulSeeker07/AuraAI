@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ManagerSummary:
     """Summary of a single NativeManager's capabilities."""
+
     name: str
     description: str = ""
     actions: list[str] = field(default_factory=list)
@@ -52,36 +53,68 @@ class CommandCatalog:
     # Static fallback listing known managers if registry unavailable
     _STATIC_FALLBACK: dict[str, list[str]] = {
         "WindowManager": [
-            "list_windows", "get_window", "activate_window", "close_window",
-            "minimize_window", "maximize_window", "restore_window",
-            "resize_window", "move_window", "launch_app", "kill_process",
+            "list_windows",
+            "get_window",
+            "activate_window",
+            "close_window",
+            "minimize_window",
+            "maximize_window",
+            "restore_window",
+            "resize_window",
+            "move_window",
+            "launch_app",
+            "kill_process",
         ],
         "ClipboardManager": [
-            "get_clipboard", "set_clipboard", "clear_clipboard",
-            "get_clipboard_history", "monitor_clipboard",
+            "get_clipboard",
+            "set_clipboard",
+            "clear_clipboard",
+            "get_clipboard_history",
+            "monitor_clipboard",
         ],
         "AudioManager": [
-            "get_volume", "set_volume", "volume_up", "volume_down",
-            "mute", "unmute", "list_audio_devices",
+            "get_volume",
+            "set_volume",
+            "volume_up",
+            "volume_down",
+            "mute",
+            "unmute",
+            "list_audio_devices",
         ],
         "DisplayManager": [
-            "get_display_info", "set_brightness", "list_monitors",
+            "get_display_info",
+            "set_brightness",
+            "list_monitors",
             "set_resolution",
         ],
         "PowerManager": [
-            "get_battery_status", "lock", "sleep", "restart", "shutdown",
+            "get_battery_status",
+            "lock",
+            "sleep",
+            "restart",
+            "shutdown",
             "get_power_plan",
         ],
         "NetworkManager": [
-            "get_network_status", "get_ip_address", "enable_wifi",
-            "disable_wifi", "list_adapters", "ping", "dns_lookup",
+            "get_network_status",
+            "get_ip_address",
+            "enable_wifi",
+            "disable_wifi",
+            "list_adapters",
+            "ping",
+            "dns_lookup",
             "get_firewall_status",
         ],
         "ServiceManager": [
-            "list_services", "start_service", "stop_service", "get_service_status",
+            "list_services",
+            "start_service",
+            "stop_service",
+            "get_service_status",
         ],
         "RegistryManager": [
-            "read_registry_key", "write_registry_key", "list_registry_keys",
+            "read_registry_key",
+            "write_registry_key",
+            "list_registry_keys",
         ],
     }
 
@@ -93,17 +126,24 @@ class CommandCatalog:
         """Lazy-load NativeManagerRegistry."""
         if not self._registry_loaded:
             try:
-                from src.desktop.native.managers.native_manager_registry import (
+                from desktop.native.managers.native_manager_registry import (
                     NativeManagerRegistry,
                 )
+
                 self._registry = NativeManagerRegistry.get_instance()
                 self._registry_loaded = True
-                logger.debug("CommandCatalog: NativeManagerRegistry loaded successfully.")
+                logger.debug(
+                    "CommandCatalog: NativeManagerRegistry loaded successfully."
+                )
             except ImportError as e:
-                logger.warning(f"CommandCatalog: NativeManagerRegistry not available: {e}")
+                logger.warning(
+                    f"CommandCatalog: NativeManagerRegistry not available: {e}"
+                )
                 self._registry_loaded = True
             except Exception as e:
-                logger.error(f"CommandCatalog: error loading NativeManagerRegistry: {e}")
+                logger.error(
+                    f"CommandCatalog: error loading NativeManagerRegistry: {e}"
+                )
                 self._registry_loaded = True
         return self._registry
 
@@ -129,7 +169,8 @@ class CommandCatalog:
             for manager_name, manager_obj in managers_dict.items():
                 # Extract public method names as "actions"
                 actions = [
-                    m for m in dir(manager_obj)
+                    m
+                    for m in dir(manager_obj)
                     if not m.startswith("_")
                     and callable(getattr(manager_obj, m, None))
                     and m not in ("register", "unregister", "health_check", "describe")
@@ -159,7 +200,9 @@ class CommandCatalog:
                 for name, actions in self._STATIC_FALLBACK.items()
             ]
 
-        logger.debug(f"CommandCatalog.export_managers(): {len(summaries)} managers exported.")
+        logger.debug(
+            f"CommandCatalog.export_managers(): {len(summaries)} managers exported."
+        )
         return summaries
 
     def export_as_text(self) -> str:

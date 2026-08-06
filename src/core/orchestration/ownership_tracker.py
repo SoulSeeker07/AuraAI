@@ -22,14 +22,16 @@ logger = logging.getLogger(__name__)
 
 class ResourceOwner(str, Enum):
     """Enumeration of resource owners."""
-    AURA = "aura"      # Created/opened by Aura AI
-    USER = "user"      # Created/opened independently by User
+
+    AURA = "aura"  # Created/opened by Aura AI
+    USER = "user"  # Created/opened independently by User
     SHARED = "shared"  # Shared resource (e.g. system services)
 
 
 @dataclass
 class TrackedResource:
     """Represents a tracked system resource with rich creation metadata."""
+
     resource_id: str
     resource_type: str  # "tab", "window", "process", "file", "terminal"
     owner: ResourceOwner = ResourceOwner.AURA
@@ -95,7 +97,9 @@ class ResourceOwnershipTracker:
             details=details or {},
         )
         self._resources[key] = resource
-        self._logger.info(f"Registered resource [{resource_type}] '{resource_id}' owned by '{owner.value}'")
+        self._logger.info(
+            f"Registered resource [{resource_type}] '{resource_id}' owned by '{owner.value}'"
+        )
         return resource
 
     def is_aura_owned(self, resource_type: str, resource_id: str) -> bool:
@@ -112,7 +116,9 @@ class ResourceOwnershipTracker:
             return self._resources[key].owner
         return ResourceOwner.USER
 
-    def get_aura_resources(self, resource_type: str | None = None) -> list[TrackedResource]:
+    def get_aura_resources(
+        self, resource_type: str | None = None
+    ) -> list[TrackedResource]:
         """Get all resources owned by Aura AI."""
         res: list[TrackedResource] = []
         for r in self._resources.values():
@@ -121,7 +127,9 @@ class ResourceOwnershipTracker:
                     res.append(r)
         return res
 
-    def get_user_resources(self, resource_type: str | None = None) -> list[TrackedResource]:
+    def get_user_resources(
+        self, resource_type: str | None = None
+    ) -> list[TrackedResource]:
         """Get all resources owned by the user."""
         res: list[TrackedResource] = []
         for r in self._resources.values():

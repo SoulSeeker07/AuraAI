@@ -67,9 +67,10 @@ else:
     sys.path.insert(
         0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
     )
-    from src.desktop.native.desktop_result import DesktopResult
-    from src.desktop.native.managers.base_manager import BaseNativeManager
-    from src.desktop.native.native_exceptions import ClipboardError
+    from ..desktop_result import DesktopResult
+    from ..native_exceptions import ClipboardError
+    from .base_manager import BaseNativeManager
+
 
 logger = logging.getLogger(__name__)
 

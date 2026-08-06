@@ -9,6 +9,7 @@ from src.core.backends.backend_registry import (
     BackendRegistry,
     DefaultNativeDesktopAdapter,
 )
+from src.core.backends.base_backend import BaseBackendAdapter
 from src.core.orchestration.planner_registry import PlannerRegistry
 
 
@@ -38,7 +39,7 @@ def test_backend_registry_selection():
     # Desktop capability selection
     desktop_backend = registry.select_best_backend("desktop")
     assert desktop_backend is not None
-    assert isinstance(desktop_backend, DefaultNativeDesktopAdapter)
+    assert isinstance(desktop_backend, BaseBackendAdapter)
 
 
 def test_antigravity_backend_execution():

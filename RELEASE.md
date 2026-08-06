@@ -4,9 +4,34 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v0.18.0-runtime-stabilization`] - 2026-08-06
+
+### Added
+- **Manual Runtime Acceptance Manual (`docs/RUNTIME_ACCEPTANCE.md`)**: Formalized regression testing checklist covering Desktop, Browser, Engineering, Runtime, and Memory subsystems.
+- **Configurable `SafetyPolicy` Engine (`config/safety_policy.yaml`)**: Hardened protection preventing termination of protected applications (`Code.exe`, `vscode`, `explorer.exe`, `System`).
+- **Zero-LLM Control Interception**: Deterministic worker status lookup (`"status?"`, `"Show active workers"`) and domain lifecycle controls (`pause`, `resume`, `cancel`).
+
+---
+
+## [`v0.17.0-runtime-architecture`] - 2026-08-06
+
+### Added
+- **Unified `RuntimeSession` Dataclass Base**: Standardized abstract base for domain task sessions (`EngineeringSession`, `BrowserSession`, `DesktopSession`, `ResearchSession`).
+- **System-Wide `WorkerManager`**: Multi-domain session tracking and lifecycle management across all execution workers.
+- **Reference Pronoun Resolver (`ReferenceResolver`)**: Conversational pronoun resolution ("it", "that window") bound to live `WorldSnapshot` and `WorldTimeline`.
+
+---
+
+## [`v0.16.0-cognitive-orchestration`] - 2026-08-06
+
+### Added
+- **Executive Cognitive Coordinator Architecture**: Re-architected Groq as the Project Manager supervising domain execution streams without emitting raw code snippets into chat.
+- **Software Engineering Supervisor (`SoftwareEngineeringSupervisor`)**: Long-running engineering session engine delegating code synthesis strictly to `Antigravity CLI` with asynchronous validation workers (`PytestWorker`, `RuffWorker`, `GitDiffWorker`).
+
 ---
 
 ## [`v0.15.0-core-platform`] - 2026-08-05
+
 
 ### Added
 - **Canonical Umbrella Launcher (`aura.py`)**: Unified entry point for `--doctor`, `--inspect`, `--verify`, `--cli`, and `--gui`.

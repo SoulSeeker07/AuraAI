@@ -75,7 +75,7 @@ class PromptBuilder:
         self._context: IdentityContext | None = None
 
     @classmethod
-    def get_instance(cls) -> "PromptBuilder":
+    def get_instance(cls) -> PromptBuilder:
         """Singleton accessor."""
         if cls._instance is None:
             cls._instance = cls()
@@ -237,7 +237,9 @@ class PromptBuilder:
         if flow:
             lines.append(flow.strip())
         elif stages:
-            lines.append("Aura executes every request through a 7-stage cognitive pipeline:")
+            lines.append(
+                "Aura executes every request through a 7-stage cognitive pipeline:"
+            )
             for stage in stages:
                 num = stage.get("stage", "?")
                 name = stage.get("name", "")
@@ -292,7 +294,9 @@ class PromptBuilder:
                     lines.append(f"  Handles: {pattern}")
 
         if len(lines) == 1:
-            lines.append("  (PlannerRegistry not available — using DecisionEngine routing)")
+            lines.append(
+                "  (PlannerRegistry not available — using DecisionEngine routing)"
+            )
 
         return "\n".join(lines)
 
@@ -403,7 +407,7 @@ class PromptBuilder:
                 response = limit.get("response", "").strip().split("\n")[0]
                 lines.append(f"  ✗ {desc}")
                 if response:
-                    lines.append(f"    Say: \"{response}\"")
+                    lines.append(f'    Say: "{response}"')
 
         if ethical_rules:
             lines.append("\nEthical Rules:")
@@ -486,7 +490,9 @@ class PromptBuilder:
         backend_names = list(self._get_live_backends().keys())
 
         planner_str = ", ".join(planner_names) if planner_names else "DesktopPlanner"
-        backend_str = ", ".join(backend_names) if backend_names else "Native Desktop Engine"
+        backend_str = (
+            ", ".join(backend_names) if backend_names else "Native Desktop Engine"
+        )
 
         return (
             f"You are {name} v{version}, an AI Operating System. "
@@ -511,9 +517,12 @@ class PromptBuilder:
     def _get_live_planners(self) -> dict[str, Any]:
         """Get live planner data from PlannerRegistry."""
         try:
-            from src.core.orchestration.planner_registry import PlannerRegistry
+            from core.orchestration.planner_registry import PlannerRegistry
+
             registry = PlannerRegistry.get_instance()
-            return {name: registry.get_planner(name) for name in registry.list_planners()}
+            return {
+                name: registry.get_planner(name) for name in registry.list_planners()
+            }
         except Exception as e:
             logger.debug(f"PromptBuilder: could not load PlannerRegistry: {e}")
             return {}
@@ -521,7 +530,8 @@ class PromptBuilder:
     def _get_live_backends(self) -> dict[str, Any]:
         """Get live backend data from BackendRegistry."""
         try:
-            from src.core.backends.backend_registry import BackendRegistry
+            from core.backends.backend_registry import BackendRegistry
+
             registry = BackendRegistry.get_instance()
             return {b.name: b for b in getattr(registry, "_backends", [])}
         except Exception as e:

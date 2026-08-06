@@ -4,12 +4,13 @@ Location: tests/browser/test_browser_agent.py
 """
 
 import pytest
+
+from src.agents.agent_registry import AgentRegistry, AgentType
 from src.agents.browser_agent import BrowserAgent
 from src.agents.task_model import TaskType
-from src.agents.agent_registry import AgentRegistry, AgentType
 from src.browser.engine import BrowserEngine
-from src.browser.shopping import ShoppingManager, ProductItem
 from src.browser.planner.browser_goal_planner import BrowserGoalPlanner
+from src.browser.shopping import ProductItem, ShoppingManager
 from src.routing.rules.browser_rules import BrowserRules
 
 
@@ -142,6 +143,7 @@ def test_agent_registry_contains_browser():
 
 def test_backend_registry_contains_playwright_browser():
     from src.core.backends.backend_registry import BackendRegistry
+
     backend_reg = BackendRegistry.get_instance()
     backend = backend_reg.get_backend("Playwright Browser Engine")
     assert backend is not None
@@ -151,7 +153,7 @@ def test_backend_registry_contains_playwright_browser():
 
 def test_risk_analyzer_checkout_critical():
     from src.execution.risk_analyzer import RiskAnalyzer, RiskLevel
+
     analyzer = RiskAnalyzer()
     risk, _ = analyzer.analyze_operation("shopping", "shopping_checkout", {})
     assert risk == RiskLevel.CRITICAL
-

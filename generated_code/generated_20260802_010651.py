@@ -1,6 +1,7 @@
 # Import the necessary library for reading CSV files
 import csv
 
+
 def calculate_average(filename, column_index):
     """
     Calculate the average of a specified column in a CSV file.

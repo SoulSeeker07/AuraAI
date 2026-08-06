@@ -4,6 +4,7 @@ Location: tests/browser/test_system_knowledge_resolver.py
 """
 
 import pytest
+
 from src.core.system.system_knowledge_resolver import SystemKnowledgeResolver
 
 

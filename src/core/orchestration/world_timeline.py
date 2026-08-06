@@ -24,10 +24,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TimelineEvent:
     """Represents a single chronological event on the OS timeline."""
+
     event_id: str = field(default_factory=lambda: f"evt_{uuid.uuid4().hex[:8]}")
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     time_epoch: float = field(default_factory=time.time)
-    event_type: str = "desktop_action"  # "process_start", "process_close", "tab_open", "tab_focus", "tab_close", "desktop_action"
+    event_type: str = (
+        "desktop_action"  # "process_start", "process_close", "tab_open", "tab_focus", "tab_close", "desktop_action"
+    )
     description: str = ""
     resource_id: str = ""
     owner: str = ResourceOwner.AURA.value
@@ -117,8 +120,14 @@ class WorldTimeline:
 
         lines = [f"Timeline Summary (Last {minutes} minutes):"]
         for evt in recent:
-            ts_short = evt.timestamp.split("T")[-1][:8] if "T" in evt.timestamp else evt.timestamp
-            lines.append(f"• [{ts_short}] ({evt.event_type}): {evt.description} (Owner: {evt.owner})")
+            ts_short = (
+                evt.timestamp.split("T")[-1][:8]
+                if "T" in evt.timestamp
+                else evt.timestamp
+            )
+            lines.append(
+                f"• [{ts_short}] ({evt.event_type}): {evt.description} (Owner: {evt.owner})"
+            )
         return "\n".join(lines)
 
     def clear(self) -> None:

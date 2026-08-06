@@ -8,7 +8,6 @@ Known site profiles for popular platforms (Instagram, GitHub, LinkedIn, YouTube,
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass

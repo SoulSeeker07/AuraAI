@@ -32,9 +32,17 @@ class ResultMerger:
         Returns:
             Unified ExecutionResult
         """
-        task_obs = [obs.content for obs in session.observations if obs.content and obs.obs_type != "system"]
-        sys_obs = [obs.content for obs in session.observations if obs.content and obs.obs_type == "system"]
-        
+        task_obs = [
+            obs.content
+            for obs in session.observations
+            if obs.content and obs.obs_type != "system"
+        ]
+        sys_obs = [
+            obs.content
+            for obs in session.observations
+            if obs.content and obs.obs_type == "system"
+        ]
+
         obs_texts = task_obs if task_obs else sys_obs
         artifacts_dict = [art.to_dict() for art in session.artifacts]
 

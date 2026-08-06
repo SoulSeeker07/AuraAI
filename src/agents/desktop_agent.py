@@ -102,10 +102,11 @@ class DesktopAgent:
 
         # State Reuse Check: If window is already open, focus existing window
         try:
-            import win32gui
             import win32con
+            import win32gui
 
             matched_hwnd = None
+
             def enum_window_cb(hwnd: int, extra: Any):
                 nonlocal matched_hwnd
                 if win32gui.IsWindowVisible(hwnd):
@@ -121,7 +122,11 @@ class DesktopAgent:
                 return TaskOutput(
                     success=True,
                     message=f"Focused existing window for '{app_name}' (State Reused)",
-                    data={"app_name": app_name, "hwnd": matched_hwnd, "state_reused": True},
+                    data={
+                        "app_name": app_name,
+                        "hwnd": matched_hwnd,
+                        "state_reused": True,
+                    },
                 )
         except Exception as e:
             logger.debug(f"Window reuse check exception: {e}")

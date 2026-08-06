@@ -1,8 +1,9 @@
 # Import necessary libraries
 import os
+
 import pandas as pd
-from dotenv import load_dotenv
 from diffusers import StableDiffusionPipeline
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()

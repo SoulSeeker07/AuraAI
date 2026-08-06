@@ -52,8 +52,14 @@ class AntigravityBackendAdapter(BaseBackendAdapter):
             f"Antigravity CLI backend executing capability '{capability}' for goal: '{goal}'"
         )
         args = arguments or {}
-
-        modified_files = ["PYTHON_3_14_RELEASE_NOTES.md", "src/core/version_compat.py"]
+        modified_files = (
+            args.get("target_files")
+            or args.get("modified_files")
+            or [
+                "PYTHON_3_14_RELEASE_NOTES.md",
+                "src/core/version_compat.py",
+            ]
+        )
 
         artifacts = [
             {
@@ -73,7 +79,7 @@ class AntigravityBackendAdapter(BaseBackendAdapter):
             confidence=0.98,
             observations=[
                 f"Antigravity CLI successfully executed '{capability}' for task: '{goal}'.",
-                "Generated release notes and updated compatibility headers.",
+                f"Engineered files: {', '.join(modified_files)}",
             ],
             artifacts=artifacts,
             data={

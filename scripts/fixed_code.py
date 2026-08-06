@@ -7,6 +7,8 @@ Fixed issues:
 3️⃣ Added proper type hints and indentation.
 """
 from typing import List, Optional
+
+
 def sum_numbers(numbers: Optional[List[float]] = None) -> float:
 """
 Return the sum of all numeric values in *numbers*.

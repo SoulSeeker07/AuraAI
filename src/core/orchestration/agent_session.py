@@ -9,11 +9,14 @@ budget limits, observations, artifacts, and traces across the multi-agent lifecy
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..planning.execution_trace import ExecutionTrace
 from .artifact import Artifact
 from .observation import Observation
+
+if TYPE_CHECKING:
+    from .confirmation import ActionPlanConfirmation
 
 
 @dataclass
@@ -56,6 +59,10 @@ class AgentSession:
     decision_trace: Any | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    # Session-scoped pending confirmation — replaces AuraCore-level yes/no intercept
+    pending_confirmation: "ActionPlanConfirmation | None" = field(
+        default=None, repr=False
+    )
 
     def add_observation(self, observation: Observation) -> None:
         """Add an observation to the session."""
@@ -77,7 +84,9 @@ class AgentSession:
                 self.execution_trace.to_dict() if self.execution_trace else None
             ),
             "decision_trace": (
-                self.decision_trace.to_dict() if self.decision_trace and hasattr(self.decision_trace, "to_dict") else self.decision_trace
+                self.decision_trace.to_dict()
+                if self.decision_trace and hasattr(self.decision_trace, "to_dict")
+                else self.decision_trace
             ),
             "metrics": self.metrics,
             "created_at": self.created_at,

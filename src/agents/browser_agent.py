@@ -12,8 +12,9 @@ import logging
 import time
 from typing import Any
 
-from src.browser.engine import BrowserEngine
-from src.browser.shopping import ShoppingManager
+from browser.engine import BrowserEngine
+from browser.shopping import ShoppingManager
+
 from .base_agent import AgentCapabilities, AgentResult, AgentState, BaseAgent
 from .task_model import TaskType
 
@@ -55,7 +56,13 @@ class BrowserAgent(BaseAgent):
             tools=["browser_engine", "shopping_manager"],
             models=["groq", "gemini"],
             priority=85,
-            expert_domains=["web_browsing", "e_commerce", "shopping", "order_automation", "dom_interaction"],
+            expert_domains=[
+                "web_browsing",
+                "e_commerce",
+                "shopping",
+                "order_automation",
+                "dom_interaction",
+            ],
         )
         super().__init__(agent_id=agent_id, capabilities=capabilities, config=config)
         self.engine = BrowserEngine(headless=self.config.get("headless", True))
@@ -92,7 +99,10 @@ class BrowserAgent(BaseAgent):
         logger.info(f"BrowserAgent executing task: {task_type} with data: {data}")
 
         try:
-            if task_type in [TaskType.BROWSER_OPEN.value, TaskType.BROWSER_NAVIGATE.value]:
+            if task_type in [
+                TaskType.BROWSER_OPEN.value,
+                TaskType.BROWSER_NAVIGATE.value,
+            ]:
                 result = await self._handle_navigate(data)
             elif task_type == TaskType.BROWSER_SEARCH.value:
                 result = await self._handle_search(data)
@@ -108,7 +118,10 @@ class BrowserAgent(BaseAgent):
                 result = await self._handle_shopping_search(data)
             elif task_type == TaskType.BROWSER_ADD_TO_CART.value:
                 result = await self._handle_add_to_cart(data)
-            elif task_type in [TaskType.BROWSER_CHECKOUT.value, TaskType.BROWSER_ORDER.value]:
+            elif task_type in [
+                TaskType.BROWSER_CHECKOUT.value,
+                TaskType.BROWSER_ORDER.value,
+            ]:
                 result = await self._handle_order_checkout(data, context)
             else:
                 # Default navigation handler for unknown web goals
@@ -131,7 +144,12 @@ class BrowserAgent(BaseAgent):
 
     async def _handle_navigate(self, data: dict[str, Any]) -> AgentResult:
         """Handle webpage navigation."""
-        url = data.get("url") or data.get("target_url") or data.get("site") or "https://www.google.com"
+        url = (
+            data.get("url")
+            or data.get("target_url")
+            or data.get("site")
+            or "https://www.google.com"
+        )
         nav_info = await self.engine.navigate(url)
         if nav_info.get("success"):
             return self._create_result(
@@ -161,7 +179,11 @@ class BrowserAgent(BaseAgent):
             summary=f"Performed web search for '{query}'",
             actions=[f"Searched web for '{query}'"],
             confidence=0.90,
-            data={"query": query, "search_url": search_url, "content_snippet": content[:500]},
+            data={
+                "query": query,
+                "search_url": search_url,
+                "content_snippet": content[:500],
+            },
         )
 
     async def _handle_scroll(self, data: dict[str, Any]) -> AgentResult:
@@ -182,7 +204,9 @@ class BrowserAgent(BaseAgent):
         elif direction == "infinite":
             max_scrolls = int(data.get("max_scrolls", 5))
             res = await self.engine.infinite_scroll(max_scrolls=max_scrolls)
-            action_desc = f"Completed infinite scroll ({res.get('scrolls_completed')} pages)"
+            action_desc = (
+                f"Completed infinite scroll ({res.get('scrolls_completed')} pages)"
+            )
         else:
             res = await self.engine.scroll_down(pixels)
             action_desc = f"Scrolled down by {pixels}px"
@@ -199,7 +223,11 @@ class BrowserAgent(BaseAgent):
         """Handle clicking element by selector or text."""
         selector = data.get("selector") or data.get("text") or data.get("target")
         if not selector:
-            return self._create_result(success=False, summary="No selector provided for click task", error="Missing selector")
+            return self._create_result(
+                success=False,
+                summary="No selector provided for click task",
+                error="Missing selector",
+            )
 
         res = await self.engine.click(selector)
         return self._create_result(
@@ -236,16 +264,24 @@ class BrowserAgent(BaseAgent):
             summary=f"Extracted page content from '{selector}'",
             actions=["Extracted page text content"],
             confidence=0.95,
-            data={"text_length": len(text), "content": text[:1500], "page_info": page_info},
+            data={
+                "text_length": len(text),
+                "content": text[:1500],
+                "page_info": page_info,
+            },
         )
 
     async def _handle_shopping_search(self, data: dict[str, Any]) -> AgentResult:
         """Handle product search across e-commerce platforms."""
-        query = data.get("query") or data.get("product") or data.get("item") or "headphones"
+        query = (
+            data.get("query") or data.get("product") or data.get("item") or "headphones"
+        )
         platform = data.get("platform") or data.get("site") or "amazon"
         max_results = int(data.get("max_results", 5))
 
-        res = await self.shopping.search_products(query=query, platform=platform, max_results=max_results)
+        res = await self.shopping.search_products(
+            query=query, platform=platform, max_results=max_results
+        )
 
         return self._create_result(
             success=res.get("success", False),
@@ -260,7 +296,9 @@ class BrowserAgent(BaseAgent):
         product_url = data.get("product_url") or data.get("url")
         selector = data.get("selector")
 
-        res = await self.shopping.add_to_cart(product_url=product_url, selector=selector)
+        res = await self.shopping.add_to_cart(
+            product_url=product_url, selector=selector
+        )
 
         return self._create_result(
             success=res.get("success", False),
@@ -270,7 +308,9 @@ class BrowserAgent(BaseAgent):
             data=res,
         )
 
-    async def _handle_order_checkout(self, data: dict[str, Any], context: dict[str, Any]) -> AgentResult:
+    async def _handle_order_checkout(
+        self, data: dict[str, Any], context: dict[str, Any]
+    ) -> AgentResult:
         """Handle order checkout process with safety verification."""
         user_approved = data.get("user_approved") or context.get("user_approved", False)
 

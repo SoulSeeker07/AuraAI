@@ -4,9 +4,12 @@ Abstract contract for all Aura execution backends (Desktop Engine, Groq, Gemini 
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..planning.execution_result import ExecutionResult
+
+if TYPE_CHECKING:
+    from ..planning.action_plan import ActionPlan
 
 
 class BaseBackendAdapter(ABC):
@@ -57,3 +60,23 @@ class BaseBackendAdapter(ABC):
             ExecutionResult
         """
         pass
+
+    def execute_plan(self, plan: "ActionPlan") -> ExecutionResult:
+        """
+        Execute a structured ActionPlan on this backend.
+
+        Default implementation is a compatibility shim that delegates to execute().
+        Override in concrete backends to use ActionPlan directly for structured logging,
+        replay, and typed argument extraction.
+
+        Args:
+            plan: Structured ActionPlan with typed fields
+
+        Returns:
+            ExecutionResult
+        """
+        return self.execute(
+            capability=plan.capability,
+            goal=plan.goal,
+            arguments=plan.arguments,
+        )

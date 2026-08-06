@@ -40,7 +40,10 @@ class ActionVerifier:
 
         # Extract target app name
         app_name = "application"
-        m = re.search(r"\b(notepad|calc|calculator|chrome|cmd|powershell|spotify|code|vscode)\b", goal_lower)
+        m = re.search(
+            r"\b(notepad|calc|calculator|chrome|cmd|powershell|spotify|code|vscode)\b",
+            goal_lower,
+        )
         if m:
             app_name = m.group(1)
 
@@ -64,7 +67,8 @@ class ActionVerifier:
         # 1. Application Launch Verification (app_open / open_app / app.launch)
         if any(c in cap for c in ["app_open", "open_app", "app.launch", "window.open"]):
             import time
-            from src.core.orchestration.world_snapshot import WorldSnapshotProvider
+
+            from core.orchestration.world_snapshot import WorldSnapshotProvider
 
             proc_found = False
             win_found = False
@@ -85,11 +89,17 @@ class ActionVerifier:
             if proc_found or win_found:
                 verification["passed"] = True
                 verification["method"] = "process_window_diff"
-                verification["checks"].append({"name": "os_process_window_detected", "passed": True})
+                verification["checks"].append(
+                    {"name": "os_process_window_detected", "passed": True}
+                )
             else:
                 verification["passed"] = False
-                verification["error"] = f"Application '{app_name}' not detected in Windows OS processes or windows"
-                verification["checks"].append({"name": "os_process_window_detected", "passed": False})
+                verification["error"] = (
+                    f"Application '{app_name}' not detected in Windows OS processes or windows"
+                )
+                verification["checks"].append(
+                    {"name": "os_process_window_detected", "passed": False}
+                )
 
             return verification
 
@@ -108,7 +118,9 @@ class ActionVerifier:
             if not (proc_found or win_found):
                 verification["passed"] = True
                 verification["method"] = "process_window_removed"
-                verification["checks"].append({"name": "os_process_removed", "passed": True})
+                verification["checks"].append(
+                    {"name": "os_process_removed", "passed": True}
+                )
             else:
                 verification["passed"] = True  # Graceful close check
                 verification["method"] = "window_close_signal_sent"

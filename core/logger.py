@@ -90,4 +90,3 @@ warning = logger.warning
 debug = logger.debug
 critical = logger.critical
 exception = logger.exception
-

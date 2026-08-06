@@ -10,7 +10,6 @@ and execution timelines into human-readable explanations.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from .agent_session import AgentSession
 from .ownership_tracker import ResourceOwner, ResourceOwnershipTracker
@@ -36,9 +35,15 @@ class SessionReplay:
         if session.decision_trace:
             dt = session.decision_trace
             lines.append("\nExecutive Decision & Reasoning:")
-            lines.append(f"  - Policy Applied: {getattr(dt, 'policy_applied', 'Standard Policy')}")
-            lines.append(f"  - Chosen Planner: {getattr(dt, 'chosen_planner', 'default')}")
-            lines.append(f"  - Chosen Backend: {getattr(dt, 'chosen_backend', 'default')}")
+            lines.append(
+                f"  - Policy Applied: {getattr(dt, 'policy_applied', 'Standard Policy')}"
+            )
+            lines.append(
+                f"  - Chosen Planner: {getattr(dt, 'chosen_planner', 'default')}"
+            )
+            lines.append(
+                f"  - Chosen Backend: {getattr(dt, 'chosen_backend', 'default')}"
+            )
             lines.append(f"  - Confidence: {getattr(dt, 'confidence', 1.0) * 100:.0f}%")
             lines.append("  - Reasoning Steps:")
             steps = getattr(dt, "reasoning_steps", [])
@@ -51,7 +56,9 @@ class SessionReplay:
                 lines.append(f"  - [{obs.source}] {obs.content[:80]}")
 
         # Add recent timeline events for this session
-        timeline = WorldTimeline.get_instance().get_recent_events(session_id=session.session_id)
+        timeline = WorldTimeline.get_instance().get_recent_events(
+            session_id=session.session_id
+        )
         if timeline:
             lines.append(f"\nExecution Timeline ({len(timeline)} events):")
             for evt in timeline:
@@ -60,7 +67,9 @@ class SessionReplay:
         return "\n".join(lines)
 
     @classmethod
-    def explain_resource_protection(cls, resource_id: str, resource_type: str = "tab") -> str:
+    def explain_resource_protection(
+        cls, resource_id: str, resource_type: str = "tab"
+    ) -> str:
         """
         Explain why a resource was preserved or modified based on ownership policy.
         """
@@ -74,7 +83,9 @@ class SessionReplay:
                 f"are preserved and never closed automatically during cleanup."
             )
         elif owner == ResourceOwner.AURA:
-            aura_res = [r for r in tracker.get_aura_resources() if r.resource_id == resource_id]
+            aura_res = [
+                r for r in tracker.get_aura_resources() if r.resource_id == resource_id
+            ]
             reason = aura_res[0].reason if aura_res else "Aura task execution"
             return (
                 f"Resource '{resource_id}' belongs to ResourceOwner.AURA (created for: '{reason}'). "

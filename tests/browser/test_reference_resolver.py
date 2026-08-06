@@ -4,15 +4,18 @@ Location: tests/browser/test_reference_resolver.py
 """
 
 import pytest
+
 from src.core.orchestration.reference_resolver import ReferenceResolver
-from src.core.orchestration.world_timeline import WorldTimeline
 from src.core.orchestration.task_decomposer import TaskDecomposer
+from src.core.orchestration.world_timeline import WorldTimeline
 
 
 def test_reference_resolver_substitutes_pronoun():
     timeline = WorldTimeline.get_instance()
     timeline.clear()
-    timeline.record_event("app_open", "Opened application 'Notepad'", resource_id="Notepad", owner="aura")
+    timeline.record_event(
+        "app_open", "Opened application 'Notepad'", resource_id="Notepad", owner="aura"
+    )
 
     resolved_goal, meta = ReferenceResolver.resolve_references("Minimize it")
 

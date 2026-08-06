@@ -143,6 +143,7 @@ class AboutReport:
         """Live capability count from CapabilityRegistry."""
         try:
             from .capability_catalog import CapabilityCatalog
+
             catalog = CapabilityCatalog()
             grouped = catalog.export_by_category()
             total = catalog.count()
@@ -183,7 +184,11 @@ class AboutReport:
 
         for name, backend_obj in backends.items():
             try:
-                healthy = backend_obj.health_check() if hasattr(backend_obj, "health_check") else True
+                healthy = (
+                    backend_obj.health_check()
+                    if hasattr(backend_obj, "health_check")
+                    else True
+                )
                 status = "✅ Healthy" if healthy else "❌ Unhealthy"
             except Exception:
                 status = "⚠️  Unknown"
@@ -210,40 +215,53 @@ class AboutReport:
 
     def _get_live_planners(self) -> dict[str, Any]:
         try:
-            from src.core.orchestration.planner_registry import PlannerRegistry
+            from core.orchestration.planner_registry import PlannerRegistry
+
             registry = PlannerRegistry.get_instance()
-            return {name: registry.get_planner(name) for name in registry.list_planners()}
+            return {
+                name: registry.get_planner(name) for name in registry.list_planners()
+            }
         except Exception:
             return {}
 
     def _get_live_backends(self) -> dict[str, Any]:
         try:
-            from src.core.backends.backend_registry import BackendRegistry
+            from core.backends.backend_registry import BackendRegistry
+
             registry = BackendRegistry.get_instance()
-            adapters = getattr(registry, "_adapters", []) or getattr(registry, "_backends", [])
+            adapters = getattr(registry, "_adapters", []) or getattr(
+                registry, "_backends", []
+            )
             return {getattr(b, "name", str(b)): b for b in adapters}
         except Exception:
             return {}
 
     def _get_live_managers(self) -> list[str]:
         try:
-            from src.desktop.native.managers.native_manager_registry import (
+            from desktop.native.managers.native_manager_registry import (
                 NativeManagerRegistry,
             )
+
             reg = NativeManagerRegistry.get_instance()
             managers = getattr(reg, "_managers", {})
             return list(managers.keys())
         except Exception:
             # Fallback to static known list
             return [
-                "WindowManager", "ClipboardManager", "AudioManager",
-                "DisplayManager", "PowerManager", "NetworkManager",
-                "ServiceManager", "RegistryManager",
+                "WindowManager",
+                "ClipboardManager",
+                "AudioManager",
+                "DisplayManager",
+                "PowerManager",
+                "NetworkManager",
+                "ServiceManager",
+                "RegistryManager",
             ]
 
     def _get_capability_count(self) -> int:
         try:
             from .capability_catalog import CapabilityCatalog
+
             return CapabilityCatalog().count()
         except Exception:
             return 0

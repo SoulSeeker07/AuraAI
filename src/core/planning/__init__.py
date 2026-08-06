@@ -3,6 +3,7 @@ Core Planning System
 Universal execution planning primitives for Aura AI across all agent subsystems.
 """
 
+from .action_plan import ActionPlan
 from .base_planner import BasePlanner
 from .execution_memory import ExecutionMemory, MemoryRecord
 from .execution_result import ExecutionResult
@@ -13,6 +14,7 @@ from .planner_state import PlanState, PlanStateTracker
 from .strategy_selector import StrategySelector
 
 __all__ = [
+    "ActionPlan",
     "BasePlanner",
     "ExecutionResult",
     "ExecutionTrace",

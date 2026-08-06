@@ -4,11 +4,15 @@ Location: tests/browser/test_world_diff_and_self_knowledge.py
 """
 
 import pytest
-from src.browser.world_model import BrowserTab, BrowserContext
-from src.core.orchestration.world_snapshot import DesktopStateSnapshot
-from src.core.orchestration.world_diff import WorldDiffEngine, WorldDiff
+
+from src.browser.world_model import BrowserContext, BrowserTab
 from src.core.orchestration.master_orchestrator import MasterOrchestrator
-from src.core.orchestration.ownership_tracker import ResourceOwnershipTracker, ResourceOwner
+from src.core.orchestration.ownership_tracker import (
+    ResourceOwner,
+    ResourceOwnershipTracker,
+)
+from src.core.orchestration.world_diff import WorldDiff, WorldDiffEngine
+from src.core.orchestration.world_snapshot import DesktopStateSnapshot
 
 
 def test_world_diff_engine_computation():
@@ -47,7 +51,9 @@ def test_world_diff_engine_computation():
 async def test_master_orchestrator_self_knowledge_context():
     tracker = ResourceOwnershipTracker.get_instance()
     tracker.clear()
-    tracker.register_resource("tab", "tab_test", owner=ResourceOwner.AURA, details={"goal": "Research"})
+    tracker.register_resource(
+        "tab", "tab_test", owner=ResourceOwner.AURA, details={"goal": "Research"}
+    )
 
     orchestrator = MasterOrchestrator.get_instance()
     res = await orchestrator.process_request_async("What capabilities do you have?")

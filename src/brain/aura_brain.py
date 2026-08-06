@@ -202,7 +202,15 @@ class AuraBrain:
                     conversation_id=request.conversation_id,
                 )
 
+            # 1.5 Check for deterministic zero-LLM Worker Manager control commands
+            worker_response = self._handle_worker_control_command(
+                request.text, start_time, request.conversation_id
+            )
+            if worker_response:
+                return worker_response
+
             # 2. Route using Capability Router (if enabled)
+
             routing_result = None
             if self.capability_router:
                 logger.debug("Routing request through Capability Router")
@@ -1137,7 +1145,88 @@ class AuraBrain:
 
     def cancel_request(self):
         """Cancel the current request."""
-        self.execution_state.cancel_streaming()
+        self.execution_state.cancel()
+        logger.info("Current request cancelled")
+
+    def _handle_worker_control_command(
+        self, text: str, start_time: float, conversation_id: str
+    ) -> AuraResponse | None:
+        """Handle zero-LLM status queries and control commands via WorkerManager."""
+        clean_text = text.strip().lower()
+        from core.orchestration.worker_manager import WorkerManager
+
+        wm = WorkerManager.get_instance()
+
+        status_keywords = [
+            "status?",
+            "status",
+            "how's it going?",
+            "how is it going?",
+            "show active workers",
+            "show workers",
+            "what are you doing?",
+            "how many tasks are running?",
+            "active workers",
+        ]
+        if clean_text in status_keywords:
+            summary = wm.get_status_summary()
+            return AuraResponse(
+                text=summary,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        if "pause engineering" in clean_text or "stop engineering" in clean_text:
+            paused = wm.pause_domain("engineering")
+            msg = (
+                "Engineering session paused."
+                if paused
+                else "No running engineering session found to pause."
+            )
+            return AuraResponse(
+                text=msg,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        if "resume engineering" in clean_text or "continue engineering" in clean_text:
+            resumed = wm.resume_domain("engineering")
+            msg = (
+                "Engineering session resumed."
+                if resumed
+                else "No paused engineering session found to resume."
+            )
+            return AuraResponse(
+                text=msg,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        if clean_text.startswith("cancel worker") or clean_text.startswith(
+            "stop worker"
+        ):
+            worker_id = (
+                clean_text.replace("cancel worker", "")
+                .replace("stop worker", "")
+                .strip()
+            )
+            cancelled = wm.cancel_worker(worker_id)
+            msg = (
+                f"Worker '{worker_id}' cancelled."
+                if cancelled
+                else f"Worker '{worker_id}' not found."
+            )
+            return AuraResponse(
+                text=msg,
+                status=ResponseStatus.SUCCESS,
+                execution_time=time.time() - start_time,
+                conversation_id=conversation_id,
+            )
+
+        return None
 
     def set_progress_step(self, step: str):
         """Add a progress step."""

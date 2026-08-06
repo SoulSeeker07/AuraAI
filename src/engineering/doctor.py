@@ -139,7 +139,7 @@ class AuraDoctor:
     def check_desktop_managers(self) -> tuple[bool, str]:
         """Inspect native desktop managers."""
         try:
-            from src.desktop.native.managers import (
+            from desktop.native.managers import (
                 AudioManager,
                 ClipboardManager,
                 DisplayManager,

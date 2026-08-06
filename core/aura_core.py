@@ -171,7 +171,7 @@ class AuraCore:
         self.max_history = 100
 
         AuraCore._initialized = True
-        self.groq_model = self.config.get("groq_model", "llama-3.3-70b-versatile")
+        self.groq_model = self.config.get("groq_model", "openai/gpt-oss-120b")
         self.groq_client = None
         self.llm_enabled = False
         self._init_llm()
@@ -230,54 +230,104 @@ class AuraCore:
         Delegates execution through MasterOrchestrator cognitive pipeline.
         """
         try:
-            # ── Confirmation Resolution: intercept yes/no before the main pipeline ──
-            # If a pending confirmation exists (e.g. "Notepad already open, open another?")
-            # resolve it here instead of re-routing through the orchestrator.
+            from core.orchestration import MasterOrchestrator
+
+            orchestrator = MasterOrchestrator.get_instance()
+
+            # ── Session-Scoped Confirmation: delegate yes/no to MasterOrchestrator ──
+            # Check if the previous session had a pending confirmation waiting for this answer.
+            # This is the primary path — session-scoped, typed, with audit trail.
             raw = user_goal.strip().lower()
-            if raw in ["yes", "y", "yeah", "yep", "sure", "ok", "okay", "no", "n", "nope", "nah"]:
+            if raw in [
+                "yes",
+                "y",
+                "yeah",
+                "yep",
+                "sure",
+                "ok",
+                "okay",
+                "no",
+                "n",
+                "nope",
+                "nah",
+            ]:
                 try:
-                    from src.core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+                    if orchestrator.check_pending_confirmation() is not None:
+                        resolved_result = orchestrator.resolve_pending_confirmation(
+                            user_goal
+                        )
+                        if resolved_result is not None:
+                            return (
+                                "\n".join(resolved_result.observations)
+                                if resolved_result.observations
+                                else "Done."
+                            )
+                except Exception as exc:
+                    logger.debug(
+                        f"Session-scoped confirmation resolution skipped: {exc}"
+                    )
+
+                # ── Fallback: ExecutionPolicy singleton (backward compat) ──
+                try:
+                    from src.core.orchestration.execution_policy import (
+                        ExecutionPolicy,
+                        PolicyAction,
+                    )
+
                     policy = ExecutionPolicy.get_instance()
                     if policy.has_pending_confirmation():
                         resolved = policy.resolve_confirmation(user_goal)
                         if resolved is not None:
                             if resolved.action == PolicyAction.CONFIRMED_LAUNCH:
-                                # User said yes — launch the new instance now
-                                from core.orchestration import MasterOrchestrator
-                                orch = MasterOrchestrator.get_instance()
                                 new_goal = f"Open new instance of {resolved.app_name}"
-                                result = await orch.process_request_async(new_goal)
-                                return "\n".join(result.observations) if result.observations else resolved.message
+                                result = await orchestrator.process_request_async(
+                                    new_goal
+                                )
+                                return (
+                                    "\n".join(result.observations)
+                                    if result.observations
+                                    else resolved.message
+                                )
                             elif resolved.action == PolicyAction.REUSE_EXISTING:
-                                # User said no — bring existing window to front
                                 if resolved.hwnd:
                                     try:
                                         import win32gui
+
                                         win32gui.SetForegroundWindow(resolved.hwnd)
                                         win32gui.BringWindowToTop(resolved.hwnd)
                                     except Exception:
                                         pass
-                                return f"✓ {resolved.app_name.title()} window brought to front."
+                                return f"OK — keeping existing {resolved.app_name.title()} window."
                 except Exception as exc:
-                    logger.debug(f"Confirmation resolution skipped: {exc}")
+                    logger.debug(
+                        f"ExecutionPolicy confirmation fallback skipped: {exc}"
+                    )
 
-            from core.orchestration import MasterOrchestrator
-
-            orchestrator = MasterOrchestrator.get_instance()
             result = await orchestrator.process_request_async(user_goal)
 
-            decision = result.data.get("decision", {}) if hasattr(result, "data") and isinstance(result.data, dict) else {}
+            decision = (
+                result.data.get("decision", {})
+                if hasattr(result, "data") and isinstance(result.data, dict)
+                else {}
+            )
             intent_type = decision.get("intent_type")
             can_from_sys = decision.get("can_answer_from_system", False)
             needs_planner = decision.get("needs_planner", True)
 
             # System Self-Knowledge Queries (Who are you?, What are your capabilities?, Limitations, Planners, Backends)
             if intent_type == "system_query" or can_from_sys:
-                from src.core.system.system_knowledge_resolver import SystemKnowledgeResolver
+                from src.core.system.system_knowledge_resolver import (
+                    SystemKnowledgeResolver,
+                )
+
                 return SystemKnowledgeResolver.resolve(user_goal)
 
             # Conversational Chat Queries (greetings, general chat)
-            if (intent_type == "chat" or not needs_planner) and self.llm_enabled and self.groq_client is not None:
+            if (
+                (intent_type == "chat" or not needs_planner)
+                and self.llm_enabled
+                and self.groq_client is not None
+            ):
                 return await self.get_ai_response(user_goal)
 
             if hasattr(result, "final_output") and getattr(result, "final_output"):
@@ -289,10 +339,10 @@ class AuraCore:
             else:
                 return f"Execution ({result.planner}): {'Success' if result.success else 'Failed'}"
         except Exception as e:
-            logger.error(f"MasterOrchestrator pipeline execution failed: {e}", exc_info=True)
+            logger.error(
+                f"MasterOrchestrator pipeline execution failed: {e}", exc_info=True
+            )
             return f"❌ Pipeline Execution Error: {e}"
-
-
 
     def _initialize_components(self):
         """Initialize all core components."""
@@ -390,8 +440,6 @@ class AuraCore:
                 from src.plugins.plugin_manager import PluginManager
 
             plugin_manager = PluginManager()
-
-
 
             # Load available plugins
             available_plugins = [
@@ -502,9 +550,9 @@ class AuraCore:
             from ai.provider_manager import ProviderManager
 
             # Build provider manager
-            from src.ai.groq_provider import (
+            from src.ai.groq_provider import (  # adjust path if it lives elsewhere
                 GroqProvider,
-            )  # adjust path if it lives elsewhere
+            )
             from src.brain.conversation_engine import ConversationEngine
 
             provider_manager = ProviderManager(default_provider="groq")

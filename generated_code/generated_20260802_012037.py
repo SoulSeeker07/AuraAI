@@ -1,9 +1,10 @@
 import os
-from huggingface_hub import HfApi, Repository
-from diffusers import StableDiffusionPipeline
-from PIL import Image
+
 import numpy as np
+from diffusers import StableDiffusionPipeline
 from dotenv import load_dotenv
+from huggingface_hub import HfApi, Repository
+from PIL import Image
 
 # Load environment variables from .env file
 load_dotenv()

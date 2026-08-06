@@ -57,7 +57,9 @@ class CLIClient:
         )
         print(f"Plugins : {self.aura_core.plugin_count} Loaded")
         print(f"Voice : {'Enabled' if self.aura_core.voice_enabled else 'Disabled'}")
-        print(f"Vision : {'Ready' if self.aura_core.vision_enabled else 'Disabled (camera not detected)'}")
+        print(
+            f"Vision : {'Ready' if self.aura_core.vision_enabled else 'Disabled (camera not detected)'}"
+        )
         print(
             f"AI Brain : {'Ready' if self.aura_core.llm_enabled else 'Not configured (set GROQ_API_KEY)'}"
         )

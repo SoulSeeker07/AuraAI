@@ -14,8 +14,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.core.orchestration.task_decomposer import TaskDecomposer, PlannerRole
-from src.core.orchestration.world_snapshot import WorldSnapshotProvider, DesktopStateSnapshot
+from src.core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
+from src.core.orchestration.world_snapshot import (
+    DesktopStateSnapshot,
+    WorldSnapshotProvider,
+)
 
 
 class TestGoalDecomposer:
@@ -45,7 +48,9 @@ class TestGoalDecomposer:
 
         graph = decomposer.decompose("Open Instagram profile", decision=decision)
 
-        ensure_task = [t for t in graph.subtasks.values() if t.capability == "browser.ensure_open"][0]
+        ensure_task = [
+            t for t in graph.subtasks.values() if t.capability == "browser.ensure_open"
+        ][0]
         assert ensure_task.status == "skipped"
 
     def test_world_snapshot_provider_smoke(self):

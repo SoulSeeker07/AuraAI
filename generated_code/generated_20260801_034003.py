@@ -5,6 +5,7 @@ It handles potential errors during file operations.
 
 import os
 
+
 def write_to_file(filename, message):
     """
     Writes a given message to a specified file.

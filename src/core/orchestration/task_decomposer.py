@@ -124,11 +124,30 @@ class TaskDecomposer:
             ]
         )
         has_browser = (intent_val == "browser") or any(
-            w in goal_lower for w in ["browse", "web page", "navigate", "url", "site", "instagram", "github", "linkedin", "youtube"]
+            w in goal_lower
+            for w in [
+                "browse",
+                "web page",
+                "navigate",
+                "url",
+                "site",
+                "instagram",
+                "github",
+                "linkedin",
+                "youtube",
+            ]
         )
 
         if has_browser and intent_val != "desktop_action":
-            desktop_keywords = ["vs code", "vscode", "workspace", "notepad", "clipboard", "mute", "volume"]
+            desktop_keywords = [
+                "vs code",
+                "vscode",
+                "workspace",
+                "notepad",
+                "clipboard",
+                "mute",
+                "volume",
+            ]
             has_desktop = any(w in goal_lower for w in desktop_keywords)
         else:
             has_desktop = (intent_val == "desktop_action") or any(
@@ -175,7 +194,11 @@ class TaskDecomposer:
             title_text = f"Execute desktop action: {raw_goal}"
 
             import re
-            m = re.search(r"\b(open|launch|start|run|close|minimize|restore|focus|activate|switch to)\s+([a-zA-Z0-9_\-\.\s]+)\b", goal_lower)
+
+            m = re.search(
+                r"\b(open|launch|start|run|close|minimize|restore|focus|activate|switch to)\s+([a-zA-Z0-9_\-\.\s]+)\b",
+                goal_lower,
+            )
             if m:
                 action_verb = m.group(1).lower()
                 app_target = m.group(2).strip()
@@ -209,10 +232,14 @@ class TaskDecomposer:
             # Multi-step goal-oriented browser decomposition
             t1_id = f"task_{task_counter}"
             task_counter += 1
-            
+
             # Check if browser is already running from decision/world_state
             is_chrome_open = False
-            if decision and hasattr(decision, "world_state") and isinstance(getattr(decision, "world_state"), dict):
+            if (
+                decision
+                and hasattr(decision, "world_state")
+                and isinstance(getattr(decision, "world_state"), dict)
+            ):
                 procs = decision.world_state.get("running_processes", [])
                 is_chrome_open = any("chrome" in p for p in procs)
 
