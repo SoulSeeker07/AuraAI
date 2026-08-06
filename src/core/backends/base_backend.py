@@ -80,3 +80,21 @@ class BaseBackendAdapter(ABC):
             goal=plan.goal,
             arguments=plan.arguments,
         )
+
+    async def execute_async(
+        self, capability: str, goal: str, arguments: dict[str, Any] | None = None
+    ) -> ExecutionResult:
+        """
+        Asynchronously execute a capability on this backend.
+        Default implementation delegates synchronous execute() to a thread.
+        """
+        import asyncio
+        return await asyncio.to_thread(self.execute, capability, goal, arguments)
+
+    async def execute_plan_async(self, plan: "ActionPlan") -> ExecutionResult:
+        """
+        Asynchronously execute an ActionPlan on this backend.
+        Default implementation delegates synchronous execute_plan() to a thread.
+        """
+        import asyncio
+        return await asyncio.to_thread(self.execute_plan, plan)

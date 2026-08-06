@@ -5,9 +5,9 @@ Location: tests/browser/test_ownership_and_browser_context.py
 
 import pytest
 
-from src.browser.planner.browser_goal_planner import BrowserGoalPlanner
-from src.browser.world_model import BrowserContext, BrowserStateProbe, BrowserTab
-from src.core.orchestration.ownership_tracker import (
+from browser.planner.browser_goal_planner import BrowserGoalPlanner
+from browser.world_model import BrowserContext, BrowserStateProbe, BrowserTab
+from core.orchestration.ownership_tracker import (
     ResourceOwner,
     ResourceOwnershipTracker,
 )

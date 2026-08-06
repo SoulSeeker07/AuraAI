@@ -29,13 +29,13 @@ class TestIdentityLoader:
 
     def setup_method(self):
         """Reset singleton before each test."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         IdentityLoader.reset_instance()
 
     def test_load_returns_identity_context(self):
         """IdentityLoader.load() returns a populated IdentityContext."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -44,7 +44,7 @@ class TestIdentityLoader:
 
     def test_identity_name(self):
         """IdentityContext.name returns the Aura name."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -52,7 +52,7 @@ class TestIdentityLoader:
 
     def test_identity_version(self):
         """IdentityContext.version is set."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -60,7 +60,7 @@ class TestIdentityLoader:
 
     def test_capability_groups_loaded(self):
         """IdentityContext.capability_groups has entries from dynamic CapabilityCatalog."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -75,7 +75,7 @@ class TestIdentityLoader:
 
     def test_pipeline_stages_loaded(self):
         """IdentityContext.pipeline_stages has 7 stages."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -84,7 +84,7 @@ class TestIdentityLoader:
 
     def test_examples_loaded(self):
         """IdentityContext.example_list has many examples."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -95,7 +95,7 @@ class TestIdentityLoader:
 
     def test_personality_loaded(self):
         """IdentityContext.identity_statement is non-empty."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -105,7 +105,7 @@ class TestIdentityLoader:
 
     def test_never_say_list(self):
         """IdentityContext.never_say contains ChatGPT-like phrases."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx = loader.load()
@@ -119,7 +119,7 @@ class TestIdentityLoader:
 
     def test_reload_refreshes_context(self):
         """reload() clears cache and re-loads."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx1 = loader.load()
@@ -129,7 +129,7 @@ class TestIdentityLoader:
 
     def test_missing_knowledge_dir(self, tmp_path):
         """IdentityLoader gracefully handles missing knowledge dir."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=tmp_path / "nonexistent")
         ctx = loader.load()
@@ -138,7 +138,7 @@ class TestIdentityLoader:
 
     def test_caching(self):
         """Calling load() twice returns the same context object."""
-        from src.core.system.identity_loader import IdentityLoader
+        from core.system.identity_loader import IdentityLoader
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         ctx1 = loader.load()
@@ -154,7 +154,7 @@ class TestCapabilityCatalog:
 
     def test_export_live_returns_list(self):
         """export_live() returns a list (possibly empty if registry unavailable)."""
-        from src.core.system.capability_catalog import CapabilityCatalog
+        from core.system.capability_catalog import CapabilityCatalog
 
         catalog = CapabilityCatalog()
         entries = catalog.export_live()
@@ -162,7 +162,7 @@ class TestCapabilityCatalog:
 
     def test_export_live_with_mock_registry(self):
         """export_live() correctly maps CapabilityDescriptor fields to CatalogEntry."""
-        from src.core.system.capability_catalog import CapabilityCatalog
+        from core.system.capability_catalog import CapabilityCatalog
 
         catalog = CapabilityCatalog()
 
@@ -190,7 +190,7 @@ class TestCapabilityCatalog:
 
     def test_export_as_text_returns_string(self):
         """export_as_text() returns a non-empty string."""
-        from src.core.system.capability_catalog import CapabilityCatalog
+        from core.system.capability_catalog import CapabilityCatalog
 
         catalog = CapabilityCatalog()
         text = catalog.export_as_text()
@@ -199,7 +199,7 @@ class TestCapabilityCatalog:
 
     def test_export_by_category_groups_correctly(self):
         """export_by_category() groups entries by category."""
-        from src.core.system.capability_catalog import CapabilityCatalog, CatalogEntry
+        from core.system.capability_catalog import CapabilityCatalog, CatalogEntry
 
         catalog = CapabilityCatalog()
 
@@ -228,7 +228,7 @@ class TestCapabilityCatalog:
 
     def test_has_capability_with_mock(self):
         """has_capability() returns True for existing capabilities."""
-        from src.core.system.capability_catalog import CapabilityCatalog
+        from core.system.capability_catalog import CapabilityCatalog
 
         catalog = CapabilityCatalog()
         mock_registry = MagicMock()
@@ -241,7 +241,7 @@ class TestCapabilityCatalog:
 
     def test_count_with_mock(self):
         """count() returns number of registered capabilities."""
-        from src.core.system.capability_catalog import CapabilityCatalog
+        from core.system.capability_catalog import CapabilityCatalog
 
         catalog = CapabilityCatalog()
         mock_registry = MagicMock()
@@ -259,16 +259,16 @@ class TestPromptBuilder:
 
     def setup_method(self):
         """Reset singleton before each test."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         PromptBuilder.reset_instance()
         IdentityLoader.reset_instance()
 
     def test_build_system_prompt_returns_string(self):
         """build_system_prompt() returns a non-empty string."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -278,8 +278,8 @@ class TestPromptBuilder:
 
     def test_personality_block_no_chatgpt(self):
         """Personality block does not contain ChatGPT."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -289,8 +289,8 @@ class TestPromptBuilder:
 
     def test_personality_block_contains_aura(self):
         """Personality block identifies as Aura."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -300,8 +300,8 @@ class TestPromptBuilder:
 
     def test_identity_block_contains_version(self):
         """Identity block contains the version."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -311,8 +311,8 @@ class TestPromptBuilder:
 
     def test_pipeline_block_has_stages(self):
         """Pipeline block includes stage descriptions."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -324,8 +324,8 @@ class TestPromptBuilder:
 
     def test_build_system_prompt_cached(self):
         """build_system_prompt() returns the same object on second call."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -335,8 +335,8 @@ class TestPromptBuilder:
 
     def test_invalidate_cache(self):
         """invalidate_cache() forces a fresh build on next call."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -347,8 +347,8 @@ class TestPromptBuilder:
 
     def test_compact_identity_non_empty(self):
         """get_compact_identity() returns a concise identity string."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -359,8 +359,8 @@ class TestPromptBuilder:
 
     def test_examples_block_with_real_data(self):
         """build_examples_block() produces formatted examples."""
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         builder = PromptBuilder(identity_loader=loader)
@@ -382,10 +382,10 @@ class TestIdentityLayerIntegration:
         Full pipeline: IdentityLoader → CapabilityCatalog → PromptBuilder
         should not crash even if external registries are unavailable.
         """
-        from src.core.system.capability_catalog import CapabilityCatalog
-        from src.core.system.command_catalog import CommandCatalog
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.capability_catalog import CapabilityCatalog
+        from core.system.command_catalog import CommandCatalog
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         loader = IdentityLoader(knowledge_dir=KNOWLEDGE_DIR)
         catalog = CapabilityCatalog()
@@ -406,8 +406,8 @@ class TestIdentityLayerIntegration:
         A system_query should produce a response identifying Aura,
         not ChatGPT or a generic AI.
         """
-        from src.core.system.identity_loader import IdentityLoader
-        from src.core.system.prompt_builder import PromptBuilder
+        from core.system.identity_loader import IdentityLoader
+        from core.system.prompt_builder import PromptBuilder
 
         PromptBuilder.reset_instance()
         IdentityLoader.reset_instance()

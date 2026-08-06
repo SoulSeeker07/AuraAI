@@ -215,10 +215,11 @@ class ExecutionPolicy:
     def _get_running_windows(self, app_name: str, world_snap: Any | None) -> list[int]:
         """
         Real OS enumeration via EnumWindows + psutil.
-        Returns a list of HWNDs matching this application (may be empty).
+        Returns a list of top-level HWNDs matching this application (may be empty).
         """
         try:
             import psutil
+            import win32con
             import win32gui
             import win32process
 
@@ -228,20 +229,40 @@ class ExecutionPolicy:
             def _enum(hwnd: int, _: Any) -> bool:
                 if not win32gui.IsWindowVisible(hwnd):
                     return True
-                title = win32gui.GetWindowText(hwnd).lower()
+
+                # Must be a top-level window (no owner or WS_EX_APPWINDOW)
+                owner = win32gui.GetWindow(hwnd, win32con.GW_OWNER)
+                ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+                if owner != 0 and not (ex_style & win32con.WS_EX_APPWINDOW):
+                    return True
+
+                # Exclude tool windows without WS_EX_APPWINDOW
+                if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (ex_style & win32con.WS_EX_APPWINDOW):
+                    return True
+
+                raw_title = win32gui.GetWindowText(hwnd)
+                title = raw_title.lower().strip()
+
+                # Ignore known OS helper/IME windows
+                if title in ["msctfime ui", "default ime", "cicerouiwndframe", "program manager"]:
+                    return True
+
                 try:
                     _, pid = win32process.GetWindowThreadProcessId(hwnd)
                     proc_name = (psutil.Process(pid).name() or "").lower()
-                    proc_base = proc_name.replace(".exe", "").replace("app", "")
+                    import re
+                    proc_base = re.sub(r"\.exe$", "", proc_name)
+                    proc_base = re.sub(r"app$", "", proc_base)
                 except Exception:
                     proc_name = ""
                     proc_base = ""
-                if (
-                    app_lower in title
-                    or app_lower in proc_base
-                    or app_lower in proc_name
-                ):
-                    matches.append(hwnd)
+
+                # Target matching logic: either title matches app_name or process matches AND window has title
+                name_match = app_lower in proc_base or app_lower in proc_name or app_lower in title
+                if name_match:
+                    # Require non-empty title or top-level window without owner to prevent helper HWND duplication
+                    if title or owner == 0:
+                        matches.append(hwnd)
                 return True
 
             win32gui.EnumWindows(_enum, None)

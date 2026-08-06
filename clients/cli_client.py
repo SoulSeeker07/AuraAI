@@ -963,10 +963,26 @@ class CLIClient:
             response: The response from Aura
         """
         # Look for Python code blocks
-        # Pattern matches: ```python ... ``` or ``` ... ```
-        python_code_pattern = r"```(?:python)?\s*([\s\S]*?)```"
+        # Pattern matches: ```(python)?\s*([\s\S]*?)```
+        python_code_pattern = r"```(python)?\s*([\s\S]*?)```"
 
-        matches = list(re.finditer(python_code_pattern, response))
+        all_matches = list(re.finditer(python_code_pattern, response))
+        matches = []
+        for m in all_matches:
+            is_py_fenced = bool(m.group(1))
+            code = m.group(2).strip()
+            if not is_py_fenced:
+                # Require at least 2 distinct Python signals
+                signatures = [
+                    r"\bdef\b", r"\bimport\b", r"\bclass\b", r"\bprint\(", 
+                    r"\bfrom\b", r"\bif\s+__name__\s*==\s*['\"]__main__['\"]",
+                    r"\bassert\b", r"\btry:", r"\bexcept\b", r"\bfor\s+\w+\s+in\s+",
+                    r"\bwith\s+open\b", r" = "
+                ]
+                match_count = sum(1 for sig in signatures if re.search(sig, code))
+                if match_count < 2:
+                    continue
+            matches.append(m)
 
         if matches:
             print("\n" + "=" * 60)

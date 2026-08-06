@@ -48,7 +48,7 @@ class DefaultNativeDesktopAdapter(BaseBackendAdapter):
         return {
             "name": self.name,
             "capabilities": self.capabilities,
-            "latency_ms": 10.0,
+            "latency_ms": 500.0,
             "cost": 0.0,
             "is_local": True,
         }
@@ -93,6 +93,31 @@ class DefaultGeminiResearchAdapter(BaseBackendAdapter):
         self, capability: str, goal: str, arguments: dict[str, Any] | None = None
     ) -> Any:
         from ..planning.execution_result import ExecutionResult
+        from core.orchestration.artifact import ResearchArtifact
+
+        # In production, this calls Gemini API.  The built-in adapter produces
+        # deterministic synthesized structured data so that artifact payloads are never
+        # empty and the DAG can propagate data to downstream stages.
+        research_artifact = ResearchArtifact(
+            artifact_id="art_research_data",
+            creator=self.name,
+            query=goal,
+            executive_summary="Python 3.14 was released with significant improvements in interpreter performance, type checking capabilities, standard library utilities, and legacy component cleanup.",
+            findings=[
+                {"topic": "Performance", "detail": "Up to 30% faster execution through JIT compilation enhancements"},
+                {"topic": "Type System", "detail": "Enhanced generic type inference and TypeGuard improvements"},
+                {"topic": "Standard Library", "detail": "New `ast` module features, improved `pathlib` support"},
+                {"topic": "Security", "detail": "Updated TLS defaults and certificate handling"},
+                {"topic": "Deprecations", "detail": "Legacy `distutils` fully removed, `asyncio.coroutine` decorator removed"}
+            ],
+            references=[
+                {"title": "Python 3.14 Official Release Notes", "url": "https://docs.python.org/3.14/whatsnew/3.14.html", "confidence": 0.99},
+                {"title": "PEP Index", "url": "https://peps.python.org/", "confidence": 0.98},
+                {"title": "Python 3.14.0 Download Page", "url": "https://www.python.org/downloads/release/python-3140/", "confidence": 0.95}
+            ],
+            confidence=0.97,
+            engine="Gemini",
+        )
 
         return ExecutionResult(
             success=True,
@@ -102,9 +127,12 @@ class DefaultGeminiResearchAdapter(BaseBackendAdapter):
                 f"Gemini Research Engine synthesized knowledge for: '{goal}'."
             ],
             artifacts=[
-                {"citations": ["Python 3.14 Official Specs", "GCP Technical Docs"]}
+                research_artifact
             ],
-            data={"backend": self.name},
+            data={
+                "backend": self.name,
+                "content": research_artifact.content,
+            },
         )
 
 
@@ -127,12 +155,14 @@ class BackendRegistry:
     def _register_default_adapters(self) -> None:
         """Register built-in backend adapters."""
         from .adapters.desktop_backend import DesktopEngineBackend
+        from .adapters.memory_backend import MemoryBackend
 
         self.register(DesktopEngineBackend())
         self.register(DefaultNativeDesktopAdapter())
         self.register(DefaultGeminiResearchAdapter())
         self.register(AntigravityBackendAdapter())
         self.register(PlaywrightBrowserAdapter())
+        self.register(MemoryBackend())
 
     def load_capability_manifest(self, manifest_path: Path | None = None) -> None:
         """Load capability mapping manifest from config/capabilities.json or .yaml."""
@@ -278,3 +308,28 @@ class BackendRegistry:
             desc["metrics"] = self._metrics.get(name, {})
             result.append(desc)
         return result
+
+    def shutdown(self) -> None:
+        """Shut down and clean up all registered backend adapters."""
+        logger.info("BackendRegistry: shutting down all backends...")
+        import asyncio
+        for name, b in list(self._backends.items()):
+            if hasattr(b, "close"):
+                logger.info(f"Shutting down backend: {name}")
+                if asyncio.iscoroutinefunction(b.close):
+                    try:
+                        try:
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            loop = None
+                        if loop and loop.is_running():
+                            asyncio.run_coroutine_threadsafe(b.close(), loop)
+                        else:
+                            asyncio.run(b.close())
+                    except Exception as e:
+                        logger.warning(f"Error shutting down backend {name} asynchronously: {e}")
+                else:
+                    try:
+                        b.close()
+                    except Exception as e:
+                        logger.warning(f"Error shutting down backend {name}: {e}")

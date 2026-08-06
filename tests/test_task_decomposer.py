@@ -2,7 +2,7 @@
 Unit tests for TaskDecomposer (Cognitive Orchestration Layer).
 """
 
-from src.core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
+from core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
 
 
 def test_task_decomposition_multi_intent():

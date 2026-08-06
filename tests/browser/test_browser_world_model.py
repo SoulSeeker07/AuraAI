@@ -5,9 +5,9 @@ Location: tests/browser/test_browser_world_model.py
 
 import pytest
 
-from src.browser.planner.browser_goal_planner import BrowserGoalPlanner
-from src.browser.world_model import BrowserStateProbe, BrowserTab, BrowserWorldModel
-from src.core.orchestration.world_snapshot import (
+from browser.planner.browser_goal_planner import BrowserGoalPlanner
+from browser.world_model import BrowserStateProbe, BrowserTab, BrowserWorldModel
+from core.orchestration.world_snapshot import (
     DesktopStateSnapshot,
     WorldSnapshotProvider,
 )

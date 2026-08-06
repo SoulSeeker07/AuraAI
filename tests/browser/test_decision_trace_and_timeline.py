@@ -5,18 +5,18 @@ Location: tests/browser/test_decision_trace_and_timeline.py
 
 import pytest
 
-from src.core.orchestration.agent_session import AgentSession
-from src.core.orchestration.decision_engine import (
+from core.orchestration.agent_session import AgentSession
+from core.orchestration.decision_engine import (
     DecisionEngine,
     DecisionOutcome,
     DecisionTrace,
 )
-from src.core.orchestration.ownership_tracker import (
+from core.orchestration.ownership_tracker import (
     ResourceOwner,
     ResourceOwnershipTracker,
 )
-from src.core.orchestration.session_replay import SessionReplay
-from src.core.orchestration.world_timeline import TimelineEvent, WorldTimeline
+from core.orchestration.session_replay import SessionReplay
+from core.orchestration.world_timeline import TimelineEvent, WorldTimeline
 
 
 def test_decision_trace_generation():

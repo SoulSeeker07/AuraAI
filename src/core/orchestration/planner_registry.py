@@ -84,6 +84,15 @@ class PlannerRegistry:
         self.register(PlannerRole.CODING.value, DefaultRolePlanner("coding", "coding"))
 
         try:
+            from ..planning.memory_planner import MemoryPlanner
+            self.register(PlannerRole.MEMORY.value, MemoryPlanner())
+        except Exception as e:
+            logger.warning(f"Failed to load MemoryPlanner: {e}")
+            self.register(
+                PlannerRole.MEMORY.value, DefaultRolePlanner("memory", "memory")
+            )
+
+        try:
             from browser.planner.browser_goal_planner import BrowserGoalPlanner
 
             self.register(PlannerRole.BROWSER.value, BrowserGoalPlanner())

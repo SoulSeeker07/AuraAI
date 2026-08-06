@@ -81,10 +81,21 @@ class NativeManagerRegistry:
         try:
             package = importlib.import_module(package_name)
         except ImportError as e:
-            logger.warning(
-                f"Could not import package '{package_name}' for discovery: {e}"
-            )
-            return []
+            if package_name.startswith("src."):
+                alt_name = package_name.replace("src.", "", 1)
+                try:
+                    package = importlib.import_module(alt_name)
+                    package_name = alt_name
+                except ImportError:
+                    logger.warning(
+                        f"Could not import package '{package_name}' or '{alt_name}' for discovery: {e}"
+                    )
+                    return []
+            else:
+                logger.warning(
+                    f"Could not import package '{package_name}' for discovery: {e}"
+                )
+                return []
 
         package_path = getattr(package, "__path__", None)
         if not package_path:

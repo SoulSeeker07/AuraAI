@@ -1,0 +1,81 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-08-07T03:06:34.878281",
+  "statistics": {
+    "total_modules": 521,
+    "total_dependencies": 960,
+    "total_violations": 0,
+    "layers": {
+      "Applications & Clients": {
+        "module_count": 17,
+        "class_count": 11,
+        "function_count": 118,
+        "complexity": 243
+      },
+      "OS Kernel & Executive Brain": {
+        "module_count": 68,
+        "class_count": 115,
+        "function_count": 487,
+        "complexity": 1554
+      },
+      "Cognitive Architecture (ACA)": {
+        "module_count": 46,
+        "class_count": 109,
+        "function_count": 328,
+        "complexity": 1135
+      },
+      "Domain Subsystems & Engines": {
+        "module_count": 190,
+        "class_count": 433,
+        "function_count": 2554,
+        "complexity": 5685
+      },
+      "Memory & Knowledge Base": {
+        "module_count": 35,
+        "class_count": 49,
+        "function_count": 422,
+        "complexity": 861
+      },
+      "Infrastructure & Event Bus": {
+        "module_count": 154,
+        "class_count": 146,
+        "function_count": 1234,
+        "complexity": 3081
+      },
+      "Tool Execution & Plugins": {
+        "module_count": 11,
+        "class_count": 22,
+        "function_count": 101,
+        "complexity": 255
+      }
+    },
+    "layer_dependencies": {
+      "Applications & Clients": [
+        "OS Kernel & Executive Brain",
+        "Cognitive Architecture (ACA)",
+        "Domain Subsystems & Engines"
+      ],
+      "OS Kernel & Executive Brain": [
+        "Cognitive Architecture (ACA)",
+        "Infrastructure & Event Bus"
+      ],
+      "Cognitive Architecture (ACA)": [
+        "Domain Subsystems & Engines",
+        "Memory & Knowledge Base",
+        "Infrastructure & Event Bus"
+      ],
+      "Domain Subsystems & Engines": [
+        "Memory & Knowledge Base",
+        "Infrastructure & Event Bus"
+      ],
+      "Memory & Knowledge Base": [
+        "Infrastructure & Event Bus"
+      ],
+      "Tool Execution & Plugins": [
+        "Domain Subsystems & Engines",
+        "Infrastructure & Event Bus"
+      ],
+      "Infrastructure & Event Bus": []
+    }
+  }
+}

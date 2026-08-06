@@ -65,7 +65,7 @@ class BrowserAgent(BaseAgent):
             ],
         )
         super().__init__(agent_id=agent_id, capabilities=capabilities, config=config)
-        self.engine = BrowserEngine(headless=self.config.get("headless", True))
+        self.engine = config.get("engine") or BrowserEngine(headless=self.config.get("headless", True))
         self.shopping = ShoppingManager(self.engine)
 
     async def initialize(self) -> bool:

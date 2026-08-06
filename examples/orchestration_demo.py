@@ -19,10 +19,10 @@ root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-from src.core.backends.backend_registry import BackendRegistry
-from src.core.orchestration.agent_session import ExecutionBudget
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
-from src.core.orchestration.planner_registry import PlannerRegistry
+from core.backends.backend_registry import BackendRegistry
+from core.orchestration.agent_session import ExecutionBudget
+from core.orchestration.master_orchestrator import MasterOrchestrator
+from core.orchestration.planner_registry import PlannerRegistry
 
 
 def main():

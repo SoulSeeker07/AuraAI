@@ -5,15 +5,15 @@ Location: tests/core/test_stabilization_phase.py
 
 import pytest
 
-from src.core.orchestration.domain_sessions import (
+from core.orchestration.domain_sessions import (
     BrowserSession,
     DesktopSession,
     ResearchSession,
 )
-from src.core.orchestration.engineering_session import EngineeringSession
-from src.core.orchestration.reference_resolver import ReferenceResolver
-from src.core.orchestration.runtime_session import RuntimeSession, SessionStatus
-from src.core.orchestration.worker_manager import DomainWorker, WorkerManager
+from core.orchestration.engineering_session import EngineeringSession
+from core.orchestration.reference_resolver import ReferenceResolver
+from core.orchestration.runtime_session import RuntimeSession, SessionStatus
+from core.orchestration.worker_manager import DomainWorker, WorkerManager
 from src.execution.safety_policy import SafetyPolicy
 
 

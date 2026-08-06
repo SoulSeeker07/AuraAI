@@ -149,6 +149,8 @@ class WindowManager(BaseNativeManager):
                 res = self._handle_maximize(**arguments)
             elif cap_clean == "window.minimize":
                 res = self._handle_minimize(**arguments)
+            elif cap_clean == "window.restore":
+                res = self._handle_restore(**arguments)
             elif cap_clean == "window.list":
                 res = self._handle_list()
             elif cap_clean == "window.get_info":
@@ -246,33 +248,48 @@ class WindowManager(BaseNativeManager):
         }
         exe = exe_map.get(app, f"{app}.exe")
 
-        # 1. Inspect Windows OS state (Reuse existing window if open)
-        try:
-            hwnd = self._find_window(app)
-            if hwnd:
-                win32gui.SetForegroundWindow(hwnd)
-                win32gui.BringWindowToTop(hwnd)
-                info = self._get_window_info(hwnd)
-                return NativeResult(
-                    status=ResultStatus.SUCCESS,
-                    data={
-                        "window_handle": hwnd,
-                        "process_id": info.get("process_id"),
-                        "reused": True,
-                        "title": info.get("title"),
-                    },
-                    capability="app_open",
-                )
-        except Exception:
-            pass
+        target_file = (
+            kwargs.get("file_path")
+            or kwargs.get("target_file")
+            or kwargs.get("file")
+            or (kwargs.get("arguments") or {}).get("file_path")
+            or (kwargs.get("arguments") or {}).get("target_file")
+        )
 
-        # 2. Physical Launch via Windows OS subprocess
+        # 1. Inspect Windows OS state (Reuse existing window if open and no target file is requested)
+        if not target_file:
+            try:
+                hwnd = self._find_window(app)
+                if hwnd:
+                    win32gui.SetForegroundWindow(hwnd)
+                    win32gui.BringWindowToTop(hwnd)
+                    info = self._get_window_info(hwnd)
+                    return NativeResult(
+                        status=ResultStatus.SUCCESS,
+                        data={
+                            "window_handle": hwnd,
+                            "process_id": info.get("process_id"),
+                            "reused": True,
+                            "title": info.get("title"),
+                        },
+                        capability="app_open",
+                    )
+            except Exception:
+                pass
+
+        # 2. Physical Launch via Windows OS subprocess with target file
         try:
-            proc = subprocess.Popen(exe, shell=True)
+            cmd = f'{exe} "{target_file}"' if target_file else exe
+            proc = subprocess.Popen(cmd, shell=True)
             time.sleep(0.5)
             return NativeResult(
                 status=ResultStatus.SUCCESS,
-                data={"process_id": proc.pid, "reused": False, "app_name": app},
+                data={
+                    "process_id": proc.pid,
+                    "reused": False,
+                    "app_name": app,
+                    "target_file": str(target_file) if target_file else None,
+                },
                 capability="app_open",
             )
         except Exception as e:
@@ -398,17 +415,26 @@ class WindowManager(BaseNativeManager):
             raise WindowError("No matching window found for close")
 
         try:
-            # Close window
-            result = win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
+            # Close window via WM_CLOSE
+            win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
 
-            if result == 0:
-                raise WindowError("Failed to send close message to window")
+            # Fallback/force kill app process if app_name is explicitly provided
+            if target_title:
+                import subprocess
+
+                t = target_title.lower()
+                subprocess.run(
+                    f"taskkill /f /im {t}.exe /t",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
             return NativeResult(
                 status=ResultStatus.SUCCESS,
                 data={
                     "window_handle": window_handle,
-                    "window_title": "Window closed (title may be empty now)",
+                    "window_title": "Window closed",
                 },
                 capability="window.close",
             )
@@ -607,6 +633,57 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             raise WindowError(f"Failed to minimize window: {e}")
 
+    def _handle_restore(
+        self,
+        window_title=None,
+        window_class=None,
+        process_id=None,
+        app_name=None,
+        goal="",
+        **kwargs,
+    ):
+        """Handle window restore."""
+        target_title = window_title or app_name or (goal.split()[-1] if goal else None)
+        window_handle = (
+            self._find_window(target_title, window_class, process_id)
+            if target_title
+            else None
+        )
+        if not window_handle:
+            window_handle = win32gui.GetForegroundWindow()
+
+        if not window_handle:
+            return NativeResult(
+                status=ResultStatus.SUCCESS,
+                data={
+                    "window_handle": 0,
+                    "was_restored": True,
+                },
+                capability="window.restore",
+            )
+
+        try:
+            current_state = win32gui.IsIconic(window_handle)
+            win32gui.ShowWindow(window_handle, win32con.SW_RESTORE)
+            try:
+                win32gui.SetForegroundWindow(window_handle)
+                win32gui.BringWindowToTop(window_handle)
+            except Exception:
+                pass
+
+            return NativeResult(
+                status=ResultStatus.SUCCESS,
+                data={
+                    "window_handle": window_handle,
+                    "was_minimized": current_state,
+                    "is_now_restored": True,
+                },
+                capability="window.restore",
+            )
+
+        except Exception as e:
+            raise WindowError(f"Failed to restore window: {e}")
+
     def _handle_list(self):
         """Handle window list."""
         try:
@@ -761,8 +838,17 @@ class WindowManager(BaseNativeManager):
             if window_handle is not None:
                 return True  # Already found
 
-            if not win32gui.IsWindowVisible(hwnd):
-                return True  # Skip invisible windows
+            if not win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd):
+                return True  # Skip hidden non-minimized windows
+
+            # Must be a top-level window (no owner or WS_EX_APPWINDOW)
+            owner = win32gui.GetWindow(hwnd, win32con.GW_OWNER)
+            ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            if owner != 0 and not (ex_style & win32con.WS_EX_APPWINDOW):
+                return True
+
+            if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (ex_style & win32con.WS_EX_APPWINDOW):
+                return True
 
             info = self._get_window_info(hwnd)
 

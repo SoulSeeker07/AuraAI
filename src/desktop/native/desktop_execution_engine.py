@@ -93,7 +93,9 @@ class DesktopExecutionEngine:
     ):
         self.manager_registry = manager_registry or NativeManagerRegistry.get_instance()
         if not self.manager_registry.list():
-            self.manager_registry.discover("src.desktop.native.managers")
+            self.manager_registry.discover("desktop.native.managers")
+            if not self.manager_registry.list():
+                self.manager_registry.discover("src.desktop.native.managers")
 
         self.manager = manager or MockManager()
         self.manager_registry.register(self.manager)
@@ -676,11 +678,12 @@ def get_desktop_execution_engine(
     manager: Any | None = None,
     registry: CapabilityRegistry | None = None,
     config: ExecutionConfig | None = None,
+    engine_instance: DesktopExecutionEngine | None = None,
 ) -> DesktopExecutionEngine:
     """Get or create the global DesktopExecutionEngine singleton."""
     global _engine
     if _engine is None:
-        _engine = DesktopExecutionEngine(
+        _engine = engine_instance or DesktopExecutionEngine(
             manager=manager, registry=registry, config=config
         )
     return _engine

@@ -135,9 +135,34 @@ class ActionPlan:
         reuse_existing: bool = False,
         session_id: str = "",
         hwnd: int | None = None,
-    ) -> ActionPlan:
-        """Build an ActionPlan directly from a TaskDecomposer SubTask."""
-        params = subtask.parameters or {}
+        context: dict[str, Any] | None = None,
+    ) -> "ActionPlan":
+        """Build an ActionPlan directly from a TaskDecomposer SubTask.
+
+        Content propagation: if the subtask declares ``input_artifacts``,
+        we look them up in the session's artifact store and pull their
+        payload into ``params["content"]`` and ``params["file_path"]``.
+        This replaces the old approach of scraping raw observations.
+        """
+        params = dict(subtask.parameters or {})
+
+        # Pull content and file paths from the artifact store
+        if context and getattr(subtask, "input_artifacts", None):
+            session = context.get("session")
+            if session and hasattr(session, "get_artifact"):
+                for art_id in subtask.input_artifacts:
+                    art = session.get_artifact(art_id)
+                    if art is not None:
+                        # Propagate content payload
+                        if art.has_payload and "content" not in params:
+                            params["content"] = art.content
+                        if "artifact" not in params:
+                            params["artifact"] = art
+                        # Propagate file location
+                        if art.location and "file_path" not in params:
+                            params["file_path"] = art.location
+                            params["target_file"] = art.location
+
         target = (
             params.get("app_name")
             or params.get("target")
@@ -145,7 +170,7 @@ class ActionPlan:
         )
         return cls.for_desktop(
             action=subtask.capability,
-            target=target.lower().strip(),
+            target=str(target).lower().strip(),
             goal=subtask.description,
             capability=subtask.capability,
             arguments=params,

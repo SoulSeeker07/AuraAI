@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from ..planning.execution_trace import ExecutionTrace
 from .artifact import Artifact
 from .observation import Observation
+from .pipeline_error import ArtifactPayloadMissing
 
 if TYPE_CHECKING:
     from .confirmation import ActionPlanConfirmation
@@ -71,6 +72,29 @@ class AgentSession:
     def add_artifact(self, artifact: Artifact) -> None:
         """Add an artifact to the session."""
         self.artifacts.append(artifact)
+
+    def get_artifact(self, artifact_id: str) -> Artifact | None:
+        """Retrieve an artifact by its logical ID.
+
+        Searches in reverse order so the most recently added artifact
+        with a given ID wins (allows overwriting).
+        """
+        for art in reversed(self.artifacts):
+            if art.artifact_id == artifact_id:
+                return art
+        return None
+
+    def require_artifact(self, artifact_id: str, for_task: str) -> Artifact:
+        """Retrieve an artifact or raise ``ArtifactPayloadMissing``.
+
+        This is the fail-loud contract: if an upstream stage did not produce
+        the expected artifact with a non-empty payload, the pipeline halts
+        immediately instead of silently continuing.
+        """
+        art = self.get_artifact(artifact_id)
+        if art is None or not art.has_payload:
+            raise ArtifactPayloadMissing(for_task, artifact_id)
+        return art
 
     def to_dict(self) -> dict[str, Any]:
         return {

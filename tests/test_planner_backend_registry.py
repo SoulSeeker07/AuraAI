@@ -4,13 +4,13 @@ Unit tests for PlannerRegistry and BackendRegistry (Cognitive Orchestration Laye
 
 import pytest
 
-from src.core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
-from src.core.backends.backend_registry import (
+from core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
+from core.backends.backend_registry import (
     BackendRegistry,
     DefaultNativeDesktopAdapter,
 )
-from src.core.backends.base_backend import BaseBackendAdapter
-from src.core.orchestration.planner_registry import PlannerRegistry
+from core.backends.base_backend import BaseBackendAdapter
+from core.orchestration.planner_registry import PlannerRegistry
 
 
 def test_planner_registry_retrieval():

@@ -28,7 +28,7 @@ class ReferenceResolver:
     """
 
     PRONOUN_PATTERNS = [
-        r"\b(minimize|close|restore|focus|maximize|activate|hide|show|switch to)\s+(it|that|this|that window|the window|the app|the application|the tab|the browser|that tab|that app)\b",
+        r"\b(minimize|close|restore|focus|maximize|activate|hide|show|switch to|open|launch)\s+(it|that|this|that window|the window|the app|the application|the tab|the browser|that tab|that app)\b",
         r"\b(close|minimize|restore|focus)\s+the\s+(last\s+opened|last\s+active|last\s+created)\s+(app|window|tab|file|resource)\b",
     ]
 
@@ -60,43 +60,42 @@ class ReferenceResolver:
         target_name: str | None = None
         target_source: str = "unknown"
 
-        # ── Priority 1: Focused window from live Windows OS ────────────────
+        HOST_BLACK_LIST = [
+            "code",
+            "vscode",
+            "visual studio code",
+            "windowsterminal",
+            "powershell",
+            "cmd",
+            "python",
+            "pythonw",
+            "antigravity",
+            "electron",
+            "cursor",
+            "explorer",
+            "taskbar",
+            "searchhost",
+            "unknown",
+            "",
+        ]
+
+        # ── Priority 1: Aura-owned resources & Session context (Last referenced object) ──
         try:
-            import psutil
-            import win32gui
-            import win32process
-
-            hwnd = win32gui.GetForegroundWindow()
-            if hwnd:
-                title = win32gui.GetWindowText(hwnd)
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                proc_name = ""
-                try:
-                    proc_name = (
-                        psutil.Process(pid)
-                        .name()
-                        .replace(".exe", "")
-                        .replace("App", "")
-                    )
-                except Exception:
-                    pass
-
-                # Prefer process name (more stable than window title)
-                candidate = proc_name or title.split("-")[0].strip()
-                if candidate and candidate.lower() not in [
-                    "explorer",
-                    "taskbar",
-                    "searchhost",
-                    "unknown",
-                    "",
-                ]:
-                    target_name = candidate
-                    target_source = f"focused_window:hwnd={hwnd},pid={pid}"
-                    logger.info(
-                        f"ReferenceResolver: focused window → '{target_name}' (pid={pid})"
-                    )
+            aura_resources = (
+                ResourceOwnershipTracker.get_instance().get_aura_resources()
+            )
+            if aura_resources:
+                last_res = aura_resources[-1]
+                t_candidate = (
+                    last_res.details.get("app_name")
+                    or last_res.details.get("site")
+                    or last_res.resource_id
+                )
+                if t_candidate and t_candidate.lower() not in HOST_BLACK_LIST:
+                    target_name = t_candidate
+                    target_source = "ownership_tracker:last_referenced_object"
         except Exception as exc:
-            logger.debug(f"ReferenceResolver: focused window probe failed: {exc}")
+            logger.debug(f"ReferenceResolver: ownership probe failed: {exc}")
 
         # ── Priority 2: WorldTimeline most-recent resource event ───────────
         if not target_name:
@@ -116,13 +115,8 @@ class ReferenceResolver:
                             "minimize",
                         ]
                     ):
-                        if evt.resource_id and evt.resource_id.lower() not in [
-                            "session",
-                            "hi",
-                            "it",
-                            "unknown",
-                            "",
-                        ]:
+                        res_id = (evt.resource_id or "").lower()
+                        if res_id and res_id not in HOST_BLACK_LIST and res_id not in ["session", "hi", "it"]:
                             target_name = evt.resource_id
                             target_source = f"timeline:{evt.event_type}"
                             break
@@ -130,34 +124,44 @@ class ReferenceResolver:
                         m = re.search(r"['\"]([^'\"]+)['\"]", desc)
                         if m:
                             candidate = m.group(1).strip()
-                            if candidate and candidate.lower() not in [
-                                "everything you opened",
-                                "session",
-                                "hi",
-                                "it",
-                            ]:
+                            if candidate and candidate.lower() not in HOST_BLACK_LIST and candidate.lower() not in ["everything you opened", "session", "hi", "it"]:
                                 target_name = candidate
                                 target_source = f"timeline_desc:{evt.event_type}"
                                 break
             except Exception as exc:
                 logger.debug(f"ReferenceResolver: timeline probe failed: {exc}")
 
-        # ── Priority 3: Aura-owned resources ───────────────────────────────
+        # ── Priority 3: Focused window from live Windows OS (excluding host IDE/terminals) ─
         if not target_name:
             try:
-                aura_resources = (
-                    ResourceOwnershipTracker.get_instance().get_aura_resources()
-                )
-                if aura_resources:
-                    last_res = aura_resources[-1]
-                    target_name = (
-                        last_res.details.get("app_name")
-                        or last_res.details.get("site")
-                        or last_res.resource_id
-                    )
-                    target_source = "ownership_tracker"
+                import psutil
+                import win32gui
+                import win32process
+
+                hwnd = win32gui.GetForegroundWindow()
+                if hwnd:
+                    title = win32gui.GetWindowText(hwnd)
+                    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                    proc_name = ""
+                    try:
+                        proc_name = (
+                            psutil.Process(pid)
+                            .name()
+                            .replace(".exe", "")
+                            .replace("App", "")
+                        )
+                    except Exception:
+                        pass
+
+                    candidate = proc_name or title.split("-")[0].strip()
+                    if candidate and candidate.lower() not in HOST_BLACK_LIST:
+                        target_name = candidate
+                        target_source = f"focused_window:hwnd={hwnd},pid={pid}"
+                        logger.info(
+                            f"ReferenceResolver: focused window → '{target_name}' (pid={pid})"
+                        )
             except Exception as exc:
-                logger.debug(f"ReferenceResolver: ownership probe failed: {exc}")
+                logger.debug(f"ReferenceResolver: focused window probe failed: {exc}")
 
         # ── Priority 4: Context world_state ────────────────────────────────
         if not target_name and context:

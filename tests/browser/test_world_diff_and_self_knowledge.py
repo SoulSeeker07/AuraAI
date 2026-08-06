@@ -5,14 +5,14 @@ Location: tests/browser/test_world_diff_and_self_knowledge.py
 
 import pytest
 
-from src.browser.world_model import BrowserContext, BrowserTab
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
-from src.core.orchestration.ownership_tracker import (
+from browser.world_model import BrowserContext, BrowserTab
+from core.orchestration.master_orchestrator import MasterOrchestrator
+from core.orchestration.ownership_tracker import (
     ResourceOwner,
     ResourceOwnershipTracker,
 )
-from src.core.orchestration.world_diff import WorldDiff, WorldDiffEngine
-from src.core.orchestration.world_snapshot import DesktopStateSnapshot
+from core.orchestration.world_diff import WorldDiff, WorldDiffEngine
+from core.orchestration.world_snapshot import DesktopStateSnapshot
 
 
 def test_world_diff_engine_computation():

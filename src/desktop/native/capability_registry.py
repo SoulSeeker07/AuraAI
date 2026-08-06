@@ -222,6 +222,45 @@ class CapabilityRegistry:
 
         self.register(
             CapabilityDescriptor(
+                name="window.restore",
+                description="Restore a minimized window to desktop",
+                manager="window",
+                category="window",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["window_restored"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="file.create",
+                description="Create a new file or write text content to a file",
+                manager="file",
+                category="file",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["file_created"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="file.write",
+                description="Write content to a file",
+                manager="file",
+                category="file",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["file_written"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
                 name="activate_window",
                 description="Activate and bring a window to the foreground",
                 manager="window",

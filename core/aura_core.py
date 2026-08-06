@@ -165,6 +165,8 @@ class AuraCore:
         self.workflow_engine = None
         self.vision_enabled = False
         self.voice_enabled = False
+        self.executive_brain = None
+        self.executive_brain_enabled = False
         self.current_task: str | None = None
         self.current_task_status: AuraCoreStatus = AuraCoreStatus.READY
         self.conversation_history: list[dict[str, str]] = []
@@ -176,6 +178,7 @@ class AuraCore:
         self.llm_enabled = False
         self._init_llm()
         self._initialize_components()
+        self._init_executive_brain()
 
     def _init_llm(self):
         """Initialize the Groq LLM client."""
@@ -195,6 +198,192 @@ class AuraCore:
             self.llm_enabled = False
             self.groq_client = None
             logger.error(f"Failed to initialize Groq client: {e}")
+
+    def _init_executive_brain(self):
+        """Initialize the Aura Cognitive Architecture (ACA) — staged cognitive runtime."""
+        try:
+            from src.brain.aca import ACABrain, StrategyEngine, FusionEngine, ConfidenceGate
+            from src.brain import (
+                ContextManager,
+                WorldModel,
+                GoalAnalyzer,
+                CapabilitySelector,
+                ExecutionMapValidator,
+                ExecutionCoordinator,
+                VerificationEngine,
+                ReflectionEngine,
+                LearningEngine,
+            )
+
+            # Wire the cognitive runtime to the MasterOrchestrator for execution
+            from core.orchestration import MasterOrchestrator
+
+            orchestrator = MasterOrchestrator.get_instance()
+
+            # Create the ACA Brain (5-stage cognitive architecture)
+            self.executive_brain = ACABrain(
+                context_manager=ContextManager(
+                    memory=getattr(self, "memory", None),
+                    workspace=self.workspace_info,
+                ),
+                world_model=WorldModel(),
+                goal_analyzer=GoalAnalyzer(),
+                capability_selector=CapabilitySelector(),
+                fusion_engine=FusionEngine(),
+                confidence_gate=ConfidenceGate(),
+                planner=StrategyEngine(
+                    llm_client=self.groq_client if self.llm_enabled else None
+                ),
+                validator=ExecutionMapValidator(),
+                coordinator=ExecutionCoordinator(
+                    orchestrator=orchestrator
+                ),
+                verification=VerificationEngine(),
+                reflection=ReflectionEngine(),
+                learning=LearningEngine(),
+                llm_client=self.groq_client if self.llm_enabled else None,
+            )
+
+            # ── Wire Real Engine Callbacks ─────────────────────────────────
+            # Replace mock callbacks with real engines so there is ONE execution path.
+            try:
+                from src.desktop.native.desktop_execution_engine import (
+                    DesktopExecutionEngine,
+                )
+
+                desktop_engine = DesktopExecutionEngine()
+
+                async def desktop_callback(action, params):
+                    """Real Desktop Engine callback."""
+                    try:
+                        result = desktop_engine.execute(
+                            capability=action,
+                            goal=params.get("description", action),
+                            arguments=params,
+                        )
+                        return {
+                            "success": getattr(result, "success", True),
+                            "observations": list(getattr(result, "observations", [])),
+                        }
+                    except Exception as e:
+                        return {"success": False, "error": str(e)}
+
+                self.executive_brain.register_engine("desktop", desktop_callback)
+                logger.info("ACA wired to real Desktop Engine")
+            except Exception as e:
+                logger.warning(f"Desktop Engine wiring skipped: {e}")
+
+            try:
+                from src.browser.engine import BrowserEngine
+
+                browser_engine = BrowserEngine()
+
+                async def browser_callback(action, params):
+                    """Real Browser Engine callback."""
+                    try:
+                        result = browser_engine.execute(
+                            capability=action,
+                            goal=params.get("description", action),
+                            arguments=params,
+                        )
+                        return {
+                            "success": getattr(result, "success", True),
+                            "observations": list(getattr(result, "observations", [])),
+                        }
+                    except Exception as e:
+                        return {"success": False, "error": str(e)}
+
+                self.executive_brain.register_engine("browser", browser_callback)
+                logger.info("ACA wired to real Browser Engine")
+            except Exception as e:
+                logger.warning(f"Browser Engine wiring skipped: {e}")
+
+            try:
+                from src.research.research_engine import ResearchEngine
+
+                research_engine = ResearchEngine()
+
+                async def research_callback(action, params):
+                    """Real Research Engine callback."""
+                    try:
+                        result = research_engine.execute(
+                            capability=action,
+                            goal=params.get("description", action),
+                            arguments=params,
+                        )
+                        return {
+                            "success": getattr(result, "success", True),
+                            "observations": list(getattr(result, "observations", [])),
+                        }
+                    except Exception as e:
+                        return {"success": False, "error": str(e)}
+
+                self.executive_brain.register_engine("research", research_callback)
+                logger.info("ACA wired to real Research Engine")
+            except Exception as e:
+                logger.warning(f"Research Engine wiring skipped: {e}")
+
+            self.executive_brain_enabled = True
+
+            self.components["executive_brain"] = ComponentStatus(
+                name="Executive Brain",
+                status=AuraCoreStatus.READY,
+                message="Aura Cognitive Architecture initialized",
+            )
+            logger.info(
+                "Aura Cognitive Architecture (ACA) initialized: "
+                "Stage0(Perception) → Stage1(DMM) → Stage2(Planning) → Stage3(Execution) → Stage4(Reflection/Learning)"
+            )
+        except Exception as e:
+            self.executive_brain_enabled = False
+            self.executive_brain = None
+            self.components["executive_brain"] = ComponentStatus(
+                name="Executive Brain",
+                status=AuraCoreStatus.ERROR,
+                message=f"Aura Cognitive Architecture failed to initialize: {e}",
+                loaded=False,
+            )
+            logger.error(f"Failed to initialize Aura Cognitive Architecture: {e}")
+
+    async def process_via_executive_brain(self, user_goal: str) -> str:
+        """
+        Process a request through the Executive Brain's cognitive pipeline.
+
+        The Executive Brain is the ONLY component that "thinks."
+        Everything else simply executes.
+        """
+        if not self.executive_brain_enabled or self.executive_brain is None:
+            return await self.process_request(user_goal)
+
+        try:
+            from src.core.learning.behavior_store import BehaviorStore
+
+            # Build context for the Executive Brain
+            context = {
+                "workspace_root": self.workspace,
+                "workspace_info": self.workspace_info,
+                "llm_enabled": self.llm_enabled,
+            }
+
+            # Register behavior store for learning
+            try:
+                behavior_store = BehaviorStore()
+                self.executive_brain.register_behavior_store(behavior_store)
+                context["behavior_store"] = behavior_store
+            except Exception as e:
+                logger.debug(f"Behavior store registration skipped: {e}")
+
+            # Process through the Executive Brain
+            response = await self.executive_brain.process(user_goal, context)
+
+            return response.text
+
+        except Exception as e:
+            logger.error(
+                f"Executive Brain pipeline failed: {e}", exc_info=True
+            )
+            # Fallback to standard pipeline
+            return await self.process_request(user_goal)
 
     async def get_ai_response(self, user_message: str) -> str:
         """
@@ -269,7 +458,7 @@ class AuraCore:
 
                 # ── Fallback: ExecutionPolicy singleton (backward compat) ──
                 try:
-                    from src.core.orchestration.execution_policy import (
+                    from core.orchestration.execution_policy import (
                         ExecutionPolicy,
                         PolicyAction,
                     )
@@ -316,7 +505,7 @@ class AuraCore:
 
             # System Self-Knowledge Queries (Who are you?, What are your capabilities?, Limitations, Planners, Backends)
             if intent_type == "system_query" or can_from_sys:
-                from src.core.system.system_knowledge_resolver import (
+                from core.system.system_knowledge_resolver import (
                     SystemKnowledgeResolver,
                 )
 
@@ -881,6 +1070,9 @@ class AuraCore:
                 }
                 for name, comp in self.components.items()
             },
+            "executive_brain": (
+                "Enabled" if self.executive_brain_enabled else "Disabled"
+            ),
             "memory": self.memory_stats,
             "knowledge": self.knowledge_stats,
             "plugins": {"count": self.plugin_count, "loaded": self.plugins},
@@ -1227,6 +1419,14 @@ class AuraCore:
                     else "Research module disabled"
                 ),
             },
+            "Executive Brain": {
+                "pass": self.executive_brain_enabled,
+                "message": (
+                    "Aura Cognitive Architecture (ACA) active"
+                    if self.executive_brain_enabled
+                    else "Aura Cognitive Architecture (ACA) disabled"
+                ),
+            },
         }
         return checks
 
@@ -1299,19 +1499,43 @@ class AuraCore:
             ASCII art representation
         """
         return """Aura
-
-↓
-
-Memory
-Knowledge
-Plugins
-Workspace
-Tool Engine
-Agent Runtime
-Workflow Engine
-Vision
-Voice
-Engineering"""
+│
+▼
+★ AuraCore (OS Kernel)
+│
+▼
+★ Aura Cognitive Architecture (ACA)
+│
+├── Stage 0 : Context & World Understanding
+│   ├── Context Manager
+│   └── World Model
+├── Stage 1 : DMM (Decision Making Module)
+│   ├── Goal Understanding
+│   ├── Memory Retrieval
+│   ├── Capability Retrieval
+│   ├── Safety Evaluation
+│   ├── Confidence Gate
+│   └── Fusion Engine → DecisionContext
+├── Stage 2 : Planning & Strategy
+│   ├── Planner (Groq → ExecutionMap)
+│   └── Execution Map Validator
+├── Stage 3 : Execution Coordination
+│   ├── Execution Coordinator
+│   └── Verification
+└── Stage 4 : Reflection & Learning
+    ├── Reflection
+    └── Learning (Conservative)
+│
+▼
+MasterOrchestrator
+│
+├── Desktop Engine
+├── Browser Engine
+├── Research Engine
+├── Engineering Engine
+├── Memory Engine
+├── Voice Engine
+└── Vision Engine"""
 
     def get_knowledge_stats(self):
         """Return knowledge database statistics."""
@@ -1443,6 +1667,11 @@ Engineering"""
         logger.info("Shutting down Aura Core...")
         self._save_conversation_history()
         self.clear_conversation_history()
+        try:
+            from core.backends.backend_registry import BackendRegistry
+            BackendRegistry.get_instance().shutdown()
+        except Exception as e:
+            logger.warning(f"Failed to shut down BackendRegistry: {e}")
 
     def __repr__(self):
         return f"AuraCore(project='{self.workspace}', plugins={self.plugin_count}, memory={self.memory_enabled})"

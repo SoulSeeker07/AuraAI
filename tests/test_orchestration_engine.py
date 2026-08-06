@@ -4,11 +4,11 @@ Unit tests for MasterOrchestrator, DecisionEngine, and AgentSession (Cognitive O
 
 import pytest
 
-from src.core.backends.backend_registry import BackendRegistry
-from src.core.orchestration.agent_session import AgentSession, ExecutionBudget
-from src.core.orchestration.decision_engine import DecisionEngine
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
-from src.core.orchestration.planner_registry import PlannerRegistry
+from core.backends.backend_registry import BackendRegistry
+from core.orchestration.agent_session import AgentSession, ExecutionBudget
+from core.orchestration.decision_engine import DecisionEngine
+from core.orchestration.master_orchestrator import MasterOrchestrator
+from core.orchestration.planner_registry import PlannerRegistry
 
 
 def test_decision_engine_evaluation():

@@ -4,71 +4,127 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.18.0--runtime--stabilization-green.svg)](RELEASE.md)
-[![Platform Progress](https://img.shields.io/badge/milestones-17%2F26%20Complete-green.svg)](roadmap.md)
-[![Architecture Status](https://img.shields.io/badge/cognitive--orchestration-frozen-blue.svg)](docs/ARCHITECTURE_FREEZE.md)
+[![Platform Version](https://img.shields.io/badge/version-v0.19.0--cognitive--architecture-green.svg)](RELEASE.md)
+[![Platform Progress](https://img.shields.io/badge/milestones-16%2F26%20Complete-green.svg)](roadmap.md)
+[![Architecture Status](https://img.shields.io/badge/cognitive--architecture-aca--active-blue.svg)](docs/AURA_ARCHITECTURE_CONNECTION.md)
 [![Runtime Acceptance](https://img.shields.io/badge/runtime--acceptance-verified-brightgreen.svg)](docs/RUNTIME_ACCEPTANCE.md)
 [![Build Status](https://img.shields.io/badge/tests-100%25%20passed-brightgreen.svg)](docs/engineering.md)
 
-Aura AI is a modular, high-reliability **AI Operating System Platform** built to unify cognitive orchestration, autonomous planning, native OS execution, deep research, and long-running engineering sessions into a unified operating runtime.
+Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies perception, decision-making, planning, execution, reflection, and learning into a single coordinated system.
 
-> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. Groq acts as the Executive Coordinator, deciding *what* should happen, while specialized supervisors and workers perform the work. Desktop operations are handled by the Native Desktop Engine, browser tasks by Playwright, research by Gemini, and software engineering by Antigravity CLI. Long-running tasks are managed through `RuntimeSessions` and `WorkerManager`, enabling progress tracking, pause/resume, explainability, and safe execution.
+> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the Native Desktop Engine, browser tasks by Playwright, research by Gemini, and software engineering by Antigravity CLI.
 
-Read the official [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs and runtime extension rules, and consult [Runtime Acceptance](docs/RUNTIME_ACCEPTANCE.md) for manual release gates.
-
+Read the [Architecture Connection](docs/AURA_ARCHITECTURE_CONNECTION.md) for how everything is wired, the [Architecture Audit](docs/AURA_ARCHITECTURE_AUDIT.md) for what's connected vs. missing, and the [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs.
 
 ---
 
 ## 🏛️ System Architecture
 
-Aura operates as an AI Operating System where **Groq serves as the Executive Cognitive Coordinator (Project Manager)** while execution is delegated to long-running domain supervisors and specialized workers (`Antigravity CLI`, `Playwright Browser`, `Native Desktop Engine`, `Gemini Research Engine`).
+Aura operates as an AI Operating System where the **Aura Cognitive Architecture (ACA)** serves as the cognitive runtime — the only component that "thinks" — while execution is delegated to specialized engines.
 
 ```text
-                                  USER
-                                    │
-                                    ▼
-                         Aura Decision Engine
-                        (Executive Brain - Groq)
-                         Cognitive Coordinator
-                                    │
-         ┌──────────────────────────┼──────────────────────────┐
-         │                          │                          │
-  Desktop Operator           Browser Operator           Research Analyst
-(Native Desktop Engine)     (Playwright Engine)        (Gemini Research)
-                                    │
-                                    ▼
-                     Software Engineering Supervisor
-                                    │
-                                    ▼
-                     WorkerManager / RuntimeSession
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-            AntigravityWorker  PytestWorker   GitDiffWorker
-             (Lead Engineer)     (Pytest)      (Ruff & Git)
+                          USER
+                            │
+                            ▼
+                     AuraCore Runtime
+                            │
+                            ▼
+              ┌──────────────────────────┐
+              │  Aura Cognitive Arch.    │
+              │  (ACA) — Executive Brain │
+              └──────────────────────────┘
+                            │
+    ┌─────────────────────────────────────────────────────┐
+    │                                                     │
+    ▼                                                     ▼
+Stage 0: Context & World Understanding            Goal Manager
+    │                                                     │
+    ▼                                                     │
+Stage 1: DMM (Decision Making Module)                     │
+    │   ├── Goal Understanding                            │
+    │   ├── Memory Retrieval                              │
+    │   ├── Capability Retrieval                          │
+    │   ├── Confidence Gate                               │
+    │   └── Fusion Engine → DecisionContext               │
+    │                                                     │
+    ▼                                                     │
+Policy Engine (Governance)                                │
+    │                                                     │
+    ▼                                                     │
+Stage 2: Planning & Strategy                              │
+    │   ├── Planner (Groq → ExecutionMap)                 │
+    │   ├── TaskGraph (DAG for parallel execution)        │
+    │   └── Validator                                     │
+    │                                                     │
+    ▼                                                     │
+RuntimeSession (Source of Truth)                          │
+    │                                                     │
+    ▼                                                     │
+Stage 3: Execution Coordination                           │
+    │   ├── Desktop Engine                                │
+    │   ├── Browser Engine                                │
+    │   ├── Research Engine                               │
+    │   ├── Engineering Engine                            │
+    │   ├── Voice / Vision / Memory                       │
+    │   └── Verification                                  │
+    │                                                     │
+    ▼                                                     │
+Artifact Manager (Everything creates artifacts)           │
+    │                                                     │
+    ▼                                                     │
+Stage 4: Reflection & Learning                            │
+    │                                                     │
+    ▼                                                     │
+Response (with session, goal, artifacts)                  │
 ```
 
 ---
 
-## 🧠 Core Subsystems & Runtime Architecture
+## 🧠 Aura Cognitive Architecture (ACA)
 
-### 👔 Cognitive Orchestration & Executive Coordination
-- **Groq as Executive Coordinator**: Groq acts exclusively as the Project Manager — understanding user intent, allocating resources, supervising execution streams, and summarizing completed artifacts without directly outputting raw code snippets into chat.
-- **Zero-LLM Control Interception**: Deterministic handling of system controls (`"status?"`, `"How's it going?"`, `"Show active workers"`, `"Pause engineering"`, `"Resume engineering"`, `"Cancel worker X"`) resolved instantly via `WorkerManager` without LLM calls.
+The ACA is the cognitive center of Aura — the only component that "thinks." Everything else simply executes.
 
-### 🛠️ Software Engineering Supervisor & Antigravity CLI
-- **`EngineeringSession` State Machine**: Stateful single source of truth for software development tasks, inheriting from `RuntimeSession` to track progress, modified files, test outputs (`pytest`), and artifacts.
-- **Concurrent Validation Workers**: Asynchronous execution of `PytestWorker`, `RuffWorker`, and `GitDiffWorker` alongside `Antigravity CLI` for real-time validation.
+### The Golden Rule
 
-### 🛡️ Configurable SafetyPolicy Engine
-- **Application & OS Protection**: Hardened policy engine (`src/execution/safety_policy.py` & `config/safety_policy.yaml`) protecting critical IDE and OS processes (`Code.exe`, `vscode`, `explorer.exe`, `System`) from termination or destructive manipulation.
+> **The Executive Brain thinks. The Planner organizes. The Engines execute. Reflection validates. Learning improves.**
 
-### 🌐 System-Wide WorkerManager & Unified Session Hierarchy
-- **`RuntimeSession` Base Architecture**: Universal session abstraction for all long-running domain tasks (`EngineeringSession`, `BrowserSession`, `DesktopSession`, `ResearchSession`).
-- **Worker Management**: Centralized registration, monitoring, pause, resume, and cancellation across all domain workers.
+### 5-Stage Cognitive Pipeline
+
+| Stage | Component | Responsibility |
+|-------|-----------|----------------|
+| **0** | Context Manager + World Model | Collects everything Aura knows (RAM) + tracks the computer state |
+| **1** | DMM (FusionEngine + ConfidenceGate) | Understands goals, selects capabilities, fuses into DecisionContext |
+| **2** | Planner + TaskGraph + Validator | Produces structured ExecutionMap as a DAG, validates it |
+| **3** | Execution Coordinator + Verification | Delegates to engines, verifies outcomes |
+| **4** | Reflection + Learning | Self-evaluates, learns conservatively |
+
+### New Architectural Pieces
+
+| Piece | File | Purpose |
+|-------|------|---------|
+| **Blackboard** | `src/brain/schemas/blackboard.py` | Shared working memory — all stages read/write one object |
+| **DecisionContext** | `src/brain/schemas/decision_context.py` | Aura's internal "thought" — the ONLY thing the Planner consumes |
+| **TaskGraph** | `src/brain/schemas/task_graph.py` | DAG for parallel execution (not linear) |
+| **RuntimeSession** | `src/brain/schemas/runtime_session.py` | Source of truth for every execution |
+| **Artifact** | `src/brain/schemas/artifact.py` | Everything Aura creates |
+| **GoalManager** | `src/brain/aca/goal_manager.py` | Long-term goal tracking across requests |
+| **PolicyEngine** | `src/brain/aca/policy_engine.py` | Governance layer — security, permissions, policies |
+| **ArtifactManager** | `src/brain/aca/artifact_manager.py` | Collects artifacts from execution |
+| **FusionEngine** | `src/brain/aca/fusion_engine.py` | Fuses all retrieval into DecisionContext |
+| **ConfidenceGate** | `src/brain/aca/confidence_gate.py` | Per-domain confidence scores |
 
 ---
 
 ## ✨ Features Overview
+
+### 🧠 Cognitive Architecture
+- **5-Stage Cognitive Pipeline**: Perception → Decision → Planning → Execution → Reflection/Learning
+- **Shared Blackboard**: All stages read/write one shared working memory
+- **Per-Domain Confidence**: Goal, entity, memory, capability, safety — not one number
+- **Policy Governance**: Independent security/permission layer before planning
+- **Long-Term Goals**: Goal Manager tracks progress across multiple requests
+- **Parallel Execution**: TaskGraph DAG enables parallel engine execution
+- **Artifact-Centric**: Everything Aura creates becomes an artifact
 
 ### 🖥️ Native Desktop Engine
 - **Hardware & OS Control**: Windows-native managers for window placement, active clipboard monitoring, display metrics, audio streams, power management, and network interfaces.
@@ -123,6 +179,15 @@ python aura.py --cli
 python aura.py --gui
 ```
 
+### 4. Test the Cognitive Architecture
+```bash
+# Run ACA test suite (8 tests)
+.venv\Scripts\python.exe scripts/test_aca.py
+
+# Run Executive Runtime test suite (12 tests)
+.venv\Scripts\python.exe scripts/test_aura_brain_runtime.py
+```
+
 ---
 
 ## 📚 Platform Documentation
@@ -130,6 +195,9 @@ python aura.py --gui
 Detailed technical guides and architecture specifications are available in the [`docs/`](docs/) directory:
 
 - 🚀 [**Getting Started**](docs/getting-started.md) — Installation, environment setup, and launcher guide.
+- 🏗️ [**Architecture Connection**](docs/AURA_ARCHITECTURE_CONNECTION.md) — How everything is connected end-to-end.
+- 📊 [**Architecture Audit**](docs/AURA_ARCHITECTURE_AUDIT.md) — What's connected vs. what's missing.
+- 🧠 [**AuraBrain Executive Runtime**](docs/AURABRAIN_EXECUTIVE_RUNTIME.md) — The cognitive runtime specification.
 - 🏗️ [**Architecture & Layers**](docs/architecture.md) — Architectural manifest, layer boundaries, and import contracts.
 - 🧠 [**Planner System**](docs/planners.md) — Specialized domain planners and declarative schemas.
 - 🔌 [**Backend Registry**](docs/backends.md) — Multi-model routing engine and adaptive capability negotiation.

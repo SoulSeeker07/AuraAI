@@ -14,8 +14,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
-from src.core.orchestration.world_snapshot import (
+from core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
+from core.orchestration.world_snapshot import (
     DesktopStateSnapshot,
     WorldSnapshotProvider,
 )

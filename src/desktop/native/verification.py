@@ -68,29 +68,32 @@ class ActionVerifier:
         if any(c in cap for c in ["app_open", "open_app", "app.launch", "window.open"]):
             import time
 
+            from core.orchestration.execution_policy import ExecutionPolicy
             from core.orchestration.world_snapshot import WorldSnapshotProvider
 
             proc_found = False
             win_found = False
+            hwnds: list[int] = []
 
             for attempt in range(5):
+                time.sleep(0.3)
+                after_snap = WorldSnapshotProvider().snapshot()
                 after_procs = getattr(after_snap, "running_processes", []) or []
                 after_windows = getattr(after_snap, "window_titles", []) or []
 
                 proc_found = any(app_name in p.lower() for p in after_procs)
                 win_found = any(app_name in w.lower() for w in after_windows)
+                hwnds = ExecutionPolicy.get_instance()._get_running_windows(app_name, None)
 
-                if proc_found or win_found:
+                if proc_found or win_found or len(hwnds) > 0:
                     break
 
-                time.sleep(0.3)
-                after_snap = WorldSnapshotProvider().snapshot()
-
-            if proc_found or win_found:
+            if proc_found or win_found or len(hwnds) > 0:
                 verification["passed"] = True
-                verification["method"] = "process_window_diff"
+                verification["method"] = "os_enumwindows_diff"
+                verification["hwnd_count"] = len(hwnds)
                 verification["checks"].append(
-                    {"name": "os_process_window_detected", "passed": True}
+                    {"name": "os_process_window_detected", "passed": True, "hwnd_count": len(hwnds)}
                 )
             else:
                 verification["passed"] = False

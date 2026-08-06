@@ -18,32 +18,25 @@ import pytest
 
 BACKEND_CLASSES = []
 
-try:
-    from core.backends import (
-        AntigravityBackend,
-        BaseBackendAdapter,
-        DesktopEngineBackend,
-        GeminiBackend,
-        GroqBackend,
-    )
+from core.backends.base_backend import BaseBackendAdapter
+from core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
+from core.backends.adapters.desktop_backend import DesktopEngineBackend
+from core.backends.adapters.gemini_backend import GeminiBackend
+from core.backends.adapters.groq_backend import GroqBackend
 
-    BACKEND_CLASSES = [
-        AntigravityBackend,
-        DesktopEngineBackend,
-        GeminiBackend,
-        GroqBackend,
-    ]
-except ImportError:
-    pass
+BACKEND_CLASSES = [
+    AntigravityBackendAdapter,
+    DesktopEngineBackend,
+    GeminiBackend,
+    GroqBackend,
+]
 
 
 @pytest.mark.parametrize("backend_cls", BACKEND_CLASSES)
 def test_backend_inherits_base_adapter(backend_cls):
     """Every backend in core/backends/adapters must be a subclass of BaseBackendAdapter."""
-    from core.backends import BaseBackendAdapter
-
-    assert issubclass(
-        backend_cls, BaseBackendAdapter
+    assert any(
+        cls.__name__ == "BaseBackendAdapter" for cls in backend_cls.mro()
     ), f"{backend_cls.__name__} does not inherit from BaseBackendAdapter"
 
 

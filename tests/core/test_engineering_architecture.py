@@ -8,16 +8,16 @@ from pathlib import Path
 
 import pytest
 
-from src.core.backends.adapters.validation_workers import GitDiffWorker, PytestWorker
-from src.core.orchestration.engineering_session import (
+from core.backends.adapters.validation_workers import GitDiffWorker, PytestWorker
+from core.orchestration.engineering_session import (
     EngineeringSession,
     EngineeringSessionStatus,
     WorkerState,
 )
-from src.core.orchestration.software_engineering_supervisor import (
+from core.orchestration.software_engineering_supervisor import (
     SoftwareEngineeringSupervisor,
 )
-from src.core.orchestration.worker_manager import DomainWorker, WorkerManager
+from core.orchestration.worker_manager import DomainWorker, WorkerManager
 
 
 def test_engineering_session_lifecycle():

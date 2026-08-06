@@ -5,12 +5,15 @@ Location: tests/browser/test_reference_resolver.py
 
 import pytest
 
-from src.core.orchestration.reference_resolver import ReferenceResolver
-from src.core.orchestration.task_decomposer import TaskDecomposer
-from src.core.orchestration.world_timeline import WorldTimeline
+from core.orchestration.reference_resolver import ReferenceResolver
+from core.orchestration.task_decomposer import TaskDecomposer
+from core.orchestration.world_timeline import WorldTimeline
 
+
+from core.orchestration.ownership_tracker import ResourceOwnershipTracker
 
 def test_reference_resolver_substitutes_pronoun():
+    ResourceOwnershipTracker.get_instance().clear()
     timeline = WorldTimeline.get_instance()
     timeline.clear()
     timeline.record_event(

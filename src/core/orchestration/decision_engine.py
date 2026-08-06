@@ -19,6 +19,8 @@ class IntentType(str, Enum):
     BROWSER = "browser"
     WORKFLOW = "workflow"
     MEMORY = "memory"
+    SESSION = "session"
+    LEARNING = "learning"
 
 
 @dataclass
@@ -54,6 +56,7 @@ class DecisionOutcome:
     goal: str
     budget: ExecutionBudget
     intent_type: IntentType = IntentType.CHAT
+    capability: str = ""
     can_answer_from_memory: bool = False
     can_answer_from_system: bool = False
     needs_planner: bool = True
@@ -84,6 +87,7 @@ class DecisionEngine:
         goal: str,
         budget: ExecutionBudget | None = None,
         memory_context: dict[str, Any] | None = None,
+        context: Any = None,
     ) -> DecisionOutcome:
         """
         Evaluate a request and produce a DecisionOutcome.
@@ -92,6 +96,7 @@ class DecisionEngine:
             goal: User request
             budget: ExecutionBudget constraints
             memory_context: Recalled memory context
+            context: Optional conversational PendingQuestion context
 
         Returns:
             DecisionOutcome
@@ -100,7 +105,56 @@ class DecisionEngine:
         mem = memory_context or {}
         goal_lower = goal.lower()
 
-        # 1. Classify Intent Category
+        # Check if context is a pending question
+        is_pending_question = context is not None and (
+            hasattr(context, "slot") or context.__class__.__name__ == "PendingQuestion"
+        )
+
+        is_session_summary = any(
+            w in goal_lower
+            for w in [
+                "summarize today's session",
+                "summarize session",
+                "session summary",
+                "summarize what we did today",
+                "what have we done today",
+                "what we worked on today",
+            ]
+        )
+
+        # Separate Memory Recall vs Memory Write
+        is_memory_recall = any(
+            w in goal_lower
+            for w in [
+                "what is my",
+                "what's my",
+                "do you remember",
+                "which is my",
+                "tell me my",
+                "who is",
+                "where is my",
+            ]
+        ) or (
+            any(w in goal_lower for w in ["favorite", "favourite", "preference", "preferences"])
+            and any(w in goal_lower for w in ["what", "which", "where", "tell me", "do you know", "show"])
+        )
+
+        is_memory_write = not is_memory_recall and (
+            is_pending_question or any(
+                w in goal_lower
+                for w in [
+                    "remember",
+                    "recall",
+                    "forget",
+                    "memorize",
+                    "store in memory",
+                    "save in memory",
+                ]
+            ) or any(
+                w in goal_lower for w in ["my favorite", "my favourite", "i like", "i prefer"]
+            )
+        )
+
         is_system_query = any(
             w in goal_lower
             for w in [
@@ -122,7 +176,19 @@ class DecisionEngine:
                 "architecture",
             ]
         )
-        is_desktop = any(
+        # Desktop window control / app management takes precedence over browsing
+        is_window_control = any(
+            w in goal_lower
+            for w in [
+                "bring to front", "bring chrome", "bring edge", "bring browser", "bring window",
+                "focus chrome", "focus edge", "focus firefox", "focus window",
+                "open chrome", "open edge", "open firefox", "open browser",
+                "close chrome", "close edge", "close firefox", "close browser",
+                "maximize", "minimize", "activate", "launch chrome", "launch edge"
+            ]
+        )
+
+        is_desktop = is_window_control or any(
             w in goal_lower
             for w in [
                 "open",
@@ -144,13 +210,24 @@ class DecisionEngine:
                 "folder",
                 "desktop",
                 "notes",
+                "calc",
+                "calculator",
+                "chrome",
+                "spotify",
+                "vscode",
+                "vs code",
+                "visual studio code",
             ]
         )
+
+        # Refined coding detection: ignore IDE names when classifying coding intent
+        clean_goal_for_coding = goal_lower
+        for ide in ["vs code", "vscode", "visual studio code", "notepad", "sublime", "atom"]:
+            clean_goal_for_coding = clean_goal_for_coding.replace(ide, "")
+
         is_coding = any(
-            w in goal_lower
+            w in clean_goal_for_coding
             for w in [
-                "code",
-                "python",
                 "refactor",
                 "unit test",
                 "fix bug",
@@ -159,7 +236,18 @@ class DecisionEngine:
                 "repository",
                 "script",
             ]
+        ) or (
+            "code" in clean_goal_for_coding and any(
+                v in clean_goal_for_coding
+                for v in ["write", "create", "implement", "refactor", "fix", "test", "modify", "update", "generate", "run", "add", "change", "synthesis"]
+            )
+        ) or (
+            "python" in clean_goal_for_coding and any(
+                v in clean_goal_for_coding
+                for v in ["write", "create", "implement", "refactor", "fix", "test", "modify", "update", "generate", "run", "add", "change", "script", "code"]
+            )
         )
+
         is_research = (
             any(
                 w in goal_lower
@@ -174,7 +262,7 @@ class DecisionEngine:
             )
             and not is_system_query
         )
-        is_browser = any(
+        is_browser = not is_window_control and any(
             w in goal_lower
             for w in [
                 "browse",
@@ -199,14 +287,24 @@ class DecisionEngine:
                 "http",
                 "https",
                 "site",
-                "browser",
                 "chrome",
+                "browser",
                 "edge",
                 "firefox",
             ]
         )
 
-        if is_system_query:
+        intent_capability = ""
+        if is_session_summary:
+            intent = IntentType.SESSION
+            intent_capability = "session_summary"
+        elif is_memory_write:
+            intent = IntentType.MEMORY
+            intent_capability = "memory_write"
+        elif is_memory_recall:
+            intent = IntentType.MEMORY
+            intent_capability = "memory_read"
+        elif is_system_query:
             intent = IntentType.SYSTEM_QUERY
         elif is_browser:
             intent = IntentType.BROWSER
@@ -227,11 +325,11 @@ class DecisionEngine:
                 w in goal_lower
                 for w in ["remember", "recall", "my name", "preferences"]
             )
-        )
+        ) or (intent == IntentType.MEMORY)
         # Q2: Can answer from system identity/state?
-        can_from_sys = intent == IntentType.SYSTEM_QUERY
+        can_from_sys = intent == IntentType.SYSTEM_QUERY or intent == IntentType.SESSION
         # Q3: Does this actually need a multi-step planner?
-        needs_planner = not (can_from_sys or intent == IntentType.CHAT)
+        needs_planner = not (can_from_sys or intent == IntentType.CHAT or (intent == IntentType.SESSION and intent_capability == "session_summary"))
         # Q4: Which planner?
         if intent == IntentType.RESEARCH:
             planner = "research"
@@ -241,11 +339,13 @@ class DecisionEngine:
             planner = "browser"
         elif intent == IntentType.DESKTOP_ACTION:
             planner = "desktop"
+        elif intent == IntentType.MEMORY:
+            planner = "memory"
         else:
             planner = "desktop"
         # Q5: Requires cloud/external backend or local engine?
         needs_backend = (
-            intent in [IntentType.RESEARCH, IntentType.BROWSER, IntentType.CODING]
+            intent in [IntentType.RESEARCH, IntentType.BROWSER, IntentType.CODING, IntentType.MEMORY]
         ) and not (active_budget.local_only or active_budget.offline_mode)
 
         should_search = (intent == IntentType.RESEARCH) and needs_backend
@@ -279,9 +379,13 @@ class DecisionEngine:
             policy_applied="Inspect World -> Reuse State -> Protect User Resources",
             chosen_planner=planner,
             chosen_backend=(
-                "Playwright Browser Engine"
-                if intent == IntentType.BROWSER
-                else "Native Desktop Engine"
+                "MemoryBackend"
+                if intent == IntentType.MEMORY
+                else (
+                    "Playwright Browser Engine"
+                    if intent == IntentType.BROWSER
+                    else "Native Desktop Engine"
+                )
             ),
             confidence=0.95,
             expected_outcome=f"Execute goal using {planner} planner and state reuse rules",
@@ -291,6 +395,7 @@ class DecisionEngine:
             goal=goal,
             budget=active_budget,
             intent_type=intent,
+            capability=intent_capability,
             can_answer_from_memory=can_from_mem,
             can_answer_from_system=can_from_sys,
             needs_planner=needs_planner,

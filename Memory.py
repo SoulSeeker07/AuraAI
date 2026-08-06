@@ -36,6 +36,24 @@ class MemoryFact:
     value: str
 
 
+class PendingQuestion:
+    def __init__(self, slot: str, qtype: str = "memory_preference", expected: str = "text"):
+        self.type = qtype
+        self.slot = slot
+        self.expected = expected
+        self.value = None
+        self.slot_value = None
+
+    def resolve(self, answer: str):
+        self.value = answer
+        self.slot_value = answer
+
+
+class FavoriteEditorQuestion(PendingQuestion):
+    def __init__(self):
+        super().__init__(slot="favorite_editor", qtype="memory_preference", expected="text")
+
+
 class Memory:
     def __init__(
         self,
@@ -175,17 +193,25 @@ class Memory:
                 context_parts.append(f"{role}: {content}")
             context_parts.append("-" * 60)
 
-        # Add important facts
-        important_facts = self.facts()
-        if important_facts:
+        # Add important facts relevant to the user input, or general user preference facts
+        facts_to_include = []
+        if user_input:
+            facts_to_include.extend(self.search(user_input))
+            
+        for f in self.facts():
+            if f.category in ["preference", "profile", "user_preference", "user_profile"]:
+                if not any(x.category == f.category and x.key == f.key for x in facts_to_include):
+                    facts_to_include.append(f)
+                    
+        if facts_to_include:
             context_parts.append("Important Facts:")
             context_parts.append("-" * 60)
-            for fact in important_facts[:20]:  # Limit to first 20 facts
+            for fact in facts_to_include[:15]:
                 context_parts.append(f"{fact.category}: {fact.value}")
             context_parts.append("-" * 60)
 
         # Add memory summary
-        if important_facts:
+        if facts_to_include:
             summary = self.summarize()
             context_parts.append(f"Memory Summary: {summary}")
 
@@ -221,10 +247,11 @@ class Memory:
 
     def record_turn(self, query: str, answer: str, topic: str) -> None:
         messages = self.load_chat_log()
+        now = dt.datetime.now().isoformat()
         messages.extend(
             [
-                {"role": "user", "content": query, "topic": topic},
-                {"role": "assistant", "content": answer, "topic": topic},
+                {"role": "user", "content": query, "topic": topic, "timestamp": now},
+                {"role": "assistant", "content": answer, "topic": topic, "timestamp": now},
             ]
         )
         self.chat_log_path.write_text(
@@ -350,6 +377,23 @@ class Memory:
             facts.append(MemoryFact(MemoryCategory.GOAL.value, self._key(value), value))
 
         # 5. Extract preferences
+        fav_match = re.search(
+            r"\b(?:my favorite|my favourite)\s+(.+?)\s+is\s+(.+)$",
+            cleaned,
+            re.IGNORECASE,
+        )
+        if fav_match:
+            subject = fav_match.group(1).strip()
+            val = fav_match.group(2).strip()
+            key_name = f"favorite_{subject}" if not subject.startswith("favorite") else subject
+            facts.append(
+                MemoryFact(
+                    MemoryCategory.PREFERENCE.value,
+                    self._key(key_name),
+                    val,
+                )
+            )
+
         for pattern in (
             r"\bi (?:like|prefer)\s+(.+)",
             r"\b(?:my favourite|my favorite|my preferred)\s+(.+?)(?:\s+(?:is|as|by)\s+.*$|\s*$)",
@@ -544,6 +588,77 @@ class Memory:
         titled = [word if not word.islower() else word.capitalize() for word in words]
         return " ".join(titled)
 
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            raise AttributeError(f"'Memory' object has no attribute '{name}'")
+        # Try to resolve dynamically as preference or important fact
+        for category in ["preference", "important", "profile", "skill", "project", "goal"]:
+            val = self.fact_value(category, name)
+            if val is not None:
+                return val
+        raise AttributeError(f"'Memory' object has no attribute '{name}'")
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        standard_attrs = ["db_path", "chat_log_path"]
+        if name in standard_attrs or name.startswith("_"):
+            super().__setattr__(name, value)
+        else:
+            self.upsert_fact("preference", name, str(value))
+
+    def get_pending_question(self) -> dict | None:
+        with self._connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pending_questions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    expected TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            row = conn.execute("SELECT type, slot, expected FROM pending_questions ORDER BY id DESC LIMIT 1").fetchone()
+            if row:
+                return {"type": row[0], "slot": row[1], "expected": row[2]}
+            return None
+
+    def set_pending_question(self, qtype: str, slot: str, expected: str) -> None:
+        now = dt.datetime.now().isoformat(timespec="seconds")
+        with self._connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pending_questions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    expected TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            conn.execute("DELETE FROM pending_questions")
+            conn.execute(
+                "INSERT INTO pending_questions (type, slot, expected, created_at) VALUES (?, ?, ?, ?)",
+                (qtype, slot, expected, now)
+            )
+
+    def clear_pending_question(self) -> None:
+        with self._connect() as conn:
+            conn.execute("DROP TABLE IF EXISTS pending_questions")
+
+    def resolve_pending_question(self, answer: str, pending_question: Any) -> None:
+        qtype = getattr(pending_question, "type", "memory_preference")
+        slot = getattr(pending_question, "slot", "general")
+        category = "preference"
+        if qtype == "memory_profile":
+            category = "profile"
+        elif qtype == "memory_skill":
+            category = "skill"
+        self.upsert_fact(category, slot, answer)
+        if hasattr(pending_question, "resolve"):
+            pending_question.resolve(answer)
+        else:
+            setattr(pending_question, "value", answer)
+            setattr(pending_question, "slot_value", answer)
+        self.clear_pending_question()
+
     def _init_db(self) -> None:
         with self._connect() as conn:
             conn.execute("""
@@ -563,6 +678,15 @@ class Memory:
                     topic TEXT NOT NULL UNIQUE,
                     summary TEXT NOT NULL,
                     updated_at TEXT NOT NULL
+                )
+                """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pending_questions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    expected TEXT NOT NULL,
+                    created_at TEXT NOT NULL
                 )
                 """)
 

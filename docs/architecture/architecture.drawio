@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-08-07T00:00:00.000Z" agent="AuraAI Architecture Generator" version="21.0.0" type="device">
+  <diagram id="aura_arch" name="Aura Architecture">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- User Layer -->
+        <mxCell id="layer_user" value="🚀 Applications &amp; Clients" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FEF08A;strokeColor=#CA8A04;startSize=30;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1080" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="cli" value="💻 CLI Client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#CA8A04;" vertex="1" parent="layer_user">
+          <mxGeometry x="20" y="35" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="gui" value="🎨 Desktop GUI Client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#CA8A04;" vertex="1" parent="layer_user">
+          <mxGeometry x="200" y="35" width="160" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Core Kernel -->
+        <mxCell id="layer_core" value="👑 OS Kernel &amp; Runtime Core" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E9D5FF;strokeColor=#9333EA;startSize=30;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="1080" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="auracore" value="⚙️ AuraCore (Kernel)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9333EA;fontStyle=1;" vertex="1" parent="layer_core">
+          <mxGeometry x="20" y="35" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="eventbus" value="⚡ EventBus" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9333EA;" vertex="1" parent="layer_core">
+          <mxGeometry x="230" y="35" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- ACA Layer -->
+        <mxCell id="layer_aca" value="🧠 Cognitive Architecture (ACA)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#EA580C;startSize=30;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="1080" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="blackboard" value="📝 Blackboard (CognitiveState)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EA580C;" vertex="1" parent="layer_aca">
+          <mxGeometry x="20" y="40" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="acabrain" value="🧠 ACABrain (Stages 0-4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EA580C;fontStyle=1;" vertex="1" parent="layer_aca">
+          <mxGeometry x="240" y="40" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="coordinator" value="⚡ ExecutionCoordinator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#EA580C;fontStyle=1;" vertex="1" parent="layer_aca">
+          <mxGeometry x="450" y="40" width="180" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Domain Subsystems -->
+        <mxCell id="layer_domain" value="🎯 Domain Subsystems &amp; Engine Adapters" style="swimlane;whiteSpace=wrap;html=1;fillColor=#CCFBF1;strokeColor=#0D9488;startSize=30;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="460" width="1080" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="desktop_eng" value="🖥️ Desktop Engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0D9488;" vertex="1" parent="layer_domain">
+          <mxGeometry x="20" y="45" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="browser_eng" value="🌐 Browser Engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0D9488;" vertex="1" parent="layer_domain">
+          <mxGeometry x="190" y="45" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="research_eng" value="🔬 Research Engine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0D9488;" vertex="1" parent="layer_domain">
+          <mxGeometry x="360" y="45" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="engineering_eng" value="🛠️ Engineering Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0D9488;" vertex="1" parent="layer_domain">
+          <mxGeometry x="530" y="45" width="170" height="40" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </mxfile>

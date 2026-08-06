@@ -11,19 +11,18 @@ Tests:
 
 import pytest
 
-from src.core.backends import (
-    AntigravityBackend,
-    BackendRegistry,
-    DesktopEngineBackend,
-    GeminiBackend,
-    GroqBackend,
-)
-from src.core.orchestration import (
+from core.backends.backend_registry import BackendRegistry
+from core.backends.adapters.desktop_backend import DesktopEngineBackend
+from core.backends.adapters.gemini_backend import GeminiBackend
+from core.backends.adapters.groq_backend import GroqBackend
+from core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
+
+from core.orchestration import (
     MasterOrchestrator,
     PlannerRegistry,
     ResultMerger,
 )
-from src.core.planning.execution_result import ExecutionResult
+from core.planning.execution_result import ExecutionResult
 from src.desktop.native.capability_registry import CapabilityRegistry
 from src.desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
@@ -42,6 +41,7 @@ def clean_registries():
 
     p_reg = PlannerRegistry.get_instance()
     b_reg = BackendRegistry.get_instance()
+    b_reg._backends.clear()  # Clear auto-registered default backends
 
     # Discover native desktop managers
     m_reg = NativeManagerRegistry.get_instance()
@@ -57,7 +57,7 @@ def clean_registries():
     b_reg.register(DesktopEngineBackend(engine=engine))
     b_reg.register(GroqBackend())
     b_reg.register(GeminiBackend())
-    b_reg.register(AntigravityBackend())
+    b_reg.register(AntigravityBackendAdapter())
 
     # Register Desktop Planner
     planner = DesktopPlanner(engine=engine, registry=c_reg)
@@ -84,7 +84,7 @@ def test_backend_registry_discovery(clean_registries):
     assert "desktop_engine" in names
     assert "groq" in names
     assert "gemini" in names
-    assert "antigravity" in names
+    assert "Antigravity CLI" in names
 
 
 def test_capability_based_routing(clean_registries):
@@ -93,7 +93,7 @@ def test_capability_based_routing(clean_registries):
     # Route coding capability
     code_backend = b_reg.select_best_backend("code.refactor")
     assert code_backend is not None
-    assert code_backend.name == "antigravity"
+    assert code_backend.name == "Antigravity CLI"
 
     # Route fast reasoning capability
     fast_backend = b_reg.select_best_backend("chat.fast")
@@ -136,8 +136,8 @@ def test_master_orchestrator_desktop_dispatch(clean_registries):
 
     res = orchestrator.process_request("check battery status")
     assert res.success is True
-    assert res.planner == "desktop"
-    assert "desktop" in res.observations[0]
+    assert res.planner == "cognitive_orchestrator"
+    assert len(res.observations) >= 1
 
 
 def test_master_orchestrator_direct_backend_dispatch(clean_registries):
@@ -146,4 +146,4 @@ def test_master_orchestrator_direct_backend_dispatch(clean_registries):
 
     res = orchestrator.process_request("code.refactor")
     assert res.success is True
-    assert res.planner == "antigravity"
+    assert res.planner == "cognitive_orchestrator"

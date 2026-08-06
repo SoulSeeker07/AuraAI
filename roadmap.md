@@ -17,14 +17,14 @@ Aura is built as a modular AI Operating System rather than a chatbot. Each miles
 | `v0.16.0` | Cognitive Orchestration | DecisionEngine, Groq Executive Coordinator, SupervisorAgent | ✅ Stable |
 | `v0.17.0` | Runtime Architecture | RuntimeSession Base, WorkerManager, SoftwareEngineeringSupervisor | ✅ Stable |
 | `v0.18.0` | Runtime Stabilization | SafetyPolicy, Zero-LLM Interception, ADRs, Definition of Done | 🔒 **Frozen** |
-| `v0.18.5` | Cleanup Sprint | Technical debt reduction, naming consistency, log refinement | ⏳ **In Progress** |
-| `v0.19.0` | Cognitive Memory | Cross-domain persistent identity & conversational memory | 🎯 **Next** |
+| `v0.18.5` | Cleanup Sprint | Technical debt reduction, naming consistency, log refinement | ✅ **Complete** |
+| `v0.19.0` | Aura Cognitive Architecture (ACA) | 5-Stage cognitive runtime: Perception → DMM → Planning → Execution → Reflection/Learning | ✅ **Complete** |
 | `v0.20.0` | Voice Runtime | Streaming STT, Interruptible TTS, Barge-in, VAD, Mic Arbitration | 📋 Planned |
 | `v0.21.0` | Browser Intelligence | Playwright session persistence & visual web reasoning | 📋 Planned |
 | `v0.22.0` | GUI Runtime | Native Desktop GUI, overlay manager, interactive widgets | 📋 Planned |
 | `v1.0.0`  | Aura OS Release | The First Stable AI Operating System Runtime | 🏁 Target Release |
 
-**Current Status:** 18/26 Core Milestones & Runtime Extensions Complete (69.2% overall progress).
+**Current Status:** 19/26 Core Milestones & Runtime Extensions Complete (73.1% overall progress).
 
 ---
 
@@ -113,15 +113,20 @@ Dynamic capability loading — new managers auto-register to the live catalog wi
 **Status:** ✅ COMPLETE (100%)  
 *Modules*: `knowledge/` (6 YAML files), `src/core/system/` (4 Python modules).
 
-### Milestone 17 — Cognitive Memory ⭐⭐⭐⭐⭐⭐⭐
+### Milestone 17 — Cognitive Memory & Adaptive Learning ⭐⭐⭐⭐⭐⭐⭐
 Unifies conversation, execution, desktop, research, project, habit, and preference memory into a single persistent identity.
-**Status:** 🟡 PARTIAL (40% Foundation Available)  
-*Available Modules*: `Memory.py`, `src/memory/`, `agent_memory.py`, `engineering_memory.py`, SQLite schema.
+Includes the **Adaptive Learning Engine**:
+- **Fact Learning**: Captures and persists declarative facts and user profile details.
+- **Behavior Learning**: Stores explicit behavioral correction rules (e.g. custom session summaries) in a `BehaviorStore` as active rules that override default intent routing.
+- **Workflow Learning**: Prompts to automate repeated sequences (e.g. opening VS Code + Chrome + Spotify).
+- **Preference Learning**: Records formatting preferences, file locations, and style settings.
+**Status:** 🟡 PARTIAL (60% Foundation Available)  
+*Available Modules*: `Memory.py`, `src/memory/`, `agent_memory.py`, `engineering_memory.py`, SQLite schema, `src/brain/aca/learning.py` (conservative learning).
 
 ### Milestone 18 — World Model ⭐⭐⭐⭐⭐⭐⭐
 Unified graph representation of reality across desktop, projects, repos, research, browser, calendar, and memory.
-**Status:** 🟡 PARTIAL (45% Foundation Available)  
-*Available Modules*: `desktop_context.py`, `src/workspace/` (window tracker, file tracker, project detector), `knowledge_graph.py`, `symbol_graph.py`, `dependency_graph.py`.
+**Status:** 🟡 PARTIAL (60% Foundation Available)  
+*Available Modules*: `desktop_context.py`, `src/workspace/` (window tracker, file tracker, project detector), `knowledge_graph.py`, `symbol_graph.py`, `dependency_graph.py`, `src/brain/world_model.py` (ACA WorldModel).
 
 ### Milestone 19 — Coding Intelligence 2.0 ⭐⭐⭐⭐⭐⭐⭐
 Deep multi-repo understanding, architecture analysis, bug localization, test generation, and refactoring via Antigravity, Claude Code, and Aider.
@@ -200,8 +205,8 @@ The complete AI Operating System layer sitting seamlessly on top of Windows and 
 | Milestone | Status | Existing Foundations |
 | :--- | :--- | :--- |
 | **17.0. System Knowledge & Identity Layer** | ✅ COMPLETE (100%) | `knowledge/` (6 YAML), `src/core/system/` (4 modules) |
-| 17. Cognitive Memory | 🟡 PARTIAL (40%) | `src/memory/`, `Memory.py`, `engineering_memory.py` |
-| 18. World Model | 🟡 PARTIAL (45%) | `desktop_context.py`, `src/workspace/`, `knowledge_graph.py` |
+| **17. Cognitive Memory** | 🟡 PARTIAL (60%) | `src/memory/`, `Memory.py`, `engineering_memory.py`, `src/brain/aca/learning.py` |
+| **18. World Model** | 🟡 PARTIAL (60%) | `desktop_context.py`, `src/workspace/`, `knowledge_graph.py`, `src/brain/world_model.py` |
 | 19. Coding Intelligence 2.0 | 🟡 PARTIAL (50%) | `antigravity_backend.py`, `code_editor.py`, `ast_analyzer.py` |
 | 20. Browser Intelligence | 🟡 PARTIAL (30%) | `page_reader.py`, `web_search.py`, `browser_context.py` |
 | 21. Research Intelligence 2.0 | 🟡 PARTIAL (60%) | `src/research/` (18 modules ready for backend adapters) |
@@ -211,7 +216,7 @@ The complete AI Operating System layer sitting seamlessly on top of Windows and 
 | 25. Autonomous Engineering Platform | 🟡 PARTIAL (45%) | `doctor.py`, `verify.py`, `bug_fixer.py`, `MasterOrchestrator` |
 | 26. Aura OS | 🟡 PARTIAL (50%) | `aura.py`, `cli.py`, `main.py`, `ARCHITECTURE_FREEZE.md` |
 
-**Era 3 Progress:** 0 / 10 Complete (10 Partial Foundations Active)
+**Era 3 Progress:** 0 / 10 Complete (10 Partial Foundations Active) — ACA (v0.19) complete
 
 ---
 
@@ -220,10 +225,10 @@ The complete AI Operating System layer sitting seamlessly on top of Windows and 
 ```text
 Era 1 — Foundation (Milestones 1–10)               ███████████████████  10/10 (100% complete)
 Era 2 — Intelligence (Milestones 11–16)            ███████████████████  6/6   (100% complete)
-Era 3 — Capability Expansion (Milestones 17–26)    █████████░░░░░░░░░░  10 Partial Foundations Active
+Era 3 — Capability Expansion (Milestones 17–26)    ██████████░░░░░░░░░  10 Partial Foundations Active
 ```
 
-**Overall Progress:** 16 / 26 Milestones Complete (61.5%), 10 / 10 Expansion Milestones with active foundational code.
+**Overall Progress:** 16 / 26 Milestones Complete (61.5%), 10 / 10 Expansion Milestones with active foundational code. **v0.19 ACA complete.**
 
 ---
 

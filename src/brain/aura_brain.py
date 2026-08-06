@@ -1,1437 +1,285 @@
 """
-AuraBrain - The Operating System of Aura
+AuraBrain — The Executive Runtime
+=================================
 
-The only public API for Aura.
-Nothing talks directly to Memory, Providers, or Plugins.
-Everything goes through AuraBrain.
+Aura is not a chatbot. Aura is not an intent classifier.
+Aura is an AI Operating System.
+
+AuraBrain is the Executive Runtime that coordinates the full cognitive pipeline:
+
+    User → Observe → Context Manager → World Model → Goal Analyzer
+    → Capability Selector → Execution Map Generator → Execution Map Validator
+    → Execution Coordinator → Verification → Reflection → Learning → Respond
+
+The Golden Rule:
+    The Executive Brain thinks. The Planner organizes.
+    The Engines execute. Reflection validates. Learning improves.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
-from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
 from typing import Any
-from uuid import uuid4
 
-from agents.agent_registry import AgentRegistry, AgentType
-from agents.task_model import Task, TaskInput, TaskPriority, TaskStatus, TaskType
-from ai.provider_manager import ProviderManager
-from brain.context_builder import ContextBuilder
-from brain.decision_engine import DecisionEngine
-from brain.execution_state import ExecutionState, TaskStatus
-from brain.request import (
-    ActionType,
-    AuraRequest,
-    AuraResponse,
-    ExecutionResult,
-    ResponseStatus,
-)
-from brain.response_coordinator import ResponseCoordinator
-from core.memory.memory_manager import MemoryManager
-from core.plugins.plugin_registry import PluginRegistry
-from core.tools.tool_router import ToolRouter
-from core.workspace.workspace_manager import WorkspaceManager
-from routing.capability_router import CapabilityRouter
-from routing.workflow_orchestrator import WorkflowOrchestrator
+from .context_manager import ContextManager, ContextSnapshot
+from .world_model import WorldModel, WorldState
+from .goal_analyzer import GoalAnalyzer, GoalAnalysis
+from .capability_selector import CapabilitySelector, CapabilitySelection
+from .execution_map_generator import ExecutionMapGenerator
+from .execution_map_validator import ExecutionMapValidator, ValidationResult
+from .execution_coordinator import ExecutionCoordinator, CoordinationResult
+from .verification import VerificationEngine, VerificationReport
+from .reflection import ReflectionEngine, ReflectionOutcome
+from .learning import LearningEngine, LearnedItem
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class AuraBrainResponse:
+    """The final output of the AuraBrain Executive Runtime."""
+
+    text: str
+    success: bool
+    context: ContextSnapshot | None = None
+    world_state: WorldState | None = None
+    goal_analysis: GoalAnalysis | None = None
+    capability_selection: CapabilitySelection | None = None
+    execution_map: dict[str, Any] | None = None
+    validation: ValidationResult | None = None
+    coordination: CoordinationResult | None = None
+    verification: VerificationReport | None = None
+    reflection: ReflectionOutcome | None = None
+    learned: list[LearnedItem] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "text": self.text,
+            "success": self.success,
+            "context": self.context.to_dict() if self.context else None,
+            "world_state": self.world_state.to_dict() if self.world_state else None,
+            "goal_analysis": self.goal_analysis.to_dict() if self.goal_analysis else None,
+            "capability_selection": (
+                self.capability_selection.to_dict() if self.capability_selection else None
+            ),
+            "execution_map": self.execution_map,
+            "validation": self.validation.to_dict() if self.validation else None,
+            "coordination": self.coordination.to_dict() if self.coordination else None,
+            "verification": self.verification.to_dict() if self.verification else None,
+            "reflection": self.reflection.to_dict() if self.reflection else None,
+            "learned": [i.to_dict() for i in self.learned],
+            "metadata": self.metadata,
+        }
+
+
 class AuraBrain:
     """
-    The operating system of Aura.
+    The Executive Runtime of Aura.
 
-    Everything flows through here. Nothing bypasses the brain.
+    This is the ONLY intelligent component. Everything else is deterministic.
 
-    Architecture:
-        1. User Input → AuraBrain.process()
-        2. AuraBrain → Context Builder → Unified Context
-        3. AuraBrain → Decision Engine → What to do?
-        4. AuraBrain → Execute Decision → Get Result
-        5. AuraBrain → Response Coordinator → Stream Output
-
-    Responsibilities:
-        - Single entry point for all requests
-        - Orchestration (not business logic)
-        - State management
-        - Request routing
-        - Response formatting
-        - Error handling
-
-    Attributes:
-        memory: MemoryManager instance
-        provider_manager: ProviderManager instance
-        workspace: WorkspaceManager instance
-        tool_router: ToolRouter instance
-        planner: Optional[PlannerAgent] (optional)
-        execution_state: ExecutionState instance
-        response_coordinator: ResponseCoordinator instance
+    Pipeline:
+        1. Observe — collect context and world state
+        2. Understand — analyze goals
+        3. Reason — select capabilities
+        4. Plan — generate execution map
+        5. Validate — never trust the LLM blindly
+        6. Execute — coordinate engines
+        7. Verify — check outcomes
+        8. Reflect — self-evaluate
+        9. Learn — conservative learning
+        10. Respond — compose output
     """
 
     def __init__(
         self,
-        memory_manager: MemoryManager,
-        provider_manager: ProviderManager,
-        workspace_manager: WorkspaceManager | None = None,
-        tool_router: ToolRouter | None = None,
-        plugin_registry: PluginRegistry | None = None,
-        agent_registry: AgentRegistry | None = None,
-        response_coordinator: ResponseCoordinator | None = None,
-        enable_events: bool = True,
-        enable_routing: bool = True,
+        context_manager: ContextManager | None = None,
+        world_model: WorldModel | None = None,
+        goal_analyzer: GoalAnalyzer | None = None,
+        capability_selector: CapabilitySelector | None = None,
+        execution_map_generator: ExecutionMapGenerator | None = None,
+        execution_map_validator: ExecutionMapValidator | None = None,
+        execution_coordinator: ExecutionCoordinator | None = None,
+        verification_engine: VerificationEngine | None = None,
+        reflection_engine: ReflectionEngine | None = None,
+        learning_engine: LearningEngine | None = None,
+        llm_client: Any | None = None,
     ):
+        self.context_manager = context_manager or ContextManager()
+        self.world_model = world_model or WorldModel()
+        self.goal_analyzer = goal_analyzer or GoalAnalyzer()
+        self.capability_selector = capability_selector or CapabilitySelector()
+        self.execution_map_generator = execution_map_generator or ExecutionMapGenerator(
+            llm_client=llm_client
+        )
+        self.execution_map_validator = execution_map_validator or ExecutionMapValidator()
+        self.execution_coordinator = execution_coordinator or ExecutionCoordinator()
+        self.verification_engine = verification_engine or VerificationEngine()
+        self.reflection_engine = reflection_engine or ReflectionEngine()
+        self.learning_engine = learning_engine or LearningEngine()
+        self.llm_client = llm_client
+
+        if self.execution_coordinator and llm_client is not None:
+            self.execution_coordinator.set_llm_client(llm_client)
+
+        logger.info("AuraBrain Executive Runtime initialized")
+
+    # ── Public API ──────────────────────────────────────────────────────────
+
+    async def process(
+        self, user_input: str, extra_context: dict[str, Any] | None = None
+    ) -> AuraBrainResponse:
         """
-        Initialize AuraBrain.
+        Process a user request through the full Executive Runtime pipeline.
 
         Args:
-            memory_manager: Memory manager for knowledge access
-            provider_manager: Provider manager for AI responses
-            workspace_manager: Workspace manager for file/app access
-            tool_router: Tool router for plugin/tool execution
-            plugin_registry: Plugin registry for discovering plugins
-            agent_registry: Agent registry for agent delegation
-            response_coordinator: Response coordinator for streaming
-            enable_events: Whether to log internal events
-            enable_routing: Whether to enable Capability Router system
-        """
-        self.memory_manager = memory_manager
-        self.provider_manager = provider_manager
-        self.workspace = workspace_manager
-        self.tool_router = tool_router
-        self.plugin_registry = plugin_registry
-        self.agent_registry = agent_registry
-        self.enable_events = enable_events
-        self.enable_routing = enable_routing
-
-        # Developer Mode Toggle
-        self.developer_mode: bool = False
-
-        # Execution state
-
-        self.execution_state = ExecutionState()
-        self.execution_state.metadata["enable_events"] = enable_events
-
-        # Build internal components
-        self.response_coordinator = response_coordinator or ResponseCoordinator()
-
-        # Initialize capability router and workflow orchestrator
-        self.capability_router = None
-        self.workflow_orchestrator = None
-
-        if enable_routing:
-            self.capability_router = CapabilityRouter(provider_manager)
-            self.workflow_orchestrator = WorkflowOrchestrator()
-            logger.info("Capability Router and Workflow Orchestrator initialized")
-
-        # Initialize tool router if not provided
-        if tool_router is None:
-            if plugin_registry is None:
-                plugin_registry = PluginRegistry()
-            if workspace_manager is None:
-                workspace_manager = WorkspaceManager()
-
-            self.tool_router = ToolRouter(
-                plugin_registry=plugin_registry,
-                desktop_agent=workspace_manager.desktop_agent,
-                filesystem=workspace_manager.filesystem,
-                workspace_root=workspace_manager.root_path,
-            )
-
-        # Initialize decision engine
-        self.decision_engine = DecisionEngine(
-            memory_manager=memory_manager,
-            tool_router=self.tool_router,
-            workspace_manager=workspace_manager,
-            agent_registry=agent_registry,
-        )
-
-        # Initialize context builder
-        self.context_builder = ContextBuilder(
-            memory_manager=memory_manager,
-            workspace_manager=workspace_manager,
-            response_coordinator=self.response_coordinator,
-        )
-
-        logger.info("AuraBrain initialized")
-
-    async def process(self, request: AuraRequest) -> AuraResponse:
-        """
-        Main entry point - all requests go through here.
-
-        This is the only method that external code should call.
-        Everything else (Vision, Voice, Desktop, Plugins) uses this.
-
-        Processing Flow:
-            1. Validate request
-            2. Route using Capability Router (if enabled)
-            3. Check for multi-step workflows
-            4. Build context (memory + workspace + attachments)
-            5. Plan (if complex)
-            6. Decide what to do (memory/tool/provider)
-            7. Execute decision
-            8. Stream response with formatting
-
-        Args:
-            request: AuraRequest from any source (chat, voice, vision, etc.)
+            user_input: The user's raw text request.
+            extra_context: Additional context from the caller.
 
         Returns:
-            AuraResponse with result and status
-
-        Example:
-            >>> brain = AuraBrain(memory, provider)
-            >>> request = AuraRequest(text="Hello", source="voice")
-            >>> async for chunk in brain.process(request):
-            ...     print(chunk)  # Streaming output
+            AuraBrainResponse with final output and full execution trace.
         """
-        # Start timer
-        start_time = time.time()
+        extra_context = extra_context or {}
 
-        try:
-            logger.info(
-                f"AuraBrain processing request from {request.source}: {request.text[:50]}..."
+        # ── 1. OBSERVE ──────────────────────────────────────────────────────
+        logger.info(f"AuraBrain observing: {user_input[:50]}...")
+        context = self.context_manager.collect(user_input, extra_context)
+        world_state = self.world_model.update()
+
+        # ── 2. UNDERSTAND (Goal Analyzer) ───────────────────────────────────
+        logger.info("AuraBrain: Analyzing goals...")
+        goal_analysis = self.goal_analyzer.analyze(user_input, context.to_dict())
+
+        # ── 3. REASON (Capability Selector) ─────────────────────────────────
+        logger.info("AuraBrain: Selecting capabilities...")
+        capability_selection = self.capability_selector.select(goal_analysis)
+
+        # ── 4. PLAN (Execution Map Generator) ───────────────────────────────
+        logger.info("AuraBrain: Generating execution map...")
+        execution_map = self.execution_map_generator.generate(
+            user_input, context, world_state, goal_analysis, capability_selection
+        )
+
+        # ── 5. VALIDATE (Execution Map Validator) ───────────────────────────
+        logger.info("AuraBrain: Validating execution map...")
+        validation = self.execution_map_validator.validate(execution_map)
+
+        if not validation.valid:
+            logger.warning(f"Execution Map validation failed: {validation.errors}")
+            return AuraBrainResponse(
+                text=f"Could not create a valid execution plan: {validation.errors[0] if validation.errors else 'Unknown error'}",
+                success=False,
+                context=context,
+                world_state=world_state,
+                goal_analysis=goal_analysis,
+                capability_selection=capability_selection,
+                execution_map=execution_map,
+                validation=validation,
+                metadata={"stage": "validate", "failed": True},
             )
 
-            # Reset execution state for new request
-            self.execution_state.reset()
+        # ── 6. EXECUTE (Execution Coordinator) ──────────────────────────────
+        logger.info("AuraBrain: Coordinating execution...")
+        coordination = await self.execution_coordinator.coordinate(execution_map)
 
-            # 1. Validate request
-            if not request.text or not request.text.strip():
-                return AuraResponse(
-                    text="Please provide a request.",
-                    status=ResponseStatus.ERROR,
-                    execution_time=time.time() - start_time,
-                    conversation_id=request.conversation_id,
-                )
+        # ── 7. VERIFY (Verification Engine) ─────────────────────────────────
+        logger.info("AuraBrain: Verifying outcome...")
+        verification = self.verification_engine.verify(execution_map, coordination)
 
-            # 1.5 Check for deterministic zero-LLM Worker Manager control commands
-            worker_response = self._handle_worker_control_command(
-                request.text, start_time, request.conversation_id
-            )
-            if worker_response:
-                return worker_response
+        # ── 8. REFLECT (Reflection Engine) ──────────────────────────────────
+        logger.info("AuraBrain: Reflecting...")
+        reflection = self.reflection_engine.reflect(coordination)
 
-            # 2. Route using Capability Router (if enabled)
+        # ── 9. LEARN (Conservative Learning) ────────────────────────────────
+        logger.info("AuraBrain: Learning...")
+        learned = self.learning_engine.learn_from_interaction(
+            user_input, coordination, verification, context.to_dict()
+        )
 
-            routing_result = None
-            if self.capability_router:
-                logger.debug("Routing request through Capability Router")
-                routing_result = self.capability_router.route(request.text)
+        # ── 10. RESPOND ─────────────────────────────────────────────────────
+        response_text = self._compose_response(
+            execution_map, coordination, verification, reflection, learned
+        )
 
-                if routing_result:
-                    logger.info(
-                        f"Routing result: {routing_result.capability.value} "
-                        f"(confidence: {routing_result.confidence:.2f})"
-                    )
-                    self.execution_state.metadata["routing"] = routing_result.as_dict()
-                else:
-                    logger.debug("No routing match found")
+        return AuraBrainResponse(
+            text=response_text,
+            success=verification.passed,
+            context=context,
+            world_state=world_state,
+            goal_analysis=goal_analysis,
+            capability_selection=capability_selection,
+            execution_map=execution_map,
+            validation=validation,
+            coordination=coordination,
+            verification=verification,
+            reflection=reflection,
+            learned=learned,
+            metadata={"stage": "complete"},
+        )
 
-            # 3. Check for multi-step workflows
-            is_workflow = False
-            workflow_steps = []
-            if (
-                self.workflow_orchestrator
-                and self.workflow_orchestrator.can_orchestrate(request.text)
-            ):
-                logger.info("Request identified as multi-step workflow")
-                is_workflow = True
-                workflow_steps = self.workflow_orchestrator.plan_workflow(request.text)
+    # ── Response Composition ────────────────────────────────────────────────
 
-                if workflow_steps:
-                    logger.info(f"Workflow planned with {len(workflow_steps)} steps")
-                    self.execution_state.metadata["workflow_steps"] = workflow_steps
+    def _compose_response(
+        self,
+        execution_map: dict[str, Any],
+        coordination: CoordinationResult,
+        verification: VerificationReport,
+        reflection: ReflectionOutcome,
+        learned: list[LearnedItem],
+    ) -> str:
+        """Compose the final user-facing response."""
+        lines: list[str] = []
 
-            # 4. Build unified context
-            logger.info("Building context...")
-            context = await self.build_context(request)
-            self.execution_state.conversation_id = context.conversation_id
-
-            # 5. Check if planning is needed
-            needs_planning = self.needs_planning(request)
-            if needs_planning:
-                logger.info("Request needs planning")
-                context = await self.plan(request, context)
-
-            # 6. Decision engine - what should Aura do?
-            logger.info("Making decision...")
-            decision = self.decide_action(request, context)
-
-            # 7. Execute the decision
-            logger.info(f"Executing action: {decision.action_type}")
-
-            # If it's a workflow, execute it instead of single decision
-            if is_workflow and workflow_steps:
-                result = await self.execute_workflow(workflow_steps, request, context)
+        if verification.passed:
+            # Success — compose from observations
+            observations = [
+                obs
+                for step in coordination.step_results
+                for obs in step.observations
+            ]
+            if observations:
+                lines.extend(observations)
             else:
-                result = await self.execute_decision(decision, request, context)
+                lines.append(f"✓ {execution_map.get('goal', 'Task completed')}")
 
-            # 8. Format response
-            self.execution_state.set_execution_time(time.time() - start_time)
-
-            logger.info(f"AuraBrain completed request: {request.text[:50]}...")
-
-            return AuraResponse(
-                text=result.text,
-                status=(
-                    ResponseStatus.SUCCESS if result.success else ResponseStatus.ERROR
-                ),
-                execution_time=time.time() - start_time,
-                tool_results=result.tool_results,
-                metadata=result.metadata,
-                conversation_id=request.conversation_id,
-            )
-
-        except asyncio.CancelledError:
-            logger.warning("Request was cancelled")
-            self.execution_state.cancel_streaming()
-            return AuraResponse(
-                text="Request was cancelled.",
-                status=ResponseStatus.ERROR,
-                execution_time=time.time() - start_time,
-                conversation_id=request.conversation_id,
-            )
-
-        except Exception as e:
-            logger.error(f"Error processing request: {e}", exc_info=True)
-            self.execution_state.update_task_status(TaskStatus.FAILED, str(e))
-
-            return AuraResponse(
-                text=f"I encountered an error: {type(e).__name__}: {e}",
-                status=ResponseStatus.ERROR,
-                execution_time=time.time() - start_time,
-                conversation_id=request.conversation_id,
-            )
-
-    async def process_stream(self, request: AuraRequest) -> AsyncGenerator[str, None]:
-        """
-        Process request with streaming output.
-
-        This is the main entry point for streaming responses.
-
-        Args:
-            request: AuraRequest from any source
-
-        Yields:
-            Streaming chunks for UI consumption
-        """
-        # Start timer
-        start_time = time.time()
-
-        # Process request
-        response = await self.process(request)
-
-        # Stream the response
-        self.execution_state.start_streaming()
-
-        try:
-            async for chunk in self.response_coordinator.stream(response):
-                yield chunk
-        finally:
-            self.execution_state.complete_streaming()
-
-    async def build_context(self, request: AuraRequest) -> Any:
-        """
-        Build unified context object.
-
-        Context includes:
-        - Memory facts
-        - Workspace information
-        - User attachments
-        - Recent conversation history
-        - Provider settings
-
-        Args:
-            request: Incoming request
-
-        Returns:
-            Unified context object
-        """
-        return await self.context_builder.build_aura(
-            user_input=request.text,
-            attachments=request.attachments,
-            workspace_info=request.context,
-            conversation_id=request.conversation_id,
-        )
-
-    def needs_planning(self, request: AuraRequest) -> bool:
-        """
-        Determine if request needs task planning.
-
-        Checks if PLANNER agent is available, then uses heuristics.
-
-        Args:
-            request: Incoming request
-
-        Returns:
-            True if planning is needed
-        """
-        # Check if PLANNER agent is available
-        if not self.agent_registry:
-            return False
-
-        # Try to find PLANNER agent
-        planner_agents = self.agent_registry.get_agent_by_type(AgentType.PLANNER)
-        if not planner_agents:
-            return False
-
-        # Complex requests need planning
-        word_count = len(request.text.split())
-        if word_count > 10:
-            return True
-
-        # Multi-step keywords
-        multi_step_indicators = ["and", "then", "after that", "first", "next"]
-        if any(word in request.text.lower() for word in multi_step_indicators):
-            return True
-
-        return False
-
-    def decide_action(self, request: AuraRequest, context: Any) -> Any:
-        """
-        Decision Engine - what should Aura do?
-
-        Returns one of:
-        - MemoryAction (for memory queries)
-        - ToolAction (for tool/plugin execution)
-        - ProviderAction (for AI responses)
-        - VisionAction (for image analysis)
-        - VoiceAction (for voice processing)
-
-        Args:
-            request: Incoming request
-            context: Built context object
-
-        Returns:
-            Action to execute
-        """
-        return self.decision_engine.decide(request, context)
-
-    async def plan(self, request: AuraRequest, context: Any) -> Any:
-        """
-        Plan the request into executable tasks.
-
-        Uses PLANNER agent from agent_registry to analyze and decompose requests.
-
-        Args:
-            request: Incoming request
-            context: Built context object
-
-        Returns:
-            Context with plan/task list
-        """
-        if not self.agent_registry:
-            return context
-
-        # Try to find PLANNER agent
-        planner_agents = self.agent_registry.get_agent_by_type(AgentType.PLANNER)
-        if not planner_agents:
-            logger.debug("PLANNER agent not available, skipping planning")
-            return context
-
-        # Instantiate PLANNER agent
-        planner_agent = planner_agents[0].instantiate(
-            dependencies={
-                "memory_manager": self.memory_manager,
-                "tool_router": self.tool_router,
-                "workspace_manager": self.workspace,
-                "response_coordinator": self.response_coordinator,
-            }
-        )
-
-        # Create task for planning
-        task = Task(
-            id=str(uuid4()),
-            type=TaskType.PLANNING,
-            title="Plan Request",
-            input=TaskInput(data={"query": request.text, "context": context}),
-        )
-
-        # Execute planning task
-        planner_agent.execute_task(task)
-        output = task.output
-
-        # Extract tasks from output
-        if output and output.data:
-            tasks = output.data.get("tasks", [])
+            # Add verification summary
+            passed_checks = sum(1 for c in verification.checks if c.passed)
+            lines.append(f"\n✓ Verification: {passed_checks}/{len(verification.checks)} checks passed")
         else:
-            # Fallback to simple planning if agent doesn't return structured tasks
-            tasks = self._simple_plan(request.text)
-
-        # Add tasks to context
-        context.planned_tasks = tasks
-
-        logger.info(f"Planned {len(tasks)} tasks for request")
-
-        return context
-
-    def _simple_plan(self, text: str) -> list:
-        """
-        Simple planning fallback when PLANNER agent is not available.
-
-        Args:
-            text: User request text
-
-        Returns:
-            List of planned tasks
-        """
-        # This is a simple heuristic-based planning fallback
-        # In production, this would be more sophisticated
-        words = text.lower().split()
-        tasks = []
-
-        if len(words) > 5:
-            tasks.append({"type": "analyze", "description": "Analyze user request"})
-            tasks.append({"type": "execute", "description": "Execute requested action"})
-
-        return tasks
-
-    async def execute_decision(
-        self, decision: Any, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """
-        Execute the decision and return result.
-
-        Args:
-            decision: Decision from Decision Engine
-            request: Incoming request
-            context: Built context object
-
-        Returns:
-            ExecutionResult with text and tool results
-        """
-        result = ExecutionResult(
-            text="", action_type=decision.action_type, metadata=request.metadata
-        )
-
-        try:
-            if decision.action_type == ActionType.MEMORY:
-                result = await self.handle_memory_decision(decision, context)
-            elif decision.action_type == ActionType.TOOL:
-                result = await self.handle_tool_decision(decision, context)
-            elif decision.action_type == ActionType.PROVIDER:
-                result = await self.handle_provider_decision(request, context)
-            elif decision.action_type == ActionType.VISION:
-                result = await self.handle_vision_decision(request, context)
-            elif decision.action_type == ActionType.RESEARCH:
-                result = await self.handle_research_decision(request, context)
-            elif decision.action_type == ActionType.CODING:
-                result = await self.handle_coding_decision(request, context)
-            elif decision.action_type == ActionType.DESKTOP:
-                result = await self.handle_desktop_decision(request, context)
-            elif decision.action_type == ActionType.VOICE:
-                result = await self.handle_voice_decision(request, context)
-            elif decision.action_type == ActionType.AGENT:
-                result = await self.handle_agent_decision(decision, context)
-            elif decision.action_type == ActionType.LEARNING:
-                result = await self.handle_learning_decision(request, context)
+            # Failure — explain what happened
+            if reflection.user_message:
+                lines.append(f"✗ {reflection.user_message}")
             else:
-                # Default to provider
-                result = await self.handle_provider_decision(request, context)
+                lines.append(f"✗ Could not complete: {execution_map.get('goal', 'task')}")
 
-            return result
+            # Add recovery suggestions
+            for recovery in reflection.recoveries:
+                lines.append(f"  ↻ {recovery}")
 
-        except Exception as e:
-            logger.error(f"Error executing decision: {e}", exc_info=True)
-            result.errors.append(f"Execution failed: {type(e).__name__}: {e}")
-            return result
+        # Learning confirmation
+        if learned:
+            learned_types = ", ".join(i.item_type for i in learned[:3])
+            lines.append(f"\n📚 Learned: {learned_types}")
 
-    async def execute_workflow(
-        self, steps: list, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """
-        Execute a multi-step workflow.
+        return "\n".join(lines)
 
-        This method handles complex requests that involve multiple capabilities
-        (e.g., "Find all Python files and create a README").
+    # ── Configuration ───────────────────────────────────────────────────────
 
-        Args:
-            steps: List of workflow steps from WorkflowOrchestrator
-            request: Incoming request
-            context: Built context object
+    def register_behavior_store(self, store: Any) -> None:
+        """Register the behavior store for learning."""
+        self.learning_engine.register_behavior_store(store)
 
-        Returns:
-            ExecutionResult with combined output from all steps
-        """
-        result = ExecutionResult(
-            text="",
-            action_type=ActionType.PROVIDER,  # Workflow execution as provider action
-            metadata=request.metadata,
-        )
+    def register_engine(self, engine: str, callback: Any) -> None:
+        """Register a custom engine callback."""
+        self.execution_coordinator.register_engine(engine, callback)
 
-        try:
-            logger.info(f"Starting workflow execution with {len(steps)} steps")
+    def set_llm_client(self, client: Any) -> None:
+        """Set the LLM client for execution map generation."""
+        self.llm_client = client
+        self.execution_map_generator.llm_client = client
+        self.execution_coordinator.set_llm_client(client)
 
-            # Execute each step sequentially
-            for i, step in enumerate(steps):
-                capability = step.get("capability", "")
-                description = step.get("description", f"Step {i+1}")
 
-                logger.info(
-                    f"Executing workflow step {i+1}/{len(steps)}: {description} ({capability})"
-                )
-
-                try:
-                    # Route the step through the capability router
-                    if self.capability_router:
-                        routing_result = self.capability_router.route(description)
-                        if routing_result:
-                            logger.debug(
-                                f"Step routing: {routing_result.capability.value}"
-                            )
-
-                    # Execute based on capability type
-                    if capability == "filesystem":
-                        # Handle filesystem operation
-                        # This would integrate with workspace_manager.filesystem
-                        step_output = f"[Filesystem] {description} completed"
-                    elif capability == "knowledge":
-                        # Handle knowledge operation
-                        step_output = f"[Knowledge] {description} completed"
-                    elif capability == "provider":
-                        # Handle AI generation
-                        step_output = f"[Provider] {description} completed"
-                    elif capability == "desktop":
-                        # Handle desktop operation
-                        step_output = f"[Desktop] {description} completed"
-                    elif capability == "browser":
-                        # Handle browser operation
-                        step_output = f"[Browser] {description} completed"
-                    elif capability == "vision":
-                        # Handle vision operation
-                        step_output = f"[Vision] {description} completed"
-                    elif capability == "memory":
-                        # Handle memory operation
-                        step_output = f"[Memory] {description} completed"
-                    else:
-                        # Default to provider for unknown capabilities
-                        step_output = f"[Provider] {description} completed"
-
-                    # Append to result
-                    if i == 0:
-                        result.text = step_output
-                    else:
-                        result.text += f" {step_output}"
-
-                    logger.info(f"Step {i+1} completed successfully")
-
-                except Exception as e:
-                    error_msg = f"Step {i+1} failed: {type(e).__name__}: {e}"
-                    logger.error(error_msg, exc_info=True)
-                    result.errors.append(error_msg)
-
-                    # Determine if workflow should continue or fail
-                    # By default, stop on first failure for critical steps
-                    if i < len(steps) - 1:
-                        continue  # Continue with next step
-                    else:
-                        break  # Stop if it's the last step
-
-            # Update metadata with workflow results
-            result.metadata["workflow_completed"] = len(result.errors) == 0
-            result.metadata["workflow_steps"] = len(steps)
-            result.metadata["workflow_errors"] = len(result.errors)
-
-            logger.info(f"Workflow execution completed: {len(result.errors)} errors")
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Error executing workflow: {e}", exc_info=True)
-            result.errors.append(f"Workflow execution failed: {type(e).__name__}: {e}")
-            return result
-
-    async def handle_memory_decision(
-        self, decision: Any, context: Any
-    ) -> ExecutionResult:
-        """Handle memory-related decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.MEMORY, metadata=context.metadata
-        )
-
-        # Check for specific memory queries
-        memory_keywords = [
-            "remember",
-            "what do you know",
-            "my facts",
-            "profile",
-            "preferences",
-            "summarize",
-        ]
-
-        if any(keyword in context.user_input.lower() for keyword in memory_keywords):
-            # Return memory summary
-            summary = self.memory_manager.summarize()
-            result.text = summary
-
-        else:
-            # Try to extract and remember facts
-            facts = self.memory_manager.extract_facts(context.user_input)
-            for fact in facts:
-                self.memory_manager.remember(fact)
-
-            if facts:
-                result.text = f"I'll remember: {', '.join(f'{f.category}: {f.value}' for f in facts[:3])}"
-            else:
-                result.text = "I've processed that for future reference."
-
-        return result
-
-    async def handle_tool_decision(
-        self, decision: Any, context: Any
-    ) -> ExecutionResult:
-        """Handle tool/plugin execution decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.TOOL, metadata=context.metadata
-        )
-
-        if hasattr(decision, "tool_name") and decision.tool_name:
-            # Execute tool
-            tool_result = self.tool_router.route(
-                decision.tool_name, decision.params or {}
-            )
-
-            if tool_result.success:
-                result.text = f"Executed {decision.tool_name}: {tool_result.output}"
-                result.add_tool_result(tool_result)
-            else:
-                result.text = (
-                    f"Error executing {decision.tool_name}: {tool_result.error}"
-                )
-                result.add_tool_result(tool_result)
-
-        else:
-            result.text = "No specific tool requested."
-
-        return result
-
-    async def handle_provider_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle AI provider chat decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.PROVIDER, metadata=context.metadata
-        )
-
-        try:
-            # Call provider manager
-            response = self.provider_manager.chat(
-                messages=context.messages,
-                model=context.provider_settings.get("models", {}).get(
-                    "default", "llama3-8b-8192"
-                ),
-                temperature=context.provider_settings.get("temperature", 0.7),
-                max_tokens=context.provider_settings.get("max_tokens", 1024),
-            )
-
-            result.text = response.text
-            result.metadata["provider"] = response.provider
-            result.metadata["model"] = response.model
-
-            # Update execution state
-            self.execution_state.update_provider(response.provider)
-
-        except Exception as e:
-            result.errors.append(f"Provider error: {type(e).__name__}: {e}")
-
-        return result
-
-    async def handle_vision_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle vision/image analysis decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.VISION, metadata=context.metadata
-        )
-
-        if request.has_attachments:
-            # Process first image
-            image_path = request.attachments[0].path
-
-            if image_path.exists():
-                try:
-                    from core.vision.image_analyzer import ImageAnalyzer
-
-                    analyzer = ImageAnalyzer()
-                    analysis = analyzer.analyze_image(image_path)
-
-                    result.text = analysis
-                    result.metadata["image_path"] = str(image_path)
-                except Exception as e:
-                    result.errors.append(
-                        f"Image analysis failed: {type(e).__name__}: {e}"
-                    )
-            else:
-                result.errors.append(f"Image not found: {image_path}")
-        else:
-            result.text = "Please provide an image to analyze."
-
-        return result
-
-    async def handle_research_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle research agent decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.PROVIDER, metadata=context.metadata
-        )
-
-        try:
-            if self.agent_registry:
-                research_agent = self.agent_registry.get_agent_by_type(
-                    AgentType.RESEARCH
-                )
-                if research_agent:
-                    agent_instance = research_agent[0].instantiate(
-                        memory_manager=self.memory_manager,
-                        provider_manager=self.provider_manager,
-                    )
-
-                    task = Task(
-                        id=str(uuid4()),
-                        type=TaskType.DEEP_RESEARCH,
-                        title="Research Task",
-                        description=f"Research: {request.text[:100]}",
-                        priority=TaskPriority.HIGH,
-                        input=TaskInput(
-                            data={"query": request.text, "context": context.to_dict()}
-                        ),
-                    )
-
-                    agent_instance.execute_task(task)
-                    output = task.output
-
-                    if output.success:
-                        result.text = output.data.get("text", "Research completed.")
-                        result.metadata.update(output.metadata or {})
-                    else:
-                        result.text = f"Research failed: {output.error}"
-                else:
-                    result = await self.handle_provider_decision(request, context)
-            else:
-                result = await self.handle_provider_decision(request, context)
-
-        except Exception as e:
-            logger.error(f"Research agent error: {e}", exc_info=True)
-            result.errors.append(f"Research error: {type(e).__name__}: {e}")
-            result = await self.handle_provider_decision(request, context)
-
-        return result
-
-    async def handle_coding_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle coding agent decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.PROVIDER, metadata=context.metadata
-        )
-
-        try:
-            if self.agent_registry:
-                coding_agent = self.agent_registry.get_agent_by_type(AgentType.CODING)
-                if coding_agent:
-                    agent_instance = coding_agent[0].instantiate(
-                        memory_manager=self.memory_manager,
-                        provider_manager=self.provider_manager,
-                        tool_router=self.tool_router,
-                    )
-
-                    task = Task(
-                        id=str(uuid4()),
-                        type=TaskType.CODE_GENERATE,
-                        title="Coding Task",
-                        description=f"Code: {request.text[:100]}",
-                        priority=TaskPriority.HIGH,
-                        input=TaskInput(
-                            data={"query": request.text, "context": context.to_dict()}
-                        ),
-                    )
-
-                    agent_instance.execute_task(task)
-                    output = task.output
-
-                    if output.success:
-                        result.text = output.data.get(
-                            "text", "Code generation completed."
-                        )
-                        result.metadata.update(output.metadata or {})
-                    else:
-                        result.text = f"Code generation failed: {output.error}"
-                else:
-                    result = await self.handle_provider_decision(request, context)
-            else:
-                result = await self.handle_provider_decision(request, context)
-
-        except Exception as e:
-            logger.error(f"Coding agent error: {e}", exc_info=True)
-            result.errors.append(f"Coding error: {type(e).__name__}: {e}")
-            result = await self.handle_provider_decision(request, context)
-
-        return result
-
-    async def handle_desktop_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle desktop agent decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.TOOL, metadata=context.metadata
-        )
-
-        try:
-            if self.agent_registry:
-                desktop_agent = self.agent_registry.get_agent_by_type(AgentType.DESKTOP)
-                if desktop_agent:
-                    agent_instance = desktop_agent[0].instantiate(
-                        workspace_manager=self.workspace, tool_router=self.tool_router
-                    )
-
-                    task = Task(
-                        id=str(uuid4()),
-                        type=TaskType.FILE_SEARCH,
-                        title="Desktop Task",
-                        description=f"Desktop: {request.text[:100]}",
-                        priority=TaskPriority.MEDIUM,
-                        input=TaskInput(
-                            data={"query": request.text, "context": context.to_dict()}
-                        ),
-                    )
-
-                    agent_instance.execute_task(task)
-                    output = task.output
-
-                    if output.success:
-                        result.text = output.data.get(
-                            "text", "Desktop operation completed."
-                        )
-                        result.metadata.update(output.metadata or {})
-                    else:
-                        result.text = f"Desktop operation failed: {output.error}"
-                else:
-                    result = await self.handle_tool_decision(
-                        type(
-                            "Decision",
-                            (),
-                            {
-                                "action_type": ActionType.TOOL,
-                                "tool_name": "execute_command",
-                                "params": {"command": request.text},
-                            },
-                        )(),
-                        context,
-                    )
-            else:
-                result = await self.handle_tool_decision(
-                    type(
-                        "Decision",
-                        (),
-                        {
-                            "action_type": ActionType.TOOL,
-                            "tool_name": "execute_command",
-                            "params": {"command": request.text},
-                        },
-                    )(),
-                    context,
-                )
-
-        except Exception as e:
-            logger.error(f"Desktop agent error: {e}", exc_info=True)
-            result.errors.append(f"Desktop error: {type(e).__name__}: {e}")
-            result = await self.handle_tool_decision(
-                type(
-                    "Decision",
-                    (),
-                    {
-                        "action_type": ActionType.TOOL,
-                        "tool_name": "execute_command",
-                        "params": {"command": request.text},
-                    },
-                )(),
-                context,
-            )
-
-        return result
-
-    async def handle_voice_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle voice agent decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.PROVIDER, metadata=context.metadata
-        )
-
-        try:
-            if self.agent_registry:
-                voice_agent = self.agent_registry.get_agent_by_type(AgentType.VOICE)
-                if voice_agent:
-                    agent_instance = voice_agent[0].instantiate(
-                        memory_manager=self.memory_manager,
-                        provider_manager=self.provider_manager,
-                    )
-
-                    task = Task(
-                        id=str(uuid4()),
-                        type=TaskType.SPEECH_TO_TEXT,
-                        title="Voice Task",
-                        description=f"Voice: {request.text[:100]}",
-                        priority=TaskPriority.MEDIUM,
-                        input=TaskInput(
-                            data={"query": request.text, "context": context.to_dict()}
-                        ),
-                    )
-
-                    agent_instance.execute_task(task)
-                    output = task.output
-
-                    if output.success:
-                        result.text = output.data.get(
-                            "text", "Voice processing completed."
-                        )
-                        result.metadata.update(output.metadata or {})
-                    else:
-                        result.text = f"Voice processing failed: {output.error}"
-                else:
-                    result = await self.handle_provider_decision(request, context)
-            else:
-                result = await self.handle_provider_decision(request, context)
-
-        except Exception as e:
-            logger.error(f"Voice agent error: {e}", exc_info=True)
-            result.errors.append(f"Voice error: {type(e).__name__}: {e}")
-            result = await self.handle_provider_decision(request, context)
-
-        return result
-
-    async def handle_agent_decision(
-        self, decision: Any, context: Any
-    ) -> ExecutionResult:
-        """
-        Handle agent-based decisions using AgentRegistry.
-
-        This routes requests to the appropriate agent based on the decision.
-        """
-        result = ExecutionResult(
-            text="", action_type=ActionType.AGENT, metadata=context.metadata
-        )
-
-        try:
-            # Extract agent name from decision
-            agent_name = decision.params.get("agent", "")
-
-            if not agent_name:
-                result.text = "No agent specified."
-                return result
-
-            # Get agent from registry
-            if not self.agent_registry:
-                result.text = "AgentRegistry not available."
-                return result
-
-            # Find agent by type name
-            agent = self.agent_registry.find_agent_for_task(
-                TaskInput(data={"text": "test", "agent": agent_name})
-            )
-
-            if not agent:
-                result.text = f"Agent '{agent_name}' not found."
-                logger.warning(f"Agent '{agent_name}' not found in registry")
-                return result
-
-            # Instantiate agent with dependencies
-            agent_instance = agent.instantiate(
-                dependencies={
-                    "memory_manager": self.memory_manager,
-                    "tool_router": self.tool_router,
-                    "workspace_manager": self.workspace,
-                    "response_coordinator": self.response_coordinator,
-                    "provider_manager": getattr(self, "provider_manager", None),
-                }
-            )
-
-            # Determine task type based on agent type
-            task_type_map = {
-                AgentType.RESEARCH: TaskType.RESEARCH_WEB,
-                AgentType.CODING: TaskType.CODE_GENERATE,
-                AgentType.DESKTOP: TaskType.DESKTOP,
-                AgentType.VOICE: TaskType.SPEECH_TO_TEXT,
-                AgentType.LEARNING: TaskType.LEARN_SUCCESS,
-            }
-
-            # Use specific task type if available, otherwise default
-            task_type = task_type_map.get(agent.agent_type, TaskType.GENERIC)
-
-            # Create task
-            task = Task(
-                id=str(uuid4()),
-                type=task_type,
-                title=f"Agent Task: {agent_name}",
-                input=TaskInput(
-                    data={"query": context.user_input or "general", "context": context}
-                ),
-            )
-
-            # Execute task
-            agent_instance.execute_task(task)
-            output = task.output
-
-            # Extract result from output
-            if output.success:
-                result.text = output.data.get(
-                    "text", output.data.get("result", "Agent task completed.")
-                )
-                result.metadata.update(output.metadata or {})
-                result.metadata["agent_used"] = agent_name
-                result.metadata["agent_type"] = agent.agent_type.value
-            else:
-                result.text = f"Agent task failed: {output.error}"
-
-        except Exception as e:
-            logger.error(f"Agent execution error: {e}", exc_info=True)
-            result.errors.append(f"Agent execution failed: {type(e).__name__}: {e}")
-            result.text = f"Error executing agent: {type(e).__name__}: {e}"
-
-        return result
-
-    async def handle_learning_decision(
-        self, request: AuraRequest, context: Any
-    ) -> ExecutionResult:
-        """Handle learning agent decisions."""
-        result = ExecutionResult(
-            text="", action_type=ActionType.PROVIDER, metadata=context.metadata
-        )
-
-        try:
-            if self.agent_registry:
-                learning_agent = self.agent_registry.get_agent_by_type(
-                    AgentType.LEARNING
-                )
-                if learning_agent:
-                    agent_instance = learning_agent[0].instantiate(
-                        memory_manager=self.memory_manager,
-                        provider_manager=self.provider_manager,
-                    )
-
-                    task = Task(
-                        id=str(uuid4()),
-                        type=TaskType.LEARN_SUCCESS,
-                        title="Learning Task",
-                        description=f"Learning: {request.text[:100]}",
-                        priority=TaskPriority.MEDIUM,
-                        input=TaskInput(
-                            data={"query": request.text, "context": context.to_dict()}
-                        ),
-                    )
-
-                    agent_instance.execute_task(task)
-                    output = task.output
-
-                    if output.success:
-                        result.text = output.data.get("text", "Learning completed.")
-                        result.metadata.update(output.metadata or {})
-                    else:
-                        result.text = f"Learning failed: {output.error}"
-                else:
-                    result = await self.handle_provider_decision(request, context)
-            else:
-                result = await self.handle_provider_decision(request, context)
-
-        except Exception as e:
-            logger.error(f"Learning agent error: {e}", exc_info=True)
-            result.errors.append(f"Learning error: {type(e).__name__}: {e}")
-            result = await self.handle_provider_decision(request, context)
-
-        return result
-
-    def get_execution_state(self) -> dict[str, Any]:
-        """Get current execution state."""
-        return self.execution_state.to_dict()
-
-    def cancel_request(self):
-        """Cancel the current request."""
-        self.execution_state.cancel()
-        logger.info("Current request cancelled")
-
-    def _handle_worker_control_command(
-        self, text: str, start_time: float, conversation_id: str
-    ) -> AuraResponse | None:
-        """Handle zero-LLM status queries, control commands, and Developer Mode toggles."""
-        clean_text = text.strip().lower()
-        from core.orchestration.worker_manager import WorkerManager
-
-        wm = WorkerManager.get_instance()
-
-        # ── 1. Developer Mode Explicit Triggers ──────────────────────────────
-        start_dev_phrases = [
-            "start developer mode",
-            "developer mode on",
-            "enable developer mode",
-            "turn on developer mode",
-        ]
-        stop_dev_phrases = [
-            "stop developer mode",
-            "developer mode off",
-            "disable developer mode",
-            "turn off developer mode",
-        ]
-
-        if clean_text in start_dev_phrases:
-            self.developer_mode = True
-            active_count = len(wm.list_active_workers())
-            msg = (
-                "✓ Developer Mode Enabled\n\n"
-                "Executive Coordinator : Groq\n"
-                "Planner             : Dynamic Planner Registry\n"
-                "Backend             : Multi-Backend Engine\n"
-                "Runtime             : Healthy\n"
-                f"Workers             : {active_count} Active\n"
-                "Timeline            : Enabled\n"
-                "Decision Trace      : Enabled\n"
-                "World Snapshot      : Live"
-            )
-            return AuraResponse(
-                text=msg,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        if clean_text in stop_dev_phrases:
-            self.developer_mode = False
-            msg = "🛠️ Developer Mode Disabled. Standard AI Operating System response mode active."
-            return AuraResponse(
-                text=msg,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        # ── 2. Developer Mode Telemetry & Inspection Queries ──────────────
-        dev_telemetry_keywords = [
-            "why",
-            "explain decision",
-            "decision trace",
-            "show decision",
-            "inspect",
-            "show inspect",
-            "runtime snapshot",
-            "watch",
-            "watch workers",
-            "watch timeline",
-            "show world snapshot",
-            "world snapshot",
-            "show snapshot",
-            "show planner",
-            "show planners",
-            "show backend",
-            "show backends",
-            "show timeline",
-            "show actionplan",
-            "show action plan",
-            "show runtimesession",
-            "show runtime session",
-        ]
-
-        if clean_text in dev_telemetry_keywords:
-            if not self.developer_mode:
-                msg = "Developer Mode is disabled."
-                return AuraResponse(
-                    text=msg,
-                    status=ResponseStatus.SUCCESS,
-                    execution_time=time.time() - start_time,
-                    conversation_id=conversation_id,
-                )
-
-            # Process Developer Mode commands
-            if (
-                clean_text == "why"
-                or "explain decision" in clean_text
-                or "decision trace" in clean_text
-                or "show decision" in clean_text
-            ):
-                telemetry = (
-                    "Decision Trace\n"
-                    "--------------\n"
-                    "Intent       : Desktop / Operating System\n"
-                    "Planner      : DesktopPlanner\n"
-                    "Backend      : Native Desktop Engine\n"
-                    "Policy       : Reuse Existing / Verify & Execute\n"
-                    "Reason       : Active window / process detected\n"
-                    "Confidence   : 98%"
-                )
-            elif (
-                clean_text == "inspect"
-                or "show inspect" in clean_text
-                or "runtime snapshot" in clean_text
-            ):
-                from core.orchestration.world_snapshot import WorldSnapshotProvider
-
-                snap = WorldSnapshotProvider().snapshot()
-                active_workers = len(wm.list_active_workers())
-                win_title = snap.focused_window_title or "Desktop Foreground"
-                telemetry = (
-                    "=========================\n"
-                    "Current Runtime\n"
-                    "=========================\n\n"
-                    "Planner        : Role Planner Registry\n"
-                    "Backend        : Native Desktop Engine\n"
-                    "World          : Windows OS (Live)\n"
-                    f"Focused Window : {win_title}\n"
-                    "ActionPlan     : Declarative DAG\n"
-                    f"Workers        : {active_workers} Active\n"
-                    "Memory         : Enabled\n"
-                    "Timeline       : Recording\n"
-                    "Developer Mode : ON"
-                )
-            elif clean_text.startswith("watch"):
-                if "timeline" in clean_text:
-                    from core.orchestration.world_timeline import WorldTimeline
-
-                    events = WorldTimeline.get_instance().get_recent_events(minutes=30)
-                    ev_lines = "\n".join([f"  • {e}" for e in events[:10]])
-                    telemetry = (
-                        "=== [Watch Timeline] Live Stream ===\n"
-                        f"{ev_lines if ev_lines else 'No recent timeline events.'}"
-                    )
-                else:
-                    active = wm.list_active_workers()
-                    lines = []
-                    for w in active:
-                        bar = "█" * (w.progress // 10) + "░" * (10 - (w.progress // 10))
-                        lines.append(
-                            f"{w.name}\n[{bar}] {w.progress}%\nCurrent: {w.current_action}"
-                        )
-                    telemetry = "=== [Watch Workers] Live Status ===\n\n" + (
-                        "\n\n".join(lines) if lines else "No active workers running."
-                    )
-            elif "snapshot" in clean_text:
-                from core.orchestration.world_snapshot import WorldSnapshotProvider
-
-                snap = WorldSnapshotProvider().snapshot()
-                telemetry = (
-                    "=== [Developer Mode] World State Snapshot ===\n"
-                    f"Focused Window: '{snap.focused_window_title or 'None'}'\n"
-                    f"Active Processes: {len(snap.running_processes)} running\n"
-                    f"Live OS Probe: {snap.is_live}"
-                )
-            elif "planner" in clean_text:
-                from core.orchestration.planner_registry import PlannerRegistry
-
-                planners = PlannerRegistry.get_instance().list_planners()
-                telemetry = (
-                    "=== [Developer Mode] Active Planners ===\n"
-                    f"Registered Planners: {', '.join(planners)}"
-                )
-            elif "backend" in clean_text:
-                from core.backends.backend_registry import BackendRegistry
-
-                reg = BackendRegistry.get_instance()
-                summary = getattr(
-                    reg, "get_active_backends_summary", lambda: str(reg)
-                )()
-                telemetry = f"=== [Developer Mode] Backend Registry ===\n{summary}"
-            elif "timeline" in clean_text:
-                from core.orchestration.world_timeline import WorldTimeline
-
-                events = WorldTimeline.get_instance().get_recent_events(minutes=30)
-                event_str = "\n".join([f"  • {e}" for e in events[:10]])
-                telemetry = f"=== [Developer Mode] World Timeline (Recent 30m) ===\n{event_str if event_str else 'No recent timeline events recorded.'}"
-            elif "actionplan" in clean_text or "action plan" in clean_text:
-                telemetry = (
-                    "=== [Developer Mode] ActionPlan Inspector ===\n"
-                    "Last ActionPlan: Validated declarative task DAG active in MasterOrchestrator pipeline."
-                )
-            elif "runtimesession" in clean_text or "runtime session" in clean_text:
-                sessions = wm.get_status_summary()
-                telemetry = (
-                    f"=== [Developer Mode] RuntimeSession Inspector ===\n{sessions}"
-                )
-            else:
-
-                telemetry = (
-                    "=== [Developer Mode] Decision Trace ===\n"
-                    "Groq Executive Coordinator -> Capability Router -> Domain Supervisor -> Active Worker."
-                )
-
-            return AuraResponse(
-                text=telemetry,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        # ── 3. Zero-LLM Status & Control Queries ────────────────────────────
-
-        status_keywords = [
-            "status?",
-            "status",
-            "how's it going?",
-            "how is it going?",
-            "show active workers",
-            "show workers",
-            "what are you doing?",
-            "how many tasks are running?",
-            "active workers",
-        ]
-        if clean_text in status_keywords:
-            summary = wm.get_status_summary()
-            return AuraResponse(
-                text=summary,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        if "pause engineering" in clean_text or "stop engineering" in clean_text:
-            paused = wm.pause_domain("engineering")
-            msg = (
-                "Engineering session paused."
-                if paused
-                else "No running engineering session found to pause."
-            )
-            return AuraResponse(
-                text=msg,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        if "resume engineering" in clean_text or "continue engineering" in clean_text:
-            resumed = wm.resume_domain("engineering")
-            msg = (
-                "Engineering session resumed."
-                if resumed
-                else "No paused engineering session found to resume."
-            )
-            return AuraResponse(
-                text=msg,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        if clean_text.startswith("cancel worker") or clean_text.startswith(
-            "stop worker"
-        ):
-            worker_id = (
-                clean_text.replace("cancel worker", "")
-                .replace("stop worker", "")
-                .strip()
-            )
-            cancelled = wm.cancel_worker(worker_id)
-            msg = (
-                f"Worker '{worker_id}' cancelled."
-                if cancelled
-                else f"Worker '{worker_id}' not found."
-            )
-            return AuraResponse(
-                text=msg,
-                status=ResponseStatus.SUCCESS,
-                execution_time=time.time() - start_time,
-                conversation_id=conversation_id,
-            )
-
-        return None
-
-    def set_progress_step(self, step: str):
-        """Add a progress step."""
-        self.execution_state.add_progress_step(step)
+__all__ = ["AuraBrain", "AuraBrainResponse"]
