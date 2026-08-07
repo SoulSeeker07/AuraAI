@@ -178,12 +178,12 @@ class PromptBuilder:
             # Fallback minimal identity statement
             name = ctx.name or "Aura AI"
             lines.append(
-                f"You are {name}.\n"
-                f"You are an AI Operating System, not a chatbot.\n"
-                f"You control the desktop, perform research, write code, and automate workflows.\n"
-                f"You use planners before executing. You use backends to do real work.\n"
-                f"You reason before you act. You never pretend to be ChatGPT or any other AI.\n"
-                f"If you cannot perform an action, name the missing subsystem."
+                f"You are {name} — UNIVERSAL AUTONOMOUS COMPUTER & WEB AGENT.\n"
+                f"You are an AI Operating System, not a simple chatbot.\n"
+                f"Your primary responsibility: Understand user goal → Determine required actions → Select tools → Execute workflow → Verify result → Report outcome.\n"
+                f"You control the desktop, browse the web, execute media controls, perform e-commerce shopping, analyze reviews, write code, and automate multi-step workflows.\n"
+                f"You reason before acting, use planners before executing, and resolve context/relative references across multi-turn requests.\n"
+                f"Never pretend — never claim an action completed unless verified."
             )
 
         never_say = ctx.never_say
@@ -203,13 +203,23 @@ class PromptBuilder:
         version = ctx.version or "unknown"
         tagline = ctx.tagline
 
-        lines.append(f"=== {name} v{version} ===")
+        lines.append(f"=== {name} v{version} — UNIVERSAL AUTONOMOUS COMPUTER & WEB AGENT ===")
         if tagline:
             lines.append(tagline)
 
         description = ctx.description
         if description:
             lines.append(f"\n{description}")
+
+        lines.append(
+            "\nUniversal Agent Directives:\n"
+            "  • Universal Intent Understanding — handle natural language, short/long commands, voice speech, and multi-step sentences.\n"
+            "  • Media Control — understand play, pause, resume, next, previous, seek, volume, and contextual media navigation.\n"
+            "  • Reviews & Comments — inspect user comments/reviews, extract positive/negative themes, and identify common complaints.\n"
+            "  • E-Commerce Shopping & Filtering — extract constraints (price caps, specs, RAM, brand), filter products, compare side-by-side, and manage cart/checkout workflows.\n"
+            "  • Relative References & Context — resolve 'this', 'that', 'the first one', 'the next one', 'the cheapest one' from prior conversation.\n"
+            "  • Verification & Recovery — verify important actions (playback, cart additions, search filters), handle errors gracefully, and report results honestly."
+        )
 
         principles = ctx.principles
         if principles:

@@ -17,9 +17,18 @@ import asyncio
 import os
 import sys
 from dataclasses import dataclass
+from typing import Any, Optional
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+
+# Configure sys.path for src and project root
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_SRC_DIR = _PROJECT_ROOT / "src"
+
+if str(_SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(_SRC_DIR))
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(1, str(_PROJECT_ROOT))
 
 # Import Memory module for brain integration
 try:
@@ -131,6 +140,12 @@ class AuraCore:
                 self.project_root = project_root_input
         else:
             self.project_root = Path(__file__).resolve().parent.parent
+
+        import sys
+        src_path = str(self.project_root / "src")
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
+
         self.workspace = self.config.get("workspace", str(self.project_root))
 
         self.chat_log_path = Path(
@@ -163,7 +178,8 @@ class AuraCore:
         self.planner = None
         self.workflow_engine_status = AuraCoreStatus.READY
         self.workflow_engine = None
-        self.vision_enabled = False
+        self.vision_enabled = True
+        self.vision_manager = None
         self.voice_enabled = False
         self.executive_brain = None
         self.executive_brain_enabled = False
@@ -567,7 +583,45 @@ class AuraCore:
         # Workflow Engine
         self._init_workflow()
 
+        # Vision System
+        self._init_vision()
+
         logger.info("Aura Core initialized successfully")
+
+    def _init_vision(self):
+        """Initialize Vision System."""
+        try:
+            from src.vision.vision_manager import VisionManager
+            from src.vision.vision_plugin import VisionPlugin
+
+            self.vision_plugin = VisionPlugin()
+            if self.vision_plugin.on_load():
+                self.vision_manager = self.vision_plugin.vision_manager
+                self.vision_enabled = True
+                self.components["vision"] = ComponentStatus(
+                    name="Vision System",
+                    status=AuraCoreStatus.READY,
+                    message="Vision System active",
+                )
+                logger.info("Vision System initialized successfully")
+            else:
+                self.vision_enabled = False
+                self.components["vision"] = ComponentStatus(
+                    name="Vision System",
+                    status=AuraCoreStatus.ERROR,
+                    message="Vision plugin on_load failed",
+                    loaded=False,
+                )
+        except Exception as e:
+            logger.error(f"Failed to initialize vision system: {e}")
+            self.vision_enabled = False
+            self.components["vision"] = ComponentStatus(
+                name="Vision System",
+                status=AuraCoreStatus.ERROR,
+                message=str(e),
+                loaded=False,
+            )
+
 
     def _init_memory(self):
         """Initialize memory system."""

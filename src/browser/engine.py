@@ -75,7 +75,14 @@ class BrowserEngine:
             else:
                 launcher = self._playwright.chromium
 
-            self._browser = await launcher.launch(headless=self.headless)
+            self._browser = await launcher.launch(
+                headless=self.headless,
+                args=[
+                    "--autoplay-policy=no-user-gesture-required",
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                ],
+            )
             self._context = await self._browser.new_context(
                 viewport={"width": 1280, "height": 800},
                 user_agent=(
@@ -363,3 +370,42 @@ class BrowserEngine:
                 "is_active": self.is_active,
             }
         return {"title": "Offline Browser", "url": "about:blank", "is_active": False}
+
+    async def click_top_video(self) -> dict[str, Any]:
+        """Click top video result on YouTube or media search page."""
+        if self._page:
+            selectors = [
+                "ytd-video-renderer a#video-title",
+                "a#video-title",
+                "h3 a",
+                "a.yt-simple-endpoint.ytd-video-renderer",
+            ]
+            for sel in selectors:
+                try:
+                    loc = self._page.locator(sel).first
+                    if await loc.count() > 0:
+                        await loc.click(timeout=3000)
+                        await asyncio.sleep(1.0)
+                        return {"success": True, "action": "click_top_video", "selector": sel}
+                except Exception:
+                    pass
+        return {"success": False, "action": "click_top_video"}
+
+    async def click_top_product(self) -> dict[str, Any]:
+        """Click top product result on Amazon or e-commerce search page."""
+        if self._page:
+            selectors = [
+                "div[data-component-type='s-search-result'] h2 a",
+                ".s-search-results h2 a",
+                "a.a-link-normal.s-no-hover",
+            ]
+            for sel in selectors:
+                try:
+                    loc = self._page.locator(sel).first
+                    if await loc.count() > 0:
+                        await loc.click(timeout=3000)
+                        await asyncio.sleep(1.0)
+                        return {"success": True, "action": "click_top_product", "selector": sel}
+                except Exception:
+                    pass
+        return {"success": False, "action": "click_top_product"}

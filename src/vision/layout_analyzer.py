@@ -48,13 +48,25 @@ class LayoutAnalyzer:
 
         # Based on image type, use specialized layout analysis
         if image_type == ImageType.SCREENSHOT:
-            return self._analyze_screenshot_layout(image)
+            res = self._analyze_screenshot_layout(image)
         elif image_type == ImageType.DOCUMENT:
-            return self._analyze_document_layout(image)
+            res = self._analyze_document_layout(image)
         elif image_type == ImageType.DIAGRAM:
-            return self._analyze_diagram_layout(image)
+            res = self._analyze_diagram_layout(image)
         else:
-            return self._analyze_generic_layout(image)
+            res = self._analyze_generic_layout(image)
+
+        if isinstance(res, tuple) and len(res) == 3:
+            layout_info, elements, sections = res
+            return {
+                "layout": layout_info,
+                "elements": elements,
+                "sections": sections,
+                "header": layout_info.get("header") if isinstance(layout_info, dict) else None,
+                "footer": layout_info.get("footer") if isinstance(layout_info, dict) else None,
+            }
+        return res
+
 
     def _analyze_screenshot_layout(self, image: np.ndarray) -> tuple:
         """
@@ -477,7 +489,9 @@ class LayoutAnalyzer:
             return None
 
         height, width = gray.shape
-        content_width = width - margins["left_margin"] - margins["right_margin"]
+        left_margin = margins.get("left_margin", 0)
+        right_margin = margins.get("right_margin", 0)
+        content_width = max(1, width - left_margin - right_margin)
 
         # Top 10% of page
         header_height = int(height * 0.10)
@@ -487,12 +501,12 @@ class LayoutAnalyzer:
 
         header_roi = gray[
             0:header_height,
-            margins["left_margin"] : margins["left_margin"] + content_width,
+            left_margin : left_margin + content_width,
         ]
-        brightness = np.mean(header_roi)
+        brightness = float(np.mean(header_roi)) if header_roi.size > 0 else 0.0
 
         if brightness > 50:
-            x = margins["left_margin"]
+            x = left_margin
             y = 0
             w = content_width
             h = header_height
@@ -514,7 +528,9 @@ class LayoutAnalyzer:
             return None
 
         height, width = gray.shape
-        content_width = width - margins["left_margin"] - margins["right_margin"]
+        left_margin = margins.get("left_margin", 0)
+        right_margin = margins.get("right_margin", 0)
+        content_width = max(1, width - left_margin - right_margin)
 
         # Bottom 10% of page
         footer_height = int(height * 0.10)
@@ -524,15 +540,16 @@ class LayoutAnalyzer:
 
         footer_roi = gray[
             height - footer_height : height,
-            margins["left_margin"] : margins["left_margin"] + content_width,
+            left_margin : left_margin + content_width,
         ]
-        brightness = np.mean(footer_roi)
+        brightness = float(np.mean(footer_roi)) if footer_roi.size > 0 else 0.0
 
         if brightness > 50:
-            x = margins["left_margin"]
+            x = left_margin
             y = height - footer_height
             w = content_width
             h = footer_height
+
 
             return {
                 "type": "footer",

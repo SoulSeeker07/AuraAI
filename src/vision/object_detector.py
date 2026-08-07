@@ -49,13 +49,25 @@ class ObjectDetector:
 
         # Based on image type, use specialized detection
         if image_type == ImageType.SCREENSHOT:
-            return self._detect_ui_elements(image)
+            res = self._detect_ui_elements(image)
         elif image_type == ImageType.DOCUMENT:
-            return self._detect_document_elements(image)
+            res = self._detect_document_elements(image)
         elif image_type == ImageType.CODE:
-            return self._detect_code_elements(image)
+            res = self._detect_code_elements(image)
         else:
-            return self._detect_generic_objects(image)
+            res = self._detect_generic_objects(image)
+
+        if isinstance(res, tuple) and len(res) == 2:
+            objects, bboxes = res
+            return {
+                "detected_objects": objects,
+                "bounding_boxes": bboxes,
+                "buttons": [o for o in objects if isinstance(o, dict) and o.get("type") == "button"],
+                "menus": [o for o in objects if isinstance(o, dict) and o.get("type") == "menu_item"],
+                "dialogs": [o for o in objects if isinstance(o, dict) and o.get("type") == "dialog"],
+            }
+        return res
+
 
     def _detect_ui_elements(self, image: np.ndarray) -> tuple:
         """

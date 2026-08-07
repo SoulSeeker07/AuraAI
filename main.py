@@ -106,7 +106,7 @@ async def main_cli():
 
 
 def main_gui():
-    """Run AuraAI in GUI mode."""
+    """Run AuraAI in PySide6 GUI mode."""
     print("Starting AuraAI in GUI mode...")
     print("-" * 60)
 
@@ -116,19 +116,14 @@ def main_gui():
     # Create GUI client
     gui_client = GUIClient(aura_core)
 
-    # Note: In real implementation, this would launch QML interface
-    # For now, we'll create the GUI client and show its status
     print("\n✓ Aura Core initialized")
     print("✓ GUI Client created")
-    print("\nGUI mode is not fully implemented yet.")
-    print("Use CLI mode for now: python main.py --cli")
-    print("\nTo enable GUI:")
-    print("1. Make sure QML files are in frontend/")
-    print("2. Create a GUI launcher that uses GUIClient")
-    print("3. Set up Qt/QML environment")
+    print("✓ Launching AuraAI PySide6 Control Center & Spotlight HUD...")
 
-    # Return GUI client for use with QML
-    return gui_client
+    from src.gui.app import AuraGUI
+    gui = AuraGUI()
+    return gui.run()
+
 
 
 def main():
@@ -195,6 +190,7 @@ Modes:
         # CLI mode (default)
         asyncio.run(main_cli())
         return None
+
 
 
 if __name__ == "__main__":

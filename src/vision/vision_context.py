@@ -4,6 +4,7 @@ Vision Context Coordinator
 Coordinates vision processing across all components.
 """
 
+from datetime import datetime
 import logging
 from typing import Any
 
@@ -314,10 +315,11 @@ class VisionContextCoordinator:
         logger.info(f"  - Tables: {len(context.tables)}")
         logger.info(f"  - Code: {len(context.code_snippets)}")
 
+        self.current_context = context
         self.last_context = context
         return context
 
-    def get_context_info(self, context: VisionContext) -> dict[str, Any]:
+    def get_context_info(self, context: VisionContext | None = None) -> dict[str, Any]:
         """
         Get information about the vision context.
 
@@ -327,9 +329,23 @@ class VisionContextCoordinator:
         Returns:
             Dictionary with context information
         """
+        if context is None:
+            return {
+                "image_path": "",
+                "image_type": ImageType.UNKNOWN.value,
+                "image_width": 0,
+                "image_height": 0,
+                "dimensions": {"width": 0, "height": 0},
+                "ocr": {"has_text": False, "text_length": 0, "confidence": 0.0},
+                "detection": {"objects": 0, "tables": 0, "code": 0, "diagrams": 0},
+                "ui_elements": {},
+            }
+
         return {
             "image_path": context.image_path,
-            "image_type": context.image_type.value,
+            "image_type": context.image_type.value if hasattr(context.image_type, "value") else str(context.image_type),
+            "image_width": context.image_width,
+            "image_height": context.image_height,
             "dimensions": {
                 "width": context.image_width,
                 "height": context.image_height,

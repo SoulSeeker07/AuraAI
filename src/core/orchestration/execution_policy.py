@@ -96,14 +96,25 @@ class ExecutionPolicy:
         goal: str,
         app_name: str,
         world_snap: Any | None = None,
+        force_new: bool = False,
     ) -> PolicyDecision:
         """
         Evaluate an app_open intent against live OS world state.
 
         Priority:
-        1. App NOT running → LAUNCH_NEW
-        2. App IS running  → count real EnumWindows HWNDs → ASK_USER
+        1. force_new is True or goal requests new instance → LAUNCH_NEW
+        2. App NOT running → LAUNCH_NEW
+        3. App IS running  → count real EnumWindows HWNDs → ASK_USER
         """
+        if force_new or any(w in goal.lower() for w in ["another", "new", "second", "extra", "different"]):
+            logger.debug(f"ExecutionPolicy: '{app_name}' force_new/explicit new instance → LAUNCH_NEW")
+            return PolicyDecision(
+                action=PolicyAction.LAUNCH_NEW,
+                message=f"Launching {app_name.title()}...",
+                app_name=app_name,
+                window_count=0,
+            )
+
         running_hwnds = self._get_running_windows(app_name, world_snap)
         is_running = len(running_hwnds) > 0
         window_count = len(running_hwnds)
@@ -257,11 +268,11 @@ class ExecutionPolicy:
                     proc_name = ""
                     proc_base = ""
 
-                # Target matching logic: either title matches app_name or process matches AND window has title
+                # Target matching logic: either title matches app_name or process matches AND window has non-empty title
                 name_match = app_lower in proc_base or app_lower in proc_name or app_lower in title
                 if name_match:
-                    # Require non-empty title or top-level window without owner to prevent helper HWND duplication
-                    if title or owner == 0:
+                    # Require non-empty title to prevent headless/helper HWND duplication
+                    if title:
                         matches.append(hwnd)
                 return True
 

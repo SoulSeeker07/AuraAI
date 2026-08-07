@@ -8,6 +8,7 @@ import ctypes
 import logging
 import time
 from pathlib import Path
+from typing import Any, Dict, List
 
 import win32api
 import win32con

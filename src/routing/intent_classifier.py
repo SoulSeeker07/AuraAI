@@ -63,7 +63,7 @@ Available capabilities:
 Classification rules:
 1. If the request is about operating the system (windows, apps), use DESKTOP
 2. If the request is about files and folders, use FILESYSTEM
-3. If the request is about web browsing, use BROWSER
+3. If the request is about web browsing, site navigation, media playback (play, pause, next, seek, volume), product search, spec filtering, product comparison, checking comments/reviews, adding to cart, or checkout workflows, use BROWSER
 4. If the request involves images/screenshots, use VISION
 5. If the request asks Aura to remember something, use MEMORY
 6. If the request asks for information or explanation, use KNOWLEDGE

@@ -242,7 +242,7 @@ class ExecutiveExecutor:
             goal = action.description
             if params.get("url"):
                 goal = f"Navigate to {params['url']}"
-            elif params.get("app_name"):
+            elif params.get("app_name") and str(action.capability).lower() in ("desktop.launch", "app_open", "launch_app", "open_app", "window.open"):
                 goal = f"Open {params['app_name']}"
             elif params.get("query"):
                 goal = f"Research: {params['query']}"

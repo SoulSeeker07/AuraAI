@@ -6,7 +6,9 @@ Coordinates all vision components to provide desktop vision capabilities.
 """
 
 import logging
+from pathlib import Path
 from typing import Any
+import numpy as np
 
 from .code_detector import CodeDetector
 from .diagram_analyzer import DiagramAnalyzer
@@ -17,9 +19,9 @@ from .models import (
     OCRSettings,
     ScreenshotSettings,
     VisionContext,
-    VisionContextCoordinator,
     VisionProvider,
 )
+from .vision_context import VisionContextCoordinator
 from .object_detector import ObjectDetector
 from .preprocessing import ImagePreprocessor
 from .screenshot_manager import ScreenshotManager
@@ -197,6 +199,9 @@ class VisionManager:
         if image_type is None:
             image_type = detected_type
 
+        self.last_image_path = image_path
+        self.last_image_type = image_type
+
         # Create vision context
         context = self.coordinator.create_context(
             image_path=image_path,
@@ -225,7 +230,11 @@ class VisionManager:
         context.image_height = img.shape[0]
 
         # 1. Update context with basic information
-        context.image_type = self.image_loader._detect_image_type(img)
+        if (not context.image_type or context.image_type == ImageType.UNKNOWN) and image_path:
+            suffix = Path(image_path).suffix
+            context.image_type = self.image_loader._detect_image_type(suffix)
+        elif not context.image_type:
+            context.image_type = ImageType.SCREENSHOT
 
         # 2. Run object detection
         try:
@@ -354,9 +363,8 @@ class VisionManager:
         Returns:
             Dictionary with context information
         """
-        if self.coordinator.current_context:
-            return self.coordinator.get_context_info(self.coordinator.current_context)
-        return {}
+        ctx = self.coordinator.current_context or self.coordinator.last_context
+        return self.coordinator.get_context_info(ctx)
 
     def should_use_llm(self) -> bool:
         """
@@ -365,13 +373,14 @@ class VisionManager:
         Returns:
             True if LLM should be used, False otherwise
         """
-        if self.coordinator.current_context:
-            return self.coordinator.should_use_llm(self.coordinator.current_context)
+        ctx = self.coordinator.current_context or self.coordinator.last_context
+        if ctx:
+            return self.coordinator.should_use_llm(ctx)
         return False
 
     def get_last_context(self) -> VisionContext | None:
         """Get the last processed vision context."""
-        return self.coordinator.current_context
+        return self.coordinator.current_context or self.coordinator.last_context
 
     def get_last_image_path(self) -> str | None:
         """Get the path of the last processed image."""

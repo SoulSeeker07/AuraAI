@@ -1,208 +1,308 @@
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QColor, QKeySequence, QShortcut
-from PySide6.QtWidgets import (
-    QApplication,
-    QFrame,
-    QGraphicsDropShadowEffect,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QMainWindow,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+"""
+Main Control Center Window
+==========================
+Full multi-panel interface for deep tasks, DAG visualization,
+memory management, and system monitoring.
+"""
 
-from gui.titlebar import TitleBar
+from PySide6.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QStackedWidget, QLineEdit, QPushButton, QSplitter, QFrame,
+    QSizePolicy, QApplication, QScrollArea
+)
+from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QIcon, QFont, QColor, QPalette
+
+from src.gui.theme import (
+    Colors, Radius, Typography, Spacing, 
+    build_global_stylesheet, main_window_stylesheet
+)
+from src.gui.signals import app_signals
+from src.gui.widgets import (
+    NavigationRail, ChatStreamWidget, DagVisualizer,
+    InspectorDrawer, StatusPill
+)
 
 
 class MainWindow(QMainWindow):
-    show_overlay_requested = Signal()
-    settings_requested = Signal()
-    hidden_to_tray = Signal()
-
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Aura")
-        self.resize(1040, 720)
-        self.setMinimumSize(900, 620)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        self._build_actions()
-        self._build_ui()
-
-        shortcut = QShortcut(QKeySequence("Alt+Space"), self)
-        shortcut.activated.connect(self.show_overlay_requested.emit)
-
-    def add_history_entry(self, prompt: str) -> None:
-        prefix = "Command" if prompt.startswith(">") else "Prompt"
-        self.history_list.insertItem(0, f"{prefix}: {prompt}")
-        self.status_label.setText("Captured from overlay. Aura brain is thinking.")
-
-    def add_response_entry(self, response: str) -> None:
-        first_line = response.splitlines()[0] if response else "Response ready."
-        self.history_list.insertItem(0, f"Aura: {first_line}")
-        self.status_label.setText(first_line)
-
-    def set_live_screen_status(self, is_active: bool, frame_count: int = 0) -> None:
-        if is_active:
-            self.status_label.setText(
-                f"Live screen mode active. Frames captured: {frame_count}."
-            )
-            return
-        self.status_label.setText("Live screen mode stopped.")
-
-    def close_to_tray(self) -> None:
-        self.hide()
-        self.hidden_to_tray.emit()
-
-    def toggle_maximized(self) -> None:
+    """
+    Mode B: Full Control Center.
+    Layout: Nav Rail | Center Stage | Inspector Drawer
+    """
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("MainWindow")
+        self.setWindowTitle("AuraAI Control Center")
+        self.setMinimumSize(1200, 800)
+        
+        # Frameless with custom titlebar
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        
+        # Apply stylesheets
+        self.setStyleSheet(build_global_stylesheet() + main_window_stylesheet())
+        
+        self._setup_ui()
+        self._setup_titlebar()
+        self._connect_signals()
+        self._center_window()
+    
+    def _setup_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+        
+        layout = QHBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # ── Left Navigation Rail ──
+        self._nav = NavigationRail()
+        self._nav.tab_changed.connect(self._on_tab_changed)
+        layout.addWidget(self._nav)
+        
+        # ── Center Stage ──
+        self._center_stack = QStackedWidget()
+        self._center_stack.setObjectName("CenterStage")
+        
+        # Tab 0: Chat / Execution Feed
+        self._chat_tab = self._build_chat_tab()
+        self._center_stack.addWidget(self._chat_tab)
+        
+        # Tab 1: DAG Visualizer
+        self._dag_tab = DagVisualizer()
+        self._center_stack.addWidget(self._dag_tab)
+        
+        # Tab 2: World Observer
+        self._observer_tab = self._build_observer_tab()
+        self._center_stack.addWidget(self._observer_tab)
+        
+        # Tab 3: Memory Base
+        self._memory_tab = self._build_memory_tab()
+        self._center_stack.addWidget(self._memory_tab)
+        
+        # Tab 4: Settings
+        self._settings_tab = self._build_settings_tab()
+        self._center_stack.addWidget(self._settings_tab)
+        
+        layout.addWidget(self._center_stack, 1)
+        
+        # ── Right Inspector Drawer ──
+        self._inspector = InspectorDrawer()
+        layout.addWidget(self._inspector)
+    
+    def _setup_titlebar(self):
+        """Custom draggable titlebar overlay."""
+        self._titlebar = QFrame(self)
+        self._titlebar.setFixedHeight(40)
+        self._titlebar.setStyleSheet(f"""
+            QFrame {{
+                background: {Colors.BG_SLATE};
+                border-bottom: 1px solid {Colors.BORDER_SUBTLE};
+            }}
+        """)
+        
+        tb_layout = QHBoxLayout(self._titlebar)
+        tb_layout.setContentsMargins(16, 0, 16, 0)
+        tb_layout.setSpacing(12)
+        
+        title = QLabel("AuraAI Control Center")
+        title.setFont(Typography.BODY())
+        title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent; border: none; font-weight: 600;")
+        tb_layout.addWidget(title)
+        
+        tb_layout.addStretch()
+        
+        # Window controls
+        for sym, color, action in [("−", Colors.TEXT_MUTED, self.showMinimized),
+                                   ("□", Colors.TEXT_MUTED, self._toggle_maximize),
+                                   ("✕", Colors.ERROR, self.close)]:
+            btn = QPushButton(sym)
+            btn.setFixedSize(32, 32)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent;
+                    border: none;
+                    border-radius: {Radius.SM};
+                    color: {color};
+                    font-size: 14px;
+                }}
+                QPushButton:hover {{
+                    background: {Colors.BG_CARD};
+                }}
+            """)
+            btn.clicked.connect(action)
+            tb_layout.addWidget(btn)
+        
+        # Position titlebar at top
+        self._titlebar.setGeometry(0, 0, self.width(), 40)
+    
+    def _build_chat_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(Spacing.LG, 52, Spacing.LG, Spacing.LG)
+        layout.setSpacing(Spacing.MD)
+        
+        # Header
+        header = QHBoxLayout()
+        header_title = QLabel("💬 Live Assistant")
+        header_title.setFont(Typography.H2())
+        header_title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent; border: none;")
+        header.addWidget(header_title)
+        
+        self._status_indicator = StatusPill("●", "Idle", active=False)
+        header.addWidget(self._status_indicator)
+        header.addStretch()
+        layout.addLayout(header)
+        
+        # Chat stream
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("background: transparent; border: none;")
+        self._chat_stream = ChatStreamWidget()
+        scroll.setWidget(self._chat_stream)
+        layout.addWidget(scroll, 1)
+        
+        # Input
+        input_layout = QHBoxLayout()
+        self._chat_input = QLineEdit()
+        self._chat_input.setPlaceholderText("Type a message or command...")
+        self._chat_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: #1E293B;
+                border: 1px solid #334155;
+                border-radius: {Radius.MD};
+                padding: 10px 14px;
+                font-size: 13px;
+                color: #FFFFFF;
+            }}
+            QLineEdit:focus {{
+                border: 1px solid #06B6D4;
+            }}
+            QLineEdit::placeholder {{
+                color: #94A3B8;
+            }}
+        """)
+        self._chat_input.returnPressed.connect(self._on_chat_submit)
+        input_layout.addWidget(self._chat_input)
+        
+        send_btn = QPushButton("➤")
+        send_btn.setObjectName("Primary")
+        send_btn.setFixedSize(40, 40)
+        send_btn.clicked.connect(self._on_chat_submit)
+        input_layout.addWidget(send_btn)
+        
+        layout.addLayout(input_layout)
+        return tab
+    
+    def _build_observer_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(Spacing.LG, 52, Spacing.LG, Spacing.LG)
+        
+        title = QLabel("👁️ World Observer")
+        title.setFont(Typography.H2())
+        layout.addWidget(title)
+        
+        self._observer_feed = QLabel("Waiting for WorldStateObserver data...")
+        self._observer_feed.setWordWrap(True)
+        self._observer_feed.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+        layout.addWidget(self._observer_feed)
+        layout.addStretch()
+        return tab
+    
+    def _build_memory_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(Spacing.LG, 52, Spacing.LG, Spacing.LG)
+        
+        title = QLabel("📚 Memory & Knowledge Base")
+        title.setFont(Typography.H2())
+        layout.addWidget(title)
+        
+        search = QLineEdit()
+        search.setPlaceholderText("Search memories...")
+        layout.addWidget(search)
+        
+        self._memory_grid = QLabel("Memory entries will appear here as cards.")
+        self._memory_grid.setWordWrap(True)
+        self._memory_grid.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+        layout.addWidget(self._memory_grid)
+        layout.addStretch()
+        return tab
+    
+    def _build_settings_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(Spacing.LG, 52, Spacing.LG, Spacing.LG)
+        
+        title = QLabel("⚙️ Settings & Backends")
+        title.setFont(Typography.H2())
+        layout.addWidget(title)
+        
+        # Provider selector
+        layout.addWidget(QLabel("AI Provider"))
+        self._provider_combo = QPushButton("Groq (Active)")
+        self._provider_combo.setStyleSheet(f"""
+            QPushButton {{
+                background: {Colors.BG_CARD};
+                border: 1px solid {Colors.BORDER_SUBTLE};
+                border-radius: {Radius.MD};
+                padding: 10px 14px;
+                text-align: left;
+                color: {Colors.TEXT_PRIMARY};
+            }}
+        """)
+        layout.addWidget(self._provider_combo)
+        layout.addStretch()
+        return tab
+    
+    def _connect_signals(self):
+        app_signals.execution_started.connect(
+            lambda _: self._status_indicator.set_active(True) or self._status_indicator.set_label("Running")
+        )
+        app_signals.execution_finished.connect(
+            lambda _, __: self._status_indicator.set_active(False) or self._status_indicator.set_label("Idle")
+        )
+        app_signals.world_state_changed.connect(self._on_world_state)
+        app_signals.toggle_inspector.connect(self._inspector.toggle)
+    
+    def _on_tab_changed(self, index: int):
+        self._center_stack.setCurrentIndex(index)
+    
+    def _on_chat_submit(self):
+        text = self._chat_input.text().strip()
+        if text:
+            app_signals.message_received.emit("user", text, True)
+            self._chat_input.clear()
+    
+    def _on_world_state(self, snapshot):
+        text = f"Window: {snapshot.focused_window}\nURL: {snapshot.active_url}\nMouse: {snapshot.mouse_position}"
+        self._observer_feed.setText(text)
+    
+    def _toggle_maximize(self):
         if self.isMaximized():
             self.showNormal()
         else:
             self.showMaximized()
-
-    def closeEvent(self, event: QCloseEvent) -> None:
-        if QApplication.instance().property("force_quit"):
-            event.accept()
-            return
-
-        event.ignore()
-        self.close_to_tray()
-
-    def _build_actions(self) -> None:
-        overlay_action = QAction("Show Overlay", self)
-        overlay_action.setShortcut("Alt+Space")
-        overlay_action.triggered.connect(self.show_overlay_requested.emit)
-        self.addAction(overlay_action)
-
-    def _build_ui(self) -> None:
-        outer = QWidget(self)
-        outer.setObjectName("windowShadowHost")
-        outer_layout = QVBoxLayout(outer)
-        outer_layout.setContentsMargins(16, 16, 16, 16)
-
-        self.window_frame = QFrame()
-        self.window_frame.setObjectName("windowFrame")
-        shadow = QGraphicsDropShadowEffect(self.window_frame)
-        shadow.setBlurRadius(34)
-        shadow.setOffset(0, 12)
-        shadow.setColor(QColor(0, 0, 0, 185))
-        self.window_frame.setGraphicsEffect(shadow)
-        outer_layout.addWidget(self.window_frame)
-
-        frame_layout = QVBoxLayout(self.window_frame)
-        frame_layout.setContentsMargins(0, 0, 0, 0)
-        frame_layout.setSpacing(0)
-
-        self.title_bar = TitleBar("Aura")
-        self.title_bar.minimize_requested.connect(self.showMinimized)
-        self.title_bar.maximize_requested.connect(self.toggle_maximized)
-        self.title_bar.close_requested.connect(self.close)
-        self.title_bar.settings_button.clicked.connect(self.settings_requested.emit)
-        frame_layout.addWidget(self.title_bar)
-
-        shell = QHBoxLayout()
-        shell.setContentsMargins(0, 0, 0, 0)
-        shell.setSpacing(0)
-        frame_layout.addLayout(shell, 1)
-
-        sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(230)
-        sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(22, 22, 22, 24)
-        sidebar_layout.setSpacing(12)
-
-        brand = QLabel("Aura")
-        brand.setObjectName("brand")
-        sidebar_layout.addWidget(brand)
-
-        subtitle = QLabel("OS companion")
-        subtitle.setObjectName("muted")
-        sidebar_layout.addWidget(subtitle)
-
-        self.overlay_button = QPushButton("Show Overlay")
-        self.overlay_button.clicked.connect(self.show_overlay_requested.emit)
-        sidebar_layout.addWidget(self.overlay_button)
-
-        sidebar_layout.addSpacing(14)
-        for label in ("History", "Plugins", "AI Providers", "Settings"):
-            item = QLabel(label)
-            item.setObjectName("navItem")
-            sidebar_layout.addWidget(item)
-
-        sidebar_layout.addStretch(1)
-        hint = QLabel(
-            "Alt + Space opens Aura from anywhere when global hotkeys are available."
-        )
-        hint.setObjectName("hint")
-        hint.setWordWrap(True)
-        sidebar_layout.addWidget(hint)
-
-        content = QWidget()
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(34, 30, 34, 30)
-        content_layout.setSpacing(18)
-
-        header = QLabel("Control Center")
-        header.setObjectName("pageTitle")
-        content_layout.addWidget(header)
-
-        self.status_label = QLabel(
-            "Aura brain ready. Open the overlay to chat with memory."
-        )
-        self.status_label.setObjectName("status")
-        self.status_label.setWordWrap(True)
-        content_layout.addWidget(self.status_label)
-
-        cards = QHBoxLayout()
-        cards.setSpacing(14)
-        cards.addWidget(
-            self._metric_card(
-                "Main Window", "Frameless", "Custom title bar and rounded frame"
-            )
-        )
-        cards.addWidget(
-            self._metric_card("Overlay", "Alt + Space", "Instant prompt surface")
-        )
-        cards.addWidget(
-            self._metric_card("Tray", "Enabled", "Close keeps Aura running")
-        )
-        content_layout.addLayout(cards)
-
-        history_title = QLabel("Recent Activity")
-        history_title.setObjectName("sectionTitle")
-        content_layout.addWidget(history_title)
-
-        self.history_list = QListWidget()
-        self.history_list.setAlternatingRowColors(True)
-        self.history_list.addItem(
-            "Aura started. Open the overlay to capture your first prompt."
-        )
-        content_layout.addWidget(self.history_list, 1)
-
-        shell.addWidget(sidebar)
-        shell.addWidget(content, 1)
-        self.setCentralWidget(outer)
-
-    def _metric_card(self, title: str, value: str, detail: str) -> QFrame:
-        card = QFrame()
-        card.setObjectName("metricCard")
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(18, 16, 18, 16)
-        layout.setSpacing(6)
-
-        title_label = QLabel(title)
-        title_label.setObjectName("cardTitle")
-        value_label = QLabel(value)
-        value_label.setObjectName("cardValue")
-        detail_label = QLabel(detail)
-        detail_label.setObjectName("muted")
-        detail_label.setWordWrap(True)
-
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
-        layout.addWidget(detail_label)
-        return card
+    
+    def _center_window(self):
+        screen = QApplication.primaryScreen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = (screen.height() - self.height()) // 2
+        self.move(x, y)
+    
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, '_titlebar'):
+            self._titlebar.setGeometry(0, 0, self.width(), 40)
+    
+    def mousePressEvent(self, event):
+        if event.position().y() <= 40:
+            self._drag_pos = event.globalPosition().toPoint()
+    
+    def mouseMoveEvent(self, event):
+        if hasattr(self, '_drag_pos') and event.buttons() == Qt.MouseButton.LeftButton:
+            self.move(self.pos() + event.globalPosition().toPoint() - self._drag_pos)
+            self._drag_pos = event.globalPosition().toPoint()

@@ -60,29 +60,40 @@ class AudioAdapter(BaseNativeAdapter):
 
 
 class PyCAWAudioAdapter(AudioAdapter):
-    """Primary audio adapter using PyCAW and comtypes (CoreAudio Windows Endpoint Volume)."""
+    """Primary audio adapter using PyCAW (pycaw 20251023+ API via AudioDevice.EndpointVolume)."""
 
     NAME = "pycaw"
     PRIORITY = 10
 
-    def is_available(self) -> bool:
-        """Check if pycaw and comtypes are installed and functional."""
-        try:
-            import comtypes
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    import threading
+    _com_initialized: threading.local = threading.local()
 
-            comtypes.CoInitialize()
+    def _ensure_com(self) -> bool:
+        """Ensure COM is initialized on the current thread. Returns True if WE initialized it."""
+        import comtypes
+        import threading
+        if not getattr(self._com_initialized, "done", False):
             try:
-                devices = AudioUtilities.GetSpeakers()
-                interface = devices.Activate(
-                    IAudioEndpointVolume._iid_, comtypes.CLSCTX_ALL, None
-                )
-                volume_ctrl = ctypes.cast(
-                    interface, ctypes.POINTER(IAudioEndpointVolume)
-                )
-                return volume_ctrl is not None
-            finally:
-                comtypes.CoUninitialize()
+                comtypes.CoInitialize()
+                self._com_initialized.done = True
+                self._com_initialized.we_inited = True
+                return True
+            except Exception:
+                # Already initialized by another caller on this thread — safe to use
+                self._com_initialized.done = True
+                self._com_initialized.we_inited = False
+        return False
+
+    def _vol(self):
+        """Return the EndpointVolume controller for the default speakers."""
+        self._ensure_com()
+        from pycaw.pycaw import AudioUtilities
+        return AudioUtilities.GetSpeakers().EndpointVolume
+
+    def is_available(self) -> bool:
+        """Check if pycaw is installed and an audio endpoint is accessible."""
+        try:
+            return self._vol() is not None
         except Exception as e:
             logger.debug(f"PyCAWAudioAdapter not available: {e}")
             return False
@@ -90,36 +101,27 @@ class PyCAWAudioAdapter(AudioAdapter):
     def list_devices(self) -> list[dict[str, Any]]:
         devices = []
         try:
-            import comtypes
+            self._ensure_com()
             from pycaw.pycaw import AudioUtilities
-
-            comtypes.CoInitialize()
-            try:
-                speakers = AudioUtilities.GetSpeakers()
+            speakers = AudioUtilities.GetSpeakers()
+            devices.append(
+                {
+                    "id": "pycaw_default_output",
+                    "name": getattr(speakers, "FriendlyName", "Default Output Speakers"),
+                    "type": "output",
+                    "is_default": True,
+                }
+            )
+            microphone = AudioUtilities.GetMicrophone()
+            if microphone:
                 devices.append(
                     {
-                        "id": "pycaw_default_output",
-                        "name": getattr(
-                            speakers, "FriendlyName", "Default Output Speakers"
-                        ),
-                        "type": "output",
+                        "id": "pycaw_default_input",
+                        "name": getattr(microphone, "FriendlyName", "Default Microphone"),
+                        "type": "input",
                         "is_default": True,
                     }
                 )
-                microphone = AudioUtilities.GetMicrophone()
-                if microphone:
-                    devices.append(
-                        {
-                            "id": "pycaw_default_input",
-                            "name": getattr(
-                                microphone, "FriendlyName", "Default Microphone"
-                            ),
-                            "type": "input",
-                            "is_default": True,
-                        }
-                    )
-            finally:
-                comtypes.CoUninitialize()
         except Exception as e:
             logger.error(f"PyCAW list_devices failed: {e}")
         return devices
@@ -132,27 +134,13 @@ class PyCAWAudioAdapter(AudioAdapter):
         devs = self.list_devices()
         return next((d for d in devs if d["type"] == "input"), None)
 
-    def _get_volume_ctrl(self):
-        import comtypes
-        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-
-        comtypes.CoInitialize()
-        devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(
-            IAudioEndpointVolume._iid_, comtypes.CLSCTX_ALL, None
-        )
-        return comtypes, ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
-
     def get_volume(self) -> dict[str, Any]:
         try:
-            comtypes, volume_ctrl = self._get_volume_ctrl()
-            try:
-                vol_scalar = volume_ctrl.GetMasterVolumeLevelScalar()
-                muted = bool(volume_ctrl.GetMute())
-                level = round(vol_scalar * 100, 1)
-                return {"level": level, "muted": muted, "backend": self.name}
-            finally:
-                comtypes.CoUninitialize()
+            vol = self._vol()
+            vol_scalar = vol.GetMasterVolumeLevelScalar()
+            muted = bool(vol.GetMute())
+            level = round(vol_scalar * 100, 1)
+            return {"level": level, "muted": muted, "backend": self.name}
         except Exception as e:
             logger.error(f"PyCAW get_volume failed: {e}")
             return {
@@ -165,12 +153,8 @@ class PyCAWAudioAdapter(AudioAdapter):
     def set_volume(self, level: float) -> bool:
         target = max(0.0, min(100.0, float(level))) / 100.0
         try:
-            comtypes, volume_ctrl = self._get_volume_ctrl()
-            try:
-                volume_ctrl.SetMasterVolumeLevelScalar(target, None)
-                return True
-            finally:
-                comtypes.CoUninitialize()
+            self._vol().SetMasterVolumeLevelScalar(target, None)
+            return True
         except Exception as e:
             logger.error(f"PyCAW set_volume failed: {e}")
             return False
@@ -181,15 +165,14 @@ class PyCAWAudioAdapter(AudioAdapter):
 
     def set_mute(self, muted: bool) -> bool:
         try:
-            comtypes, volume_ctrl = self._get_volume_ctrl()
-            try:
-                volume_ctrl.SetMute(1 if muted else 0, None)
-                return True
-            finally:
-                comtypes.CoUninitialize()
+            self._vol().SetMute(1 if muted else 0, None)
+            return True
         except Exception as e:
             logger.error(f"PyCAW set_mute failed: {e}")
             return False
+
+
+
 
 
 class WinMMAudioAdapter(AudioAdapter):

@@ -60,21 +60,22 @@ class ACAPlanner:
                 (b for b in ["chrome", "edge", "firefox", "opera", "brave"] if b in goal.lower()),
                 "chrome"
             )
+            from core.orchestration.task_decomposer import TaskDecomposer
+            _, target_url, _ = TaskDecomposer()._resolve_browser_target(objective)
+            if not target_url:
+                target_url = f"https://www.{site}.com"
             return {
                 "goal": goal,
-                "capabilities": ["desktop", "browser"],
+                "capabilities": ["browser"],
                 "steps": [
-                    {"engine": "desktop", "action": "check_running", "parameters": {"application": browser}},
-                    {"engine": "desktop", "action": "launch_application", "parameters": {"application": browser}},
-                    {"engine": "browser", "action": "navigate", "parameters": {"url": f"https://www.{site}.com"}},
+                    {"engine": "browser", "action": "navigate", "parameters": {"url": target_url}},
                     {"engine": "browser", "action": "verify", "parameters": {"expect": site}},
                 ],
-                "verification": [f"{browser} window exists", f"Navigation to {site} succeeded"],
+                "verification": [f"Navigation to {site} succeeded"],
                 "fallbacks": [
-                    {"trigger": f"{browser} not found", "action": f"Try launching {browser} via alternate path"},
                     {"trigger": "Navigation failed", "action": f"Retry navigating to {site}"},
                 ],
-                "expected_result": f"{browser} displays the {site} homepage",
+                "expected_result": f"Browser displays {site}",
                 "confidence": decision_context.confidence.overall,
             }
 

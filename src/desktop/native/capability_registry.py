@@ -235,6 +235,19 @@ class CapabilityRegistry:
 
         self.register(
             CapabilityDescriptor(
+                name="window.maximize",
+                description="Maximize a window on desktop",
+                manager="window",
+                category="window",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                events_triggered=["window_maximized"],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
                 name="file.create",
                 description="Create a new file or write text content to a file",
                 manager="file",

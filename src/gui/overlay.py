@@ -1,219 +1,258 @@
-from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtGui import QKeyEvent, QMouseEvent
-from PySide6.QtWidgets import (
-    QApplication,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QSizeGrip,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+"""
+Overlay Window (Spotlight HUD)
+==============================
+Frameless glassmorphism command bar triggered by Alt+Space.
+"""
 
-from gui.animations import fade_in
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
+    QLabel, QSizePolicy, QApplication, QGraphicsDropShadowEffect
+)
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize, Signal
+from PySide6.QtGui import QKeySequence, QShortcut, QColor, QFont
+
+from src.gui.theme import Colors, Radius, Typography, Spacing, overlay_stylesheet, Animations
+from src.gui.signals import app_signals, ExecutionStep, StepStatus
+from src.gui.widgets import StatusPill, StepListWidget, VoiceWaveform
 
 
 class OverlayWindow(QWidget):
-    submitted = Signal(str)
-    live_screen_toggled = Signal(bool)
-
-    def __init__(self):
-        super().__init__()
-        self._fade_animation = None
-        self._drag_offset: QPoint | None = None
-        self._has_custom_position = False
-        self._last_prompt = ""
-        self._live_screen_active = False
-        self.setWindowTitle("Aura Overlay")
+    """
+    Floating Spotlight HUD for ultra-fast desktop automation.
+    Shortcut: Alt+Space toggle.
+    """
+    
+    command_submitted = Signal(str)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("OverlayWindow")
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.Tool
-            | Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumSize(460, 270)
-        self.resize(620, 330)
-
-        root = QVBoxLayout(self)
-        root.setContentsMargins(12, 12, 12, 12)
-
-        self.panel = QFrame(self)
-        self.panel.setObjectName("overlayPanel")
-        root.addWidget(self.panel)
-
-        layout = QVBoxLayout(self.panel)
-        layout.setContentsMargins(22, 18, 22, 18)
-        layout.setSpacing(12)
-
-        self.title = QLabel("Aura")
-        self.title.setObjectName("overlayTitle")
-        layout.addWidget(self.title)
-
-        subtitle = QLabel("Ask anything or type a command")
-        subtitle.setObjectName("overlaySubtitle")
-        layout.addWidget(subtitle)
-
-        input_row = QHBoxLayout()
-        input_row.setSpacing(10)
-        self.input = QLineEdit()
-        self.input.setPlaceholderText("Ask anything...")
-        self.input.returnPressed.connect(self._submit)
-
-        send_button = QPushButton("Go")
-        send_button.clicked.connect(self._submit)
-
-        input_row.addWidget(self.input, 1)
-        input_row.addWidget(send_button)
-        layout.addLayout(input_row)
-
-        tools_row = QHBoxLayout()
-        tools_row.setSpacing(10)
-
-        self.live_screen_button = QPushButton("Live Screen")
-        self.live_screen_button.setObjectName("secondaryButton")
-        self.live_screen_button.setCheckable(True)
-        self.live_screen_button.clicked.connect(self._toggle_live_screen)
-
-        self.tools_status = QLabel("Attach  |  Voice  |  Send")
-        self.tools_status.setObjectName("overlayTools")
-
-        tools_row.addWidget(self.live_screen_button)
-        tools_row.addWidget(self.tools_status, 1)
-        layout.addLayout(tools_row)
-
-        self.response = QTextEdit()
-        self.response.setObjectName("overlayResponse")
-        self.response.setReadOnly(True)
-        self.response.setMinimumHeight(96)
-        self.response.setPlainText("Ready.")
-        layout.addWidget(self.response)
-
-        grip_row = QHBoxLayout()
-        grip_row.setContentsMargins(0, 0, 0, 0)
-        grip_row.addStretch(1)
-        grip_row.addWidget(QSizeGrip(self))
-        layout.addLayout(grip_row)
-
-    def set_response(self, response: str) -> None:
-        self.response.setPlainText(response)
-        self.input.setFocus()
-
-    def set_live_screen_state(
-        self,
-        is_active: bool,
-        frame_count: int = 0,
-        frame_path: str | None = None,
-    ) -> None:
-        self._live_screen_active = is_active
-        self.live_screen_button.blockSignals(True)
-        self.live_screen_button.setChecked(is_active)
-        self.live_screen_button.setText("Stop Live" if is_active else "Live Screen")
-        self.live_screen_button.blockSignals(False)
-
-        if is_active:
-            detail = f"Live screen on. Frames: {frame_count}"
-            if frame_path:
-                detail = f"{detail} | Latest: {frame_path}"
-            self.tools_status.setText(detail)
-        else:
-            self.tools_status.setText("Live screen off | Attach  |  Voice  |  Send")
-
-    def show_overlay(self) -> None:
-        screen = QApplication.primaryScreen()
-        geometry = screen.availableGeometry()
-        width = min(620, max(460, int(geometry.width() * 0.42)))
-        height = min(330, max(270, int(geometry.height() * 0.34)))
-        self.resize(width, height)
-
-        if not self._has_custom_position:
-            self.move(
-                geometry.center().x() - self.width() // 2,
-                geometry.top() + max(54, geometry.height() // 9),
-            )
-        else:
-            self._keep_inside_screen()
-        self.setWindowOpacity(0.0)
-        self.show()
-        self.raise_()
-        self.activateWindow()
-        self.input.setFocus()
-        self.input.selectAll()
-        self._fade_animation = fade_in(self)
-
-    def toggle(self) -> None:
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        
+        self._setup_ui()
+        self._setup_shortcuts()
+        self._setup_shadow()
+        self._connect_signals()
+        
+        self.setStyleSheet(overlay_stylesheet())
+        self.resize(640, 400)
+        self.hide()
+    
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+        
+        # ── Top Status Bar ──
+        status_layout = QHBoxLayout()
+        status_layout.setSpacing(8)
+        
+        self._voice_pill = StatusPill("🎙️", "Voice", active=False, animate=True)
+        self._screen_pill = StatusPill("👁️", "Screen", active=False, animate=False)
+        self._engine_pill = StatusPill("⚡", "Groq", active=True, animate=False)
+        
+        status_layout.addWidget(self._voice_pill)
+        status_layout.addWidget(self._screen_pill)
+        status_layout.addWidget(self._engine_pill)
+        status_layout.addStretch()
+        
+        # Close button
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(28, 28)
+        close_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                border-radius: {Radius.SM};
+                color: {Colors.TEXT_MUTED};
+                font-size: 14px;
+            }}
+            QPushButton:hover {{
+                background: {Colors.BG_CARD};
+                color: {Colors.TEXT_PRIMARY};
+            }}
+        """)
+        close_btn.clicked.connect(self.hide)
+        status_layout.addWidget(close_btn)
+        
+        layout.addLayout(status_layout)
+        
+        # ── Omni Input ──
+        self._input = QLineEdit()
+        self._input.setObjectName("OmniInput")
+        self._input.setPlaceholderText("Ask Aura anything or type a command...")
+        self._input.returnPressed.connect(self._on_submit)
+        layout.addWidget(self._input)
+        
+        # ── Action Tools Bar ──
+        tools_layout = QHBoxLayout()
+        tools_layout.setSpacing(8)
+        
+        self._voice_toggle = QPushButton("🎙️ Voice")
+        self._voice_toggle.setCheckable(True)
+        self._voice_toggle.setStyleSheet(f"""
+            QPushButton {{
+                background: {Colors.BG_CARD};
+                border: 1px solid {Colors.BORDER_SUBTLE};
+                border-radius: {Radius.PILL};
+                padding: 6px 14px;
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 12px;
+            }}
+            QPushButton:checked {{
+                background: rgba(6, 182, 212, 0.15);
+                border: 1px solid {Colors.CYAN};
+                color: {Colors.CYAN_GLOW};
+            }}
+        """)
+        self._voice_toggle.toggled.connect(self._on_voice_toggle)
+        tools_layout.addWidget(self._voice_toggle)
+        
+        self._screen_toggle = QPushButton("👁️ Share Screen")
+        self._screen_toggle.setCheckable(True)
+        self._screen_toggle.setStyleSheet(self._voice_toggle.styleSheet())
+        self._screen_toggle.toggled.connect(self._on_screen_toggle)
+        tools_layout.addWidget(self._screen_toggle)
+        
+        # Provider selector
+        self._provider = QPushButton("⚡ Groq ▾")
+        self._provider.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: 1px solid {Colors.BORDER_SUBTLE};
+                border-radius: {Radius.PILL};
+                padding: 6px 14px;
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 12px;
+            }}
+            QPushButton:hover {{
+                background: {Colors.BG_CARD};
+            }}
+        """)
+        tools_layout.addWidget(self._provider)
+        tools_layout.addStretch()
+        
+        layout.addLayout(tools_layout)
+        
+        # ── Voice Waveform (hidden by default) ──
+        self._waveform = VoiceWaveform(bar_count=32)
+        self._waveform.setVisible(False)
+        layout.addWidget(self._waveform, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        # ── Step Execution Feed ──
+        self._step_list = StepListWidget()
+        self._step_list.setMaximumHeight(200)
+        layout.addWidget(self._step_list)
+        
+        # ── Response Preview ──
+        self._response = QLabel()
+        self._response.setWordWrap(True)
+        self._response.setStyleSheet(f"""
+            color: {Colors.TEXT_SECONDARY};
+            font-size: 13px;
+            padding: 8px;
+            background: transparent;
+        """)
+        self._response.setText("Aura is ready. Type a command to begin.")
+        layout.addWidget(self._response)
+        
+        layout.addStretch()
+    
+    def _setup_shortcuts(self):
+        self._shortcut = QShortcut(QKeySequence("Alt+Space"), self)
+        self._shortcut.activated.connect(self.toggle)
+    
+    def _setup_shadow(self):
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(40)
+        shadow.setColor(QColor(0, 0, 0, 120))
+        shadow.setOffset(0, 12)
+        self.setGraphicsEffect(shadow)
+    
+    def _connect_signals(self):
+        app_signals.voice_status_changed.connect(self._on_voice_status)
+        app_signals.screen_status_changed.connect(self._on_screen_status)
+        app_signals.provider_changed.connect(self._on_provider_changed)
+        app_signals.message_received.connect(self._on_message_received)
+        app_signals.toggle_overlay.connect(self.toggle)
+    
+    def _on_submit(self):
+        text = self._input.text().strip()
+        if text:
+            self.command_submitted.emit(text)
+            self._input.clear()
+            self._response.setText("Processing...")
+    
+    def _on_voice_toggle(self, checked: bool):
+        app_signals.voice_status_changed.emit(checked)
+    
+    def _on_screen_toggle(self, checked: bool):
+        app_signals.screen_status_changed.emit(checked, "Desktop")
+    
+    def _on_voice_status(self, active: bool):
+        self._voice_pill.set_active(active)
+        self._waveform.setVisible(active)
+        self._voice_toggle.setChecked(active)
+    
+    def _on_screen_status(self, active: bool, window: str):
+        self._screen_pill.set_active(active)
+        self._screen_pill.set_label(window if active else "Screen")
+    
+    def _on_provider_changed(self, name: str):
+        self._engine_pill.set_label(name)
+        self._provider.setText(f"⚡ {name} ▾")
+    
+    def _on_message_received(self, sender: str, content: str, is_user: bool):
+        if not is_user:
+            self._response.setText(content[:200] + "..." if len(content) > 200 else content)
+    
+    def toggle(self):
         if self.isVisible():
-            self.hide()
+            self._fade_out()
         else:
-            self.show_overlay()
-
-    def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.key() == Qt.Key.Key_Escape:
-            self.hide()
-            return
-        super().keyPressEvent(event)
-
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton and self._can_drag_from(
-            event.position().toPoint()
-        ):
-            self._drag_offset = (
-                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            )
-            event.accept()
-            return
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if (
-            self._drag_offset is not None
-            and event.buttons() & Qt.MouseButton.LeftButton
-        ):
-            self.move(event.globalPosition().toPoint() - self._drag_offset)
-            self._has_custom_position = True
-            event.accept()
-            return
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and self._drag_offset is not None
-        ):
-            self._drag_offset = None
-            self._keep_inside_screen()
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
-
-    def _submit(self) -> None:
-        text = self.input.text().strip()
-        if not text:
-            return
-        self._last_prompt = text
-        self.submitted.emit(text)
-        self.input.clear()
-
-    def _toggle_live_screen(self) -> None:
-        requested_state = self.live_screen_button.isChecked()
-        self.live_screen_toggled.emit(requested_state)
-
-    def _can_drag_from(self, position: QPoint) -> bool:
-        child = self.childAt(position)
-        blocked = (self.input, self.response, self.live_screen_button)
-        return child not in blocked and not isinstance(child, QPushButton)
-
-    def _keep_inside_screen(self) -> None:
-        screen = (
-            QApplication.screenAt(self.frameGeometry().center())
-            or QApplication.primaryScreen()
-        )
-        if screen is None:
-            return
-
-        geometry = screen.availableGeometry()
-        x = min(max(self.x(), geometry.left()), geometry.right() - self.width())
-        y = min(max(self.y(), geometry.top()), geometry.bottom() - self.height())
+            self._fade_in()
+    
+    def _fade_in(self):
+        self.show()
+        self._center_on_screen()
+        self.setWindowOpacity(0.0)
+        self._anim = Animations.fade_in(self, 200)
+        self._anim.start()
+        self._input.setFocus()
+    
+    def _fade_out(self):
+        self._anim = QPropertyAnimation(self, b"windowOpacity")
+        self._anim.setDuration(150)
+        self._anim.setStartValue(1.0)
+        self._anim.setEndValue(0.0)
+        self._anim.finished.connect(self.hide)
+        self._anim.start()
+    
+    def _center_on_screen(self):
+        screen = QApplication.primaryScreen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = int(screen.height() * 0.15)
         self.move(x, y)
+    
+    def paintEvent(self, event):
+        from PySide6.QtGui import QPainter, QBrush, QColor, QPainterPath
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        path = QPainterPath()
+        path.addRoundedRect(self.rect().adjusted(1, 1, -1, -1), 16, 16)
+        
+        painter.fillPath(path, QBrush(QColor(Colors.BG_DEEP)))
+        
+        # Subtle border gradient
+        pen = QPainterPath()
+        pen.setWidth(1.5)
+        painter.strokePath(path, QBrush(QColor(34, 211, 238, 60)))
+        
+        super().paintEvent(event)

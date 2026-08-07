@@ -276,7 +276,7 @@ class MasterOrchestrator:
         # Check if the query is a command/request rather than a direct answer
         is_command = False
         goal_lower = goal_text.lower().strip()
-        if any(w in goal_lower for w in ["open ", "close ", "minimize ", "summarize ", "what is", "do you", "who are", "system", "tell me"]):
+        if any(w in goal_lower for w in ["open ", "close ", "minimize ", "maximize ", "restore ", "unminimize ", "launch ", "start ", "run ", "bring ", "focus ", "activate ", "switch to ", "summarize ", "what is", "do you", "who are", "system", "tell me"]):
             is_command = True
 
         if pending_question is not None and not is_command:
@@ -483,6 +483,11 @@ class MasterOrchestrator:
         t3 = datetime.now().timestamp()
         pipeline_halted = False
 
+        from .task_working_memory import TaskWorkingMemory
+        from .world_state_observer import WorldStateObserver
+        task_memory = TaskWorkingMemory(goal=goal_text)
+        world_observer = WorldStateObserver.get_instance()
+
         for level_index, task_level in enumerate(task_graph.execution_order):
             if pipeline_halted:
                 # Mark remaining tasks as cancelled
@@ -576,6 +581,23 @@ class MasterOrchestrator:
                                 content=obs_text,
                             )
                         )
+
+                    # Update TaskWorkingMemory with real-time perception observation
+                    try:
+                        b_adapter = self.backend_registry.get_backend("browser")
+                        world_snap = await world_observer.observe_async(
+                            domain=subtask.required_role.value, browser_adapter=b_adapter
+                        )
+                        task_memory.update_world_state(world_snap)
+                        task_memory.record_step(
+                            capability=subtask.capability,
+                            target=subtask.title,
+                            goal=subtask.description,
+                            success=res.success,
+                            observations=res.observations,
+                        )
+                    except Exception as mem_err:
+                        logger.debug(f"[MasterOrchestrator] TaskWorkingMemory update skipped: {mem_err}")
 
                     # ── Output Artifact Propagation ────────────────────────
                     # Extract content from the execution result and store
@@ -710,6 +732,9 @@ class MasterOrchestrator:
                             )
                         except Exception as conf_exc:
                             logger.debug(f"Confirmation attachment skipped: {conf_exc}")
+
+        task_memory.mark_complete(success=(len(completed_ids) == len(task_graph.subtasks)))
+        session.metrics["task_working_memory"] = task_memory.get_summary()
 
         session.metrics["execution_ms"] = round(
             (datetime.now().timestamp() - t3) * 1000, 2

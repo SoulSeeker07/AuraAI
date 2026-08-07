@@ -177,7 +177,14 @@ class DecisionEngine:
             ]
         )
         # Desktop window control / app management takes precedence over browsing
-        is_window_control = any(
+        app_verbs = ["open", "launch", "start", "bring", "focus", "close", "activate", "maximize", "minimize", "restore", "switch to"]
+        app_names = ["chrome", "google chrome", "edge", "msedge", "firefox", "browser", "notepad", "calc", "calculator", "vscode", "vs code", "visual studio code", "spotify", "word", "excel", "powerpoint", "paint", "mspaint", "cmd", "powershell"]
+        
+        has_app_verb = any(v in goal_lower for v in app_verbs)
+        has_app_name = any(a in goal_lower for a in app_names)
+        has_web_target = any(site in goal_lower for site in ["youtube", "github", "gmail", "google.com", "twitter", "reddit", "linkedin", "facebook", "instagram", "amazon", "netflix", "http://", "https://", "www."])
+        
+        is_window_control = (has_app_verb and has_app_name and not has_web_target) or any(
             w in goal_lower
             for w in [
                 "bring to front", "bring chrome", "bring edge", "bring browser", "bring window",
@@ -206,7 +213,8 @@ class DecisionEngine:
                 "network",
                 "ip",
                 "notepad",
-                "file",
+                "create file",
+                "write file",
                 "folder",
                 "desktop",
                 "notes",
@@ -217,6 +225,18 @@ class DecisionEngine:
                 "vscode",
                 "vs code",
                 "visual studio code",
+                # System radio / hardware controls
+                "bluetooth",
+                "wifi",
+                "wi-fi",
+                "airplane mode",
+                "dark mode",
+                "night light",
+                "brightness",
+                "turn off",
+                "turn on",
+                "enable",
+                "disable",
             ]
         )
 
@@ -291,6 +311,26 @@ class DecisionEngine:
                 "browser",
                 "edge",
                 "firefox",
+                "next",
+                "previous",
+                "pause",
+                "resume",
+                "seek",
+                "skip",
+                "filter",
+                "comment",
+                "comments",
+                "review",
+                "reviews",
+                "checkout",
+                "compare",
+                "play",
+                "video",
+                "videos",
+                "song",
+                "songs",
+                "music",
+                "playlist",
             ]
         )
 

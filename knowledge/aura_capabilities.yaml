@@ -467,6 +467,80 @@ groups:
         description: Schedule a workflow to run at a time or on a trigger
         examples: ["schedule workflow", "run at 9am", "trigger on file change"]
 
+  # ── MEDIA CONTROL ─────────────────────────────────────────
+  - group: Media Control & Playback
+    id_prefix: media
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+    capabilities:
+      - name: Play Media
+        id: media.play
+        description: Play media, video, or audio track
+        examples: ["play the video", "start it", "play the Python tutorial"]
+      - name: Pause Media
+        id: media.pause
+        description: Pause currently playing media
+        examples: ["pause", "pause the video", "stop it for now"]
+      - name: Resume Media
+        id: media.resume
+        description: Resume paused media
+        examples: ["resume", "continue", "play it again"]
+      - name: Next Media
+        id: media.next
+        description: Play next video or track relative to context
+        examples: ["next video", "play the next one", "skip this one"]
+      - name: Previous Media
+        id: media.previous
+        description: Play previous video or track relative to context
+        examples: ["previous video", "play the one before this", "go back"]
+      - name: Restart Media
+        id: media.restart
+        description: Restart media from the beginning
+        examples: ["restart video", "replay it", "start from beginning"]
+      - name: Seek Media
+        id: media.seek
+        description: Seek forward or backward by timestamp/offset
+        examples: ["skip 30 seconds", "go back 10 seconds", "seek to 5 minutes"]
+      - name: Change Volume
+        id: media.volume
+        description: Set or adjust playback volume
+        examples: ["mute it", "set volume to 50%", "turn up volume"]
+
+  # ── SHOPPING & E-COMMERCE ───────────────────────────────
+  - group: Shopping & E-Commerce
+    id_prefix: shopping
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+    capabilities:
+      - name: Search Product
+        id: shopping.search
+        description: Search products with criteria and price caps
+        examples: ["find me a laptop under 60k", "search Amazon for gaming laptops"]
+      - name: Filter Products
+        id: shopping.filter
+        description: Apply spec, brand, price, rating filters
+        examples: ["only 16GB RAM", "no HP", "rating above 4", "only OLED"]
+      - name: Compare Products
+        id: shopping.compare
+        description: Side-by-side product comparison
+        examples: ["compare these two", "which laptop has better battery life"]
+      - name: Check Reviews
+        id: shopping.reviews
+        description: Inspect customer reviews, ratings, pros and cons
+        examples: ["check the reviews", "what are people complaining about", "is this laptop worth buying"]
+      - name: Add to Cart
+        id: shopping.cart.add
+        description: Add product or variant to shopping cart
+        examples: ["add the cheapest one to cart", "put this in my cart"]
+      - name: View Cart
+        id: shopping.cart.view
+        description: Open and review current cart items
+        examples: ["open my cart", "show my cart", "what is the total"]
+      - name: Checkout
+        id: shopping.checkout
+        description: Prepare and proceed through checkout workflow
+        examples: ["proceed to checkout", "go to checkout", "buy it"]
+
   # ── PLUGINS ──────────────────────────────────────────────
   - group: Plugin Ecosystem
     id_prefix: plugin

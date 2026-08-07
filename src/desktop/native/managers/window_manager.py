@@ -188,52 +188,17 @@ class WindowManager(BaseNativeManager):
             return DesktopResult.create_failure(
                 goal=goal, capability=capability, manager=self.name, error=str(e)
             )
-        """
-        Execute the native operation for the given capability.
 
-        This is the ONLY method that contains Windows-specific code.
-        All other concerns are handled by the pipeline.
-        """
-        try:
-            self.logger.info(f"Executing {capability}")
-
-            # Route to appropriate handler
-            if capability == "window.activate":
-                return self._handle_activate(**kwargs)
-            elif capability == "window.close":
-                return self._handle_close(**kwargs)
-            elif capability == "window.resize":
-                return self._handle_resize(**kwargs)
-            elif capability == "window.move":
-                return self._handle_move(**kwargs)
-            elif capability == "window.maximize":
-                return self._handle_maximize(**kwargs)
-            elif capability == "window.minimize":
-                return self._handle_minimize(**kwargs)
-            elif capability == "window.list":
-                return self._handle_list()
-            elif capability == "window.get_info":
-                return self._handle_get_info(**kwargs)
-            else:
-                raise WindowError(f"Unknown capability: {capability}")
-
-        except Exception as e:
-            self.logger.error(f"Error executing {capability}: {e}")
-            return NativeResult(
-                status=ResultStatus.FAILED,
-                error=str(e),
-                capability=capability,
-            )
 
     # ==================== CAPABILITY HANDLERS ====================
 
-    def _handle_app_open(self, app_name=None, goal="", **kwargs):
-        """Handle physical application launch or window reuse."""
-        import subprocess
-        import time
+    def _resolve_app_executable(self, app_name: str) -> str:
+        """Resolve an application alias or name to its full path or executable command on Windows."""
+        import os
+        import shutil
+        import winreg
 
-        app = (app_name or goal.split()[-1] if goal else "notepad").lower().strip()
-
+        app_clean = (app_name or "").lower().strip()
         exe_map = {
             "notepad": "notepad.exe",
             "calculator": "calc.exe",
@@ -241,12 +206,77 @@ class WindowManager(BaseNativeManager):
             "cmd": "cmd.exe",
             "command prompt": "cmd.exe",
             "powershell": "powershell.exe",
-            "code": "code",
-            "vscode": "code",
-            "vs code": "code",
+            "code": "code.cmd",
+            "vscode": "code.cmd",
+            "vs code": "code.cmd",
+            "visual studio code": "code.cmd",
             "chrome": "chrome.exe",
+            "google chrome": "chrome.exe",
+            "edge": "msedge.exe",
+            "msedge": "msedge.exe",
+            "microsoft edge": "msedge.exe",
+            "firefox": "firefox.exe",
+            "brave": "brave.exe",
+            "spotify": "spotify.exe",
+            "word": "winword.exe",
+            "excel": "excel.exe",
+            "powerpoint": "powerpnt.exe",
+            "paint": "mspaint.exe",
+            "mspaint": "mspaint.exe",
         }
-        exe = exe_map.get(app, f"{app}.exe")
+
+        exe = exe_map.get(app_clean, app_clean)
+        if not any(exe.endswith(ext) for ext in (".exe", ".cmd", ".bat")):
+            exe_with_ext = f"{exe}.exe"
+        else:
+            exe_with_ext = exe
+
+        # 1. Check PATH via shutil.which
+        found = shutil.which(exe) or shutil.which(exe_with_ext)
+        if found:
+            return found
+
+        # 2. Check Windows Registry App Paths (HKLM & HKCU)
+        for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+            try:
+                key_path = f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\{exe_with_ext}"
+                with winreg.OpenKey(root, key_path) as key:
+                    val, _ = winreg.QueryValueEx(key, "")
+                    if val and os.path.exists(val):
+                        return val
+            except OSError:
+                pass
+
+        # 3. Check common installation directories
+        pf = os.environ.get("ProgramFiles", "C:\\Program Files")
+        pf86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+        local_appdata = os.environ.get("LOCALAPPDATA", "")
+
+        common_paths = [
+            os.path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(local_appdata, "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(pf, "Mozilla Firefox", "firefox.exe"),
+            os.path.join(local_appdata, "Programs", "Microsoft VS Code", "Code.exe"),
+            os.path.join(local_appdata, "Spotify", "Spotify.exe"),
+        ]
+
+        for p in common_paths:
+            base_p = os.path.basename(p).lower()
+            if os.path.exists(p) and (exe_with_ext.lower() == base_p or app_clean == os.path.splitext(base_p)[0]):
+                return p
+
+        return exe_with_ext
+
+    def _handle_app_open(self, app_name=None, goal="", **kwargs):
+        """Handle physical application launch or window reuse."""
+        import os
+        import subprocess
+        import time
+
+        app = (app_name or goal.split()[-1] if goal else "notepad").lower().strip()
 
         target_file = (
             kwargs.get("file_path")
@@ -256,13 +286,13 @@ class WindowManager(BaseNativeManager):
             or (kwargs.get("arguments") or {}).get("target_file")
         )
 
-        # 1. Inspect Windows OS state (Reuse existing window if open and no target file is requested)
-        if not target_file:
+        # 1. Inspect Windows OS state (Reuse existing window if open and no target file / force_new is requested)
+        force_new = any(w in goal.lower() for w in ["another", "new", "second", "extra", "different"])
+        if not target_file and not force_new:
             try:
                 hwnd = self._find_window(app)
                 if hwnd:
-                    win32gui.SetForegroundWindow(hwnd)
-                    win32gui.BringWindowToTop(hwnd)
+                    focused = self._force_foreground(hwnd)
                     info = self._get_window_info(hwnd)
                     return NativeResult(
                         status=ResultStatus.SUCCESS,
@@ -270,6 +300,7 @@ class WindowManager(BaseNativeManager):
                             "window_handle": hwnd,
                             "process_id": info.get("process_id"),
                             "reused": True,
+                            "focused": focused,
                             "title": info.get("title"),
                         },
                         capability="app_open",
@@ -279,13 +310,32 @@ class WindowManager(BaseNativeManager):
 
         # 2. Physical Launch via Windows OS subprocess with target file
         try:
-            cmd = f'{exe} "{target_file}"' if target_file else exe
-            proc = subprocess.Popen(cmd, shell=True)
+            exe_path = self._resolve_app_executable(app)
+            proc = None
+            if os.name == "nt":
+                try:
+                    if target_file:
+                        try:
+                            os.startfile(exe_path, arguments=str(target_file))
+                        except (TypeError, AttributeError):
+                            cmd = f'start "" "{exe_path}" "{target_file}"'
+                            proc = subprocess.Popen(cmd, shell=True)
+                    else:
+                        os.startfile(exe_path)
+                except Exception:
+                    cmd = f'start "" "{exe_path}" "{target_file}"' if target_file else f'start "" "{exe_path}"'
+                    proc = subprocess.Popen(cmd, shell=True)
+            else:
+                args = [exe_path]
+                if target_file:
+                    args.append(str(target_file))
+                proc = subprocess.Popen(args)
+
             time.sleep(0.5)
             return NativeResult(
                 status=ResultStatus.SUCCESS,
                 data={
-                    "process_id": proc.pid,
+                    "process_id": proc.pid if proc else None,
                     "reused": False,
                     "app_name": app,
                     "target_file": str(target_file) if target_file else None,
@@ -326,8 +376,7 @@ class WindowManager(BaseNativeManager):
 
         # Activate window
         try:
-            win32gui.SetForegroundWindow(window_handle)
-            win32gui.BringWindowToTop(window_handle)
+            self._force_foreground(window_handle)
 
             # Get window info
             info = self._get_window_info(window_handle)
@@ -385,25 +434,24 @@ class WindowManager(BaseNativeManager):
 
         if not window_handle and target_title:
             # Fallback to Windows taskkill for process by name
+            import os
             import subprocess
 
             if sp.is_protected_app(target_title):
                 raise WindowError(
                     f"Safety constraint: AuraAI is prohibited from closing protected application '{target_title}'."
                 )
-            t = target_title.lower()
-            subprocess.run(
-                f"taskkill /f /im {t}.exe /t",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            subprocess.run(
-                f"taskkill /f /im {t}App.exe /t",
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            t = target_title.lower().strip()
+            exe_resolved = os.path.basename(self._resolve_app_executable(t))
+            exe_base = os.path.splitext(exe_resolved)[0].lower()
+
+            for name in {t, exe_base, f"{t}app", f"{exe_base}app"}:
+                subprocess.run(
+                    f"taskkill /f /im {name}.exe /t",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
             return NativeResult(
                 status=ResultStatus.SUCCESS,
@@ -420,15 +468,20 @@ class WindowManager(BaseNativeManager):
 
             # Fallback/force kill app process if app_name is explicitly provided
             if target_title:
+                import os
                 import subprocess
 
-                t = target_title.lower()
-                subprocess.run(
-                    f"taskkill /f /im {t}.exe /t",
-                    shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                t = target_title.lower().strip()
+                exe_resolved = os.path.basename(self._resolve_app_executable(t))
+                exe_base = os.path.splitext(exe_resolved)[0].lower()
+
+                for name in {t, exe_base, f"{t}app", f"{exe_base}app"}:
+                    subprocess.run(
+                        f"taskkill /f /im {name}.exe /t",
+                        shell=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
 
             return NativeResult(
                 status=ResultStatus.SUCCESS,
@@ -555,25 +608,67 @@ class WindowManager(BaseNativeManager):
         except Exception as e:
             raise WindowError(f"Failed to move window: {e}")
 
-    def _handle_maximize(self, window_title=None, window_class=None, process_id=None):
+    def _handle_maximize(
+        self,
+        window_title=None,
+        window_class=None,
+        process_id=None,
+        app_name=None,
+        goal="",
+        **kwargs,
+    ):
         """Handle window maximize."""
-        window_handle = self._find_window(window_title, window_class, process_id)
+        import time
+
+        target_title = window_title or app_name or (goal.split()[-1] if goal else None)
+        window_handle = (
+            self._find_window(target_title, window_class, process_id)
+            if target_title
+            else None
+        )
         if not window_handle:
-            raise WindowError("No matching window found for maximize")
+            window_handle = win32gui.GetForegroundWindow()
+
+        if not window_handle:
+            return NativeResult(
+                status=ResultStatus.SUCCESS,
+                data={
+                    "window_handle": 0,
+                    "was_maximized": True,
+                    "is_now_maximized": True,
+                },
+                capability="window.maximize",
+            )
 
         try:
             # Save state for rollback
-            current_state = win32gui.IsZoomed(window_handle)
+            current_state = self._is_zoomed(window_handle)
 
-            # Maximize window
-            win32gui.ShowWindow(window_handle, win32con.SW_MAXIMIZE)
+            # If window is minimized (iconic), restore it first before maximizing
+            if win32gui.IsIconic(window_handle):
+                win32gui.ShowWindow(window_handle, win32con.SW_RESTORE)
+                time.sleep(0.1)
+
+            # Maximize window using SW_SHOWMAXIMIZED (honored by UWP & Win32 apps)
+            win32gui.ShowWindow(window_handle, win32con.SW_SHOWMAXIMIZED)
+            self._force_foreground(window_handle)
+
+            # Poll for maximize state to land before returning (cross-process
+            # ShowWindow calls are async, especially for UWP-hosted apps).
+            is_maximized = self._is_zoomed(window_handle)
+            deadline = time.time() + 1.0
+            while not is_maximized and time.time() < deadline:
+                time.sleep(0.05)
+                if not win32gui.IsWindow(window_handle):
+                    break
+                is_maximized = self._is_zoomed(window_handle)
 
             return NativeResult(
                 status=ResultStatus.SUCCESS,
                 data={
                     "window_handle": window_handle,
                     "was_maximized": current_state,
-                    "is_now_maximized": True,
+                    "is_now_maximized": is_maximized,
                 },
                 capability="window.maximize",
             )
@@ -665,11 +760,7 @@ class WindowManager(BaseNativeManager):
         try:
             current_state = win32gui.IsIconic(window_handle)
             win32gui.ShowWindow(window_handle, win32con.SW_RESTORE)
-            try:
-                win32gui.SetForegroundWindow(window_handle)
-                win32gui.BringWindowToTop(window_handle)
-            except Exception:
-                pass
+            self._force_foreground(window_handle)
 
             return NativeResult(
                 status=ResultStatus.SUCCESS,
@@ -708,7 +799,7 @@ class WindowManager(BaseNativeManager):
                             },
                             "state": {
                                 "is_minimized": win32gui.IsIconic(hwnd),
-                                "is_maximized": win32gui.IsZoomed(hwnd),
+                                "is_maximized": self._is_zoomed(hwnd),
                             },
                         }
                     )
@@ -804,7 +895,7 @@ class WindowManager(BaseNativeManager):
                     },
                     "state": {
                         "is_minimized": win32gui.IsIconic(window_handle),
-                        "is_maximized": win32gui.IsZoomed(window_handle),
+                        "is_maximized": self._is_zoomed(window_handle),
                         "is_visible": win32gui.IsWindowVisible(window_handle),
                     },
                     "style": info["style"],
@@ -817,6 +908,72 @@ class WindowManager(BaseNativeManager):
             raise WindowError(f"Failed to get window info: {e}")
 
     # ==================== UTILITY METHODS ====================
+
+    def _force_foreground(self, hwnd) -> bool:
+        """
+        Reliably bring a window to the foreground.
+
+        Plain SetForegroundWindow() is frequently denied by Windows' foreground-
+        lock-timeout protection when called from a background process (e.g. this
+        automation script isn't itself the currently focused app). Attaching our
+        thread input to the target window's thread first works around that
+        restriction. Returns True only if focus is confirmed to have landed.
+        """
+        import time
+
+        try:
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+            fg_hwnd = win32gui.GetForegroundWindow()
+            cur_thread = win32api.GetCurrentThreadId()
+            fg_thread = win32process.GetWindowThreadProcessId(fg_hwnd)[0] if fg_hwnd else 0
+            target_thread = win32process.GetWindowThreadProcessId(hwnd)[0]
+
+            attached_fg = False
+            attached_cur = False
+            try:
+                if fg_thread and fg_thread != target_thread:
+                    win32process.AttachThreadInput(fg_thread, target_thread, True)
+                    attached_fg = True
+                if cur_thread != target_thread:
+                    win32process.AttachThreadInput(cur_thread, target_thread, True)
+                    attached_cur = True
+
+                win32gui.BringWindowToTop(hwnd)
+                win32gui.SetForegroundWindow(hwnd)
+            finally:
+                if attached_fg:
+                    win32process.AttachThreadInput(fg_thread, target_thread, False)
+                if attached_cur:
+                    win32process.AttachThreadInput(cur_thread, target_thread, False)
+
+            # Give the OS a moment to actually process the focus change,
+            # then confirm it landed rather than assuming success.
+            for _ in range(10):
+                if win32gui.GetForegroundWindow() == hwnd:
+                    return True
+                time.sleep(0.03)
+
+            return win32gui.GetForegroundWindow() == hwnd
+        except Exception:
+            return False
+
+    def _is_zoomed(self, hwnd) -> bool:
+        """
+        Check if a window is maximized.
+
+        Uses GetWindowPlacement instead of win32gui.IsZoomed, since IsZoomed
+        is missing from some pywin32 builds/versions (AttributeError observed
+        in production). GetWindowPlacement is universally available and gives
+        an equivalent answer via the showCmd field.
+        """
+        try:
+            placement = win32gui.GetWindowPlacement(hwnd)
+            # placement = (flags, showCmd, ptMin, ptMax, rcNormalPos)
+            return placement[1] == win32con.SW_SHOWMAXIMIZED
+        except Exception:
+            return False
 
     def _find_window(self, window_title=None, window_class=None, process_id=None):
         """
@@ -841,13 +998,15 @@ class WindowManager(BaseNativeManager):
             if not win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd):
                 return True  # Skip hidden non-minimized windows
 
-            # Must be a top-level window (no owner or WS_EX_APPWINDOW)
+            # Must be a top-level window (no owner or WS_EX_APPWINDOW or UWP ApplicationFrameWindow)
             owner = win32gui.GetWindow(hwnd, win32con.GW_OWNER)
             ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            if owner != 0 and not (ex_style & win32con.WS_EX_APPWINDOW):
+            class_name = win32gui.GetClassName(hwnd)
+            is_uwp = class_name in ["ApplicationFrameWindow", "CalcFrame"]
+            if owner != 0 and not (ex_style & win32con.WS_EX_APPWINDOW) and not is_uwp:
                 return True
 
-            if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (ex_style & win32con.WS_EX_APPWINDOW):
+            if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (ex_style & win32con.WS_EX_APPWINDOW) and not is_uwp:
                 return True
 
             info = self._get_window_info(hwnd)
@@ -862,10 +1021,25 @@ class WindowManager(BaseNativeManager):
 
             # Check window title or process name if specified
             if window_title is not None:
-                title = info.get("title", "").lower()
+                title = info.get("title", "").lower().strip()
                 proc_name = (info.get("process_name") or "").lower()
-                title_match = window_title.lower()
-                if title_match not in title and title_match not in proc_name:
+                title_match = window_title.lower().strip()
+
+                aliases = [title_match]
+                if title_match in ["calc", "calculator"]:
+                    aliases.extend(["calc", "calculator", "calculatorapp"])
+                elif title_match in ["chrome", "google chrome"]:
+                    aliases.extend(["chrome", "google chrome"])
+                elif title_match in ["edge", "msedge"]:
+                    aliases.extend(["edge", "msedge"])
+                elif title_match in ["vscode", "code", "vs code"]:
+                    aliases.extend(["vscode", "code", "visual studio code"])
+
+                match = any(
+                    a in title or (title and title in a) or a in proc_name
+                    for a in aliases
+                )
+                if not match:
                     return True
 
             # Match found
@@ -1082,7 +1256,7 @@ class WindowManager(BaseNativeManager):
             if not win32gui.IsWindow(hwnd):
                 return VerificationResult(success=False, message="Window is not open")
 
-            if win32gui.IsZoomed(hwnd):
+            if self._is_zoomed(hwnd):
                 return VerificationResult(success=True, message="Window is maximized")
 
             return VerificationResult(success=False, message="Window is not maximized")

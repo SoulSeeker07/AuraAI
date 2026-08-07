@@ -136,10 +136,80 @@ class DesktopAgent:
 
         # Windows command to launch app if not running
         try:
-            if app_name.lower().endswith(".exe"):
-                subprocess.Popen([app_name], shell=True)
+            import os
+            import shutil
+            import winreg
+
+            app_clean = (app_name or "").lower().strip()
+            exe_map = {
+                "notepad": "notepad.exe",
+                "calculator": "calc.exe",
+                "calc": "calc.exe",
+                "cmd": "cmd.exe",
+                "command prompt": "cmd.exe",
+                "powershell": "powershell.exe",
+                "code": "code.cmd",
+                "vscode": "code.cmd",
+                "vs code": "code.cmd",
+                "chrome": "chrome.exe",
+                "google chrome": "chrome.exe",
+                "edge": "msedge.exe",
+                "msedge": "msedge.exe",
+                "microsoft edge": "msedge.exe",
+                "firefox": "firefox.exe",
+                "brave": "brave.exe",
+                "spotify": "spotify.exe",
+            }
+            exe = exe_map.get(app_clean, app_clean)
+            if not any(exe.endswith(ext) for ext in (".exe", ".cmd", ".bat")):
+                exe_with_ext = f"{exe}.exe"
             else:
-                subprocess.Popen(["start", app_name], shell=True)
+                exe_with_ext = exe
+
+            exe_path = shutil.which(exe) or shutil.which(exe_with_ext)
+            if not exe_path:
+                for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+                    try:
+                        key_path = f"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\{exe_with_ext}"
+                        with winreg.OpenKey(root, key_path) as key:
+                            val, _ = winreg.QueryValueEx(key, "")
+                            if val and os.path.exists(val):
+                                exe_path = val
+                                break
+                    except OSError:
+                        pass
+
+            if not exe_path:
+                pf = os.environ.get("ProgramFiles", "C:\\Program Files")
+                pf86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+                local_appdata = os.environ.get("LOCALAPPDATA", "")
+                common_paths = [
+                    os.path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
+                    os.path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+                    os.path.join(local_appdata, "Google", "Chrome", "Application", "chrome.exe"),
+                    os.path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+                    os.path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+                    os.path.join(pf, "Mozilla Firefox", "firefox.exe"),
+                    os.path.join(local_appdata, "Programs", "Microsoft VS Code", "Code.exe"),
+                    os.path.join(local_appdata, "Spotify", "Spotify.exe"),
+                ]
+                for p in common_paths:
+                    if os.path.exists(p) and (exe_with_ext.lower() in p.lower() or app_clean in p.lower()):
+                        exe_path = p
+                        break
+
+            if os.name == "nt":
+                try:
+                    os.startfile(exe_path or exe_with_ext)
+                except Exception:
+                    target_exe = exe_path or exe_with_ext
+                    subprocess.Popen(f'start "" "{target_exe}"', shell=True)
+            else:
+                if exe_path and os.path.isabs(exe_path) and os.path.exists(exe_path):
+                    subprocess.Popen([exe_path])
+                else:
+                    target_exe = exe_path or exe_with_ext
+                    subprocess.Popen([target_exe])
 
             return TaskOutput(
                 success=True,

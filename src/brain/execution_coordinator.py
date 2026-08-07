@@ -280,7 +280,7 @@ class ExecutionCoordinator:
         goal = f"{action}"
         if params.get("url"):
             goal = f"Navigate to {params['url']}"
-        elif params.get("application"):
+        elif params.get("application") and action in ("launch", "launch_application", "open_application", "app_open", "open"):
             goal = f"Open {params['application']}"
         elif params.get("query"):
             goal = f"Research: {params['query']}"

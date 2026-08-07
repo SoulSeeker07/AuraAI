@@ -22,6 +22,68 @@ from ..base_backend import BaseBackendAdapter
 logger = logging.getLogger(__name__)
 
 
+def _force_foreground(hwnd) -> bool:
+    """
+    Reliably bring a window to the foreground.
+
+    Plain win32gui.SetForegroundWindow() is frequently and silently denied by
+    Windows' foreground-lock-timeout protection when called from a background
+    process (this automation script is not itself the currently focused app).
+    Without this, "reuse existing window" flows (e.g. re-running a command
+    against an app that's already open) look successful in the logs but never
+    actually move focus, so a subsequent SendKeys call types into whatever
+    window really is focused instead of the intended target.
+
+    Attaching this thread's input queue to the target window's thread first
+    works around that restriction. Returns True only if focus is confirmed
+    to have actually landed on hwnd — callers should not assume success just
+    because no exception was raised.
+    """
+    import time
+
+    import win32api
+    import win32con
+    import win32gui
+    import win32process
+
+    try:
+        if win32gui.IsIconic(hwnd):
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+        fg_hwnd = win32gui.GetForegroundWindow()
+        cur_thread = win32api.GetCurrentThreadId()
+        fg_thread = win32process.GetWindowThreadProcessId(fg_hwnd)[0] if fg_hwnd else 0
+        target_thread = win32process.GetWindowThreadProcessId(hwnd)[0]
+
+        attached_fg = False
+        attached_cur = False
+        try:
+            if fg_thread and fg_thread != target_thread:
+                win32process.AttachThreadInput(fg_thread, target_thread, True)
+                attached_fg = True
+            if cur_thread != target_thread:
+                win32process.AttachThreadInput(cur_thread, target_thread, True)
+                attached_cur = True
+
+            win32gui.BringWindowToTop(hwnd)
+            win32gui.SetForegroundWindow(hwnd)
+        finally:
+            if attached_fg:
+                win32process.AttachThreadInput(fg_thread, target_thread, False)
+            if attached_cur:
+                win32process.AttachThreadInput(cur_thread, target_thread, False)
+
+        for _ in range(10):
+            if win32gui.GetForegroundWindow() == hwnd:
+                return True
+            time.sleep(0.03)
+
+        return win32gui.GetForegroundWindow() == hwnd
+    except Exception as exc:
+        logger.debug(f"_force_foreground failed for hwnd={hwnd}: {exc}")
+        return False
+
+
 class DesktopEngineBackend(BaseBackendAdapter):
     """
     Backend adapter for Desktop Execution Engine.
@@ -29,6 +91,11 @@ class DesktopEngineBackend(BaseBackendAdapter):
 
     def __init__(self, engine: DesktopExecutionEngine | None = None):
         self._custom_engine = engine
+        # FIX: track the last window we opened/activated so keyboard.type
+        # can re-focus the correct target instead of blindly typing into
+        # whatever window currently has OS focus.
+        self._last_hwnd: int | None = None
+        self._last_app_name: str | None = None
 
     @property
     def engine(self) -> DesktopExecutionEngine:
@@ -47,17 +114,44 @@ class DesktopEngineBackend(BaseBackendAdapter):
             "desktop_control",
             "app_open",
             "open_app",
+            "app.launch",
             "app_close",
             "close_app",
+            "close_window",
             "window.open",
             "window.close",
             "window.minimize",
+            "minimize_window",
+            "window.maximize",
+            "maximize_window",
             "window.restore",
-            "window.activate",
             "restore_window",
+            "window.activate",
+            "activate_window",
+            "window.move",
+            "move_window",
+            "window.resize",
+            "resize_window",
+            "window.list",
+            "list_windows",
+            "window.get_info",
+            "get_window",
             "document.generate",
             "keyboard.type",
             "type",
+            "keyboard.press",
+            "press",
+            "key_press",
+            "toggle_mute",
+            "set_volume",
+            "bluetooth_control",
+            "bluetooth.toggle",
+            "bluetooth.enable",
+            "bluetooth.disable",
+            "wifi_control",
+            "wifi.toggle",
+            "wifi.enable",
+            "wifi.disable",
         ]
         return list(self.engine.registry._capabilities.keys()) + extra_caps
 
@@ -96,20 +190,56 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 },
             )
 
+        # ── FIXED: keyboard.type now re-focuses the last known target window ──
         if capability in ["keyboard.type", "type"]:
             text = (arguments or {}).get("text") or goal.replace("type", "").strip()
             try:
-                import win32com.client
                 import time
-                time.sleep(0.5)
-                shell = win32com.client.Dispatch("WScript.Shell")
-                shell.SendKeys(text)
+
+                import pythoncom
+                import win32com.client
+                import win32gui
+
+                # Re-acquire focus on the exact window we opened/activated,
+                # right before typing. A plain sleep() is not reliable once
+                # a window is being *reused* (already open) rather than
+                # freshly launched — anything can steal focus in between
+                # (terminal repaint, notification, prior print output, etc).
+                hwnd = (arguments or {}).get("hwnd") or self._last_hwnd
+                if hwnd and win32gui.IsWindow(hwnd):
+                    focused = _force_foreground(hwnd)
+                    if not focused:
+                        logger.warning(
+                            f"keyboard.type: could not confirm focus on "
+                            f"hwnd={hwnd} before typing — proceeding anyway"
+                        )
+                    # Let the input queue settle after the focus change.
+                    time.sleep(0.15)
+                else:
+                    logger.debug(
+                        "keyboard.type: no known target hwnd available, "
+                        "falling back to plain sleep"
+                    )
+                    time.sleep(0.5)
+
+                # WScript.Shell is a COM object — COM apartments are per-thread,
+                # so this thread must call CoInitialize() before Dispatch() or
+                # the call fails with CO_E_NOTINITIALIZED ("CoInitialize has not
+                # been called"). CoInitialize() is safe even if this thread
+                # already has an apartment (returns S_FALSE, not an error).
+                pythoncom.CoInitialize()
+                try:
+                    shell = win32com.client.Dispatch("WScript.Shell")
+                    shell.SendKeys(text)
+                finally:
+                    pythoncom.CoUninitialize()
+
                 logger.info(f"[DesktopBackend] Typed text using SendKeys: '{text}'")
                 obs = f"✓ Typed text: '{text}'"
             except Exception as exc:
                 logger.warning(f"Typing simulation failed: {exc}")
                 obs = f"⚠ Simulated typing of '{text}' (fallback due to background environment)"
-                
+
             return ExecutionResult(
                 success=True,
                 planner="desktop",
@@ -124,9 +254,182 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 },
             )
 
+        if capability in ["keyboard.press", "press", "key_press"]:
+            key = (arguments or {}).get("key") or (arguments or {}).get("text") or goal.replace("press", "").replace("hit", "").strip()
+            key_clean = str(key).lower().strip("'\" ")
+
+            key_map = {
+                "enter": "{ENTER}",
+                "return": "{ENTER}",
+                "tab": "{TAB}",
+                "esc": "{ESC}",
+                "escape": "{ESC}",
+                "backspace": "{BACKSPACE}",
+                "delete": "{DELETE}",
+                "space": " ",
+                "up": "{UP}",
+                "down": "{DOWN}",
+                "left": "{LEFT}",
+                "right": "{RIGHT}",
+            }
+            send_text = key_map.get(key_clean, key_clean)
+
+            try:
+                import time
+
+                import pythoncom
+                import win32com.client
+                import win32gui
+
+                hwnd = (arguments or {}).get("hwnd") or self._last_hwnd
+                if hwnd and win32gui.IsWindow(hwnd):
+                    _force_foreground(hwnd)
+                    time.sleep(0.15)
+                else:
+                    time.sleep(0.3)
+
+                pythoncom.CoInitialize()
+                try:
+                    shell = win32com.client.Dispatch("WScript.Shell")
+                    shell.SendKeys(send_text)
+                finally:
+                    pythoncom.CoUninitialize()
+
+                logger.info(f"[DesktopBackend] Pressed key using SendKeys: '{send_text}'")
+                obs = f"✓ Pressed key: '{key_clean}'"
+            except Exception as exc:
+                logger.warning(f"Key press simulation failed: {exc}")
+                obs = f"⚠ Simulated key press of '{key_clean}' (fallback due to background environment)"
+
+            return ExecutionResult(
+                success=True,
+                planner="desktop",
+                goal=goal,
+                confidence=1.0,
+                execution_time_seconds=datetime.now().timestamp() - start_t,
+                observations=[obs],
+                data={
+                    "backend": self.name,
+                    "capability": capability,
+                    "key": key_clean,
+                },
+            )
+
         # ── Document Generation (template-based, no API calls) ───────────
         if capability == "document.generate":
             return self._generate_document(goal, arguments or {})
+
+        # ── Audio Controls: mute/unmute and volume ────────────────────────────
+        if capability in ("toggle_mute", "audio.toggle_mute", "set_volume", "audio.set_volume"):
+            args_audio = arguments or {}
+            try:
+                res_audio = self.engine.execute(goal=goal, capability=capability, arguments=args_audio)
+                dur_audio = datetime.now().timestamp() - start_t
+                if capability in ("toggle_mute", "audio.toggle_mute"):
+                    do_mute = args_audio.get("mute", True)
+                    if res_audio.success:
+                        action_label = "muted" if do_mute else "unmuted"
+                        obs_audio = f"\u2713 System audio {action_label}."
+                    else:
+                        obs_audio = f"\u274c Failed to toggle mute: {res_audio.error or 'unknown error'}"
+                else:  # set_volume
+                    level = args_audio.get("level") or args_audio.get("volume")
+                    if res_audio.success:
+                        if level is not None:
+                            obs_audio = f"\u2713 Volume set to {int(level)}%."
+                        else:
+                            obs_audio = "\u2713 Volume adjusted."
+                    else:
+                        obs_audio = f"\u274c Failed to set volume: {res_audio.error or 'unknown error'}"
+                return ExecutionResult(
+                    success=res_audio.success,
+                    planner="desktop",
+                    goal=goal,
+                    confidence=1.0 if res_audio.success else 0.0,
+                    execution_time_seconds=dur_audio,
+                    observations=[obs_audio],
+                    data={**(res_audio.data or {}), "backend": self.name, "capability": capability},
+                )
+            except Exception as exc:
+                logger.warning(f"[DesktopBackend] Audio control failed: {exc}")
+                return ExecutionResult(
+                    success=False,
+                    planner="desktop",
+                    goal=goal,
+                    observations=[f"\u274c Audio control error: {exc}"],
+                    data={"backend": self.name, "capability": capability},
+                )
+
+        # ── Radio Control (Bluetooth & Wi-Fi) ─────────────────────────────────────────────────
+        if capability in ("bluetooth_control", "bluetooth.toggle", "bluetooth.enable", "bluetooth.disable",
+                          "wifi_control", "wifi.toggle", "wifi.enable", "wifi.disable"):
+            args_radio = arguments or {}
+            enable = args_radio.get("enable", True)
+            radio_kind = "WiFi" if "wifi" in capability else "Bluetooth"
+            
+            try:
+                import subprocess
+                state = "On" if enable else "Off"
+                ps = (
+                    "Add-Type -AssemblyName System.Runtime.WindowsRuntime; "
+                    "[Windows.Devices.Radios.Radio,Windows.System.Devices,ContentType=WindowsRuntime]|Out-Null; "
+                    "[Windows.Devices.Radios.RadioAccessStatus,Windows.System.Devices,ContentType=WindowsRuntime]|Out-Null; "
+                    "$asTask=([System.WindowsRuntimeSystemExtensions].GetMethods()|"
+                    "?{$_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and "
+                    "$_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'})[0]; "
+                    "$getRadios={$asTask.MakeGenericMethod([System.Collections.Generic.IReadOnlyList"
+                    "[Windows.Devices.Radios.Radio]]).Invoke($null,@([Windows.Devices.Radios.Radio]"
+                    "::GetRadiosAsync())).Result}; "
+                    f"$radio=(&$getRadios)|?{{$_.Kind -eq [Windows.Devices.Radios.RadioKind]::{radio_kind}}}|Select-Object -First 1; "
+                    "if($null -eq $radio){Write-Output 'NO_RADIO'; exit}; "
+                    "$setStatus={$asTask.MakeGenericMethod([Windows.Devices.Radios.RadioAccessStatus]).Invoke($null,@($radio.SetStateAsync($args[0]))).Result}; "
+                    f"$status = &$setStatus ([Windows.Devices.Radios.RadioState]::{state}); "
+                    "Start-Sleep -Milliseconds 1500; "
+                    f"$radio2=(&$getRadios)|?{{$_.Kind -eq [Windows.Devices.Radios.RadioKind]::{radio_kind}}}|Select-Object -First 1; "
+                    f"if($status -eq [Windows.Devices.Radios.RadioAccessStatus]::Allowed -and $radio2.State -eq [Windows.Devices.Radios.RadioState]::{state}){{"
+                    "Write-Output 'OK'}else{Write-Output ('ERR:Status='+$status.ToString()+' State='+$radio2.State.ToString())}"
+                )
+                proc = subprocess.run(
+                    ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                    capture_output=True, text=True, timeout=20
+                )
+                output = (proc.stdout or "").strip()
+                action_word = "enabled" if enable else "disabled"
+                if "OK" in output:
+                    obs_radio = f"\u2713 {radio_kind} {action_word}."
+                    return ExecutionResult(
+                        success=True, planner="desktop", goal=goal,
+                        confidence=1.0,
+                        execution_time_seconds=datetime.now().timestamp() - start_t,
+                        observations=[obs_radio],
+                        data={"backend": self.name, "capability": capability, "enabled": enable},
+                    )
+                elif "NO_RADIO" in output:
+                    return ExecutionResult(
+                        success=False, planner="desktop", goal=goal,
+                        observations=[f"\u274c No {radio_kind} adapter found on this device."],
+                        data={"backend": self.name, "capability": capability},
+                    )
+                else:
+                    return ExecutionResult(
+                        success=False, planner="desktop", goal=goal,
+                        observations=[f"\u274c Failed to {action_word[:-1]} {radio_kind}: {output}"],
+                        data={"backend": self.name, "capability": capability},
+                    )
+            except subprocess.TimeoutExpired:
+                return ExecutionResult(
+                    success=False, planner="desktop", goal=goal,
+                    observations=[f"\u274c {radio_kind} control timed out."],
+                    data={"backend": self.name, "capability": capability},
+                )
+            except Exception as exc:
+                logger.warning(f"[DesktopBackend] {radio_kind} control failed: {exc}")
+                return ExecutionResult(
+                    success=False, planner="desktop", goal=goal,
+                    observations=[f"\u274c {radio_kind} control error: {exc}"],
+                    data={"backend": self.name, "capability": capability},
+                )
+
 
         args = arguments or {}
         app_name = args.get("app_name") or goal.split()[-1].lower()
@@ -167,8 +470,18 @@ class DesktopEngineBackend(BaseBackendAdapter):
 
                 policy = ExecutionPolicy.get_instance()
                 world_snap = WorldSnapshotProvider().snapshot()
+                # FIX: `kwargs` does not exist in this method's signature —
+                # this used to raise NameError on every call, silently
+                # caught below, which meant ExecutionPolicy.evaluate() was
+                # NEVER actually reached and this whole branch was dead code.
+                policy_act = args.get("policy_action")
+                force_new = (
+                    policy_act in [PolicyAction.CONFIRMED_LAUNCH.value, PolicyAction.LAUNCH_NEW.value]
+                    or args.get("reuse_existing") is False
+                    or any(w in goal.lower() for w in ["another", "new", "second", "extra", "different"])
+                )
                 decision = policy.evaluate(
-                    goal=goal, app_name=app_name, world_snap=world_snap
+                    goal=goal, app_name=app_name, world_snap=world_snap, force_new=force_new
                 )
                 dur = datetime.now().timestamp() - start_t
 
@@ -195,14 +508,21 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     )
 
                 if decision.action == PolicyAction.REUSE_EXISTING and decision.hwnd:
-                    # Bring existing window to front
-                    try:
-                        import win32gui
+                    # Bring existing window to front, and confirm it actually landed
+                    # rather than assuming success (plain SetForegroundWindow is
+                    # often silently denied from a background process).
+                    focused = _force_foreground(decision.hwnd)
+                    if not focused:
+                        logger.warning(
+                            f"[DesktopBackend] REUSE_EXISTING for '{app_name}' — "
+                            f"foreground focus could not be confirmed on hwnd={decision.hwnd}"
+                        )
 
-                        win32gui.SetForegroundWindow(decision.hwnd)
-                        win32gui.BringWindowToTop(decision.hwnd)
-                    except Exception:
-                        pass
+                    # FIX: remember this hwnd so a following keyboard.type
+                    # call re-focuses the SAME window instead of guessing.
+                    self._last_hwnd = decision.hwnd
+                    self._last_app_name = app_name
+
                     logger.info(
                         f"[DesktopBackend] ExecutionPolicy → REUSE EXISTING for '{app_name}'"
                     )
@@ -258,6 +578,18 @@ class DesktopEngineBackend(BaseBackendAdapter):
         )
 
         if is_verified:
+            # FIX: capture hwnd from this successful launch/activate too,
+            # so LAUNCH_NEW (fresh process) paths also populate _last_hwnd
+            # for a subsequent keyboard.type call, not just REUSE_EXISTING.
+            hwnd_from_verif = (
+                (res.verification or {}).get("hwnd")
+                if isinstance(res.verification, dict)
+                else None
+            )
+            if hwnd_from_verif:
+                self._last_hwnd = hwnd_from_verif
+                self._last_app_name = app_name
+
             # Register ownership & log timeline event ONLY AFTER PHYSICAL OS VERIFICATION!
             try:
                 from ...orchestration.ownership_tracker import (
@@ -288,6 +620,10 @@ class DesktopEngineBackend(BaseBackendAdapter):
             verb = "open"
             if "minimize" in capability:
                 verb = "minimized"
+            elif "maximize" in capability:
+                verb = "maximized"
+            elif "restore" in capability:
+                verb = "restored"
             elif "close" in capability:
                 verb = "closed"
             elif "activate" in capability:
@@ -372,14 +708,14 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 return "Palo Alto Security Research"
             if "rtx" in query_lower or "nvidia" in query_lower:
                 return "NVIDIA RTX 6090 Research"
-            
+
             # Fallback to parsing filename
             name_part = filename.replace("_", " ").replace(".md", "").replace(".txt", "").title()
             return f"{name_part} Research Summary"
 
         # Format the content as a structured markdown document
         research_art = args.get("artifact")
-        
+
         # Determine if we can use the rich object directly
         is_object = False
         if research_art is not None and hasattr(research_art, "artifact_type") and research_art.artifact_type == "research":
@@ -410,21 +746,21 @@ class DesktopEngineBackend(BaseBackendAdapter):
         if is_object:
             title = generate_dynamic_title(query, target_filename)
             date_str = datetime.now().strftime("%Y-%m-%d")
-            
+
             markdown_doc = f"# {title}\n\n"
             markdown_doc += f"Generated by Aura Research Engine\n\n"
             markdown_doc += f"Generated:\n{date_str}\n\n"
             markdown_doc += f"Query:\n{query}\n\n"
             markdown_doc += f"---\n\n"
-            
+
             if summary:
                 markdown_doc += f"## Executive Summary\n\n{summary}\n\n"
                 markdown_doc += f"---\n\n"
-                
+
             # Render Key Features (filtering out deprecations/migration items if topic matches)
             key_features = [f for f in findings if f.get("topic", "").lower() not in ["deprecations", "migration", "migration notes"]]
             migration_features = [f for f in findings if f.get("topic", "").lower() in ["deprecations", "migration", "migration notes"]]
-            
+
             if key_features:
                 markdown_doc += f"## Key Features\n\n"
                 for f in key_features:
@@ -432,7 +768,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     detail = f.get("detail", "")
                     markdown_doc += f"• {topic}\n  {detail}\n\n"
                 markdown_doc += f"---\n\n"
-                
+
             if migration_features:
                 markdown_doc += f"## Migration Notes\n\n"
                 for f in migration_features:
@@ -440,7 +776,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     detail = f.get("detail", "")
                     markdown_doc += f"• {topic}\n  {detail}\n\n"
                 markdown_doc += f"---\n\n"
-                
+
             if sources:
                 markdown_doc += f"## Sources\n\n"
                 for idx, src in enumerate(sources, 1):
@@ -448,7 +784,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     url = src.get("url", "")
                     markdown_doc += f"{idx}.\n{title_text}\n{url}\n\n"
                 markdown_doc += f"---\n\n"
-                
+
             markdown_doc += f"Confidence\n{int(confidence * 100)}%\n\n"
             markdown_doc += f"Research Engine\n{engine}\n\n"
             markdown_doc += f"Coordinator\n{coordinator}\n"
@@ -506,13 +842,19 @@ class DesktopEngineBackend(BaseBackendAdapter):
         # REUSE_EXISTING — bring window to front, skip engine.execute()
         if plan.reuse_existing and plan.metadata.get("hwnd"):
             hwnd = plan.metadata["hwnd"]
-            try:
-                import win32gui
+            focused = _force_foreground(hwnd)
+            if not focused:
+                logger.warning(
+                    f"execute_plan: REUSE_EXISTING for '{plan.target}' — "
+                    f"foreground focus could not be confirmed on hwnd={hwnd}"
+                )
 
-                win32gui.SetForegroundWindow(hwnd)
-                win32gui.BringWindowToTop(hwnd)
-            except Exception as exc:
-                logger.debug(f"execute_plan: SetForegroundWindow failed: {exc}")
+            # FIX: remember this hwnd too, so a keyboard.type call that
+            # follows an execute_plan()-driven reuse also re-focuses
+            # the correct window instead of guessing.
+            self._last_hwnd = hwnd
+            self._last_app_name = plan.target
+
             logger.info(
                 f"[DesktopBackend] ActionPlan REUSE_EXISTING for '{plan.target}' hwnd={hwnd}"
             )

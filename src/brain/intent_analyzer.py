@@ -46,6 +46,11 @@ Available intent categories:
 11. VISION: Screen capture and analysis requests
 12. TASK_EXECUTION: Requests to perform actions
 13. SPECIALIZED_ASK: Questions for specific domains
+14. BROWSER_WEBSITE: Open websites, navigate pages, web interactions
+15. MEDIA_CONTROL: Play, pause, resume, next, previous, seek, volume control
+16. PRODUCT_SHOPPING: Product search, spec filtering, comparison, ratings
+17. REVIEWS_COMMENTS: Inspecting, reading, and summarizing user comments and customer reviews
+18. CART_CHECKOUT: Adding to cart, managing cart items, proceeding to checkout
 
 Return JSON with:
 - intent: the primary intent category (choose most appropriate)

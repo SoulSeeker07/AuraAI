@@ -133,6 +133,45 @@ skills:
       - List all defined workflows
       - Combine multiple capabilities into a single workflow
 
+  # ── MEDIA CONTROL & PLAYBACK ────────────────────────────
+  - domain: Media Control & Playback
+    emoji: "🎬"
+    summary: >
+      Natural language media controls and contextual media operations.
+      Play, pause, resume, next, previous, seek, volume control, and playlist navigation.
+    skills:
+      - Play media, videos, tracks, or search results
+      - Pause and resume playback
+      - Skip to next or previous video/track relative to current context
+      - Seek forward, backward, or jump to specific timestamp
+      - Adjust volume — mute, unmute, set percentage, turn up/down
+      - Maintain media context across conversational follow-ups
+
+  # ── PRODUCT SEARCH & E-COMMERCE ─────────────────────────
+  - domain: Product Search & E-Commerce
+    emoji: "🛒"
+    summary: >
+      Autonomous e-commerce shopping, filtering, comparison, cart, and checkout workflows.
+    skills:
+      - Search products across e-commerce platforms (Amazon, eBay, Flipkart, Walmart)
+      - Extract requirements (price caps, RAM, SSD, processor, brand, display, 5G)
+      - Filter and sort products conversationally
+      - Compare products side-by-side on key specifications
+      - Manage cart — add items, select variants, view cart, remove items
+      - Prepare and navigate checkout workflows safely
+
+  # ── COMMENTS & CUSTOMER REVIEWS ─────────────────────────
+  - domain: Comments & Customer Reviews
+    emoji: "💬"
+    summary: >
+      Inspect, analyze, and summarize user comments and customer product reviews.
+    skills:
+      - Inspect YouTube video comments and summarize viewer reactions
+      - Read e-commerce product reviews and rating breakdowns
+      - Identify positive themes, pros, and recurring complaints
+      - Extract feedback on specific aspects (battery, build, performance, delivery)
+      - Summarize community sentiment without presenting isolated opinions as consensus
+
   # ── BROWSER INTELLIGENCE ─────────────────────────────────
   - domain: Browser Intelligence
     emoji: "🌐"

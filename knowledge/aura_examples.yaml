@@ -999,3 +999,62 @@ examples:
     planner: ResearchPlanner
     backend: Gemini
     notes: "TaskDecomposer: research.search -> research.summarize — sequential"
+
+  # ── MEDIA CONTROL & CONTEXT ─────────────────────────────
+  - user_says: "Open Chrome, go to YouTube, search Python tutorial and play the second one"
+    capability: media.play
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+    notes: "TaskDecomposer: app_open -> browser.navigate -> browser.navigate_goal -> media.play"
+
+  - user_says: "Play the next one"
+    capability: media.next
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Pause the video"
+    capability: media.pause
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Resume playback"
+    capability: media.resume
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Skip ahead 30 seconds"
+    capability: media.seek
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  # ── SHOPPING & E-COMMERCE ───────────────────────────────
+  - user_says: "Find me a laptop under 60k with 16GB RAM and i7"
+    capability: shopping.search
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+    notes: "TaskDecomposer: shopping.search -> shopping.filter"
+
+  - user_says: "Only show Lenovo and ASUS"
+    capability: shopping.filter
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Compare the top three laptops"
+    capability: shopping.compare
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Check the reviews for the first laptop"
+    capability: shopping.reviews
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Add the cheapest one to my cart"
+    capability: shopping.cart.add
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter
+
+  - user_says: "Proceed to checkout"
+    capability: shopping.checkout
+    planner: BrowserPlanner
+    backend: Playwright Browser Adapter

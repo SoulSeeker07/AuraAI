@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 
 
-class ImageType(Enum):
+class ImageType(str, Enum):
     """Types of images the Vision System can process."""
 
     SCREENSHOT = "screenshot"
@@ -24,13 +24,14 @@ class ImageType(Enum):
     UNKNOWN = "unknown"
 
 
-class VisionProvider(Enum):
+class VisionProvider(str, Enum):
     """Supported vision providers."""
 
     LOCAL_OCR = "local_ocr"
     OPENAI = "openai"
     GEMINI = "gemini"
     FUTURE = "future"
+
 
 
 @dataclass
@@ -82,6 +83,18 @@ class VisionContext:
     dialogs: list[dict[str, Any]] = field(default_factory=list)
     forms: list[dict[str, Any]] = field(default_factory=list)
     notifications: list[dict[str, Any]] = field(default_factory=list)
+    tooltips: list[dict[str, Any]] = field(default_factory=list)
+    input_fields: list[dict[str, Any]] = field(default_factory=list)
+    checkboxes: list[dict[str, Any]] = field(default_factory=list)
+    radio_buttons: list[dict[str, Any]] = field(default_factory=list)
+    dropdowns: list[dict[str, Any]] = field(default_factory=list)
+    paragraphs: list[dict[str, Any]] = field(default_factory=list)
+    table_regions: list[dict[str, Any]] = field(default_factory=list)
+    header: dict[str, Any] | None = None
+    footer: dict[str, Any] | None = None
+    nodes: list[dict[str, Any]] = field(default_factory=list)
+    connections: list[dict[str, Any]] = field(default_factory=list)
+    diagram_type: str = "unknown"
 
     # Network diagram specific
     network_devices: list[dict[str, Any]] = field(default_factory=list)
@@ -96,6 +109,10 @@ class VisionContext:
 
     # Metadata
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
 
     def to_dict(self) -> dict[str, Any]:
         """Convert vision context to dictionary."""

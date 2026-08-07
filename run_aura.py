@@ -14,7 +14,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(SRC_DIR))
 
-from main import main
+from main import main as run_main
 
 
 def main():
@@ -41,14 +41,18 @@ Usage:
 
     if args.gui:
         print("Launching AuraAI in GUI mode...")
+        sys.argv = [sys.argv[0], "--gui"]
     elif args.cli:
         print("Launching AuraAI in CLI mode...")
+        sys.argv = [sys.argv[0], "--cli"]
     else:
         print("Launching AuraAI in CLI mode (default)...")
+        sys.argv = [sys.argv[0], "--cli"]
 
     # Run AuraAI
-    app = main()
+    run_main()
 
 
 if __name__ == "__main__":
     main()
+
