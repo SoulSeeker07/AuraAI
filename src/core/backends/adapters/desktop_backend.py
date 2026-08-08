@@ -190,22 +190,51 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 },
             )
 
-        # ── FIXED: keyboard.type now re-focuses the last known target window ──
+        # ── FIXED: keyboard.type now re-focuses target window and uses pyautogui ──
         if capability in ["keyboard.type", "type"]:
-            text = (arguments or {}).get("text") or goal.replace("type", "").strip()
+            text = (arguments or {}).get("text")
+            if not text:
+                text_clean = goal
+                for prefix in [
+                    "type text ",
+                    "type ",
+                    "write text ",
+                    "write ",
+                    "enter text ",
+                    "enter ",
+                    "input ",
+                ]:
+                    if text_clean.lower().startswith(prefix):
+                        text_clean = text_clean[len(prefix) :]
+                        break
+                text = text_clean.strip("'\" ")
+
             try:
                 import time
 
-                import pythoncom
-                import win32com.client
                 import win32gui
 
-                # Re-acquire focus on the exact window we opened/activated,
-                # right before typing. A plain sleep() is not reliable once
-                # a window is being *reused* (already open) rather than
-                # freshly launched — anything can steal focus in between
-                # (terminal repaint, notification, prior print output, etc).
                 hwnd = (arguments or {}).get("hwnd") or self._last_hwnd
+                if not (hwnd and win32gui.IsWindow(hwnd)):
+                    target_app = (arguments or {}).get("app_name") or self._last_app_name or "notepad"
+                    if target_app == "keyboard":
+                        target_app = self._last_app_name or "notepad"
+                    try:
+                        from ...orchestration.execution_policy import ExecutionPolicy
+
+                        running = ExecutionPolicy.get_instance()._get_running_windows(
+                            target_app, None
+                        )
+                        if running:
+                            hwnd = running[0]
+                    except Exception:
+                        pass
+
+                if not (hwnd and win32gui.IsWindow(hwnd)):
+                    fg = win32gui.GetForegroundWindow()
+                    if fg and win32gui.IsWindowVisible(fg):
+                        hwnd = fg
+
                 if hwnd and win32gui.IsWindow(hwnd):
                     focused = _force_foreground(hwnd)
                     if not focused:
@@ -213,28 +242,30 @@ class DesktopEngineBackend(BaseBackendAdapter):
                             f"keyboard.type: could not confirm focus on "
                             f"hwnd={hwnd} before typing — proceeding anyway"
                         )
-                    # Let the input queue settle after the focus change.
                     time.sleep(0.15)
                 else:
-                    logger.debug(
-                        "keyboard.type: no known target hwnd available, "
-                        "falling back to plain sleep"
-                    )
-                    time.sleep(0.5)
+                    time.sleep(0.3)
 
-                # WScript.Shell is a COM object — COM apartments are per-thread,
-                # so this thread must call CoInitialize() before Dispatch() or
-                # the call fails with CO_E_NOTINITIALIZED ("CoInitialize has not
-                # been called"). CoInitialize() is safe even if this thread
-                # already has an apartment (returns S_FALSE, not an error).
-                pythoncom.CoInitialize()
                 try:
-                    shell = win32com.client.Dispatch("WScript.Shell")
-                    shell.SendKeys(text)
-                finally:
-                    pythoncom.CoUninitialize()
+                    import pyautogui
 
-                logger.info(f"[DesktopBackend] Typed text using SendKeys: '{text}'")
+                    pyautogui.FAILSAFE = False
+                    pyautogui.write(text, interval=0.01)
+                except Exception as pyauto_exc:
+                    logger.debug(
+                        f"pyautogui.write failed: {pyauto_exc}, trying WScript.Shell fallback"
+                    )
+                    import pythoncom
+                    import win32com.client
+
+                    pythoncom.CoInitialize()
+                    try:
+                        shell = win32com.client.Dispatch("WScript.Shell")
+                        shell.SendKeys(text)
+                    finally:
+                        pythoncom.CoUninitialize()
+
+                logger.info(f"[DesktopBackend] Typed text: '{text}'")
                 obs = f"✓ Typed text: '{text}'"
             except Exception as exc:
                 logger.warning(f"Typing simulation failed: {exc}")
@@ -255,30 +286,32 @@ class DesktopEngineBackend(BaseBackendAdapter):
             )
 
         if capability in ["keyboard.press", "press", "key_press"]:
-            key = (arguments or {}).get("key") or (arguments or {}).get("text") or goal.replace("press", "").replace("hit", "").strip()
+            key = (
+                (arguments or {}).get("key")
+                or (arguments or {}).get("text")
+                or goal.replace("press", "").replace("hit", "").strip()
+            )
             key_clean = str(key).lower().strip("'\" ")
 
             key_map = {
-                "enter": "{ENTER}",
-                "return": "{ENTER}",
-                "tab": "{TAB}",
-                "esc": "{ESC}",
-                "escape": "{ESC}",
-                "backspace": "{BACKSPACE}",
-                "delete": "{DELETE}",
-                "space": " ",
-                "up": "{UP}",
-                "down": "{DOWN}",
-                "left": "{LEFT}",
-                "right": "{RIGHT}",
+                "enter": "enter",
+                "return": "enter",
+                "tab": "tab",
+                "esc": "escape",
+                "escape": "escape",
+                "backspace": "backspace",
+                "delete": "delete",
+                "space": "space",
+                "up": "up",
+                "down": "down",
+                "left": "left",
+                "right": "right",
             }
-            send_text = key_map.get(key_clean, key_clean)
+            target_key = key_map.get(key_clean, key_clean)
 
             try:
                 import time
 
-                import pythoncom
-                import win32com.client
                 import win32gui
 
                 hwnd = (arguments or {}).get("hwnd") or self._last_hwnd
@@ -288,14 +321,39 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 else:
                     time.sleep(0.3)
 
-                pythoncom.CoInitialize()
                 try:
-                    shell = win32com.client.Dispatch("WScript.Shell")
-                    shell.SendKeys(send_text)
-                finally:
-                    pythoncom.CoUninitialize()
+                    import pyautogui
 
-                logger.info(f"[DesktopBackend] Pressed key using SendKeys: '{send_text}'")
+                    pyautogui.FAILSAFE = False
+                    pyautogui.press(target_key)
+                except Exception as pyauto_exc:
+                    logger.debug(
+                        f"pyautogui.press failed: {pyauto_exc}, trying SendKeys fallback"
+                    )
+                    import pythoncom
+                    import win32com.client
+
+                    sendkeys_map = {
+                        "enter": "{ENTER}",
+                        "tab": "{TAB}",
+                        "escape": "{ESC}",
+                        "backspace": "{BACKSPACE}",
+                        "delete": "{DELETE}",
+                        "space": " ",
+                        "up": "{UP}",
+                        "down": "{DOWN}",
+                        "left": "{LEFT}",
+                        "right": "{RIGHT}",
+                    }
+                    send_text = sendkeys_map.get(target_key, target_key)
+                    pythoncom.CoInitialize()
+                    try:
+                        shell = win32com.client.Dispatch("WScript.Shell")
+                        shell.SendKeys(send_text)
+                    finally:
+                        pythoncom.CoUninitialize()
+
+                logger.info(f"[DesktopBackend] Pressed key: '{target_key}'")
                 obs = f"✓ Pressed key: '{key_clean}'"
             except Exception as exc:
                 logger.warning(f"Key press simulation failed: {exc}")
@@ -320,10 +378,17 @@ class DesktopEngineBackend(BaseBackendAdapter):
             return self._generate_document(goal, arguments or {})
 
         # ── Audio Controls: mute/unmute and volume ────────────────────────────
-        if capability in ("toggle_mute", "audio.toggle_mute", "set_volume", "audio.set_volume"):
+        if capability in (
+            "toggle_mute",
+            "audio.toggle_mute",
+            "set_volume",
+            "audio.set_volume",
+        ):
             args_audio = arguments or {}
             try:
-                res_audio = self.engine.execute(goal=goal, capability=capability, arguments=args_audio)
+                res_audio = self.engine.execute(
+                    goal=goal, capability=capability, arguments=args_audio
+                )
                 dur_audio = datetime.now().timestamp() - start_t
                 if capability in ("toggle_mute", "audio.toggle_mute"):
                     do_mute = args_audio.get("mute", True)
@@ -348,7 +413,11 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     confidence=1.0 if res_audio.success else 0.0,
                     execution_time_seconds=dur_audio,
                     observations=[obs_audio],
-                    data={**(res_audio.data or {}), "backend": self.name, "capability": capability},
+                    data={
+                        **(res_audio.data or {}),
+                        "backend": self.name,
+                        "capability": capability,
+                    },
                 )
             except Exception as exc:
                 logger.warning(f"[DesktopBackend] Audio control failed: {exc}")
@@ -361,14 +430,23 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 )
 
         # ── Radio Control (Bluetooth & Wi-Fi) ─────────────────────────────────────────────────
-        if capability in ("bluetooth_control", "bluetooth.toggle", "bluetooth.enable", "bluetooth.disable",
-                          "wifi_control", "wifi.toggle", "wifi.enable", "wifi.disable"):
+        if capability in (
+            "bluetooth_control",
+            "bluetooth.toggle",
+            "bluetooth.enable",
+            "bluetooth.disable",
+            "wifi_control",
+            "wifi.toggle",
+            "wifi.enable",
+            "wifi.disable",
+        ):
             args_radio = arguments or {}
             enable = args_radio.get("enable", True)
             radio_kind = "WiFi" if "wifi" in capability else "Bluetooth"
-            
+
             try:
                 import subprocess
+
                 state = "On" if enable else "Off"
                 ps = (
                     "Add-Type -AssemblyName System.Runtime.WindowsRuntime; "
@@ -391,45 +469,64 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 )
                 proc = subprocess.run(
                     ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-                    capture_output=True, text=True, timeout=20
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
                 )
                 output = (proc.stdout or "").strip()
                 action_word = "enabled" if enable else "disabled"
                 if "OK" in output:
                     obs_radio = f"\u2713 {radio_kind} {action_word}."
                     return ExecutionResult(
-                        success=True, planner="desktop", goal=goal,
+                        success=True,
+                        planner="desktop",
+                        goal=goal,
                         confidence=1.0,
                         execution_time_seconds=datetime.now().timestamp() - start_t,
                         observations=[obs_radio],
-                        data={"backend": self.name, "capability": capability, "enabled": enable},
+                        data={
+                            "backend": self.name,
+                            "capability": capability,
+                            "enabled": enable,
+                        },
                     )
                 elif "NO_RADIO" in output:
                     return ExecutionResult(
-                        success=False, planner="desktop", goal=goal,
-                        observations=[f"\u274c No {radio_kind} adapter found on this device."],
+                        success=False,
+                        planner="desktop",
+                        goal=goal,
+                        observations=[
+                            f"\u274c No {radio_kind} adapter found on this device."
+                        ],
                         data={"backend": self.name, "capability": capability},
                     )
                 else:
                     return ExecutionResult(
-                        success=False, planner="desktop", goal=goal,
-                        observations=[f"\u274c Failed to {action_word[:-1]} {radio_kind}: {output}"],
+                        success=False,
+                        planner="desktop",
+                        goal=goal,
+                        observations=[
+                            f"\u274c Failed to {action_word[:-1]} {radio_kind}: {output}"
+                        ],
                         data={"backend": self.name, "capability": capability},
                     )
             except subprocess.TimeoutExpired:
                 return ExecutionResult(
-                    success=False, planner="desktop", goal=goal,
+                    success=False,
+                    planner="desktop",
+                    goal=goal,
                     observations=[f"\u274c {radio_kind} control timed out."],
                     data={"backend": self.name, "capability": capability},
                 )
             except Exception as exc:
                 logger.warning(f"[DesktopBackend] {radio_kind} control failed: {exc}")
                 return ExecutionResult(
-                    success=False, planner="desktop", goal=goal,
+                    success=False,
+                    planner="desktop",
+                    goal=goal,
                     observations=[f"\u274c {radio_kind} control error: {exc}"],
                     data={"backend": self.name, "capability": capability},
                 )
-
 
         args = arguments or {}
         app_name = args.get("app_name") or goal.split()[-1].lower()
@@ -476,12 +573,22 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 # NEVER actually reached and this whole branch was dead code.
                 policy_act = args.get("policy_action")
                 force_new = (
-                    policy_act in [PolicyAction.CONFIRMED_LAUNCH.value, PolicyAction.LAUNCH_NEW.value]
+                    policy_act
+                    in [
+                        PolicyAction.CONFIRMED_LAUNCH.value,
+                        PolicyAction.LAUNCH_NEW.value,
+                    ]
                     or args.get("reuse_existing") is False
-                    or any(w in goal.lower() for w in ["another", "new", "second", "extra", "different"])
+                    or any(
+                        w in goal.lower()
+                        for w in ["another", "new", "second", "extra", "different"]
+                    )
                 )
                 decision = policy.evaluate(
-                    goal=goal, app_name=app_name, world_snap=world_snap, force_new=force_new
+                    goal=goal,
+                    app_name=app_name,
+                    world_snap=world_snap,
+                    force_new=force_new,
                 )
                 dur = datetime.now().timestamp() - start_t
 
@@ -630,7 +737,11 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 verb = "focused"
 
             if dev_mode:
-                hwnd_val = hex((res.verification or {}).get("hwnd", 0)) if isinstance(res.verification, dict) else "N/A"
+                hwnd_val = (
+                    hex((res.verification or {}).get("hwnd", 0))
+                    if isinstance(res.verification, dict)
+                    else "N/A"
+                )
                 obs_text = (
                     f"✓ {app_name.title()} is {verb}.\n\n"
                     f"Verification\n"
@@ -666,9 +777,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
             data={**(res.data or {}), "backend": self.name, "capability": capability},
         )
 
-    def _generate_document(
-        self, goal: str, args: dict[str, Any]
-    ) -> ExecutionResult:
+    def _generate_document(self, goal: str, args: dict[str, Any]) -> ExecutionResult:
         """Transform research content into a formatted markdown document.
 
         This is a lightweight, deterministic template transformer — no LLM
@@ -690,15 +799,14 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 confidence=0.0,
                 execution_time_seconds=dur,
                 observations=[
-                    f"❌ Document generation failed: no research content provided. "
-                    f"The upstream research artifact may have produced no data."
+                    "❌ Document generation failed: no research content provided. "
+                    "The upstream research artifact may have produced no data."
                 ],
                 data={"backend": self.name, "capability": "document.generate"},
             )
 
         # Helper to generate the dynamic title from goal/query or target_filename
         def generate_dynamic_title(query: str, filename: str) -> str:
-            import re
             query_lower = query.lower()
             if "python" in query_lower:
                 return "Python 3.14 Release Summary"
@@ -710,7 +818,12 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 return "NVIDIA RTX 6090 Research"
 
             # Fallback to parsing filename
-            name_part = filename.replace("_", " ").replace(".md", "").replace(".txt", "").title()
+            name_part = (
+                filename.replace("_", " ")
+                .replace(".md", "")
+                .replace(".txt", "")
+                .title()
+            )
             return f"{name_part} Research Summary"
 
         # Format the content as a structured markdown document
@@ -718,7 +831,11 @@ class DesktopEngineBackend(BaseBackendAdapter):
 
         # Determine if we can use the rich object directly
         is_object = False
-        if research_art is not None and hasattr(research_art, "artifact_type") and research_art.artifact_type == "research":
+        if (
+            research_art is not None
+            and hasattr(research_art, "artifact_type")
+            and research_art.artifact_type == "research"
+        ):
             is_object = True
             query = getattr(research_art, "query", goal)
             summary = getattr(research_art, "executive_summary", "")
@@ -731,6 +848,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
             # Fallback to JSON parsing from content
             try:
                 import json
+
                 data = json.loads(content)
                 query = data.get("query", goal)
                 summary = data.get("summary", "")
@@ -748,49 +866,64 @@ class DesktopEngineBackend(BaseBackendAdapter):
             date_str = datetime.now().strftime("%Y-%m-%d")
 
             markdown_doc = f"# {title}\n\n"
-            markdown_doc += f"Generated by Aura Research Engine\n\n"
+            markdown_doc += "Generated by Aura Research Engine\n\n"
             markdown_doc += f"Generated:\n{date_str}\n\n"
             markdown_doc += f"Query:\n{query}\n\n"
-            markdown_doc += f"---\n\n"
+            markdown_doc += "---\n\n"
 
             if summary:
                 markdown_doc += f"## Executive Summary\n\n{summary}\n\n"
-                markdown_doc += f"---\n\n"
+                markdown_doc += "---\n\n"
 
             # Render Key Features (filtering out deprecations/migration items if topic matches)
-            key_features = [f for f in findings if f.get("topic", "").lower() not in ["deprecations", "migration", "migration notes"]]
-            migration_features = [f for f in findings if f.get("topic", "").lower() in ["deprecations", "migration", "migration notes"]]
+            key_features = [
+                f
+                for f in findings
+                if f.get("topic", "").lower()
+                not in ["deprecations", "migration", "migration notes"]
+            ]
+            migration_features = [
+                f
+                for f in findings
+                if f.get("topic", "").lower()
+                in ["deprecations", "migration", "migration notes"]
+            ]
 
             if key_features:
-                markdown_doc += f"## Key Features\n\n"
+                markdown_doc += "## Key Features\n\n"
                 for f in key_features:
                     topic = f.get("topic", "")
                     detail = f.get("detail", "")
                     markdown_doc += f"• {topic}\n  {detail}\n\n"
-                markdown_doc += f"---\n\n"
+                markdown_doc += "---\n\n"
 
             if migration_features:
-                markdown_doc += f"## Migration Notes\n\n"
+                markdown_doc += "## Migration Notes\n\n"
                 for f in migration_features:
                     topic = f.get("topic", "")
                     detail = f.get("detail", "")
                     markdown_doc += f"• {topic}\n  {detail}\n\n"
-                markdown_doc += f"---\n\n"
+                markdown_doc += "---\n\n"
 
             if sources:
-                markdown_doc += f"## Sources\n\n"
+                markdown_doc += "## Sources\n\n"
                 for idx, src in enumerate(sources, 1):
                     title_text = src.get("title", "Reference")
                     url = src.get("url", "")
                     markdown_doc += f"{idx}.\n{title_text}\n{url}\n\n"
-                markdown_doc += f"---\n\n"
+                markdown_doc += "---\n\n"
 
             markdown_doc += f"Confidence\n{int(confidence * 100)}%\n\n"
             markdown_doc += f"Research Engine\n{engine}\n\n"
             markdown_doc += f"Coordinator\n{coordinator}\n"
         else:
             # Fallback to raw text if not structured
-            title = target_filename.replace("_", " ").replace(".md", "").replace(".txt", "").title()
+            title = (
+                target_filename.replace("_", " ")
+                .replace(".md", "")
+                .replace(".txt", "")
+                .title()
+            )
             markdown_doc = f"# {title}\n\n{content.strip()}\n"
 
         dur = datetime.now().timestamp() - start_t
@@ -892,7 +1025,8 @@ class DesktopEngineBackend(BaseBackendAdapter):
         # Stamp plan_id into result.data for traceability
         if isinstance(result.data, dict):
             result.data["plan_id"] = plan.plan_id
-            result.data["policy_action"] = plan.policy_action
+            if "policy_action" not in result.data:
+                result.data["policy_action"] = plan.policy_action
             result.data["action_target"] = plan.target
 
         return result

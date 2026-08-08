@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "generated_at": "2026-08-07T03:06:34.878281",
+  "generated_at": "2026-08-08T03:06:53.173555",
   "statistics": {
-    "total_modules": 521,
-    "total_dependencies": 960,
+    "total_modules": 543,
+    "total_dependencies": 964,
     "total_violations": 0,
     "layers": {
       "Applications & Clients": {
@@ -13,22 +13,22 @@
         "complexity": 243
       },
       "OS Kernel & Executive Brain": {
-        "module_count": 68,
-        "class_count": 115,
-        "function_count": 487,
-        "complexity": 1554
+        "module_count": 69,
+        "class_count": 117,
+        "function_count": 493,
+        "complexity": 1599
       },
       "Cognitive Architecture (ACA)": {
         "module_count": 46,
         "class_count": 109,
         "function_count": 328,
-        "complexity": 1135
+        "complexity": 1136
       },
       "Domain Subsystems & Engines": {
-        "module_count": 190,
-        "class_count": 433,
-        "function_count": 2554,
-        "complexity": 5685
+        "module_count": 192,
+        "class_count": 439,
+        "function_count": 2572,
+        "complexity": 5754
       },
       "Memory & Knowledge Base": {
         "module_count": 35,
@@ -37,10 +37,10 @@
         "complexity": 861
       },
       "Infrastructure & Event Bus": {
-        "module_count": 154,
-        "class_count": 146,
-        "function_count": 1234,
-        "complexity": 3081
+        "module_count": 173,
+        "class_count": 176,
+        "function_count": 1336,
+        "complexity": 3535
       },
       "Tool Execution & Plugins": {
         "module_count": 11,

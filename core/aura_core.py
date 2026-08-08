@@ -17,9 +17,9 @@ import asyncio
 import os
 import sys
 from dataclasses import dataclass
-from typing import Any, Optional
 from enum import Enum
 from pathlib import Path
+from typing import Any, Optional
 
 # Configure sys.path for src and project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -142,6 +142,7 @@ class AuraCore:
             self.project_root = Path(__file__).resolve().parent.parent
 
         import sys
+
         src_path = str(self.project_root / "src")
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
@@ -218,21 +219,25 @@ class AuraCore:
     def _init_executive_brain(self):
         """Initialize the Aura Cognitive Architecture (ACA) — staged cognitive runtime."""
         try:
-            from src.brain.aca import ACABrain, StrategyEngine, FusionEngine, ConfidenceGate
-            from src.brain import (
-                ContextManager,
-                WorldModel,
-                GoalAnalyzer,
-                CapabilitySelector,
-                ExecutionMapValidator,
-                ExecutionCoordinator,
-                VerificationEngine,
-                ReflectionEngine,
-                LearningEngine,
-            )
-
             # Wire the cognitive runtime to the MasterOrchestrator for execution
             from core.orchestration import MasterOrchestrator
+            from src.brain import (
+                CapabilitySelector,
+                ContextManager,
+                ExecutionCoordinator,
+                ExecutionMapValidator,
+                GoalAnalyzer,
+                LearningEngine,
+                ReflectionEngine,
+                VerificationEngine,
+                WorldModel,
+            )
+            from src.brain.aca import (
+                ACABrain,
+                ConfidenceGate,
+                FusionEngine,
+                StrategyEngine,
+            )
 
             orchestrator = MasterOrchestrator.get_instance()
 
@@ -251,9 +256,7 @@ class AuraCore:
                     llm_client=self.groq_client if self.llm_enabled else None
                 ),
                 validator=ExecutionMapValidator(),
-                coordinator=ExecutionCoordinator(
-                    orchestrator=orchestrator
-                ),
+                coordinator=ExecutionCoordinator(orchestrator=orchestrator),
                 verification=VerificationEngine(),
                 reflection=ReflectionEngine(),
                 learning=LearningEngine(),
@@ -395,9 +398,7 @@ class AuraCore:
             return response.text
 
         except Exception as e:
-            logger.error(
-                f"Executive Brain pipeline failed: {e}", exc_info=True
-            )
+            logger.error(f"Executive Brain pipeline failed: {e}", exc_info=True)
             # Fallback to standard pipeline
             return await self.process_request(user_goal)
 
@@ -621,7 +622,6 @@ class AuraCore:
                 message=str(e),
                 loaded=False,
             )
-
 
     def _init_memory(self):
         """Initialize memory system."""
@@ -1723,6 +1723,7 @@ MasterOrchestrator
         self.clear_conversation_history()
         try:
             from core.backends.backend_registry import BackendRegistry
+
             BackendRegistry.get_instance().shutdown()
         except Exception as e:
             logger.warning(f"Failed to shut down BackendRegistry: {e}")

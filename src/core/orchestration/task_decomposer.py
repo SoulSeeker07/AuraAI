@@ -76,21 +76,130 @@ class TaskDecomposer:
     ) -> list[SubTask]:
         # Check if this is a multi-stage research + persistence + launch task, which shouldn't be split
         is_multi_stage = (
-            any(w in goal_lower for w in ["research", "search web", "look up", "find papers"])
+            any(
+                w in goal_lower
+                for w in ["research", "search web", "look up", "find papers"]
+            )
             and any(w in goal_lower for w in ["save", "create", "write", "summary"])
-            and any(w in goal_lower for w in ["open", "launch", "in vs code", "in notepad", "in code"])
+            and any(
+                w in goal_lower
+                for w in ["open", "launch", "in vs code", "in notepad", "in code"]
+            )
         )
+        # Check for implicit "type/write <text> in/into <app>" pattern without explicit "and"
+        # Example: "type test successful in notepad" -> [app_open(notepad), keyboard.type(test successful)]
+        if not is_multi_stage:
+            import re
+
+            m_implicit = re.search(
+                r"^(?:please\s+)?(type|write|enter|input)\s+(.+?)\s+(?:in|into|on)\s+([a-zA-Z0-9_\-\.\s]+)$",
+                raw_goal.strip(),
+                re.IGNORECASE,
+            )
+            if m_implicit:
+                text_to_type = m_implicit.group(2).strip("'\" ")
+                app_target = m_implicit.group(3).strip()
+
+                app_target_lower = app_target.lower()
+                non_app_terms = [
+                    "python",
+                    "javascript",
+                    "c++",
+                    "java",
+                    "html",
+                    "css",
+                    "markdown",
+                    "txt",
+                    "english",
+                    "spanish",
+                    "french",
+                    "capital",
+                    "lowercase",
+                    "uppercase",
+                    "bold",
+                    "italics",
+                ]
+                is_false_positive = any(
+                    term == app_target_lower for term in non_app_terms
+                ) or any(
+                    f in text_to_type.lower()
+                    for f in ["file", "script", "code", "document", "markdown"]
+                )
+
+                if not is_false_positive and app_target_lower:
+                    for drop in ["app", "application", "window"]:
+                        app_target_lower = re.sub(
+                            rf"\b{drop}\b", "", app_target_lower
+                        ).strip()
+                    app_name_final = app_target_lower or app_target
+
+                    t1 = SubTask(
+                        task_id="task_1",
+                        title=f"Launch application: {app_name_final.title()}",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="app_open",
+                        description=f"Open {app_name_final} for typing",
+                        parameters={
+                            "app_name": app_name_final,
+                            "goal": f"open {app_name_final}",
+                        },
+                        dependencies=[],
+                    )
+                    t2 = SubTask(
+                        task_id="task_2",
+                        title=f"Type text: '{text_to_type}'",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="keyboard.type",
+                        description=f"Type '{text_to_type}' into {app_name_final}",
+                        parameters={
+                            "app_name": app_name_final,
+                            "goal": f"type {text_to_type}",
+                            "text": text_to_type,
+                        },
+                        dependencies=["task_1"],
+                    )
+                    return [t1, t2]
+
         # Check if the goal contains multiple sequential clauses separated by "and" or ";"
         # Example: "open notepad and type hello world"
         if not is_multi_stage and (" and " in goal_lower or "; " in goal_lower):
             import re
-            parts = re.split(r'\band\b|;', raw_goal, flags=re.IGNORECASE)
+
+            parts = re.split(r"\band\b|;", raw_goal, flags=re.IGNORECASE)
             valid_clauses = []
             for p in parts:
                 p_clean = p.strip()
-                if any(v in p_clean.lower() for v in ["open", "launch", "start", "run", "close", "minimize", "maximize", "restore", "unminimize", "type", "write", "search", "navigate", "focus", "activate", "bring", "press", "hit", "enter", "return", "click", "key", "hotkey", "play"]):
+                if any(
+                    v in p_clean.lower()
+                    for v in [
+                        "open",
+                        "launch",
+                        "start",
+                        "run",
+                        "close",
+                        "minimize",
+                        "maximize",
+                        "restore",
+                        "unminimize",
+                        "type",
+                        "write",
+                        "search",
+                        "navigate",
+                        "focus",
+                        "activate",
+                        "bring",
+                        "press",
+                        "hit",
+                        "enter",
+                        "return",
+                        "click",
+                        "key",
+                        "hotkey",
+                        "play",
+                    ]
+                ):
                     valid_clauses.append(p_clean)
-            
+
             if len(valid_clauses) > 1:
                 merged_clauses = []
                 i = 0
@@ -98,8 +207,17 @@ class TaskDecomposer:
                     c = valid_clauses[i]
                     if i + 1 < len(valid_clauses):
                         next_c = valid_clauses[i + 1]
-                        if any(s in c.lower() for s in ["search", "navigate", "open", "go to"]) and any(k in next_c.lower() for k in ["play", "find", "for", "video", "song"]):
-                            if not any(a in c.lower() for a in ["notepad", "calc", "cmd", "vscode"]):
+                        if any(
+                            s in c.lower()
+                            for s in ["search", "navigate", "open", "go to"]
+                        ) and any(
+                            k in next_c.lower()
+                            for k in ["play", "find", "for", "video", "song"]
+                        ):
+                            if not any(
+                                a in c.lower()
+                                for a in ["notepad", "calc", "cmd", "vscode"]
+                            ):
                                 c = f"{c} and {next_c}"
                                 i += 1
                     merged_clauses.append(c)
@@ -111,7 +229,9 @@ class TaskDecomposer:
                 task_counter = 1
                 for idx, clause in enumerate(valid_clauses):
                     clause_lower = clause.lower()
-                    clause_tasks = self._analyze_goal_clauses_single(clause_lower, clause, decision)
+                    clause_tasks = self._analyze_goal_clauses_single(
+                        clause_lower, clause, decision
+                    )
                     for t in clause_tasks:
                         t.task_id = f"task_{task_counter}"
                         task_counter += 1
@@ -134,7 +254,9 @@ class TaskDecomposer:
             search_url = f"https://www.youtube.com/results?search_query={q_enc}"
             req = urllib.request.Request(
                 search_url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"}
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
+                },
             )
             with urllib.request.urlopen(req, timeout=2.0) as resp:
                 html = resp.read().decode("utf-8", errors="ignore")
@@ -150,6 +272,7 @@ class TaskDecomposer:
         Resolves (site_name, target_url, query) for a given browser goal string.
         """
         import re
+
         from browser.planner.site_registry import SiteRegistry
 
         goal_lower = raw_goal.lower()
@@ -166,17 +289,30 @@ class TaskDecomposer:
                 detected_site = site_name
                 break
 
-        if not detected_site and any(w in goal_lower for w in ["video", "videos", "song", "songs", "music", "playlist", "yt"]):
+        if not detected_site and any(
+            w in goal_lower
+            for w in ["video", "videos", "song", "songs", "music", "playlist", "yt"]
+        ):
             detected_site = "youtube"
 
         if detected_site:
             profile = SiteRegistry.get_site(detected_site)
-            base_url = profile.base_url if profile else f"https://www.{detected_site}.com"
+            base_url = (
+                profile.base_url if profile else f"https://www.{detected_site}.com"
+            )
 
             clean_g = raw_goal
-            for prefix in ["search for", "search", "look up", "find", "open", "navigate to", "type"]:
+            for prefix in [
+                "search for",
+                "search",
+                "look up",
+                "find",
+                "open",
+                "navigate to",
+                "type",
+            ]:
                 if clean_g.lower().startswith(prefix):
-                    clean_g = clean_g[len(prefix):].strip()
+                    clean_g = clean_g[len(prefix) :].strip()
 
             ignore_words = {
                 detected_site,
@@ -207,15 +343,25 @@ class TaskDecomposer:
                 "application",
                 "play",
             }
-            query_words = [
-                w for w in clean_g.split()
-                if w.lower() not in ignore_words
-            ]
+            query_words = [w for w in clean_g.split() if w.lower() not in ignore_words]
             query = " ".join(query_words).strip()
 
             if query and profile and profile.search_url_template:
-                search_url = profile.search_url_template.format(query=query.replace(" ", "+"))
-                if detected_site == "youtube" and any(w in goal_lower for w in ["play", "song", "songs", "video", "videos", "music", "listen"]):
+                search_url = profile.search_url_template.format(
+                    query=query.replace(" ", "+")
+                )
+                if detected_site == "youtube" and any(
+                    w in goal_lower
+                    for w in [
+                        "play",
+                        "song",
+                        "songs",
+                        "video",
+                        "videos",
+                        "music",
+                        "listen",
+                    ]
+                ):
                     watch_url = self._resolve_youtube_watch_url(query)
                     if watch_url:
                         search_url = watch_url
@@ -224,83 +370,268 @@ class TaskDecomposer:
                 return (detected_site, base_url, query)
 
         clean_g = raw_goal
-        for prefix in ["search for", "search", "look up", "find", "open", "navigate to"]:
+        for prefix in [
+            "search for",
+            "search",
+            "look up",
+            "find",
+            "open",
+            "navigate to",
+        ]:
             if clean_g.lower().startswith(prefix):
-                clean_g = clean_g[len(prefix):].strip()
+                clean_g = clean_g[len(prefix) :].strip()
         query = clean_g.strip()
         search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
         return ("google", search_url, query)
 
-    def _detect_action_and_capability(self, goal_lower: str, raw_goal: str) -> tuple[str, str, dict[str, Any]]:
+    def _detect_action_and_capability(
+        self, goal_lower: str, raw_goal: str
+    ) -> tuple[str, str, dict[str, Any]]:
         """
         Classifies natural language into canonical capabilities and extracts parameters & context.
         """
         try:
             from browser.context_store import ContextStore
         except ModuleNotFoundError:
-            from src.browser.context_store import ContextStore
+            from browser.context_store import ContextStore
 
         store = ContextStore.get_instance()
 
         # 1. Media Control capabilities
-        if any(k in goal_lower for k in ["next video", "play the next", "play next", "skip this one", "next one", "play another", "go to the next"]):
+        if any(
+            k in goal_lower
+            for k in [
+                "next video",
+                "play the next",
+                "play next",
+                "skip this one",
+                "next one",
+                "play another",
+                "go to the next",
+            ]
+        ):
             store.update_media_state("media.next", raw_goal)
-            return ("media.next", "Play Next Video", {"action": "next", "media_context": store.media.to_dict()})
+            return (
+                "media.next",
+                "Play Next Video",
+                {"action": "next", "media_context": store.media.to_dict()},
+            )
 
-        if any(k in goal_lower for k in ["previous video", "play previous", "previous one", "last video", "one before this", "go back to last", "play the one before", "go back"]):
+        if any(
+            k in goal_lower
+            for k in [
+                "previous video",
+                "play previous",
+                "previous one",
+                "last video",
+                "one before this",
+                "go back to last",
+                "play the one before",
+                "go back",
+            ]
+        ):
             store.update_media_state("media.previous", raw_goal)
-            return ("media.previous", "Play Previous Video", {"action": "previous", "media_context": store.media.to_dict()})
+            return (
+                "media.previous",
+                "Play Previous Video",
+                {"action": "previous", "media_context": store.media.to_dict()},
+            )
 
         if goal_lower.strip() in ["next", "next."]:
             store.update_media_state("media.next", raw_goal)
-            return ("media.next", "Play Next Video", {"action": "next", "media_context": store.media.to_dict()})
+            return (
+                "media.next",
+                "Play Next Video",
+                {"action": "next", "media_context": store.media.to_dict()},
+            )
 
         if goal_lower.strip() in ["previous", "previous."]:
             store.update_media_state("media.previous", raw_goal)
-            return ("media.previous", "Play Previous Video", {"action": "previous", "media_context": store.media.to_dict()})
+            return (
+                "media.previous",
+                "Play Previous Video",
+                {"action": "previous", "media_context": store.media.to_dict()},
+            )
 
-        if any(k in goal_lower for k in ["pause", "pause the video", "stop it for now", "pause playback"]) or goal_lower.strip() in ["pause", "pause."]:
+        if any(
+            k in goal_lower
+            for k in ["pause", "pause the video", "stop it for now", "pause playback"]
+        ) or goal_lower.strip() in ["pause", "pause."]:
             store.update_media_state("media.pause", raw_goal)
-            return ("media.pause", "Pause Media Playback", {"action": "pause", "media_context": store.media.to_dict()})
+            return (
+                "media.pause",
+                "Pause Media Playback",
+                {"action": "pause", "media_context": store.media.to_dict()},
+            )
 
-        if any(k in goal_lower for k in ["resume", "continue video", "play again", "continue playback", "start it"]) or goal_lower.strip() in ["resume", "continue"]:
+        if any(
+            k in goal_lower
+            for k in [
+                "resume",
+                "continue video",
+                "play again",
+                "continue playback",
+                "start it",
+            ]
+        ) or goal_lower.strip() in ["resume", "continue"]:
             store.update_media_state("media.resume", raw_goal)
-            return ("media.resume", "Resume Media Playback", {"action": "resume", "media_context": store.media.to_dict()})
+            return (
+                "media.resume",
+                "Resume Media Playback",
+                {"action": "resume", "media_context": store.media.to_dict()},
+            )
 
-        if any(k in goal_lower for k in ["skip ", "seek ", "go forward ", "go back ", "rewind "]) and any(w in goal_lower for w in ["seconds", "secs", "second", "sec", "s", "minutes", "mins"]):
+        if any(
+            k in goal_lower
+            for k in ["skip ", "seek ", "go forward ", "go back ", "rewind "]
+        ) and any(
+            w in goal_lower
+            for w in ["seconds", "secs", "second", "sec", "s", "minutes", "mins"]
+        ):
             store.update_media_state("media.seek", raw_goal)
-            return ("media.seek", "Seek Media Timestamp", {"action": "seek", "goal": raw_goal, "media_context": store.media.to_dict()})
+            return (
+                "media.seek",
+                "Seek Media Timestamp",
+                {
+                    "action": "seek",
+                    "goal": raw_goal,
+                    "media_context": store.media.to_dict(),
+                },
+            )
 
         # 2. Comments & Reviews
-        if any(k in goal_lower for k in ["check the comments", "read comments", "check comments", "what are people saying", "summarize comments"]):
+        if any(
+            k in goal_lower
+            for k in [
+                "check the comments",
+                "read comments",
+                "check comments",
+                "what are people saying",
+                "summarize comments",
+            ]
+        ):
             rel = store.resolve_relative_reference(raw_goal)
-            return ("browser.comments", "Inspect & Read Comments", {"action": "comments", "target": rel.get("media"), "goal": raw_goal})
+            return (
+                "browser.comments",
+                "Inspect & Read Comments",
+                {"action": "comments", "target": rel.get("media"), "goal": raw_goal},
+            )
 
-        if any(k in goal_lower for k in ["check the reviews", "read reviews", "check reviews", "customer reviews", "what are people complaining about", "worth buying"]):
+        if any(
+            k in goal_lower
+            for k in [
+                "check the reviews",
+                "read reviews",
+                "check reviews",
+                "customer reviews",
+                "what are people complaining about",
+                "worth buying",
+            ]
+        ):
             rel = store.resolve_relative_reference(raw_goal)
-            return ("shopping.reviews", "Inspect Customer Reviews", {"action": "reviews", "target": rel.get("product"), "shopping_context": store.shopping.to_dict()})
+            return (
+                "shopping.reviews",
+                "Inspect Customer Reviews",
+                {
+                    "action": "reviews",
+                    "target": rel.get("product"),
+                    "shopping_context": store.shopping.to_dict(),
+                },
+            )
 
         # 3. Shopping & E-Commerce
-        if any(k in goal_lower for k in ["add to cart", "add it to cart", "put in cart", "add the cheapest"]):
+        if any(
+            k in goal_lower
+            for k in [
+                "add to cart",
+                "add it to cart",
+                "put in cart",
+                "add the cheapest",
+            ]
+        ):
             rel = store.resolve_relative_reference(raw_goal)
             prod = rel.get("product")
-            return ("shopping.cart.add", "Add Product to Cart", {"action": "add_to_cart", "product": prod, "shopping_context": store.shopping.to_dict()})
+            return (
+                "shopping.cart.add",
+                "Add Product to Cart",
+                {
+                    "action": "add_to_cart",
+                    "product": prod,
+                    "shopping_context": store.shopping.to_dict(),
+                },
+            )
 
-        if any(k in goal_lower for k in ["proceed to checkout", "go to checkout", "open checkout", "checkout"]):
-            return ("shopping.checkout", "Proceed to Checkout", {"action": "checkout", "shopping_context": store.shopping.to_dict()})
+        if any(
+            k in goal_lower
+            for k in [
+                "proceed to checkout",
+                "go to checkout",
+                "open checkout",
+                "checkout",
+            ]
+        ):
+            return (
+                "shopping.checkout",
+                "Proceed to Checkout",
+                {"action": "checkout", "shopping_context": store.shopping.to_dict()},
+            )
 
-        if any(k in goal_lower for k in ["compare", "which one is better", "side by side"]):
-            return ("shopping.compare", "Compare Products Side-by-Side", {"action": "compare", "shopping_context": store.shopping.to_dict()})
+        if any(
+            k in goal_lower for k in ["compare", "which one is better", "side by side"]
+        ):
+            return (
+                "shopping.compare",
+                "Compare Products Side-by-Side",
+                {"action": "compare", "shopping_context": store.shopping.to_dict()},
+            )
 
-        if any(k in goal_lower for k in ["laptop", "phone", "headphones", "monitor", "shoes"]) and any(w in goal_lower for w in ["find", "search", "looking for", "buy"]):
+        if any(
+            k in goal_lower
+            for k in ["laptop", "phone", "headphones", "monitor", "shoes"]
+        ) and any(w in goal_lower for w in ["find", "search", "looking for", "buy"]):
             c = store.update_shopping_constraints(raw_goal)
-            return ("shopping.search", "Search Products", {"action": "search", "query": raw_goal, "constraints": c.to_dict(), "shopping_context": store.shopping.to_dict()})
+            return (
+                "shopping.search",
+                "Search Products",
+                {
+                    "action": "search",
+                    "query": raw_goal,
+                    "constraints": c.to_dict(),
+                    "shopping_context": store.shopping.to_dict(),
+                },
+            )
 
         import re
-        if (any(k in goal_lower for k in ["only ", "filter ", "no ", "don't show", "remove ", "sort by", "under ", "below ", "cheapest"]) or re.search(r"\b(16gb|ram|ssd|oled)\b", goal_lower)):
-            if store.shopping.products or store.shopping.constraints.category or any(w in goal_lower for w in ["laptop", "phone", "monitor"]):
+
+        if any(
+            k in goal_lower
+            for k in [
+                "only ",
+                "filter ",
+                "no ",
+                "don't show",
+                "remove ",
+                "sort by",
+                "under ",
+                "below ",
+                "cheapest",
+            ]
+        ) or re.search(r"\b(16gb|ram|ssd|oled)\b", goal_lower):
+            if (
+                store.shopping.products
+                or store.shopping.constraints.category
+                or any(w in goal_lower for w in ["laptop", "phone", "monitor"])
+            ):
                 c = store.update_shopping_constraints(raw_goal)
-                return ("shopping.filter", "Filter & Sort Products", {"action": "filter", "constraints": c.to_dict(), "shopping_context": store.shopping.to_dict()})
+                return (
+                    "shopping.filter",
+                    "Filter & Sort Products",
+                    {
+                        "action": "filter",
+                        "constraints": c.to_dict(),
+                        "shopping_context": store.shopping.to_dict(),
+                    },
+                )
 
         return ("", "", {})
 
@@ -311,7 +642,9 @@ class TaskDecomposer:
         task_counter = 1
 
         # Check for specific normalized actions first (media, shopping, comments, reviews)
-        spec_cap, spec_title, spec_params = self._detect_action_and_capability(goal_lower, raw_goal)
+        spec_cap, spec_title, spec_params = self._detect_action_and_capability(
+            goal_lower, raw_goal
+        )
         if spec_cap:
             return [
                 SubTask(
@@ -356,11 +689,26 @@ class TaskDecomposer:
             ]
 
         if intent_val in ["memory", "memory_write", "memory_recall"]:
-            cap = getattr(decision, "capability", "memory_write") if decision else "memory_write"
+            cap = (
+                getattr(decision, "capability", "memory_write")
+                if decision
+                else "memory_write"
+            )
             # Fallback if capability not set cleanly
             if cap == "memory" or not cap:
-                cap = "memory_read" if any(w in goal_lower for w in ["recall", "what is", "retrieve", "tell me", "do you"]) else "memory_write"
-            title = "Recall Facts from Memory" if cap == "memory_read" else "Remember Facts in Memory"
+                cap = (
+                    "memory_read"
+                    if any(
+                        w in goal_lower
+                        for w in ["recall", "what is", "retrieve", "tell me", "do you"]
+                    )
+                    else "memory_write"
+                )
+            title = (
+                "Recall Facts from Memory"
+                if cap == "memory_read"
+                else "Remember Facts in Memory"
+            )
             return [
                 SubTask(
                     task_id="task_1",
@@ -423,6 +771,7 @@ class TaskDecomposer:
             has_desktop = any(w in goal_lower for w in desktop_keywords)
         else:
             import re
+
             desktop_patterns = [
                 r"\bopen\b",
                 r"\blaunch\b",
@@ -462,12 +811,14 @@ class TaskDecomposer:
                 re.search(pat, goal_lower) for pat in desktop_patterns
             )
 
-
         # Check for multi-stage research -> document -> persist -> open DAG
         if (
             has_research
             and any(w in goal_lower for w in ["save", "create", "write", "summary"])
-            and any(w in goal_lower for w in ["open", "launch", "in vs code", "in notepad", "in code"])
+            and any(
+                w in goal_lower
+                for w in ["open", "launch", "in vs code", "in notepad", "in code"]
+            )
         ):
             import re
 
@@ -482,7 +833,11 @@ class TaskDecomposer:
             target_app = "code"
             if "notepad" in goal_lower:
                 target_app = "notepad"
-            elif "vs code" in goal_lower or "vscode" in goal_lower or "code" in goal_lower:
+            elif (
+                "vs code" in goal_lower
+                or "vscode" in goal_lower
+                or "code" in goal_lower
+            ):
                 target_app = "code"
 
             t1_id = f"task_{task_counter}"
@@ -572,36 +927,116 @@ class TaskDecomposer:
             title_text = f"Execute desktop action: {raw_goal}"
 
             params = {"app_name": app_target, "goal": raw_goal}
-            if any(k in goal_lower for k in ["type ", "type", "write text"]):
+            is_write_cmd = any(
+                k in goal_lower for k in ["type ", "type", "write text", "enter text", "input text"]
+            ) or (
+                any(w in goal_lower for w in ["write ", "write"])
+                and not any(
+                    f in goal_lower
+                    for f in [
+                        "write file",
+                        "write code",
+                        "write script",
+                        "write document",
+                        "write summary",
+                        "write a file",
+                        "write markdown",
+                    ]
+                )
+            )
+            if is_write_cmd:
                 cap = "keyboard.type"
                 app_target = "keyboard"
                 text_to_type = raw_goal
-                for prefix in ["type ", "type", "write text "]:
+                for prefix in [
+                    "type text ",
+                    "type ",
+                    "write text ",
+                    "write ",
+                    "enter text ",
+                    "enter ",
+                    "input ",
+                ]:
                     if text_to_type.lower().startswith(prefix):
-                        text_to_type = text_to_type[len(prefix):]
+                        text_to_type = text_to_type[len(prefix) :]
+                        break
                 text_to_type = text_to_type.strip("'\" ")
-                params = {"app_name": "keyboard", "goal": raw_goal, "text": text_to_type}
+                params = {
+                    "app_name": "keyboard",
+                    "goal": raw_goal,
+                    "text": text_to_type,
+                }
                 title_text = f"Type text: '{text_to_type}'"
-            elif any(k in goal_lower for k in ["press enter", "hit enter", "press return", "hit return", "press tab", "press esc", "press escape"]) or (any(w in goal_lower for w in ["press", "hit"]) and any(k in goal_lower for k in ["enter", "return", "tab", "esc", "escape", "space", "backspace"])):
+            elif any(
+                k in goal_lower
+                for k in [
+                    "press enter",
+                    "hit enter",
+                    "press return",
+                    "hit return",
+                    "press tab",
+                    "press esc",
+                    "press escape",
+                ]
+            ) or (
+                any(w in goal_lower for w in ["press", "hit"])
+                and any(
+                    k in goal_lower
+                    for k in [
+                        "enter",
+                        "return",
+                        "tab",
+                        "esc",
+                        "escape",
+                        "space",
+                        "backspace",
+                    ]
+                )
+            ):
                 cap = "keyboard.press"
                 app_target = "keyboard"
                 key_name = "enter"
-                for k in ["enter", "return", "tab", "esc", "escape", "space", "backspace"]:
+                for k in [
+                    "enter",
+                    "return",
+                    "tab",
+                    "esc",
+                    "escape",
+                    "space",
+                    "backspace",
+                ]:
                     if k in goal_lower:
                         key_name = k
                         break
                 params = {"app_name": "keyboard", "goal": raw_goal, "key": key_name}
                 title_text = f"Press key: '{key_name.title()}'"
-            elif any(k in goal_lower for k in ["create file", "write file", "save file", "make file", "create a file"]):
+            elif any(
+                k in goal_lower
+                for k in [
+                    "create file",
+                    "write file",
+                    "save file",
+                    "make file",
+                    "create a file",
+                ]
+            ):
                 cap = "file.create"
                 title_text = f"Create and write file: {raw_goal}"
-            elif any(k in goal_lower for k in ["bluetooth", "bt radio"]) and any(k in goal_lower for k in ["on", "off", "enable", "disable", "turn", "toggle"]):
+            elif any(k in goal_lower for k in ["bluetooth", "bt radio"]) and any(
+                k in goal_lower
+                for k in ["on", "off", "enable", "disable", "turn", "toggle"]
+            ):
                 cap = "bluetooth_control"
                 app_target = "bluetooth"
                 enable = not any(k in goal_lower for k in ["off", "disable"])
                 params = {"enable": enable, "goal": raw_goal}
                 title_text = "Enable Bluetooth" if enable else "Disable Bluetooth"
-            elif any(k in goal_lower for k in ["wifi", "wi-fi", "wireless", "internet"]) and any(k in goal_lower for k in ["on", "off", "enable", "disable", "turn", "toggle"]):
+            elif any(
+                k in goal_lower for k in ["wifi", "wi-fi", "wireless", "internet"]
+            ) and any(
+                k in goal_lower
+                for k in ["on", "off", "enable", "disable", "turn", "toggle"]
+            ):
                 cap = "wifi_control"
                 app_target = "wifi"
                 enable = not any(k in goal_lower for k in ["off", "disable"])
@@ -613,17 +1048,31 @@ class TaskDecomposer:
                 is_mute = "unmute" not in goal_lower
                 params = {"mute": is_mute, "goal": raw_goal}
                 title_text = "Mute system audio" if is_mute else "Unmute system audio"
-            elif any(k in goal_lower for k in ["volume", "sound level", "sound volume"]):
+            elif any(
+                k in goal_lower for k in ["volume", "sound level", "sound volume"]
+            ):
                 cap = "set_volume"
                 app_target = "audio"
                 import re
+
                 # Verbal level shortcuts
                 _verbal = {
-                    "max": 100.0, "maximum": 100.0, "highest": 100.0, "full": 100.0,
-                    "min": 0.0, "minimum": 0.0, "lowest": 0.0, "zero": 0.0, "mute": 0.0,
-                    "half": 50.0, "medium": 50.0, "mid": 50.0,
-                    "low": 25.0, "quiet": 25.0,
-                    "high": 80.0, "loud": 80.0,
+                    "max": 100.0,
+                    "maximum": 100.0,
+                    "highest": 100.0,
+                    "full": 100.0,
+                    "min": 0.0,
+                    "minimum": 0.0,
+                    "lowest": 0.0,
+                    "zero": 0.0,
+                    "mute": 0.0,
+                    "half": 50.0,
+                    "medium": 50.0,
+                    "mid": 50.0,
+                    "low": 25.0,
+                    "quiet": 25.0,
+                    "high": 80.0,
+                    "loud": 80.0,
                 }
                 level = None
                 for word, val in _verbal.items():
@@ -649,8 +1098,20 @@ class TaskDecomposer:
                         if sep in raw_target.lower():
                             raw_target = raw_target.lower().split(sep)[0].strip()
                     app_target = raw_target
-                    for mod in ["another", "new", "second", "extra", "a", "the", "instance of", "instance", "window"]:
-                        app_target = re.sub(rf"\b{mod}\b", "", app_target, flags=re.IGNORECASE).strip()
+                    for mod in [
+                        "another",
+                        "new",
+                        "second",
+                        "extra",
+                        "a",
+                        "the",
+                        "instance of",
+                        "instance",
+                        "window",
+                    ]:
+                        app_target = re.sub(
+                            rf"\b{mod}\b", "", app_target, flags=re.IGNORECASE
+                        ).strip()
                     if not app_target:
                         app_target = raw_target
 
@@ -674,7 +1135,19 @@ class TaskDecomposer:
                         title_text = f"Focus window for: {app_target.title()}"
                 else:
                     # Fallback: if no verb matches but a known app name is present, treat as open
-                    known_apps = ["notepad", "calc", "calculator", "chrome", "cmd", "powershell", "spotify", "code", "vscode", "vs code", "visual studio code"]
+                    known_apps = [
+                        "notepad",
+                        "calc",
+                        "calculator",
+                        "chrome",
+                        "cmd",
+                        "powershell",
+                        "spotify",
+                        "code",
+                        "vscode",
+                        "vs code",
+                        "visual studio code",
+                    ]
                     matched_known = False
                     for app in known_apps:
                         if app in goal_lower:
@@ -690,8 +1163,18 @@ class TaskDecomposer:
                 params = {"app_name": app_target, "goal": raw_goal}
 
             is_web_target = app_target.lower() in [
-                "application", "instagram", "youtube", "github", "gmail", "google",
-                "twitter", "reddit", "linkedin", "facebook", "amazon", "netflix"
+                "application",
+                "instagram",
+                "youtube",
+                "github",
+                "gmail",
+                "google",
+                "twitter",
+                "reddit",
+                "linkedin",
+                "facebook",
+                "amazon",
+                "netflix",
             ]
             if not (has_browser and is_web_target):
                 subtasks.append(
@@ -706,7 +1189,14 @@ class TaskDecomposer:
                     )
                 )
 
-        if has_browser and not has_research and not (has_desktop and any(k in goal_lower for k in ["type", "press", "write text", "hit"])):
+        if (
+            has_browser
+            and not has_research
+            and not (
+                has_desktop
+                and any(k in goal_lower for k in ["type", "press", "write text", "hit"])
+            )
+        ):
             site_name, target_url, query = self._resolve_browser_target(raw_goal)
 
             # Multi-step goal-oriented browser decomposition
@@ -744,7 +1234,12 @@ class TaskDecomposer:
                     required_role=PlannerRole.BROWSER,
                     capability="browser.navigate",
                     description=f"Navigate to {target_url}",
-                    parameters={"url": target_url, "target_url": target_url, "site": site_name, "goal": raw_goal},
+                    parameters={
+                        "url": target_url,
+                        "target_url": target_url,
+                        "site": site_name,
+                        "goal": raw_goal,
+                    },
                     dependencies=[t1_id],
                 )
             )
@@ -771,7 +1266,13 @@ class TaskDecomposer:
                     required_role=PlannerRole.BROWSER,
                     capability="browser.navigate_goal",
                     description=f"Fulfill page goal for: {raw_goal}",
-                    parameters={"url": target_url, "target_url": target_url, "site": site_name, "query": query, "goal": raw_goal},
+                    parameters={
+                        "url": target_url,
+                        "target_url": target_url,
+                        "site": site_name,
+                        "query": query,
+                        "goal": raw_goal,
+                    },
                     dependencies=[t3_id],
                 )
             )
@@ -786,7 +1287,11 @@ class TaskDecomposer:
                         required_role=PlannerRole.BROWSER,
                         capability="media.play",
                         description=f"Play top video result for: {query or raw_goal}",
-                        parameters={"query": query, "goal": raw_goal, "site": site_name},
+                        parameters={
+                            "query": query,
+                            "goal": raw_goal,
+                            "site": site_name,
+                        },
                         dependencies=[t4_id],
                     )
                 )

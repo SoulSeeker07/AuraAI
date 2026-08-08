@@ -120,7 +120,9 @@ class ContextManager:
         self.workspace = workspace
         self.conversation_engine = conversation_engine
 
-    def collect(self, user_input: str, extra: dict[str, Any] | None = None) -> ContextSnapshot:
+    def collect(
+        self, user_input: str, extra: dict[str, Any] | None = None
+    ) -> ContextSnapshot:
         """
         Collect all available context into a snapshot.
 
@@ -175,10 +177,12 @@ class ContextManager:
                     snapshot.workspace_info = self.workspace
                 snapshot.current_project = snapshot.workspace_info.get(
                     "project", ""
-                ) or str(self.workspace.get("path", "") if isinstance(self.workspace, dict) else "")
-                snapshot.current_folder = snapshot.workspace_info.get(
-                    "path", ""
+                ) or str(
+                    self.workspace.get("path", "")
+                    if isinstance(self.workspace, dict)
+                    else ""
                 )
+                snapshot.current_folder = snapshot.workspace_info.get("path", "")
             except Exception as e:
                 logger.debug(f"Workspace info unavailable: {e}")
 

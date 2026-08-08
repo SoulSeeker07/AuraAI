@@ -49,16 +49,50 @@ class StrategyEngine:
         goal = thought.goal.description
 
         # ── Browser navigation strategy ─────────────────────────────────────
-        if any(site in objective.lower() for site in ["youtube", "github", "gmail", "google", "twitter", "reddit", "linkedin", "facebook", "instagram", "amazon"]):
+        if any(
+            site in objective.lower()
+            for site in [
+                "youtube",
+                "github",
+                "gmail",
+                "google",
+                "twitter",
+                "reddit",
+                "linkedin",
+                "facebook",
+                "instagram",
+                "amazon",
+            ]
+        ):
             site = next(
-                (s for s in ["youtube", "github", "gmail", "google", "twitter", "reddit", "linkedin", "facebook", "instagram", "amazon"] if s in objective.lower()),
-                ""
+                (
+                    s
+                    for s in [
+                        "youtube",
+                        "github",
+                        "gmail",
+                        "google",
+                        "twitter",
+                        "reddit",
+                        "linkedin",
+                        "facebook",
+                        "instagram",
+                        "amazon",
+                    ]
+                    if s in objective.lower()
+                ),
+                "",
             )
             browser = next(
-                (b for b in ["chrome", "edge", "firefox", "opera", "brave"] if b in goal.lower()),
-                "chrome"
+                (
+                    b
+                    for b in ["chrome", "edge", "firefox", "opera", "brave"]
+                    if b in goal.lower()
+                ),
+                "chrome",
             )
             from core.orchestration.task_decomposer import TaskDecomposer
+
             _, target_url, _ = TaskDecomposer()._resolve_browser_target(objective)
             if not target_url:
                 target_url = f"https://www.{site}.com"
@@ -66,12 +100,23 @@ class StrategyEngine:
                 "goal": goal,
                 "capabilities": ["browser"],
                 "steps": [
-                    {"engine": "browser", "action": "navigate", "parameters": {"url": target_url}},
-                    {"engine": "browser", "action": "verify", "parameters": {"expect": site}},
+                    {
+                        "engine": "browser",
+                        "action": "navigate",
+                        "parameters": {"url": target_url},
+                    },
+                    {
+                        "engine": "browser",
+                        "action": "verify",
+                        "parameters": {"expect": site},
+                    },
                 ],
                 "verification": [f"Navigation to {site} succeeded"],
                 "fallbacks": [
-                    {"trigger": "Navigation failed", "action": f"Retry navigating to {site}"},
+                    {
+                        "trigger": "Navigation failed",
+                        "action": f"Retry navigating to {site}",
+                    },
                 ],
                 "expected_result": f"Browser displays {site}",
                 "confidence": thought.confidence.overall,
@@ -79,21 +124,57 @@ class StrategyEngine:
 
         # ── App launch strategy ─────────────────────────────────────────────
         app = next(
-            (e.name.lower() for e in thought.entities if e.name.lower() in ["notepad", "chrome", "edge", "firefox", "spotify", "calculator", "calc", "vscode", "vs code", "visual studio code", "paint", "mspaint", "word", "excel", "powerpoint"]),
-            ""
+            (
+                e.name.lower()
+                for e in thought.entities
+                if e.name.lower()
+                in [
+                    "notepad",
+                    "chrome",
+                    "edge",
+                    "firefox",
+                    "spotify",
+                    "calculator",
+                    "calc",
+                    "vscode",
+                    "vs code",
+                    "visual studio code",
+                    "paint",
+                    "mspaint",
+                    "word",
+                    "excel",
+                    "powerpoint",
+                ]
+            ),
+            "",
         )
         if app:
             return {
                 "goal": goal,
                 "capabilities": ["desktop"],
                 "steps": [
-                    {"engine": "desktop", "action": "check_running", "parameters": {"application": app}},
-                    {"engine": "desktop", "action": "launch_application", "parameters": {"application": app}},
-                    {"engine": "desktop", "action": "verify_window", "parameters": {"application": app}},
+                    {
+                        "engine": "desktop",
+                        "action": "check_running",
+                        "parameters": {"application": app},
+                    },
+                    {
+                        "engine": "desktop",
+                        "action": "launch_application",
+                        "parameters": {"application": app},
+                    },
+                    {
+                        "engine": "desktop",
+                        "action": "verify_window",
+                        "parameters": {"application": app},
+                    },
                 ],
                 "verification": [f"{app} window exists"],
                 "fallbacks": [
-                    {"trigger": f"{app} not found", "action": "Search for alternate executable path"},
+                    {
+                        "trigger": f"{app} not found",
+                        "action": "Search for alternate executable path",
+                    },
                 ],
                 "expected_result": f"{app} window is visible",
                 "confidence": thought.confidence.overall,
@@ -104,7 +185,11 @@ class StrategyEngine:
             "goal": goal,
             "capabilities": ["provider"],
             "steps": [
-                {"engine": "provider", "action": "chat", "parameters": {"message": thought.raw_input}},
+                {
+                    "engine": "provider",
+                    "action": "chat",
+                    "parameters": {"message": thought.raw_input},
+                },
             ],
             "verification": ["Response generated"],
             "fallbacks": [],

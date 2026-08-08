@@ -116,7 +116,11 @@ class ReferenceResolver:
                         ]
                     ):
                         res_id = (evt.resource_id or "").lower()
-                        if res_id and res_id not in HOST_BLACK_LIST and res_id not in ["session", "hi", "it"]:
+                        if (
+                            res_id
+                            and res_id not in HOST_BLACK_LIST
+                            and res_id not in ["session", "hi", "it"]
+                        ):
                             target_name = evt.resource_id
                             target_source = f"timeline:{evt.event_type}"
                             break
@@ -124,7 +128,12 @@ class ReferenceResolver:
                         m = re.search(r"['\"]([^'\"]+)['\"]", desc)
                         if m:
                             candidate = m.group(1).strip()
-                            if candidate and candidate.lower() not in HOST_BLACK_LIST and candidate.lower() not in ["everything you opened", "session", "hi", "it"]:
+                            if (
+                                candidate
+                                and candidate.lower() not in HOST_BLACK_LIST
+                                and candidate.lower()
+                                not in ["everything you opened", "session", "hi", "it"]
+                            ):
                                 target_name = candidate
                                 target_source = f"timeline_desc:{evt.event_type}"
                                 break

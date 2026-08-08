@@ -292,7 +292,7 @@ class LearningEngine:
         if self.behavior_store is None:
             return
         try:
-            from src.core.learning.learning_types import LearningRule, RuleType
+            from core.learning.learning_types import LearningRule, RuleType
 
             rule_type_map = {
                 "fact": RuleType.FACT,

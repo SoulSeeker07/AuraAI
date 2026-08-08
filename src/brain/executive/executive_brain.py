@@ -31,12 +31,12 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from .dmm import ClarificationRequest, DecisionMakingModule
 from .execution_map import ExecutionMap
-from .dmm import DecisionMakingModule, ClarificationRequest
-from .planner import ExecutivePlanner, ExecutionPlan
 from .executor import ExecutiveExecutor, PlanResult
+from .learning import LearnedItem, LearningEngine
+from .planner import ExecutionPlan, ExecutivePlanner
 from .reflection import ReflectionEngine, ReflectionOutcome
-from .learning import LearningEngine, LearnedItem
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +63,8 @@ class BrainResponse:
                 self.execution_map.to_dict() if self.execution_map else None
             ),
             "plan": self.plan.to_dict() if self.plan else None,
-            "plan_result": (
-                self.plan_result.to_dict() if self.plan_result else None
-            ),
-            "reflection": (
-                self.reflection.to_dict() if self.reflection else None
-            ),
+            "plan_result": (self.plan_result.to_dict() if self.plan_result else None),
+            "reflection": (self.reflection.to_dict() if self.reflection else None),
             "learned": [i.to_dict() for i in self.learned],
             "clarification": (
                 self.clarification.to_dict() if self.clarification else None
@@ -162,7 +158,9 @@ class ExecutiveBrain:
         # ── 3. PLAN ─────────────────────────────────────────────────────────
         logger.info("ExecutiveBrain: Planning...")
         plan = self.planner.create_plan(execution_map)
-        logger.info(f"ExecutiveBrain created plan [{plan.plan_id}] with {plan.total_steps} steps")
+        logger.info(
+            f"ExecutiveBrain created plan [{plan.plan_id}] with {plan.total_steps} steps"
+        )
 
         # ── 4. EXECUTE ──────────────────────────────────────────────────────
         logger.info("ExecutiveBrain: Executing...")
@@ -183,7 +181,11 @@ class ExecutiveBrain:
 
         # ── 8. RESPOND ──────────────────────────────────────────────────────
         response_text = self._compose_response(
-            execution_map, plan_result, reflection_outcome, learned_items, verification_passed
+            execution_map,
+            plan_result,
+            reflection_outcome,
+            learned_items,
+            verification_passed,
         )
 
         return BrainResponse(
@@ -222,9 +224,7 @@ class ExecutiveBrain:
         if plan_result.success and verification_passed:
             # Success — compose from observations or goal
             observations = [
-                obs
-                for step in plan_result.step_results
-                for obs in step.observations
+                obs for step in plan_result.step_results for obs in step.observations
             ]
             if observations:
                 lines.extend(observations)
@@ -239,9 +239,7 @@ class ExecutiveBrain:
             if reflection.user_message:
                 lines.append(f"✗ {reflection.user_message}")
             else:
-                lines.append(
-                    f"✗ Could not complete: {execution_map.goal}"
-                )
+                lines.append(f"✗ Could not complete: {execution_map.goal}")
 
             # Add recovery suggestions
             for recovery in reflection.recoveries:

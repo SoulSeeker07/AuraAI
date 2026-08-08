@@ -34,6 +34,12 @@ public class BTTester {
 [BTTester]::Test().GetAwaiter().GetResult()
 """
 
-r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True, text=True, timeout=20)
+r = subprocess.run(
+    ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+    capture_output=True,
+    text=True,
+    timeout=20,
+)
 print(r.stdout.strip())
-if r.stderr: print("ERR:", r.stderr.strip())
+if r.stderr:
+    print("ERR:", r.stderr.strip())

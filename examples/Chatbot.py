@@ -70,12 +70,35 @@ class ChatBot:
             web_search=self.web_search,
         )
 
+    def _run_async(self, coro):
+        import asyncio
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply()
+                return loop.run_until_complete(coro)
+            except ImportError:
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    return executor.submit(asyncio.run, coro).result()
+        return asyncio.run(coro)
+
     def ask(self, query: str) -> str:
-        return self.engine.process(query).text
+        return self._run_async(self.engine.process(query)).text
 
     def ask_about_image(self, query: str, image_path: Path | str) -> str:
         attachment = self.engine.make_image_attachment(image_path)
-        return self.engine.process(query, attachments=[attachment]).text
+        return self._run_async(
+            self.engine.process(query, attachments=[attachment])
+        ).text
 
     def remember(self, text: str) -> list[MemoryFact]:
         return self.memory.remember(text)

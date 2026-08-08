@@ -91,13 +91,16 @@ class MasterOrchestrator:
     def reset_instance(cls) -> None:
         cls._instance = None
         try:
-            from .ownership_tracker import ResourceOwnershipTracker
-            from .world_timeline import WorldTimeline
+            from ...desktop.native.desktop_execution_engine import (
+                reset_desktop_execution_engine,
+            )
+            from ...desktop.native.managers.native_manager_registry import (
+                NativeManagerRegistry,
+            )
             from ..backends.backend_registry import BackendRegistry
-            from ...desktop.native.desktop_execution_engine import reset_desktop_execution_engine
-            from ...desktop.native.managers.native_manager_registry import NativeManagerRegistry
-
+            from .ownership_tracker import ResourceOwnershipTracker
             from .planner_registry import PlannerRegistry
+            from .world_timeline import WorldTimeline
 
             ResourceOwnershipTracker.reset_instance()
             WorldTimeline.reset_instance()
@@ -135,6 +138,7 @@ class MasterOrchestrator:
         conf.resolve(user_answer)
         self._last_session.pending_confirmation = None  # clear after resolve
 
+        initial_res = None
         if conf.is_yes:
             # Launch the new instance — re-run via execute_plan with CONFIRMED_LAUNCH
             try:
@@ -160,42 +164,70 @@ class MasterOrchestrator:
                     logger.info(
                         f"[MasterOrchestrator] Confirmation YES → {new_plan.log_summary()}"
                     )
-                    return backend.execute_plan(new_plan)
+                    initial_res = backend.execute_plan(new_plan)
             except Exception as exc:
                 logger.error(
                     f"[MasterOrchestrator] Confirmed launch failed: {exc}",
                     exc_info=True,
                 )
-            return _ER(
-                success=False,
-                planner="desktop",
-                goal=conf.action_plan.goal,
-                data={},
-                observations=[
-                    f"Confirmed launch of '{conf.action_plan.target}' failed."
-                ],
-            )
+                initial_res = _ER(
+                    success=False,
+                    planner="desktop",
+                    goal=conf.action_plan.goal,
+                    data={},
+                    observations=[
+                        f"Confirmed launch of '{conf.action_plan.target}' failed."
+                    ],
+                )
         else:
             # User said no — bring existing window to front
             try:
                 policy = ExecutionPolicy.get_instance()
                 running = policy._get_running_windows(conf.action_plan.target, None)
                 if running:
-                    import win32gui
+                    from ..backends.adapters.desktop_backend import _force_foreground
 
-                    win32gui.SetForegroundWindow(running[0])
-                    win32gui.BringWindowToTop(running[0])
+                    _force_foreground(running[0])
+                    backend = self.backend_registry.select_best_backend(
+                        conf.action_plan.capability
+                    )
+                    if backend and hasattr(backend, "_last_hwnd"):
+                        backend._last_hwnd = running[0]
+                        backend._last_app_name = conf.action_plan.target
             except Exception:
                 pass
-            return _ER(
+            initial_res = _ER(
                 success=True,
                 planner="desktop",
                 goal=conf.action_plan.goal,
                 data={"policy_action": "reuse_existing"},
                 observations=[
-                    f"OK — keeping existing {conf.action_plan.target.title()} window."
+                    f"✓ {conf.action_plan.target.title()} is already open — brought to front."
                 ],
             )
+
+        if initial_res and getattr(conf, "remaining_subtasks", None):
+            all_obs = list(initial_res.observations or [])
+            for rem_st in conf.remaining_subtasks:
+                try:
+                    rem_backend = self.backend_registry.select_best_backend(
+                        rem_st.capability
+                    )
+                    if rem_backend:
+                        from ..planning.action_plan import ActionPlan
+
+                        rem_plan = ActionPlan.from_subtask(
+                            rem_st, session_id=conf.session_id, context={}
+                        )
+                        rem_res = rem_backend.execute_plan(rem_plan)
+                        all_obs.extend(rem_res.observations or [])
+                except Exception as rem_exc:
+                    logger.warning(
+                        f"Execution of remaining subtask '{rem_st.title}' failed: {rem_exc}"
+                    )
+            initial_res.observations = all_obs
+
+        return initial_res
 
     def process_request(
         self,
@@ -207,7 +239,9 @@ class MasterOrchestrator:
     ) -> ExecutionResult:
         """Synchronous entry point for processing a request."""
         return asyncio.run(
-            self.process_request_async(goal_text, preferred_planner, parameters, budget, context)
+            self.process_request_async(
+                goal_text, preferred_planner, parameters, budget, context
+            )
         )
 
     async def process_request_async(
@@ -227,7 +261,20 @@ class MasterOrchestrator:
         conf = self.check_pending_confirmation()
         if conf is not None:
             user_answer = goal_text.strip().lower()
-            if user_answer in ["yes", "y", "yeah", "yep", "sure", "ok", "okay", "no", "n", "nope", "nah", "cancel"]:
+            if user_answer in [
+                "yes",
+                "y",
+                "yeah",
+                "yep",
+                "sure",
+                "ok",
+                "okay",
+                "no",
+                "n",
+                "nope",
+                "nah",
+                "cancel",
+            ]:
                 resolved_res = self.resolve_pending_confirmation(goal_text)
                 if resolved_res is not None:
                     try:
@@ -255,6 +302,7 @@ class MasterOrchestrator:
         except ModuleNotFoundError:
             import sys
             from pathlib import Path
+
             root_path = str(Path(__file__).resolve().parents[3])
             if root_path not in sys.path:
                 sys.path.insert(0, root_path)
@@ -262,7 +310,9 @@ class MasterOrchestrator:
 
         mem = AuraMemory()
         pending_question = None
-        if context is not None and (hasattr(context, "slot") or context.__class__.__name__ == "PendingQuestion"):
+        if context is not None and (
+            hasattr(context, "slot") or context.__class__.__name__ == "PendingQuestion"
+        ):
             pending_question = context
         else:
             db_pending = mem.get_pending_question()
@@ -271,12 +321,39 @@ class MasterOrchestrator:
                     from Memory import PendingQuestion as PQ
                 except ModuleNotFoundError:
                     from Memory import PendingQuestion as PQ
-                pending_question = PQ(slot=db_pending["slot"], qtype=db_pending["type"], expected=db_pending["expected"])
+                pending_question = PQ(
+                    slot=db_pending["slot"],
+                    qtype=db_pending["type"],
+                    expected=db_pending["expected"],
+                )
 
         # Check if the query is a command/request rather than a direct answer
         is_command = False
         goal_lower = goal_text.lower().strip()
-        if any(w in goal_lower for w in ["open ", "close ", "minimize ", "maximize ", "restore ", "unminimize ", "launch ", "start ", "run ", "bring ", "focus ", "activate ", "switch to ", "summarize ", "what is", "do you", "who are", "system", "tell me"]):
+        if any(
+            w in goal_lower
+            for w in [
+                "open ",
+                "close ",
+                "minimize ",
+                "maximize ",
+                "restore ",
+                "unminimize ",
+                "launch ",
+                "start ",
+                "run ",
+                "bring ",
+                "focus ",
+                "activate ",
+                "switch to ",
+                "summarize ",
+                "what is",
+                "do you",
+                "who are",
+                "system",
+                "tell me",
+            ]
+        ):
             is_command = True
 
         if pending_question is not None and not is_command:
@@ -286,8 +363,15 @@ class MasterOrchestrator:
                 planner="none",
                 goal=goal_text,
                 confidence=1.0,
-                observations=[f"Successfully filled preference slot '{pending_question.slot}' with value '{goal_text}'."],
-                data={"backend": "none", "capability": "memory_write", "slot": pending_question.slot, "value": goal_text},
+                observations=[
+                    f"Successfully filled preference slot '{pending_question.slot}' with value '{goal_text}'."
+                ],
+                data={
+                    "backend": "none",
+                    "capability": "memory_write",
+                    "slot": pending_question.slot,
+                    "value": goal_text,
+                },
             )
             self._write_memory(session, res)
             self._last_result = res
@@ -308,57 +392,80 @@ class MasterOrchestrator:
         if is_summary_query:
             chat_log = mem.load_chat_log()
             import datetime as dt
+
             today_str = dt.datetime.now().strftime("%Y-%m-%d")
             today_actions = []
-            
+
             for msg in chat_log:
                 if msg.get("role") == "user":
                     ts = msg.get("timestamp", "")
                     content = msg.get("content", "")
                     if (ts and ts.startswith(today_str)) or (not ts):
-                        if not any(w in content.lower() for w in ["summarize today's session", "summarize session", "session summary", "summarize what we did today", "what have we done today"]):
+                        if not any(
+                            w in content.lower()
+                            for w in [
+                                "summarize today's session",
+                                "summarize session",
+                                "session summary",
+                                "summarize what we did today",
+                                "what have we done today",
+                            ]
+                        ):
                             today_actions.append(content)
-                            
+
             if not today_actions:
                 for msg in chat_log[-10:]:
                     if msg.get("role") == "user":
                         content = msg.get("content", "")
-                        if not any(w in content.lower() for w in ["summarize today's session", "summarize session", "session summary", "summarize what we did today", "what have we done today"]):
+                        if not any(
+                            w in content.lower()
+                            for w in [
+                                "summarize today's session",
+                                "summarize session",
+                                "session summary",
+                                "summarize what we did today",
+                                "what have we done today",
+                            ]
+                        ):
                             today_actions.append(content)
-                            
+
             seen = set()
             unique_actions = []
             for action in today_actions:
                 if action not in seen:
                     seen.add(action)
                     unique_actions.append(action)
-                    
+
             lines = ["# Today's Aura Session\n"]
             if unique_actions:
                 for action in unique_actions:
                     lines.append(f"• {action}")
             else:
                 lines.append("• No major activities recorded today yet.")
-                
+
             from .world_timeline import WorldTimeline
+
             timeline = WorldTimeline.get_instance()
             recent_events = timeline.get_recent_events(minutes=1440)
             if recent_events:
                 lines.append("\n## Runtime Events:")
                 for evt in recent_events[-8:]:
                     lines.append(f"✓ {evt.description}")
-                    
+
             lines.append("\n## Session Statistics:")
-            artifact_count = sum(1 for evt in recent_events if "artifact" in evt.event_type.lower())
+            artifact_count = sum(
+                1 for evt in recent_events if "artifact" in evt.event_type.lower()
+            )
             if artifact_count == 0:
                 artifact_count = len(unique_actions) + 2
             lines.append(f"• Artifacts created: {artifact_count}")
             lines.append("\n## Verification status:")
             lines.append("✓ All successful")
-            
+
             summary_text = "\n".join(lines)
-            
+
             from .artifact import SessionSummaryArtifact
+
             summary_art = SessionSummaryArtifact(
                 date=today_str,
                 runtime_id=session.session_id,
@@ -369,7 +476,7 @@ class MasterOrchestrator:
                 verification_status="success",
             )
             session.add_artifact(summary_art)
-            
+
             res = ExecutionResult(
                 success=True,
                 planner="none",
@@ -377,7 +484,11 @@ class MasterOrchestrator:
                 confidence=1.0,
                 observations=[summary_text],
                 artifacts=[summary_art],
-                data={"backend": "none", "capability": "session_summary", "summary": summary_text},
+                data={
+                    "backend": "none",
+                    "capability": "session_summary",
+                    "summary": summary_text,
+                },
             )
             self._write_memory(session, res)
             self._last_result = res
@@ -485,6 +596,7 @@ class MasterOrchestrator:
 
         from .task_working_memory import TaskWorkingMemory
         from .world_state_observer import WorldStateObserver
+
         task_memory = TaskWorkingMemory(goal=goal_text)
         world_observer = WorldStateObserver.get_instance()
 
@@ -515,7 +627,10 @@ class MasterOrchestrator:
                         )
                         subtask.status = "failed"
                         err_msg = str(art_err)
-                        if art_id == "art_research_data" and subtask.capability == "document.generate":
+                        if (
+                            art_id == "art_research_data"
+                            and subtask.capability == "document.generate"
+                        ):
                             task_label = t_id.replace("_", " ").title()
                             err_msg = f"Research stage completed without producing a payload. Cannot generate markdown. Execution stopped at {task_label}."
                         session.add_observation(
@@ -561,7 +676,10 @@ class MasterOrchestrator:
                             content=f"❌ Subtask '{subtask.title}' failed: {type(res).__name__}: {res}",
                         )
                     )
-                elif isinstance(res, ExecutionResult) or res.__class__.__name__ == "ExecutionResult":
+                elif (
+                    isinstance(res, ExecutionResult)
+                    or res.__class__.__name__ == "ExecutionResult"
+                ):
                     subtask.status = "completed" if res.success else "failed"
                     subtask.result = res
                     if res.success:
@@ -586,7 +704,8 @@ class MasterOrchestrator:
                     try:
                         b_adapter = self.backend_registry.get_backend("browser")
                         world_snap = await world_observer.observe_async(
-                            domain=subtask.required_role.value, browser_adapter=b_adapter
+                            domain=subtask.required_role.value,
+                            browser_adapter=b_adapter,
                         )
                         task_memory.update_world_state(world_snap)
                         task_memory.record_step(
@@ -597,14 +716,20 @@ class MasterOrchestrator:
                             observations=res.observations,
                         )
                     except Exception as mem_err:
-                        logger.debug(f"[MasterOrchestrator] TaskWorkingMemory update skipped: {mem_err}")
+                        logger.debug(
+                            f"[MasterOrchestrator] TaskWorkingMemory update skipped: {mem_err}"
+                        )
 
                     # ── Output Artifact Propagation ────────────────────────
                     # Extract content from the execution result and store
                     # payload-carrying Artifacts on the session for downstream
                     # tasks to consume.
                     content_payload = self._extract_content_from_result(res)
-                    rich_ids = {a.artifact_id for a in res.artifacts or [] if isinstance(a, Artifact)}
+                    rich_ids = {
+                        a.artifact_id
+                        for a in res.artifacts or []
+                        if isinstance(a, Artifact)
+                    }
                     if res.artifacts:
                         for item in res.artifacts:
                             if isinstance(item, dict) and "artifact_id" in item:
@@ -615,13 +740,21 @@ class MasterOrchestrator:
                             continue  # Skip generic fallback since backend returns a rich artifact for this ID!
 
                         import dataclasses
+
                         from .artifact import VerificationReport
-                        
+
                         # Determine checks based on artifact ID and capability
                         checks = {}
-                        if art_id == "art_saved_file" or "save" in subtask.capability.lower() or "persist" in subtask.capability.lower():
+                        if (
+                            art_id == "art_saved_file"
+                            or "save" in subtask.capability.lower()
+                            or "persist" in subtask.capability.lower()
+                        ):
                             checks = {"document_saved": True, "file_exists": True}
-                        elif "markdown" in art_id or "document" in subtask.capability.lower():
+                        elif (
+                            "markdown" in art_id
+                            or "document" in subtask.capability.lower()
+                        ):
                             checks = {"markdown_generated": True, "content_valid": True}
                         else:
                             checks = {"valid": True}
@@ -653,24 +786,31 @@ class MasterOrchestrator:
                     # Also process any explicit artifact dicts/objects from backends
                     for art_data in res.artifacts or []:
                         import dataclasses
+
                         from .artifact import VerificationReport
-                        
+
                         if isinstance(art_data, Artifact):
                             checks = {}
                             if art_data.artifact_type == "research":
-                                checks = {"sources_reachable": True, "structured_payload": True}
+                                checks = {
+                                    "sources_reachable": True,
+                                    "structured_payload": True,
+                                }
                             elif art_data.artifact_type == "document":
-                                checks = {"markdown_generated": True, "content_valid": True}
+                                checks = {
+                                    "markdown_generated": True,
+                                    "content_valid": True,
+                                }
                             else:
                                 checks = {"valid": True}
-                                
+
                             v_report = VerificationReport(
                                 success=res.success,
                                 checks=checks,
                                 confidence=res.confidence or 1.0,
                                 observations=res.observations,
                             )
-                            
+
                             updated_art = dataclasses.replace(
                                 art_data,
                                 session_id=session.session_id,
@@ -721,19 +861,27 @@ class MasterOrchestrator:
                                 if res.observations
                                 else f"{target.title()} is already open. Open another instance? (yes / no)"
                             )
+                            remaining_st = [
+                                st for st_id, st in task_graph.subtasks.items()
+                                if st_id not in completed_ids and st_id != t_id
+                            ]
                             session.pending_confirmation = ActionPlanConfirmation(
                                 session_id=session.session_id,
                                 action_plan=pending_plan,
                                 prompt=prompt_text,
+                                remaining_subtasks=remaining_st,
                             )
+                            pipeline_halted = True
                             logger.info(
                                 f"[MasterOrchestrator] Stored pending confirmation on session "
-                                f"[{session.session_id}] for '{target}'"
+                                f"[{session.session_id}] for '{target}' with {len(remaining_st)} remaining subtasks"
                             )
                         except Exception as conf_exc:
                             logger.debug(f"Confirmation attachment skipped: {conf_exc}")
 
-        task_memory.mark_complete(success=(len(completed_ids) == len(task_graph.subtasks)))
+        task_memory.mark_complete(
+            success=(len(completed_ids) == len(task_graph.subtasks))
+        )
         session.metrics["task_working_memory"] = task_memory.get_summary()
 
         session.metrics["execution_ms"] = round(
@@ -773,7 +921,10 @@ class MasterOrchestrator:
 
         if len(task_graph.subtasks) == 1:
             single_task_id = list(task_graph.subtasks.keys())[0]
-            if "previous_results" in shared_context and single_task_id in shared_context["previous_results"]:
+            if (
+                "previous_results" in shared_context
+                and single_task_id in shared_context["previous_results"]
+            ):
                 sub_res = shared_context["previous_results"][single_task_id]
                 final_result.planner = getattr(sub_res, "planner", final_result.planner)
                 if isinstance(sub_res.data, dict):
@@ -860,6 +1011,7 @@ class MasterOrchestrator:
             except ModuleNotFoundError:
                 import sys
                 from pathlib import Path
+
                 root_path = str(Path(__file__).resolve().parents[3])
                 if root_path not in sys.path:
                     sys.path.insert(0, root_path)
@@ -895,6 +1047,7 @@ class MasterOrchestrator:
             except ModuleNotFoundError:
                 import sys
                 from pathlib import Path
+
                 root_path = str(Path(__file__).resolve().parents[3])
                 if root_path not in sys.path:
                     sys.path.insert(0, root_path)
@@ -930,10 +1083,7 @@ class MasterOrchestrator:
             return str(res_data["content"])
 
         # 2. Non-system observations concatenated
-        non_empty_obs = [
-            obs for obs in result.observations
-            if obs and obs.strip()
-        ]
+        non_empty_obs = [obs for obs in result.observations if obs and obs.strip()]
         if non_empty_obs:
             return "\n".join(non_empty_obs)
 

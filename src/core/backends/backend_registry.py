@@ -61,6 +61,11 @@ class DefaultNativeDesktopAdapter(BaseBackendAdapter):
     ) -> Any:
         from .adapters.desktop_backend import DesktopEngineBackend
 
+        backend = BackendRegistry.get_instance().get_backend("desktop_engine")
+        if backend:
+            return backend.execute(
+                capability=capability, goal=goal, arguments=arguments
+            )
         return DesktopEngineBackend().execute(
             capability=capability, goal=goal, arguments=arguments
         )
@@ -92,8 +97,9 @@ class DefaultGeminiResearchAdapter(BaseBackendAdapter):
     def execute(
         self, capability: str, goal: str, arguments: dict[str, Any] | None = None
     ) -> Any:
-        from ..planning.execution_result import ExecutionResult
         from core.orchestration.artifact import ResearchArtifact
+
+        from ..planning.execution_result import ExecutionResult
 
         # In production, this calls Gemini API.  The built-in adapter produces
         # deterministic synthesized structured data so that artifact payloads are never
@@ -104,16 +110,43 @@ class DefaultGeminiResearchAdapter(BaseBackendAdapter):
             query=goal,
             executive_summary="Python 3.14 was released with significant improvements in interpreter performance, type checking capabilities, standard library utilities, and legacy component cleanup.",
             findings=[
-                {"topic": "Performance", "detail": "Up to 30% faster execution through JIT compilation enhancements"},
-                {"topic": "Type System", "detail": "Enhanced generic type inference and TypeGuard improvements"},
-                {"topic": "Standard Library", "detail": "New `ast` module features, improved `pathlib` support"},
-                {"topic": "Security", "detail": "Updated TLS defaults and certificate handling"},
-                {"topic": "Deprecations", "detail": "Legacy `distutils` fully removed, `asyncio.coroutine` decorator removed"}
+                {
+                    "topic": "Performance",
+                    "detail": "Up to 30% faster execution through JIT compilation enhancements",
+                },
+                {
+                    "topic": "Type System",
+                    "detail": "Enhanced generic type inference and TypeGuard improvements",
+                },
+                {
+                    "topic": "Standard Library",
+                    "detail": "New `ast` module features, improved `pathlib` support",
+                },
+                {
+                    "topic": "Security",
+                    "detail": "Updated TLS defaults and certificate handling",
+                },
+                {
+                    "topic": "Deprecations",
+                    "detail": "Legacy `distutils` fully removed, `asyncio.coroutine` decorator removed",
+                },
             ],
             references=[
-                {"title": "Python 3.14 Official Release Notes", "url": "https://docs.python.org/3.14/whatsnew/3.14.html", "confidence": 0.99},
-                {"title": "PEP Index", "url": "https://peps.python.org/", "confidence": 0.98},
-                {"title": "Python 3.14.0 Download Page", "url": "https://www.python.org/downloads/release/python-3140/", "confidence": 0.95}
+                {
+                    "title": "Python 3.14 Official Release Notes",
+                    "url": "https://docs.python.org/3.14/whatsnew/3.14.html",
+                    "confidence": 0.99,
+                },
+                {
+                    "title": "PEP Index",
+                    "url": "https://peps.python.org/",
+                    "confidence": 0.98,
+                },
+                {
+                    "title": "Python 3.14.0 Download Page",
+                    "url": "https://www.python.org/downloads/release/python-3140/",
+                    "confidence": 0.95,
+                },
             ],
             confidence=0.97,
             engine="Gemini",
@@ -126,9 +159,7 @@ class DefaultGeminiResearchAdapter(BaseBackendAdapter):
             observations=[
                 f"Gemini Research Engine synthesized knowledge for: '{goal}'."
             ],
-            artifacts=[
-                research_artifact
-            ],
+            artifacts=[research_artifact],
             data={
                 "backend": self.name,
                 "content": research_artifact.content,
@@ -313,6 +344,7 @@ class BackendRegistry:
         """Shut down and clean up all registered backend adapters."""
         logger.info("BackendRegistry: shutting down all backends...")
         import asyncio
+
         for name, b in list(self._backends.items()):
             if hasattr(b, "close"):
                 logger.info(f"Shutting down backend: {name}")
@@ -327,7 +359,9 @@ class BackendRegistry:
                         else:
                             asyncio.run(b.close())
                     except Exception as e:
-                        logger.warning(f"Error shutting down backend {name} asynchronously: {e}")
+                        logger.warning(
+                            f"Error shutting down backend {name} asynchronously: {e}"
+                        )
                 else:
                     try:
                         b.close()

@@ -58,13 +58,7 @@ class LiveSearchEngine:
         self.max_results = max_results
         self.timeout_seconds = timeout_seconds
 
-        if tavily is None:
-            raise ImportError(
-                "Tavily is not installed. Install it with: pip install tavily-python"
-            )
-
-        # Initialize Tavily client
-        if self.api_key:
+        if tavily is not None and self.api_key:
             self.client = tavily.Client(api_key=self.api_key)
         else:
             self.client = None

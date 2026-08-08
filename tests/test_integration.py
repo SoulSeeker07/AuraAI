@@ -40,7 +40,9 @@ def main() -> None:
             description="A test tool",
             version="1.0.0",
         )
-        print(f"✓ ToolMetadata created: {metadata.name} (Category: {metadata.category.value})")
+        print(
+            f"✓ ToolMetadata created: {metadata.name} (Category: {metadata.category.value})"
+        )
 
         # Test 3: Create RiskAnalyzer
         print("\n[Test 3] Creating RiskAnalyzer...")

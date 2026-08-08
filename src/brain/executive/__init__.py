@@ -24,6 +24,7 @@ The Golden Rule:
     The Engines execute. Reflection validates. Learning improves.
 """
 
+from .dmm import ClarificationRequest, DecisionMakingModule
 from .execution_map import (
     Capability,
     ExecutionMap,
@@ -31,12 +32,11 @@ from .execution_map import (
     FallbackOption,
     SuccessCriteria,
 )
-from .dmm import DecisionMakingModule, ClarificationRequest
-from .planner import ExecutivePlanner
-from .executor import ExecutiveExecutor
-from .reflection import ReflectionEngine
-from .learning import LearningEngine
 from .executive_brain import ExecutiveBrain
+from .executor import ExecutiveExecutor
+from .learning import LearningEngine
+from .planner import ExecutivePlanner
+from .reflection import ReflectionEngine
 
 __all__ = [
     "Capability",

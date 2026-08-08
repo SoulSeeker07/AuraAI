@@ -5,17 +5,17 @@ Bootstraps both Overlay and MainWindow with the global signal bus,
 and connects UI inputs to the real AuraCore intelligence.
 """
 
-import sys
-import time
 import asyncio
 import logging
+import sys
+import time
 
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt, QThread, Signal
 
-from src.gui.main_window import MainWindow
-from src.gui.overlay import OverlayWindow
-from src.gui.signals import app_signals, ExecutionStep, StepStatus, WorldStateSnapshot
+from gui.main_window import MainWindow
+from gui.overlay import OverlayWindow
+from gui.signals import ExecutionStep, StepStatus, app_signals
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +24,8 @@ class CommandWorker(QThread):
     """Executes AuraCore tasks asynchronously in a background thread."""
 
     finished_signal = Signal(str, str)  # task_id, response_text
-    error_signal = Signal(str, str)     # task_id, error_message
-    step_signal = Signal(object)        # ExecutionStep
+    error_signal = Signal(str, str)  # task_id, error_message
+    step_signal = Signal(object)  # ExecutionStep
 
     def __init__(self, aura_core, command: str, parent=None):
         super().__init__(parent)
@@ -64,7 +64,9 @@ class CommandWorker(QThread):
             )
             self.step_signal.emit(step2)
 
-            if self.aura_core and hasattr(self.aura_core, "process_via_executive_brain"):
+            if self.aura_core and hasattr(
+                self.aura_core, "process_via_executive_brain"
+            ):
                 response_text = loop.run_until_complete(
                     self.aura_core.process_via_executive_brain(self.command)
                 )
@@ -119,12 +121,15 @@ class AuraGUI:
         if self.aura_core is None:
             try:
                 from core.aura_core import AuraCore
+
                 self.aura_core = AuraCore.get_instance()
             except Exception as e:
                 logger.error(f"Failed to load AuraCore: {e}")
 
         self._active_worker = CommandWorker(self.aura_core, text)
-        self._active_worker.step_signal.connect(lambda step: app_signals.step_updated.emit(step))
+        self._active_worker.step_signal.connect(
+            lambda step: app_signals.step_updated.emit(step)
+        )
         self._active_worker.finished_signal.connect(self._on_command_finished)
         self._active_worker.error_signal.connect(self._on_command_error)
         self._active_worker.start()
@@ -136,7 +141,9 @@ class AuraGUI:
 
     def _on_command_error(self, task_id: str, error: str):
         self._is_executing = False
-        app_signals.message_received.emit("agent", f"Error executing task: {error}", False)
+        app_signals.message_received.emit(
+            "agent", f"Error executing task: {error}", False
+        )
         app_signals.execution_finished.emit(task_id, False)
 
     def run(self):

@@ -24,16 +24,16 @@ async def main():
 
     from src.brain import (
         AuraBrain,
-        ContextManager,
-        WorldModel,
-        GoalAnalyzer,
         CapabilitySelector,
+        ContextManager,
+        ExecutionCoordinator,
         ExecutionMapGenerator,
         ExecutionMapValidator,
-        ExecutionCoordinator,
-        VerificationEngine,
-        ReflectionEngine,
+        GoalAnalyzer,
         LearningEngine,
+        ReflectionEngine,
+        VerificationEngine,
+        WorldModel,
     )
 
     # ── Test 1: Context Manager collects state ──────────────────────────────
@@ -76,7 +76,7 @@ async def main():
     print(f"  ✓ Goal: {exec_map['goal']}")
     print(f"  ✓ Capabilities: {exec_map['capabilities']}")
     print(f"  ✓ Steps: {len(exec_map['steps'])}")
-    for s in exec_map['steps']:
+    for s in exec_map["steps"]:
         print(f"    - [{s['engine']}] {s['action']}")
     print(f"  ✓ Verification: {exec_map['verification']}")
 

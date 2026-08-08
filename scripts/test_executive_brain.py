@@ -12,7 +12,6 @@ Tests the 5-layer cognitive architecture:
 
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # Ensure project root is on path
@@ -28,13 +27,12 @@ async def main():
 
     from src.brain.executive import (
         DecisionMakingModule,
-        ExecutivePlanner,
-        ExecutiveExecutor,
-        ReflectionEngine,
-        LearningEngine,
-        ExecutiveBrain,
-        ClarificationRequest,
         ExecutionMap,
+        ExecutiveBrain,
+        ExecutiveExecutor,
+        ExecutivePlanner,
+        LearningEngine,
+        ReflectionEngine,
     )
 
     # ── Test 1: DMM produces structured ExecutionMap ────────────────────────
@@ -42,9 +40,9 @@ async def main():
     dmm = DecisionMakingModule()
     result = dmm.analyze("Open YouTube in Chrome")
 
-    assert isinstance(result, ExecutionMap), (
-        f"DMM should produce ExecutionMap, got {type(result).__name__}"
-    )
+    assert isinstance(
+        result, ExecutionMap
+    ), f"DMM should produce ExecutionMap, got {type(result).__name__}"
     valid, errors = result.validate()
     assert valid, f"ExecutionMap should be valid: {errors}"
 
@@ -72,21 +70,31 @@ async def main():
     print(f"  ✓ Total steps: {plan.total_steps}")
     print(f"  ✓ Estimated timeout: {plan.estimated_timeout}s")
     for action in plan.ordered_actions:
-        print(f"    - [{action.step_type}] {action.description} (cap={action.capability})")
+        print(
+            f"    - [{action.step_type}] {action.description} (cap={action.capability})"
+        )
 
     # ── Test 4: Executor with mock engine ───────────────────────────────────
     print("\n[Test 4] Executor: execute plan via mock callbacks")
 
     async def mock_desktop(params):
         """Mock desktop engine callback."""
-        print(f"    [Desktop Engine] Executing: {params.get('operation', 'unknown')} "
-              f"app={params.get('app_name', 'unknown')}")
-        return {"success": True, "observations": [f"Launched {params.get('app_name', 'app')}"]}
+        print(
+            f"    [Desktop Engine] Executing: {params.get('operation', 'unknown')} "
+            f"app={params.get('app_name', 'unknown')}"
+        )
+        return {
+            "success": True,
+            "observations": [f"Launched {params.get('app_name', 'app')}"],
+        }
 
     async def mock_browser(params):
         """Mock browser engine callback."""
         print(f"    [Browser Engine] Navigating to: {params.get('url', 'unknown')}")
-        return {"success": True, "observations": [f"Navigated to {params.get('url', '')}"]}
+        return {
+            "success": True,
+            "observations": [f"Navigated to {params.get('url', '')}"],
+        }
 
     executor = ExecutiveExecutor()
     executor.register_callback("desktop", mock_desktop)
@@ -190,7 +198,7 @@ async def main():
     restored = ExecutionMap.from_dict(map_dict)
     assert restored.goal == result.goal
     assert len(restored.execution_plan) == len(result.execution_plan)
-    print(f"  ✓ Serialization round-trip successful")
+    print("  ✓ Serialization round-trip successful")
 
     print("\n" + "=" * 60)
     print("ALL EXECUTIVE BRAIN TESTS PASSED")

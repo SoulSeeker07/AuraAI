@@ -148,9 +148,20 @@ class ContextStore:
         c = self.shopping.constraints
 
         # Detect category if mentioned
-        for cat in ["laptop", "phone", "mobile", "headphones", "monitor", "shoes", "tv", "watch"]:
+        for cat in [
+            "laptop",
+            "phone",
+            "mobile",
+            "headphones",
+            "monitor",
+            "shoes",
+            "tv",
+            "watch",
+        ]:
             if cat in g_lower:
-                if c.category != cat and any(w in g_lower for w in ["find", "search", "looking for", "new"]):
+                if c.category != cat and any(
+                    w in g_lower for w in ["find", "search", "looking for", "new"]
+                ):
                     # Reset constraints only when starting a brand new product search
                     c = ShoppingConstraints(category=cat)
                     self.shopping.constraints = c
@@ -159,8 +170,14 @@ class ContextStore:
                 break
 
         # 1. Price Max: "under 60k", "below 70000", "less than ₹60,000", "within 60k"
-        m_price = re.search(r"(?:under|below|less than|within|max|<=|≤)?\s*₹?\s*(\d+)\s*(k|000|thousand)?", g_lower)
-        if m_price and any(w in g_lower for w in ["under", "below", "less than", "within", "k", "max", "₹"]):
+        m_price = re.search(
+            r"(?:under|below|less than|within|max|<=|≤)?\s*₹?\s*(\d+)\s*(k|000|thousand)?",
+            g_lower,
+        )
+        if m_price and any(
+            w in g_lower
+            for w in ["under", "below", "less than", "within", "k", "max", "₹"]
+        ):
             val = float(m_price.group(1))
             multiplier = m_price.group(2)
             if multiplier and ("k" in multiplier.lower() or val < 1000):
@@ -197,7 +214,9 @@ class ContextStore:
                 break
 
         # 6. Brand Exclusion: "no HP", "don't show HP", "remove HP", "except Dell"
-        m_no_brand = re.search(r"(?:no|don't show|remove|exclude|except)\s+([a-zA-Z0-9]+)", g_lower)
+        m_no_brand = re.search(
+            r"(?:no|don't show|remove|exclude|except)\s+([a-zA-Z0-9]+)", g_lower
+        )
         if m_no_brand:
             b_ex = m_no_brand.group(1).upper()
             if b_ex not in [b.upper() for b in c.brand_exclude]:
@@ -210,12 +229,23 @@ class ContextStore:
                 brands = re.split(r"\sand\b|\s*,\s*", m_only_brand.group(1))
                 for b in brands:
                     b_clean = b.strip().upper()
-                    if b_clean and b_clean not in ["RAM", "SSD", "OLED", "LAPTOP", "UNDER", "60K", "70K", "80K"]:
+                    if b_clean and b_clean not in [
+                        "RAM",
+                        "SSD",
+                        "OLED",
+                        "LAPTOP",
+                        "UNDER",
+                        "60K",
+                        "70K",
+                        "80K",
+                    ]:
                         if b_clean not in [x.upper() for x in c.brand_include]:
                             c.brand_include.append(b_clean)
 
         # 8. Rating: "rating above 4", "4 stars and above", "good reviews", "highly rated"
-        if any(w in g_lower for w in ["rating", "stars", "good reviews", "highly rated"]):
+        if any(
+            w in g_lower for w in ["rating", "stars", "good reviews", "highly rated"]
+        ):
             m_rat = re.search(r"(\d+(?:\.\d+)?)\s*(?:stars|rating)?", g_lower)
             if m_rat:
                 c.min_rating = float(m_rat.group(1))
@@ -246,11 +276,15 @@ class ContextStore:
             if m.playlist and m.current_item:
                 curr_idx = m.current_item.index
                 if curr_idx < len(m.playlist):
-                    m.current_item = m.playlist[curr_idx]  # next index is curr_idx (1-based index)
+                    m.current_item = m.playlist[
+                        curr_idx
+                    ]  # next index is curr_idx (1-based index)
                 else:
                     m.current_item = m.playlist[0]
             elif not m.current_item:
-                m.current_item = MediaItem(title="Next Video", index=2, platform=m.platform)
+                m.current_item = MediaItem(
+                    title="Next Video", index=2, platform=m.platform
+                )
         elif action_name == "media.previous":
             m.state = "playing"
             if m.playlist and m.current_item:
@@ -258,13 +292,17 @@ class ContextStore:
                 if curr_idx > 1:
                     m.current_item = m.playlist[curr_idx - 2]
             elif not m.current_item:
-                m.current_item = MediaItem(title="Previous Video", index=1, platform=m.platform)
+                m.current_item = MediaItem(
+                    title="Previous Video", index=1, platform=m.platform
+                )
         elif action_name == "media.pause":
             m.state = "paused"
         elif action_name == "media.resume":
             m.state = "playing"
         elif action_name == "media.seek":
-            m_sec = re.search(r"(\d+)\s*(seconds|secs|second|sec|s|minutes|mins|min|m)", g_lower)
+            m_sec = re.search(
+                r"(\d+)\s*(seconds|secs|second|sec|s|minutes|mins|min|m)", g_lower
+            )
             if m_sec:
                 num = int(m_sec.group(1))
                 unit = m_sec.group(2).lower()
@@ -307,10 +345,25 @@ class ContextStore:
                 res["product"] = prods[2]
                 self.shopping.selected_product = prods[2]
             elif "cheapest" in g_lower:
-                sorted_p = sorted(prods, key=lambda p: float(re.sub(r"[^\d.]", "", str(p.get("price", "999999"))) or 999999))
+                sorted_p = sorted(
+                    prods,
+                    key=lambda p: float(
+                        re.sub(r"[^\d.]", "", str(p.get("price", "999999"))) or 999999
+                    ),
+                )
                 res["product"] = sorted_p[0]
                 self.shopping.selected_product = sorted_p[0]
-            elif any(w in g_lower for w in ["add it", "put it", "buy it", "checkout it", "this one", "that one"]):
+            elif any(
+                w in g_lower
+                for w in [
+                    "add it",
+                    "put it",
+                    "buy it",
+                    "checkout it",
+                    "this one",
+                    "that one",
+                ]
+            ):
                 res["product"] = self.shopping.selected_product or prods[0]
 
         # 2. Media playlist references
@@ -325,7 +378,16 @@ class ContextStore:
             elif "third" in g_lower and len(pl) > 2:
                 res["media"] = pl[2]
                 self.media.current_item = pl[2]
-            elif any(w in g_lower for w in ["play it", "resume it", "pause it", "summarize them", "check comments"]):
+            elif any(
+                w in g_lower
+                for w in [
+                    "play it",
+                    "resume it",
+                    "pause it",
+                    "summarize them",
+                    "check comments",
+                ]
+            ):
                 res["media"] = self.media.current_item or pl[0]
 
         return res

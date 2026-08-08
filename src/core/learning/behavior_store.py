@@ -5,17 +5,19 @@ Location: src/core/learning/behavior_store.py
 
 import json
 from pathlib import Path
-from typing import Optional
+
 from .learning_types import LearningRule, RuleType
+
 
 class BehaviorStore:
     """
     Local persistent storage manager for custom learned behaviors and preference rules.
     """
 
-    def __init__(self, store_path: Optional[Path] = None):
+    def __init__(self, store_path: Path | None = None):
         if store_path is None:
             from pathlib import Path
+
             root = Path(__file__).resolve().parent.parent.parent.parent
             store_path = root / "Data" / "BehaviorStore.json"
         self.store_path = store_path
@@ -57,7 +59,7 @@ class BehaviorStore:
         self._rules[rule.rule_id] = rule
         self._save_rules()
 
-    def get_rule(self, rule_id: str) -> Optional[LearningRule]:
+    def get_rule(self, rule_id: str) -> LearningRule | None:
         return self._rules.get(rule_id)
 
     def list_rules(self) -> list[LearningRule]:

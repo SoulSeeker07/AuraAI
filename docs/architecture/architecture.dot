@@ -36,13 +36,12 @@ digraph AuraArchitecture {
   }
 
   subgraph cluster_OS_Kernel___Executive_Brain {
-    label="👑 OS Kernel & Executive Brain (68 modules)";
+    label="👑 OS Kernel & Executive Brain (69 modules)";
     style="filled,rounded";
     color="#9333EA";
     fillcolor="#9333EA22";
     fontsize=12;
     fontcolor="#1E293B";
-    "app" [label="App", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "logger" [label="Logger", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "event_bus" [label="Event Bus", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "settings" [label="Settings", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
@@ -93,9 +92,11 @@ digraph AuraArchitecture {
     "software_engineering_supervisor" [label="Software Engineering Supervisor", shape="box", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "supervisor_agent" [label="Supervisor Agent", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "task_decomposer" [label="Task Decomposer", shape="box", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
+    "task_working_memory" [label="Task Working Memory", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "worker_manager" [label="Worker Manager", shape="box", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "world_diff" [label="World Diff", shape="box", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "world_snapshot" [label="World Snapshot", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
+    "world_state_observer" [label="World State Observer", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "world_timeline" [label="World Timeline", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "action_plan" [label="Action Plan", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
     "execution_result" [label="Execution Result", shape="ellipse", fillcolor="#E9D5FF", color="#E9D5FF", fontcolor="#0F172A"];
@@ -168,7 +169,7 @@ digraph AuraArchitecture {
   }
 
   subgraph cluster_Domain_Subsystems___Engines {
-    label="🎯 Domain Subsystems & Engines (190 modules)";
+    label="🎯 Domain Subsystems & Engines (192 modules)";
     style="filled,rounded";
     color="#0D9488";
     fillcolor="#0D948822";
@@ -176,6 +177,7 @@ digraph AuraArchitecture {
     fontcolor="#1E293B";
     "service_manager" [label="Service Manager", shape="box", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "window_manager" [label="Window Manager", shape="box", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
+    "vision" [label="Vision", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "agent_context" [label="Agent Context", shape="box", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "agent_registry" [label="Agent Registry", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "agent_runtime" [label="Agent Runtime", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
@@ -218,6 +220,7 @@ digraph AuraArchitecture {
     "execution_state" [label="Execution State", shape="box", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "verification" [label="Verification", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "world_model" [label="World Model", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
+    "context_store" [label="Context Store", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "engine" [label="Engine", shape="box", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "shopping" [label="Shopping", shape="box", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
     "browser_goal" [label="Browser Goal", shape="ellipse", fillcolor="#CCFBF1", color="#CCFBF1", fontcolor="#0F172A"];
@@ -411,12 +414,16 @@ digraph AuraArchitecture {
   }
 
   subgraph cluster_Infrastructure___Event_Bus {
-    label="🏛️ Infrastructure & Event Bus (154 modules)";
+    label="🏛️ Infrastructure & Event Bus (173 modules)";
     style="filled,rounded";
     color="#0284C7";
     fillcolor="#0284C722";
     fontsize=12;
     fontcolor="#1E293B";
+    "test_bt" [label="Test Bt", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_bt2" [label="Test Bt2", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_wifi" [label="Test Wifi", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "app" [label="App", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "plugin_registry" [label="Plugin Registry", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "workspace_manager" [label="Workspace Manager", shape="box", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "Chatbot" [label="Chatbot", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
@@ -461,9 +468,18 @@ digraph AuraArchitecture {
     "overlay" [label="Overlay", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "settings_page" [label="Settings Page", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "sidebar" [label="Sidebar", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "signals" [label="Signals", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "theme" [label="Theme", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "titlebar" [label="Titlebar", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "tray" [label="Tray", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "chat_bubble" [label="Chat Bubble", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "dag_visualizer" [label="Dag Visualizer", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "inspector_drawer" [label="Inspector Drawer", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "navigation_rail" [label="Navigation Rail", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "status_pill" [label="Status Pill", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "step_card" [label="Step Card", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "waveform" [label="Waveform", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "action_vocabulary" [label="Action Vocabulary", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "capability_types" [label="Capability Types", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "intent_classifier" [label="Intent Classifier", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "keyword_router" [label="Keyword Router", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
@@ -557,6 +573,7 @@ digraph AuraArchitecture {
     "test_research_integration" [label="Test Research Integration", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_runtime" [label="Test Runtime", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_startup" [label="Test Startup", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_universal_pipeline_integration" [label="Test Universal Pipeline Integration", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_vision" [label="Test Vision", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_workflow" [label="Test Workflow", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_workspace" [label="Test Workspace", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
@@ -569,7 +586,12 @@ digraph AuraArchitecture {
     "test_researchcontext" [label="Test Researchcontext", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_simple_topic" [label="Test Simple Topic", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_smart_cache" [label="Test Smart Cache", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_window_manager_app_resolution" [label="Test Window Manager App Resolution", shape="box", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_gui_framework" [label="Test Gui Framework", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_browser_decomposer_fix" [label="Test Browser Decomposer Fix", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_cognitive_execution" [label="Test Cognitive Execution", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_goal_decomposer" [label="Test Goal Decomposer", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
+    "test_universal_action_pipeline" [label="Test Universal Action Pipeline", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
     "test_identity_loader" [label="Test Identity Loader", shape="ellipse", fillcolor="#BAE6FD", color="#BAE6FD", fontcolor="#0F172A"];
   }
 
@@ -600,8 +622,7 @@ digraph AuraArchitecture {
   "generate_architecture" -> "output_generators" [label="import"];
   "generate_architecture" -> "config" [label="import"];
   "main" -> "app" [label="import"];
-  "run_aura" -> "main" [label="import"];
-  "app" -> "logger" [label="import"];
+  "run_aura" -> "main" [label="from ... import"];
   "ws_routes" -> "Chatbot" [label="import"];
   "ws_routes" -> "settings" [label="import"];
   "ws_routes" -> "logger" [label="import"];
@@ -692,4 +713,5 @@ digraph AuraArchitecture {
   "planner" -> "planner_events" [label="import"];
   "planner" -> "planner_state" [label="import"];
   "planner" -> "strategy_selector" [label="import"];
+  "planner_agent" -> "task_model" [label="import"];
 }

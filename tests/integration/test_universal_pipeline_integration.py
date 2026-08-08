@@ -64,9 +64,17 @@ def run_e2e_media_flow():
 
     # Setup simulated playlist in MediaContext
     store.media.playlist = [
-        MediaItem(title="Python Full Course", url="https://youtube.com/watch?v=1", index=1),
-        MediaItem(title="Python Intermediate Tutorial", url="https://youtube.com/watch?v=2", index=2),
-        MediaItem(title="Python Advanced OOP", url="https://youtube.com/watch?v=3", index=3),
+        MediaItem(
+            title="Python Full Course", url="https://youtube.com/watch?v=1", index=1
+        ),
+        MediaItem(
+            title="Python Intermediate Tutorial",
+            url="https://youtube.com/watch?v=2",
+            index=2,
+        ),
+        MediaItem(
+            title="Python Advanced OOP", url="https://youtube.com/watch?v=3", index=3
+        ),
     ]
 
     # Turn 1: Play second

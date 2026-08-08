@@ -56,7 +56,12 @@ class ReflectionOutcome:
 
 _RECOVERY_PATTERNS: list[dict[str, Any]] = [
     {
-        "error_patterns": ["paint.exe", "not found", "not recognised", "path not found"],
+        "error_patterns": [
+            "paint.exe",
+            "not found",
+            "not recognised",
+            "path not found",
+        ],
         "app_aliases": {"paint": "mspaint"},
         "action": "retry_with_alias",
         "description": "Application not found — try alternate executable name",
@@ -149,9 +154,10 @@ class ReflectionEngine:
                 )
 
         # 3. Should the user be informed?
-        needs_user = any(
-            r.get("needs_user", False) for r in fallback_actions
-        ) or len(fallback_actions) == 0
+        needs_user = (
+            any(r.get("needs_user", False) for r in fallback_actions)
+            or len(fallback_actions) == 0
+        )
 
         user_message = ""
         if needs_user:

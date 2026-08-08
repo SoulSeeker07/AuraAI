@@ -62,12 +62,23 @@ class ObjectDetector:
             return {
                 "detected_objects": objects,
                 "bounding_boxes": bboxes,
-                "buttons": [o for o in objects if isinstance(o, dict) and o.get("type") == "button"],
-                "menus": [o for o in objects if isinstance(o, dict) and o.get("type") == "menu_item"],
-                "dialogs": [o for o in objects if isinstance(o, dict) and o.get("type") == "dialog"],
+                "buttons": [
+                    o
+                    for o in objects
+                    if isinstance(o, dict) and o.get("type") == "button"
+                ],
+                "menus": [
+                    o
+                    for o in objects
+                    if isinstance(o, dict) and o.get("type") == "menu_item"
+                ],
+                "dialogs": [
+                    o
+                    for o in objects
+                    if isinstance(o, dict) and o.get("type") == "dialog"
+                ],
             }
         return res
-
 
     def _detect_ui_elements(self, image: np.ndarray) -> tuple:
         """

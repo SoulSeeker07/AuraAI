@@ -6,13 +6,20 @@ Supports markdown rendering, streaming text, and code blocks.
 """
 
 import re
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QFrame, QScrollArea
-)
-from PySide6.QtCore import Qt, QTimer
 
-from src.gui.theme import Colors, Radius, Spacing
-from src.gui.signals import app_signals
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+from gui.signals import app_signals
+from gui.theme import Radius, Spacing
 
 
 class ChatBubble(QWidget):
@@ -46,7 +53,8 @@ class ChatBubble(QWidget):
         self._bubble = QLabel()
         self._bubble.setWordWrap(True)
         self._bubble.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.LinksAccessibleByMouse
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
         )
         self._bubble.setMinimumWidth(180)
         self._bubble.setMaximumWidth(700)
@@ -95,21 +103,21 @@ class ChatBubble(QWidget):
         text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
         # Bold & Italic
-        text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-        text = re.sub(r'__(.+?)__', r'<b>\1</b>', text)
-        text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
-        text = re.sub(r'_(.+?)_', r'<i>\1</i>', text)
+        text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+        text = re.sub(r"__(.+?)__", r"<b>\1</b>", text)
+        text = re.sub(r"\*(.+?)\*", r"<i>\1</i>", text)
+        text = re.sub(r"_(.+?)_", r"<i>\1</i>", text)
 
         # Inline code
         text = re.sub(
-            r'`([^`]+)`',
+            r"`([^`]+)`",
             r'<code style="background:#020617;padding:2px 6px;border-radius:4px;color:#22D3EE;font-family:Consolas,monospace;font-size:12px;">\1</code>',
             text,
         )
 
         # Code blocks
         text = re.sub(
-            r'```(\w+)?\n(.*?)```',
+            r"```(\w+)?\n(.*?)```",
             r'<pre style="background:#020617;padding:10px;border-radius:6px;border:1px solid #1E293B;margin:6px 0;"><code style="color:#CBD5E1;font-family:Consolas,monospace;font-size:12px;">\2</code></pre>',
             text,
             flags=re.DOTALL,
@@ -118,7 +126,7 @@ class ChatBubble(QWidget):
         # Newlines
         text = text.replace("\n", "<br>")
 
-        return f'<div style="font-family:\'Segoe UI\', sans-serif; font-size:13px; color:{text_color}; line-height:1.5;">{text}</div>'
+        return f"<div style=\"font-family:'Segoe UI', sans-serif; font-size:13px; color:{text_color}; line-height:1.5;\">{text}</div>"
 
     def append_text(self, text: str):
         self._content += text
@@ -172,9 +180,12 @@ class ChatStreamWidget(QFrame):
         while scroll_area and not isinstance(scroll_area, QScrollArea):
             scroll_area = scroll_area.parentWidget()
         if scroll_area:
-            QTimer.singleShot(50, lambda: scroll_area.verticalScrollBar().setValue(
-                scroll_area.verticalScrollBar().maximum()
-            ))
+            QTimer.singleShot(
+                50,
+                lambda: scroll_area.verticalScrollBar().setValue(
+                    scroll_area.verticalScrollBar().maximum()
+                ),
+            )
 
     def clear(self):
         while self.layout().count() > 1:

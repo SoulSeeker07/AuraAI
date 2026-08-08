@@ -17,8 +17,8 @@ try:
     from browser.engine import BrowserEngine
     from browser.shopping import ShoppingManager
 except ModuleNotFoundError:
-    from src.browser.engine import BrowserEngine
-    from src.browser.shopping import ShoppingManager
+    from browser.engine import BrowserEngine
+    from browser.shopping import ShoppingManager
 
 from ...planning.execution_result import ExecutionResult
 from ..base_backend import BaseBackendAdapter
@@ -108,12 +108,16 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 import concurrent.futures
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(asyncio.run, self.execute_async(capability, goal, args))
+                    future = executor.submit(
+                        asyncio.run, self.execute_async(capability, goal, args)
+                    )
                     return future.result(timeout=30)
             else:
                 return asyncio.run(self.execute_async(capability, goal, args))
         except Exception as exc:
-            logger.error(f"PlaywrightBrowserAdapter execution failed: {exc}", exc_info=True)
+            logger.error(
+                f"PlaywrightBrowserAdapter execution failed: {exc}", exc_info=True
+            )
             return ExecutionResult(
                 success=False,
                 planner="browser",
@@ -156,9 +160,14 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             chrome_paths = [
                 r"C:\Program Files\Google\Chrome\Application\chrome.exe",
                 r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe"),
+                os.path.expanduser(
+                    r"~\AppData\Local\Google\Chrome\Application\chrome.exe"
+                ),
             ]
-            exe = next((p for p in chrome_paths if os.path.exists(p)), shutil.which("chrome") or "chrome.exe")
+            exe = next(
+                (p for p in chrome_paths if os.path.exists(p)),
+                shutil.which("chrome") or "chrome.exe",
+            )
             try:
                 subprocess.Popen([exe, url])
             except Exception:
@@ -171,7 +180,9 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
 
         if cap_clean == "browser.ensure_open":
             try:
-                if hasattr(self._engine, "start") and not getattr(self._engine, "is_active", False):
+                if hasattr(self._engine, "start") and not getattr(
+                    self._engine, "is_active", False
+                ):
                     await self._engine.start()
                 return ExecutionResult(
                     success=True,
@@ -211,9 +222,10 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                     "Navigate to target URL for",
                 ]:
                     if raw_query.lower().startswith(prefix.lower()):
-                        raw_query = raw_query[len(prefix):].strip()
+                        raw_query = raw_query[len(prefix) :].strip()
 
                 from browser.planner.site_registry import SiteRegistry
+
                 detected_site = None
                 for s in SiteRegistry.list_sites():
                     if s in raw_query.lower():
@@ -223,7 +235,9 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                     prof = SiteRegistry.get_site(detected_site)
                     url = prof.base_url if prof else f"https://www.{detected_site}.com"
                 else:
-                    query = raw_query.replace("Search", "").replace("search", "").strip()
+                    query = (
+                        raw_query.replace("Search", "").replace("search", "").strip()
+                    )
                     url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
             res = await self._engine.navigate(url)
             return ExecutionResult(
@@ -258,12 +272,10 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                     data={"backend": self.name},
                 )
         elif cap_clean in ["browser", "browser.navigate"]:
-            url = (
-                arguments.get("url")
-                or arguments.get("target_url")
-            )
+            url = arguments.get("url") or arguments.get("target_url")
             if not url:
                 from browser.planner.site_registry import SiteRegistry
+
                 detected_site = None
                 for s in SiteRegistry.list_sites():
                     if s in goal.lower():
@@ -323,19 +335,30 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
         elif cap_clean.startswith("media."):
             action = cap_clean.split(".")[-1]
             from browser.context_store import ContextStore
+
             ctx = ContextStore.get_instance().media
             obs_msg = f"✓ Executed media action: {action} on {ctx.platform}"
 
             if action in ["play", "pause", "resume"]:
                 if action == "play":
                     query = arguments.get("query") or arguments.get("goal") or goal
-                    for prefix in ["Fulfill page goal for:", "Play video media for:", "Play Video Media", "play"]:
+                    for prefix in [
+                        "Fulfill page goal for:",
+                        "Play video media for:",
+                        "Play Video Media",
+                        "play",
+                    ]:
                         if query.lower().startswith(prefix.lower()):
-                            query = query[len(prefix):].strip()
+                            query = query[len(prefix) :].strip()
                     if query:
                         try:
-                            from core.orchestration.task_decomposer import TaskDecomposer
-                            watch_url = TaskDecomposer()._resolve_youtube_watch_url(query)
+                            from core.orchestration.task_decomposer import (
+                                TaskDecomposer,
+                            )
+
+                            watch_url = TaskDecomposer()._resolve_youtube_watch_url(
+                                query
+                            )
                             if watch_url:
                                 await self._engine.navigate(watch_url)
                                 self._launch_visible_chrome(watch_url)
@@ -348,7 +371,11 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                         await self._engine._page.keyboard.press("k")
                     except Exception:
                         pass
-                past_action = "paused" if action == "pause" else ("resumed" if action == "resume" else "played")
+                past_action = (
+                    "paused"
+                    if action == "pause"
+                    else ("resumed" if action == "resume" else "played")
+                )
                 obs_msg = f"✓ Media playback {past_action}"
             elif action == "next":
                 if self._engine._page:
@@ -377,6 +404,7 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             )
         elif cap_clean in ["browser.comments", "shopping.reviews"]:
             from browser.context_store import ContextStore
+
             store = ContextStore.get_instance()
             obs_msg = "✓ Collected and summarized visible user feedback/reviews."
             if "comment" in cap_clean:
@@ -396,10 +424,16 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             )
         elif cap_clean in ["shopping.search", "shopping.compare", "shopping.filter"]:
             from browser.context_store import ContextStore
-            store = ContextStore.get_instance()
-            constraints = arguments.get("constraints") or store.shopping.constraints.to_dict()
 
-            query = arguments.get("query") or f"{constraints.get('category', 'product')} {constraints.get('processor', '')} {constraints.get('ram_gb_min', '')}GB".strip()
+            store = ContextStore.get_instance()
+            constraints = (
+                arguments.get("constraints") or store.shopping.constraints.to_dict()
+            )
+
+            query = (
+                arguments.get("query")
+                or f"{constraints.get('category', 'product')} {constraints.get('processor', '')} {constraints.get('ram_gb_min', '')}GB".strip()
+            )
             platform = arguments.get("platform", "amazon")
             res = await self._shopping.search_products(query=query, platform=platform)
 
@@ -407,7 +441,11 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             if res.get("products"):
                 store.shopping.products = res.get("products", [])
 
-            filter_desc = f"Filter applied: price <= {constraints.get('price_max')}" if constraints.get('price_max') else "Searched products"
+            filter_desc = (
+                f"Filter applied: price <= {constraints.get('price_max')}"
+                if constraints.get("price_max")
+                else "Searched products"
+            )
             return ExecutionResult(
                 success=res.get("success", True),
                 planner="browser",
@@ -416,10 +454,15 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 observations=[
                     f"Found {res.get('products_found', 0)} matching products for '{query}' on {platform} ({filter_desc})"
                 ],
-                data={"backend": self.name, "shopping_result": res, "constraints": constraints},
+                data={
+                    "backend": self.name,
+                    "shopping_result": res,
+                    "constraints": constraints,
+                },
             )
         elif cap_clean in ["shopping.cart", "shopping.cart.add"]:
             from browser.context_store import ContextStore
+
             store = ContextStore.get_instance()
             prod = arguments.get("product") or store.shopping.selected_product
             product_url = (prod or {}).get("url") if isinstance(prod, dict) else None
@@ -432,7 +475,11 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                     pass
 
             res = await self._shopping.add_to_cart(product_url=product_url)
-            prod_name = (prod or {}).get("title", "selected item") if isinstance(prod, dict) else "item"
+            prod_name = (
+                (prod or {}).get("title", "selected item")
+                if isinstance(prod, dict)
+                else "item"
+            )
             is_success = res.get("success", False) or bool(prod)
             return ExecutionResult(
                 success=is_success,

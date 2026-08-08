@@ -8,6 +8,7 @@ Coordinates all vision components to provide desktop vision capabilities.
 import logging
 from pathlib import Path
 from typing import Any
+
 import numpy as np
 
 from .code_detector import CodeDetector
@@ -21,11 +22,11 @@ from .models import (
     VisionContext,
     VisionProvider,
 )
-from .vision_context import VisionContextCoordinator
 from .object_detector import ObjectDetector
 from .preprocessing import ImagePreprocessor
 from .screenshot_manager import ScreenshotManager
 from .ui_analyzer import UIAnalyzer
+from .vision_context import VisionContextCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +231,9 @@ class VisionManager:
         context.image_height = img.shape[0]
 
         # 1. Update context with basic information
-        if (not context.image_type or context.image_type == ImageType.UNKNOWN) and image_path:
+        if (
+            not context.image_type or context.image_type == ImageType.UNKNOWN
+        ) and image_path:
             suffix = Path(image_path).suffix
             context.image_type = self.image_loader._detect_image_type(suffix)
         elif not context.image_type:

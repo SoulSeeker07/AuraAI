@@ -47,6 +47,7 @@ class ActionPlanConfirmation:
     created_at: float = field(default_factory=time.monotonic)
     resolved: bool = False
     answer: str | None = None
+    remaining_subtasks: list[Any] = field(default_factory=list)
 
     _TTL_SECONDS: float = field(default=120.0, init=False, repr=False, compare=False)
 

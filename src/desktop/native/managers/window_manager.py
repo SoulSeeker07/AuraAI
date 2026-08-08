@@ -189,7 +189,6 @@ class WindowManager(BaseNativeManager):
                 goal=goal, capability=capability, manager=self.name, error=str(e)
             )
 
-
     # ==================== CAPABILITY HANDLERS ====================
 
     def _resolve_app_executable(self, app_name: str) -> str:
@@ -255,7 +254,9 @@ class WindowManager(BaseNativeManager):
         common_paths = [
             os.path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
             os.path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
-            os.path.join(local_appdata, "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(
+                local_appdata, "Google", "Chrome", "Application", "chrome.exe"
+            ),
             os.path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
             os.path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
             os.path.join(pf, "Mozilla Firefox", "firefox.exe"),
@@ -265,7 +266,10 @@ class WindowManager(BaseNativeManager):
 
         for p in common_paths:
             base_p = os.path.basename(p).lower()
-            if os.path.exists(p) and (exe_with_ext.lower() == base_p or app_clean == os.path.splitext(base_p)[0]):
+            if os.path.exists(p) and (
+                exe_with_ext.lower() == base_p
+                or app_clean == os.path.splitext(base_p)[0]
+            ):
                 return p
 
         return exe_with_ext
@@ -287,7 +291,10 @@ class WindowManager(BaseNativeManager):
         )
 
         # 1. Inspect Windows OS state (Reuse existing window if open and no target file / force_new is requested)
-        force_new = any(w in goal.lower() for w in ["another", "new", "second", "extra", "different"])
+        force_new = any(
+            w in goal.lower()
+            for w in ["another", "new", "second", "extra", "different"]
+        )
         if not target_file and not force_new:
             try:
                 hwnd = self._find_window(app)
@@ -323,7 +330,11 @@ class WindowManager(BaseNativeManager):
                     else:
                         os.startfile(exe_path)
                 except Exception:
-                    cmd = f'start "" "{exe_path}" "{target_file}"' if target_file else f'start "" "{exe_path}"'
+                    cmd = (
+                        f'start "" "{exe_path}" "{target_file}"'
+                        if target_file
+                        else f'start "" "{exe_path}"'
+                    )
                     proc = subprocess.Popen(cmd, shell=True)
             else:
                 args = [exe_path]
@@ -927,7 +938,9 @@ class WindowManager(BaseNativeManager):
 
             fg_hwnd = win32gui.GetForegroundWindow()
             cur_thread = win32api.GetCurrentThreadId()
-            fg_thread = win32process.GetWindowThreadProcessId(fg_hwnd)[0] if fg_hwnd else 0
+            fg_thread = (
+                win32process.GetWindowThreadProcessId(fg_hwnd)[0] if fg_hwnd else 0
+            )
             target_thread = win32process.GetWindowThreadProcessId(hwnd)[0]
 
             attached_fg = False
@@ -1006,7 +1019,11 @@ class WindowManager(BaseNativeManager):
             if owner != 0 and not (ex_style & win32con.WS_EX_APPWINDOW) and not is_uwp:
                 return True
 
-            if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (ex_style & win32con.WS_EX_APPWINDOW) and not is_uwp:
+            if (
+                (ex_style & win32con.WS_EX_TOOLWINDOW)
+                and not (ex_style & win32con.WS_EX_APPWINDOW)
+                and not is_uwp
+            ):
                 return True
 
             info = self._get_window_info(hwnd)

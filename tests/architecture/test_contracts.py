@@ -18,11 +18,11 @@ import pytest
 
 BACKEND_CLASSES = []
 
-from core.backends.base_backend import BaseBackendAdapter
 from core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
 from core.backends.adapters.desktop_backend import DesktopEngineBackend
 from core.backends.adapters.gemini_backend import GeminiBackend
 from core.backends.adapters.groq_backend import GroqBackend
+from core.backends.base_backend import BaseBackendAdapter
 
 BACKEND_CLASSES = [
     AntigravityBackendAdapter,

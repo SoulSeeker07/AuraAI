@@ -28,3 +28,22 @@ def test_task_graph_execution_levels():
     level_1 = graph.execution_order[0]
 
     assert len(level_1) >= 2
+
+
+def test_implicit_app_type_decomposition():
+    decomposer = TaskDecomposer()
+    goal = "type test successful in notepad"
+
+    graph = decomposer.decompose(goal)
+
+    assert len(graph.subtasks) == 2
+    task1 = graph.subtasks["task_1"]
+    task2 = graph.subtasks["task_2"]
+
+    assert task1.capability == "app_open"
+    assert task1.parameters["app_name"] == "notepad"
+
+    assert task2.capability == "keyboard.type"
+    assert task2.parameters["text"] == "test successful"
+    assert task2.dependencies == ["task_1"]
+

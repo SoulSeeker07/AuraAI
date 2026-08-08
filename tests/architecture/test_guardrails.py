@@ -30,27 +30,45 @@ CORE_ALLOWED_ENGINE_FILES = {
 # Temporary legacy exceptions allowed via strict migration tracking contract:
 # Every entry MUST have a reason, an owner, and a target milestone for removal.
 ENGINE_ALLOWLIST = {
-    ROOT / "src" / "agents" / "browser_agent.py": {
+    ROOT
+    / "src"
+    / "agents"
+    / "browser_agent.py": {
         "reason": "Legacy browser agent direct engine instantiation",
         "owner": "Browser Team",
         "milestone": "v0.20",
     },
-    ROOT / "src" / "core" / "backends" / "adapters" / "browser_backend.py": {
+    ROOT
+    / "src"
+    / "core"
+    / "backends"
+    / "adapters"
+    / "browser_backend.py": {
         "reason": "Legacy adapter direct browser engine call",
         "owner": "Integration Team",
         "milestone": "v0.20",
     },
-    ROOT / "src" / "desktop" / "native" / "desktop_execution_engine.py": {
+    ROOT
+    / "src"
+    / "desktop"
+    / "native"
+    / "desktop_execution_engine.py": {
         "reason": "Native desktop execution engine legacy bootstrap",
         "owner": "Desktop Team",
         "milestone": "v0.20",
     },
-    ROOT / "src" / "engineering" / "engineering_manager.py": {
+    ROOT
+    / "src"
+    / "engineering"
+    / "engineering_manager.py": {
         "reason": "Legacy engineering sub-engines direct instantiation",
         "owner": "DevOps Team",
         "milestone": "v0.20",
     },
-    ROOT / "src" / "vision" / "vision_plugin.py": {
+    ROOT
+    / "src"
+    / "vision"
+    / "vision_plugin.py": {
         "reason": "Legacy vision plugin direct instantiation",
         "owner": "Vision Team",
         "milestone": "v0.20",
@@ -99,6 +117,7 @@ def _iter_py_files(directory: Path):
 
 # ── Guardrail 1: No backend can import ACA ────────────────────────────────
 
+
 def test_guardrail_1_no_backend_imports_aca():
     """No backend/engine module may import from src.brain.aca."""
     forbidden_dirs = [
@@ -126,7 +145,7 @@ def test_guardrail_1_no_backend_imports_aca():
                     for alias in node.names:
                         if "brain.aca" in alias.name:
                             violations.append(f"{py_file}: imports {alias.name}")
-    assert not violations, f"Guardrail 1 violated:\n" + "\n".join(violations)
+    assert not violations, "Guardrail 1 violated:\n" + "\n".join(violations)
 
 
 def test_aca_migration_tracker_validity():
@@ -140,10 +159,14 @@ def test_aca_migration_tracker_validity():
             invalid_entries.append(
                 f"{file_path}: missing required metadata (reason='{reason}', owner='{owner}', milestone='{milestone}')"
             )
-    assert not invalid_entries, "ACA Migration Tracker entries must have valid reason, owner, and milestone:\n" + "\n".join(invalid_entries)
+    assert not invalid_entries, (
+        "ACA Migration Tracker entries must have valid reason, owner, and milestone:\n"
+        + "\n".join(invalid_entries)
+    )
 
 
 # ── Guardrail 2: Only ExecutionCoordinator may invoke engines ─────────────
+
 
 def test_guardrail_2_only_coordinator_invokes_engines():
     """Engine instantiation should only happen in allowed wiring files or tracked allowlist entries."""
@@ -167,10 +190,11 @@ def test_guardrail_2_only_coordinator_invokes_engines():
         for engine_name in engine_class_names:
             if f"{engine_name}(" in content:
                 violations.append(f"{py_file}: instantiates {engine_name}")
-    assert not violations, f"Guardrail 2 violated:\n" + "\n".join(violations)
+    assert not violations, "Guardrail 2 violated:\n" + "\n".join(violations)
 
 
 # ── Guardrail 3: Only StrategyEngine creates ExecutionMaps ────────────────
+
 
 def test_guardrail_3_only_strategy_engine_creates_execution_maps():
     """Only StrategyEngine should produce ExecutionMap dicts."""
@@ -184,10 +208,11 @@ def test_guardrail_3_only_strategy_engine_creates_execution_maps():
             continue
         if '"steps"' in content and '"verification"' in content:
             violations.append(f"{py_file}: creates ExecutionMap-like dict")
-    assert not violations, f"Guardrail 3 violated:\n" + "\n".join(violations)
+    assert not violations, "Guardrail 3 violated:\n" + "\n".join(violations)
 
 
 # ── Guardrail 4: Only FusionEngine creates Thought ────────────────────────
+
 
 def test_guardrail_4_only_fusion_engine_creates_thought():
     """Only FusionEngine should instantiate Thought."""
@@ -201,10 +226,11 @@ def test_guardrail_4_only_fusion_engine_creates_thought():
             continue
         if "Thought(" in content:
             violations.append(f"{py_file}: instantiates Thought")
-    assert not violations, f"Guardrail 4 violated:\n" + "\n".join(violations)
+    assert not violations, "Guardrail 4 violated:\n" + "\n".join(violations)
 
 
 # ── Guardrail 5: Only LearningEngine writes long-term memory ───────────────
+
 
 def test_guardrail_5_only_learning_writes_memory():
     """Only LearningEngine should call memory write operations."""
@@ -218,10 +244,11 @@ def test_guardrail_5_only_learning_writes_memory():
             continue
         if "remember_exchange" in content or "add_rule" in content:
             violations.append(f"{py_file}: writes long-term memory")
-    assert not violations, f"Guardrail 5 violated:\n" + "\n".join(violations)
+    assert not violations, "Guardrail 5 violated:\n" + "\n".join(violations)
 
 
 # ── Guardrail 6: Only ArtifactManager creates artifacts ────────────────────
+
 
 def test_guardrail_6_only_artifact_manager_creates_artifacts():
     """Only ArtifactManager should instantiate Artifact."""
@@ -235,13 +262,16 @@ def test_guardrail_6_only_artifact_manager_creates_artifacts():
             continue
         if "Artifact(" in content:
             violations.append(f"{py_file}: instantiates Artifact")
-    assert not violations, f"Guardrail 6 violated:\n" + "\n".join(violations)
+    assert not violations, "Guardrail 6 violated:\n" + "\n".join(violations)
 
 
 # ── Guardrail 7: All requests go through ACA.process() ────────────────────
 
+
 def test_guardrail_7_single_entry_point():
     """AuraCore.process_request should delegate to ACA when enabled."""
     aura_core = (ROOT / "core" / "aura_core.py").read_text(encoding="utf-8")
-    assert "process_via_executive_brain" in aura_core, "AuraCore missing ACA entry point"
+    assert (
+        "process_via_executive_brain" in aura_core
+    ), "AuraCore missing ACA entry point"
     assert "ACABrain" in aura_core, "AuraCore missing ACABrain import"

@@ -20,33 +20,32 @@ async def main():
     print("AURA COGNITIVE ARCHITECTURE (ACA) TEST SUITE")
     print("=" * 60)
 
+    from src.brain import (
+        CapabilitySelector,
+        ContextManager,
+        ExecutionCoordinator,
+        ExecutionMapValidator,
+        GoalAnalyzer,
+        LearningEngine,
+        ReflectionEngine,
+        VerificationEngine,
+        WorldModel,
+    )
     from src.brain.aca import (
         ACABrain,
-        FusionEngine,
+        ArtifactManager,
         ConfidenceGate,
-        StrategyEngine,
+        FusionEngine,
         GoalManager,
         PolicyEngine,
-        ArtifactManager,
+        StrategyEngine,
     )
     from src.brain.schemas import (
         CognitiveState,
-        TaskGraph,
         RuntimeSession,
-        Artifact,
+        TaskGraph,
     )
     from src.brain.schemas.thought import Confidence
-    from src.brain import (
-        ContextManager,
-        WorldModel,
-        GoalAnalyzer,
-        CapabilitySelector,
-        ExecutionMapValidator,
-        ExecutionCoordinator,
-        VerificationEngine,
-        ReflectionEngine,
-        LearningEngine,
-    )
 
     # ── Test 1: Blackboard ──────────────────────────────────────────────────
     print("\n[Test 1] Blackboard shared working memory")
@@ -62,7 +61,13 @@ async def main():
     n1 = tg.add_node("research", "search", {"query": "Aura OS"}, "Research")
     n2 = tg.add_node("provider", "synthesize", {}, "Summarize", depends_on=[n1.node_id])
     n3 = tg.add_node("filesystem", "write_file", {}, "Save", depends_on=[n2.node_id])
-    n4 = tg.add_node("desktop", "launch_application", {"application": "code"}, "Open VS Code", depends_on=[n2.node_id])
+    n4 = tg.add_node(
+        "desktop",
+        "launch_application",
+        {"application": "code"},
+        "Open VS Code",
+        depends_on=[n2.node_id],
+    )
     levels = tg.get_execution_order()
     print(f"  ✓ Nodes: {len(tg.nodes)}")
     print(f"  ✓ Root nodes: {len(tg.root_nodes)}")
@@ -104,13 +109,17 @@ async def main():
     # ── Test 5: Policy Engine ───────────────────────────────────────────────
     print("\n[Test 5] Policy Engine — governance layer")
     pe = PolicyEngine()
-    pe.add_policy({
-        "name": "no_delete",
-        "condition": "delete",
-        "action": "deny",
-        "reason": "Deletion requires manual confirmation",
-    })
-    from src.brain.schemas.thought import Thought, Goal as G, SafetyAssessment
+    pe.add_policy(
+        {
+            "name": "no_delete",
+            "condition": "delete",
+            "action": "deny",
+            "reason": "Deletion requires manual confirmation",
+        }
+    )
+    from src.brain.schemas.thought import Goal as G
+    from src.brain.schemas.thought import SafetyAssessment, Thought
+
     dc = Thought(
         goal=G(description="Delete file", confidence=0.95),
         raw_input="Delete the file",
@@ -174,7 +183,9 @@ async def main():
     print(f"  ✓ Response: {response.text}")
     print(f"  ✓ Blackboard: {response.blackboard is not None}")
     print(f"  ✓ Session: {response.session is not None}")
-    print(f"  ✓ Session status: {response.session.status if response.session else 'N/A'}")
+    print(
+        f"  ✓ Session status: {response.session.status if response.session else 'N/A'}"
+    )
     print(f"  ✓ Goal: {response.goal is not None}")
     print(f"  ✓ Artifacts: {len(response.artifacts)}")
 
@@ -190,12 +201,14 @@ async def main():
         goal_manager=GoalManager(),
         policy_engine=PolicyEngine(),
     )
-    aca2.add_policy({
-        "name": "no_delete",
-        "condition": "delete",
-        "action": "deny",
-        "reason": "Deletion requires manual confirmation",
-    })
+    aca2.add_policy(
+        {
+            "name": "no_delete",
+            "condition": "delete",
+            "action": "deny",
+            "reason": "Deletion requires manual confirmation",
+        }
+    )
     response2 = await aca2.process("Delete the file")
     print(f"  ✓ Success: {response2.success}")
     print(f"  ✓ Response: {response2.text}")

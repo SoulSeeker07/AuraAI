@@ -11,6 +11,11 @@ if($null -eq $wifi){Write-Output 'NO_WIFI'; exit};
 Write-Output ('Initial WiFi State: '+$wifi.State.ToString());
 """
 
-r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True, text=True)
+r = subprocess.run(
+    ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+    capture_output=True,
+    text=True,
+)
 print(r.stdout.strip())
-if r.stderr: print("ERR:", r.stderr.strip())
+if r.stderr:
+    print("ERR:", r.stderr.strip())

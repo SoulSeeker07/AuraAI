@@ -186,15 +186,23 @@ class DesktopAgent:
                 common_paths = [
                     os.path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
                     os.path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
-                    os.path.join(local_appdata, "Google", "Chrome", "Application", "chrome.exe"),
+                    os.path.join(
+                        local_appdata, "Google", "Chrome", "Application", "chrome.exe"
+                    ),
                     os.path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
-                    os.path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+                    os.path.join(
+                        pf86, "Microsoft", "Edge", "Application", "msedge.exe"
+                    ),
                     os.path.join(pf, "Mozilla Firefox", "firefox.exe"),
-                    os.path.join(local_appdata, "Programs", "Microsoft VS Code", "Code.exe"),
+                    os.path.join(
+                        local_appdata, "Programs", "Microsoft VS Code", "Code.exe"
+                    ),
                     os.path.join(local_appdata, "Spotify", "Spotify.exe"),
                 ]
                 for p in common_paths:
-                    if os.path.exists(p) and (exe_with_ext.lower() in p.lower() or app_clean in p.lower()):
+                    if os.path.exists(p) and (
+                        exe_with_ext.lower() in p.lower() or app_clean in p.lower()
+                    ):
                         exe_path = p
                         break
 

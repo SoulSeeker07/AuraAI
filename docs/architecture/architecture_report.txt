@@ -2,9 +2,9 @@
   AURA ARCHITECTURE ANALYSIS REPORT
 ================================================================================
 
-Generated: 2026-08-07 03:06:34
-Total Modules Analyzed: 521
-Total Dependencies Mapped: 960
+Generated: 2026-08-08 03:06:53
+Total Modules Analyzed: 543
+Total Dependencies Mapped: 964
 Architecture Violations Detected: 0
 
 --------------------------------------------------------------------------------
@@ -20,24 +20,24 @@ Architecture Violations Detected: 0
 
   👑 OS Kernel & Executive Brain (Level 2):
     - Description: AuraCore, ExecutiveBrain, RuntimeSession, MasterOrchestrator
-    - Modules Count: 68
-    - Classes Count: 115
-    - Functions Count: 487
-    - Complexity Score: 1554
+    - Modules Count: 69
+    - Classes Count: 117
+    - Functions Count: 493
+    - Complexity Score: 1599
 
   🧠 Cognitive Architecture (ACA) (Level 3):
     - Description: Cognitive Pipeline: Perception, DMM, Strategy, Policy, Planner, Coordinator, Reflection, Learning
     - Modules Count: 46
     - Classes Count: 109
     - Functions Count: 328
-    - Complexity Score: 1135
+    - Complexity Score: 1136
 
   🎯 Domain Subsystems & Engines (Level 4):
     - Description: Desktop, Browser, Research, Engineering, Vision, Voice engines and adapters
-    - Modules Count: 190
-    - Classes Count: 433
-    - Functions Count: 2554
-    - Complexity Score: 5685
+    - Modules Count: 192
+    - Classes Count: 439
+    - Functions Count: 2572
+    - Complexity Score: 5754
 
   📚 Memory & Knowledge Base (Level 5):
     - Description: Fact store, vector store, long-term memory, knowledge graphs, SQLite
@@ -48,10 +48,10 @@ Architecture Violations Detected: 0
 
   🏛️ Infrastructure & Event Bus (Level 6):
     - Description: EventBus, Logger, Base Contracts, Configuration, Shared Schemas
-    - Modules Count: 154
-    - Classes Count: 146
-    - Functions Count: 1234
-    - Complexity Score: 3081
+    - Modules Count: 173
+    - Classes Count: 176
+    - Functions Count: 1336
+    - Complexity Score: 3535
 
   🔌 Tool Execution & Plugins (Level 7):
     - Description: Plugins, Tool Registry, Extension Kits

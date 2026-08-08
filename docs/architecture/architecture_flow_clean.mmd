@@ -1,0 +1,64 @@
+graph TD
+  subgraph USER_LAYER ["🚀 1. USER & APPLICATION INTERFACES"]
+    USER(("👤 User Input"))
+    CLI["💻 CLI Client (cli.py)"]
+    GUI["🎨 Desktop GUI Client"]
+    VOICE["🎙️ Voice Interface"]
+  end
+
+  subgraph CORE_LAYER ["👑 2. AURA OS KERNEL & RUNTIME CORE"]
+    CORE["⚙️ AuraCore (aura_core.py)"]
+    SESSION["📋 RuntimeSession"]
+    EVENTBUS["⚡ EventBus (Broadcaster)"]
+  end
+
+  subgraph ACA_LAYER ["🧠 3. AURA COGNITIVE ARCHITECTURE (ACA)"]
+    BLACKBOARD["📝 Blackboard (CognitiveState)"]
+    DMM["🔍 Decision Manager (DMM)"]
+    STRATEGY["🎯 StrategyEngine (Stage 1.5)"]
+    POLICY["🛡️ PolicyEngine (Governance)"]
+    PLANNER["📐 ACAPlanner (ExecutionGraph)"]
+    COORDINATOR["⚡ ExecutionCoordinator (Stage 3)"]
+    REFLECTION["🔄 ReflectionEngine (Stage 4)"]
+    LEARNING["💡 LearningEngine (Stage 4)"]
+  end
+
+  subgraph SUBSYSTEMS_LAYER ["🎯 4. DOMAIN ENGINE ADAPTERS & SUBSYSTEMS"]
+    REGISTRY["🏥 EngineRegistry (Health & Capabilities)"]
+    DESKTOP_ENG["🖥️ DesktopEngineAdapter → Windows OS"]
+    BROWSER_ENG["🌐 BrowserEngineAdapter → Playwright"]
+    RESEARCH_ENG["🔬 ResearchEngineAdapter → Deep Search"]
+    ENGINEERING_ENG["🛠️ EngineeringManager → AST & Refactor"]
+    VISION_ENG["👁️ VisionManager → OCR & Element Detect"]
+    VOICE_ENG["🔊 VoiceManager → STT / TTS"]
+  end
+
+  subgraph MEMORY_LAYER ["📚 5. KNOWLEDGE & PERSISTENCE"]
+    MEMORY["💾 Memory 2.0 (Fact & Vector Store)"]
+    GOALS["🎯 GoalManager (Long-term Goals)"]
+    ARTIFACTS["📦 ArtifactManager"]
+  end
+
+  %% Flow Connections
+  USER --> CLI & GUI & VOICE
+  CLI & GUI & VOICE --> CORE
+  CORE --> SESSION & BLACKBOARD
+  BLACKBOARD --> DMM
+  DMM --> STRATEGY
+  STRATEGY --> POLICY
+  POLICY --> PLANNER
+  PLANNER --> COORDINATOR
+  COORDINATOR --> REGISTRY
+  REGISTRY --> DESKTOP_ENG & BROWSER_ENG & RESEARCH_ENG & ENGINEERING_ENG & VISION_ENG & VOICE_ENG
+  DESKTOP_ENG & BROWSER_ENG & RESEARCH_ENG & ENGINEERING_ENG --> REFLECTION
+  REFLECTION --> LEARNING
+  LEARNING --> MEMORY
+  COORDINATOR --> ARTIFACTS
+  EVENTBUS -.-> BLACKBOARD & REFLECTION
+
+  %% Styling
+  style USER_LAYER fill:#FEF08A33,stroke:#CA8A04,stroke-width:2px
+  style CORE_LAYER fill:#E9D5FF33,stroke:#9333EA,stroke-width:2px
+  style ACA_LAYER fill:#FFEDD533,stroke:#EA580C,stroke-width:2px
+  style SUBSYSTEMS_LAYER fill:#CCFBF133,stroke:#0D9488,stroke-width:2px
+  style MEMORY_LAYER fill:#FED7AA33,stroke:#D97706,stroke-width:2px

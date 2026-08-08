@@ -12,12 +12,15 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pytest
+
 from core.orchestration.task_working_memory import TaskWorkingMemory
 from core.orchestration.world_state_observer import WorldStateObserver
 
 
 def test_task_working_memory_lifecycle():
-    mem = TaskWorkingMemory(goal="open chrome and search youtube and play top python video")
+    mem = TaskWorkingMemory(
+        goal="open chrome and search youtube and play top python video"
+    )
     assert mem.step_count == 0
     assert not mem.is_complete
 
@@ -32,13 +35,15 @@ def test_task_working_memory_lifecycle():
     assert len(mem.completed_actions) == 1
     assert mem.completed_actions[0].capability == "app_open"
 
-    mem.update_world_state({"focused_window": "Google Chrome", "browser_url": "https://www.youtube.com"})
+    mem.update_world_state(
+        {"focused_window": "Google Chrome", "browser_url": "https://www.youtube.com"}
+    )
     assert mem.current_world_state.get("browser_url") == "https://www.youtube.com"
 
     mem.mark_complete(success=True, final_observation="Played YouTube video")
     assert mem.is_complete
     assert mem.success
-    
+
     summary = mem.get_summary()
     assert summary["steps_completed"] == 1
     assert summary["success"] is True

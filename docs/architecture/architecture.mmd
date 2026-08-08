@@ -24,7 +24,6 @@ graph TD
 
   style Applications___Clients fill:#FEF08A33,stroke:#CA8A04,stroke-width:2px;
   subgraph OS_Kernel___Executive_Brain ["👑 OS Kernel & Executive Brain"]
-    app["App"]
     logger["Logger"]
     event_bus["Event Bus"]
     settings["Settings"]
@@ -75,9 +74,11 @@ graph TD
     software_engineering_supervisor["Software Engineering Supervisor"]
     supervisor_agent["Supervisor Agent"]
     task_decomposer["Task Decomposer"]
+    task_working_memory["Task Working Memory"]
     worker_manager["Worker Manager"]
     world_diff["World Diff"]
     world_snapshot["World Snapshot"]
+    world_state_observer["World State Observer"]
     world_timeline["World Timeline"]
     action_plan["Action Plan"]
     execution_result["Execution Result"]
@@ -148,6 +149,7 @@ graph TD
   subgraph Domain_Subsystems___Engines ["🎯 Domain Subsystems & Engines"]
     service_manager["Service Manager"]
     window_manager["Window Manager"]
+    vision["Vision"]
     agent_context["Agent Context"]
     agent_registry["Agent Registry"]
     agent_runtime["Agent Runtime"]
@@ -190,6 +192,7 @@ graph TD
     execution_state["Execution State"]
     verification["Verification"]
     world_model["World Model"]
+    context_store["Context Store"]
     engine["Engine"]
     shopping["Shopping"]
     browser_goal["Browser Goal"]
@@ -379,6 +382,10 @@ graph TD
 
   style Memory___Knowledge_Base fill:#FED7AA33,stroke:#D97706,stroke-width:2px;
   subgraph Infrastructure___Event_Bus ["🏛️ Infrastructure & Event Bus"]
+    test_bt["Test Bt"]
+    test_bt2["Test Bt2"]
+    test_wifi["Test Wifi"]
+    app["App"]
     plugin_registry["Plugin Registry"]
     workspace_manager["Workspace Manager"]
     Chatbot["Chatbot"]
@@ -423,9 +430,18 @@ graph TD
     overlay["Overlay"]
     settings_page["Settings Page"]
     sidebar["Sidebar"]
+    signals["Signals"]
     theme["Theme"]
     titlebar["Titlebar"]
     tray["Tray"]
+    chat_bubble["Chat Bubble"]
+    dag_visualizer["Dag Visualizer"]
+    inspector_drawer["Inspector Drawer"]
+    navigation_rail["Navigation Rail"]
+    status_pill["Status Pill"]
+    step_card["Step Card"]
+    waveform["Waveform"]
+    action_vocabulary["Action Vocabulary"]
     capability_types["Capability Types"]
     intent_classifier["Intent Classifier"]
     keyword_router["Keyword Router"]
@@ -519,6 +535,7 @@ graph TD
     test_research_integration["Test Research Integration"]
     test_runtime["Test Runtime"]
     test_startup["Test Startup"]
+    test_universal_pipeline_integration["Test Universal Pipeline Integration"]
     test_vision["Test Vision"]
     test_workflow["Test Workflow"]
     test_workspace["Test Workspace"]
@@ -531,7 +548,12 @@ graph TD
     test_researchcontext["Test Researchcontext"]
     test_simple_topic["Test Simple Topic"]
     test_smart_cache["Test Smart Cache"]
+    test_window_manager_app_resolution["Test Window Manager App Resolution"]
+    test_gui_framework["Test Gui Framework"]
+    test_browser_decomposer_fix["Test Browser Decomposer Fix"]
+    test_cognitive_execution["Test Cognitive Execution"]
     test_goal_decomposer["Test Goal Decomposer"]
+    test_universal_action_pipeline["Test Universal Action Pipeline"]
     test_identity_loader["Test Identity Loader"]
   end
 
@@ -559,7 +581,6 @@ graph TD
   generate_architecture --> config
   main --> app
   run_aura --> main
-  app --> logger
   ws_routes --> Chatbot
   ws_routes --> settings
   ws_routes --> logger
@@ -628,4 +649,5 @@ graph TD
   goal --> models
   integration --> agent_registry
   integration --> task_model
+  learning_agent --> task_model
 ```

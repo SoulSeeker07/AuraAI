@@ -19,11 +19,11 @@ import logging
 from typing import Any
 
 from ..schemas.thought import (
-    Thought,
-    Goal,
-    Entity,
     Confidence,
+    Entity,
+    Goal,
     SafetyAssessment,
+    Thought,
 )
 
 logger = logging.getLogger(__name__)

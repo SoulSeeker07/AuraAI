@@ -32,12 +32,15 @@ class WorldStateObserver:
     def __init__(self):
         self.snapshot_provider = WorldSnapshotProvider()
 
-    async def observe_async(self, domain: str = "all", browser_adapter: Any | None = None) -> dict[str, Any]:
+    async def observe_async(
+        self, domain: str = "all", browser_adapter: Any | None = None
+    ) -> dict[str, Any]:
         """
         Asynchronously capture real-time physical world snapshot across specified domain.
         """
         snap = self.snapshot_provider.snapshot()
         import time
+
         obs: dict[str, Any] = {
             "focused_window": snap.focused_window_title,
             "running_processes_count": len(snap.running_processes),
@@ -45,7 +48,11 @@ class WorldStateObserver:
         }
 
         # Browser perception
-        if domain in ["browser", "all"] and browser_adapter and hasattr(browser_adapter, "_engine"):
+        if (
+            domain in ["browser", "all"]
+            and browser_adapter
+            and hasattr(browser_adapter, "_engine")
+        ):
             engine = getattr(browser_adapter, "_engine", None)
             if engine and getattr(engine, "_page", None):
                 try:
@@ -54,7 +61,9 @@ class WorldStateObserver:
                     obs["browser_title"] = await page.title()
                     obs["is_browser_active"] = getattr(engine, "is_active", False)
                 except Exception as e:
-                    logger.debug(f"[WorldStateObserver] Browser perception warning: {e}")
+                    logger.debug(
+                        f"[WorldStateObserver] Browser perception warning: {e}"
+                    )
 
         logger.debug(f"[WorldStateObserver] Captured observation: {obs}")
         return obs

@@ -66,12 +66,15 @@ class PyCAWAudioAdapter(AudioAdapter):
     PRIORITY = 10
 
     import threading
+
     _com_initialized: threading.local = threading.local()
 
     def _ensure_com(self) -> bool:
         """Ensure COM is initialized on the current thread. Returns True if WE initialized it."""
-        import comtypes
         import threading
+
+        import comtypes
+
         if not getattr(self._com_initialized, "done", False):
             try:
                 comtypes.CoInitialize()
@@ -88,6 +91,7 @@ class PyCAWAudioAdapter(AudioAdapter):
         """Return the EndpointVolume controller for the default speakers."""
         self._ensure_com()
         from pycaw.pycaw import AudioUtilities
+
         return AudioUtilities.GetSpeakers().EndpointVolume
 
     def is_available(self) -> bool:
@@ -103,11 +107,14 @@ class PyCAWAudioAdapter(AudioAdapter):
         try:
             self._ensure_com()
             from pycaw.pycaw import AudioUtilities
+
             speakers = AudioUtilities.GetSpeakers()
             devices.append(
                 {
                     "id": "pycaw_default_output",
-                    "name": getattr(speakers, "FriendlyName", "Default Output Speakers"),
+                    "name": getattr(
+                        speakers, "FriendlyName", "Default Output Speakers"
+                    ),
                     "type": "output",
                     "is_default": True,
                 }
@@ -117,7 +124,9 @@ class PyCAWAudioAdapter(AudioAdapter):
                 devices.append(
                     {
                         "id": "pycaw_default_input",
-                        "name": getattr(microphone, "FriendlyName", "Default Microphone"),
+                        "name": getattr(
+                            microphone, "FriendlyName", "Default Microphone"
+                        ),
                         "type": "input",
                         "is_default": True,
                     }
@@ -170,9 +179,6 @@ class PyCAWAudioAdapter(AudioAdapter):
         except Exception as e:
             logger.error(f"PyCAW set_mute failed: {e}")
             return False
-
-
-
 
 
 class WinMMAudioAdapter(AudioAdapter):

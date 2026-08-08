@@ -181,7 +181,7 @@ class ExecutionMap:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ExecutionMap":
+    def from_dict(cls, data: dict[str, Any]) -> ExecutionMap:
         """Reconstruct an ExecutionMap from a dict."""
         return cls(
             goal=data.get("goal", ""),

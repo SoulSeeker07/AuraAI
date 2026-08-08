@@ -5,12 +5,24 @@ Aura Cognitive Architecture (ACA) — Schemas
 Shared data contracts for the cognitive architecture.
 """
 
-from .cognitive_state import CognitiveState, Blackboard
-from .thought import Thought, DecisionContext, Goal, Entity, Confidence, SafetyAssessment
-from .execution_map import ExecutionMap, ExecutionStep, FallbackOption, VerificationCriterion
-from .task_graph import TaskGraph, TaskNode
-from .runtime_session import RuntimeSession
 from .artifact import Artifact
+from .cognitive_state import Blackboard, CognitiveState
+from .execution_map import (
+    ExecutionMap,
+    ExecutionStep,
+    FallbackOption,
+    VerificationCriterion,
+)
+from .runtime_session import RuntimeSession
+from .task_graph import TaskGraph, TaskNode
+from .thought import (
+    Confidence,
+    DecisionContext,
+    Entity,
+    Goal,
+    SafetyAssessment,
+    Thought,
+)
 
 __all__ = [
     "CognitiveState",

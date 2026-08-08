@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ActionRecord:
     """Record of a single executed step."""
+
     step_index: int
     capability: str
     target: str
@@ -46,7 +47,12 @@ class TaskWorkingMemory:
         self.created_at: float = time.time()
 
     def record_step(
-        self, capability: str, target: str, goal: str, success: bool, observations: list[str]
+        self,
+        capability: str,
+        target: str,
+        goal: str,
+        success: bool,
+        observations: list[str],
     ) -> None:
         """Record the outcome of a single executed action step."""
         self.step_count += 1
@@ -68,7 +74,9 @@ class TaskWorkingMemory:
         """Update working memory with latest real-world physical observation snapshot."""
         self.current_world_state.update(snapshot)
 
-    def mark_complete(self, success: bool = True, final_observation: str | None = None) -> None:
+    def mark_complete(
+        self, success: bool = True, final_observation: str | None = None
+    ) -> None:
         """Mark task execution as complete."""
         self.is_complete = True
         self.success = success

@@ -12,20 +12,21 @@ Scenario 3: Research FastAPI
 import os
 import sys
 import time
-import pytest
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from core.orchestration import MasterOrchestrator
 from src.brain.aca.aca_brain import ACABrain
 from src.brain.aca.engine_interface import Engine, EngineRegistry
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.brain.aca.strategy_engine import StrategyEngine
 from src.brain.aca.planner import ACAPlanner
-from src.brain.schemas.runtime_session import RuntimeSession
+from src.brain.aca.strategy_engine import StrategyEngine
+from src.brain.execution_coordinator import ExecutionCoordinator
 from src.brain.schemas.artifact import Artifact
-from core.orchestration import MasterOrchestrator
+from src.brain.schemas.runtime_session import RuntimeSession
 
 
 class MockChromeDesktopEngine(Engine):
@@ -70,7 +71,10 @@ class MockBrowserEngine(Engine):
         }
 
     def verify(self, result: dict) -> bool:
-        return result.get("success", False) and result.get("data", {}).get("dom_status") == "loaded"
+        return (
+            result.get("success", False)
+            and result.get("data", {}).get("dom_status") == "loaded"
+        )
 
 
 class MockResearchEngine(Engine):
@@ -206,11 +210,15 @@ async def test_aca_e2e_open_youtube_in_chrome():
             class ReflectionResult:
                 user_message = "Reflection completed successfully"
                 recoveries = []
+
                 def to_dict(self):
                     return {"user_message": self.user_message}
+
             return ReflectionResult()
 
-    aca = create_test_aca_brain(planner=planner, coordinator=coordinator, reflection=CustomReflection())
+    aca = create_test_aca_brain(
+        planner=planner, coordinator=coordinator, reflection=CustomReflection()
+    )
 
     exec_map = {
         "goal": "Open YouTube in Chrome",
@@ -270,8 +278,14 @@ async def test_aca_e2e_research_fastapi():
     assert response.success is True
     assert response.session is not None
     assert len(response.artifacts) >= 1
-    
+
     research_art = response.artifacts[0]
     assert research_art.creator == "research"
-    assert research_art.artifact_type in ["execution_result", "research_report", "research"]
-    assert "FastAPI" in str(response.text) or "FastAPI" in str(response.blackboard.to_dict())
+    assert research_art.artifact_type in [
+        "execution_result",
+        "research_report",
+        "research",
+    ]
+    assert "FastAPI" in str(response.text) or "FastAPI" in str(
+        response.blackboard.to_dict()
+    )

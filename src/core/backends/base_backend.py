@@ -89,6 +89,7 @@ class BaseBackendAdapter(ABC):
         Default implementation delegates synchronous execute() to a thread.
         """
         import asyncio
+
         return await asyncio.to_thread(self.execute, capability, goal, arguments)
 
     async def execute_plan_async(self, plan: "ActionPlan") -> ExecutionResult:
@@ -97,4 +98,5 @@ class BaseBackendAdapter(ABC):
         Default implementation delegates synchronous execute_plan() to a thread.
         """
         import asyncio
+
         return await asyncio.to_thread(self.execute_plan, plan)

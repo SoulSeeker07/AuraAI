@@ -70,10 +70,16 @@ class FileManager(BaseNativeManager):
         **kwargs: Any,
     ) -> DesktopResult:
         args = arguments or {}
-        file_path_str = args.get("file_path") or args.get("path") or args.get("target_file") or args.get("file")
+        file_path_str = (
+            args.get("file_path")
+            or args.get("path")
+            or args.get("target_file")
+            or args.get("file")
+        )
         content = args.get("content") or args.get("text") or ""
 
         import re
+
         if not file_path_str:
             m_path = re.search(r"['\"]([^'\"]+\.[a-zA-Z0-9]+)['\"]", goal)
             if m_path:
@@ -95,7 +101,7 @@ class FileManager(BaseNativeManager):
                 capability=capability,
                 manager=self.name,
                 error="No content provided for file creation. "
-                      "The upstream artifact may have failed to produce a payload.",
+                "The upstream artifact may have failed to produce a payload.",
             )
 
         if not file_path_str:
@@ -118,7 +124,10 @@ class FileManager(BaseNativeManager):
                     goal=goal,
                     capability=capability,
                     manager=self.name,
-                    data={"path": str(target_path), "bytes_written": len(content.encode("utf-8"))},
+                    data={
+                        "path": str(target_path),
+                        "bytes_written": len(content.encode("utf-8")),
+                    },
                     events=["file_created"],
                 )
             elif cap_clean == "file.read":
@@ -129,7 +138,7 @@ class FileManager(BaseNativeManager):
                         manager=self.name,
                         error=f"File not found: {target_path}",
                     )
-                with open(target_path, "r", encoding="utf-8") as f:
+                with open(target_path, encoding="utf-8") as f:
                     data = f.read()
                 return DesktopResult.create_success(
                     goal=goal,

@@ -4,10 +4,11 @@ Location: src/core/learning/learning_engine.py
 """
 
 import uuid
-from typing import Any, Optional
-from .learning_types import LearningRule, RuleType
+
 from .behavior_store import BehaviorStore
+from .learning_types import LearningRule, RuleType
 from .rule_matcher import RuleMatcher
+
 
 class LearningEngine:
     """
@@ -15,11 +16,11 @@ class LearningEngine:
     Analyses user inputs and executions to learn new custom behaviors.
     """
 
-    def __init__(self, store: Optional[BehaviorStore] = None):
+    def __init__(self, store: BehaviorStore | None = None):
         self.store = store or BehaviorStore()
         self.matcher = RuleMatcher(self.store)
 
-    def analyze_feedback(self, user_goal: str, correction: str) -> Optional[LearningRule]:
+    def analyze_feedback(self, user_goal: str, correction: str) -> LearningRule | None:
         """
         Explicitly learns a new behavior correction rule.
         """

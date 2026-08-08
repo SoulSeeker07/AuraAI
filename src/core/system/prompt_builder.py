@@ -203,7 +203,9 @@ class PromptBuilder:
         version = ctx.version or "unknown"
         tagline = ctx.tagline
 
-        lines.append(f"=== {name} v{version} — UNIVERSAL AUTONOMOUS COMPUTER & WEB AGENT ===")
+        lines.append(
+            f"=== {name} v{version} — UNIVERSAL AUTONOMOUS COMPUTER & WEB AGENT ==="
+        )
         if tagline:
             lines.append(tagline)
 

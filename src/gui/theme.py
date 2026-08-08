@@ -5,99 +5,126 @@ Glassmorphism dark-mode design tokens, color palette, and QSS stylesheet builder
 Inspired by Raycast, Arc, and Linear App.
 """
 
-
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QColor, QFont, QFontDatabase
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget
 
 # =============================================================================
 # COLOR PALETTE
 # =============================================================================
 
+
 class Colors:
     """Centralized color definitions."""
-    
+
     # Backgrounds
-    BG_DEEP          = "#0B0F17"
-    BG_SLATE         = "#0F172A"
-    BG_CARD          = "#1E293B"
-    BG_CARD_HOVER    = "#334155"
-    BG_INPUT         = "#1E293B"
-    BG_TOOLBAR       = "#0F172A"
-    BG_OVERLAY       = "rgba(11, 15, 23, 0.85)"
-    BG_SIDEBAR       = "#0F172A"
-    
+    BG_DEEP = "#0B0F17"
+    BG_SLATE = "#0F172A"
+    BG_CARD = "#1E293B"
+    BG_CARD_HOVER = "#334155"
+    BG_INPUT = "#1E293B"
+    BG_TOOLBAR = "#0F172A"
+    BG_OVERLAY = "rgba(11, 15, 23, 0.85)"
+    BG_SIDEBAR = "#0F172A"
+
     # Accents
-    CYAN             = "#06B6D4"
-    CYAN_GLOW        = "#22D3EE"
-    PURPLE           = "#6366F1"
-    PURPLE_GLOW      = "#818CF8"
-    
+    CYAN = "#06B6D4"
+    CYAN_GLOW = "#22D3EE"
+    PURPLE = "#6366F1"
+    PURPLE_GLOW = "#818CF8"
+
     # Gradients (for borders / glows)
-    BORDER_GRADIENT  = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #06B6D4, stop:1 #6366F1)"
-    GLOW_GRADIENT    = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #22D3EE, stop:1 #818CF8)"
-    
+    BORDER_GRADIENT = (
+        "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #06B6D4, stop:1 #6366F1)"
+    )
+    GLOW_GRADIENT = (
+        "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #22D3EE, stop:1 #818CF8)"
+    )
+
     # Status
-    SUCCESS          = "#10B981"
-    WARNING          = "#F59E0B"
-    ERROR            = "#F43F5E"
-    INFO             = "#3B82F6"
-    
+    SUCCESS = "#10B981"
+    WARNING = "#F59E0B"
+    ERROR = "#F43F5E"
+    INFO = "#3B82F6"
+
     # Text
-    TEXT_PRIMARY     = "#F8FAFC"
-    TEXT_SECONDARY   = "#94A3B8"
-    TEXT_MUTED       = "#64748B"
-    TEXT_DISABLED    = "#475569"
-    
+    TEXT_PRIMARY = "#F8FAFC"
+    TEXT_SECONDARY = "#94A3B8"
+    TEXT_MUTED = "#64748B"
+    TEXT_DISABLED = "#475569"
+
     # Borders
-    BORDER_SUBTLE    = "#1E293B"
-    BORDER_ACTIVE    = "#334155"
-    
+    BORDER_SUBTLE = "#1E293B"
+    BORDER_ACTIVE = "#334155"
+
     # Overlay-specific
-    OVERLAY_BG       = "rgba(15, 23, 42, 0.88)"
-    OVERLAY_BORDER   = "rgba(34, 211, 238, 0.25)"
+    OVERLAY_BG = "rgba(15, 23, 42, 0.88)"
+    OVERLAY_BORDER = "rgba(34, 211, 238, 0.25)"
 
 
 # =============================================================================
 # TYPOGRAPHY
 # =============================================================================
 
+
 class Typography:
     """Font configurations."""
-    
+
     FAMILY = "Inter, Segoe UI, -apple-system, sans-serif"
-    
+
     @classmethod
-    def font(cls, size: int, weight: int = QFont.Weight.Normal, bold: bool = False) -> QFont:
+    def font(
+        cls, size: int, weight: int = QFont.Weight.Normal, bold: bool = False
+    ) -> QFont:
         f = QFont(cls.FAMILY.split(",")[0].strip(), size)
         f.setWeight(QFont.Weight.Bold if bold else weight)
         f.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         return f
-    
-    H1       = lambda: Typography.font(24, bold=True)
-    H2       = lambda: Typography.font(18, bold=True)
-    H3       = lambda: Typography.font(14, bold=True)
-    BODY     = lambda: Typography.font(13)
-    CAPTION  = lambda: Typography.font(11)
-    MONO     = lambda: Typography.font(12, weight=QFont.Weight.Medium)
+
+    @classmethod
+    def H1(cls) -> QFont:
+        return cls.font(24, bold=True)
+
+    @classmethod
+    def H2(cls) -> QFont:
+        return cls.font(18, bold=True)
+
+    @classmethod
+    def H3(cls) -> QFont:
+        return cls.font(14, bold=True)
+
+    @classmethod
+    def BODY(cls) -> QFont:
+        return cls.font(13)
+
+    @classmethod
+    def CAPTION(cls) -> QFont:
+        return cls.font(11)
+
+    @classmethod
+    def MONO(cls) -> QFont:
+        return cls.font(12, weight=QFont.Weight.Medium)
 
 
 # =============================================================================
 # SPACING & SIZING
 # =============================================================================
 
+
 class Spacing:
-    XS  = 4
-    SM  = 8
-    MD  = 12
-    LG  = 16
-    XL  = 24
+    XS = 4
+    SM = 8
+    MD = 12
+    LG = 16
+    XL = 24
     XXL = 32
 
+
 class Radius:
-    SM  = "6px"
-    MD  = "10px"
-    LG  = "14px"
-    XL  = "20px"
+    SM = "6px"
+    MD = "10px"
+    LG = "14px"
+    XL = "20px"
     PILL = "9999px"
 
 
@@ -105,9 +132,9 @@ class Radius:
 # QSS STYLESHEET BUILDER
 # =============================================================================
 
+
 def build_global_stylesheet() -> str:
     """Returns the global QSS stylesheet for AuraAI."""
-    
     return f"""
     /* ── Global ── */
     QWidget {{
@@ -305,6 +332,12 @@ def build_global_stylesheet() -> str:
     """
 
 
+def apply_theme(app) -> None:
+    """Applies the global stylesheet to the QApplication instance."""
+    if hasattr(app, "setStyleSheet"):
+        app.setStyleSheet(build_global_stylesheet())
+
+
 def overlay_stylesheet() -> str:
     """QSS specific to the Overlay (Spotlight HUD)."""
     return f"""
@@ -430,12 +463,10 @@ def main_window_stylesheet() -> str:
 # ANIMATION HELPERS
 # =============================================================================
 
-from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QPoint, QSize
-from PySide6.QtWidgets import QWidget
 
 class Animations:
     """Reusable animation presets."""
-    
+
     @staticmethod
     def fade_in(widget: QWidget, duration: int = 250) -> QPropertyAnimation:
         anim = QPropertyAnimation(widget, b"windowOpacity")
@@ -444,9 +475,11 @@ class Animations:
         anim.setEndValue(1.0)
         anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
         return anim
-    
+
     @staticmethod
-    def slide_up(widget: QWidget, distance: int = 20, duration: int = 300) -> QPropertyAnimation:
+    def slide_up(
+        widget: QWidget, distance: int = 20, duration: int = 300
+    ) -> QPropertyAnimation:
         anim = QPropertyAnimation(widget, b"pos")
         anim.setDuration(duration)
         start_pos = widget.pos() + QPoint(0, distance)
@@ -454,7 +487,7 @@ class Animations:
         anim.setEndValue(widget.pos())
         anim.setEasingCurve(QEasingCurve.Type.OutCubic)
         return anim
-    
+
     @staticmethod
     def pulse_glow(widget: QWidget, property_name: bytes, duration: int = 1500):
         """Creates a pulsing opacity animation for glow effects."""
@@ -465,4 +498,3 @@ class Animations:
         anim.setEasingCurve(QEasingCurve.Type.InOutSine)
         anim.setLoopCount(-1)  # Infinite
         return anim
-

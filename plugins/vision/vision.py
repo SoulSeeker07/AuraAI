@@ -72,10 +72,12 @@ class VisionPlugin(Plugin):
         """Execute a vision capability."""
         if not self.vision_manager:
             raise RuntimeError("VisionManager is not initialized")
-        
+
         if capability == "screenshot":
             return self.vision_manager.capture_and_analyze(**kwargs)
         elif capability == "ocr":
-            return self.vision_manager.capture_and_analyze(capture_type="full_screen", **kwargs)
+            return self.vision_manager.capture_and_analyze(
+                capture_type="full_screen", **kwargs
+            )
         else:
             return self.vision_manager.capture_and_analyze(**kwargs)

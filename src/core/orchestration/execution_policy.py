@@ -106,8 +106,13 @@ class ExecutionPolicy:
         2. App NOT running → LAUNCH_NEW
         3. App IS running  → count real EnumWindows HWNDs → ASK_USER
         """
-        if force_new or any(w in goal.lower() for w in ["another", "new", "second", "extra", "different"]):
-            logger.debug(f"ExecutionPolicy: '{app_name}' force_new/explicit new instance → LAUNCH_NEW")
+        if force_new or any(
+            w in goal.lower()
+            for w in ["another", "new", "second", "extra", "different"]
+        ):
+            logger.debug(
+                f"ExecutionPolicy: '{app_name}' force_new/explicit new instance → LAUNCH_NEW"
+            )
             return PolicyDecision(
                 action=PolicyAction.LAUNCH_NEW,
                 message=f"Launching {app_name.title()}...",
@@ -248,20 +253,28 @@ class ExecutionPolicy:
                     return True
 
                 # Exclude tool windows without WS_EX_APPWINDOW
-                if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (ex_style & win32con.WS_EX_APPWINDOW):
+                if (ex_style & win32con.WS_EX_TOOLWINDOW) and not (
+                    ex_style & win32con.WS_EX_APPWINDOW
+                ):
                     return True
 
                 raw_title = win32gui.GetWindowText(hwnd)
                 title = raw_title.lower().strip()
 
                 # Ignore known OS helper/IME windows
-                if title in ["msctfime ui", "default ime", "cicerouiwndframe", "program manager"]:
+                if title in [
+                    "msctfime ui",
+                    "default ime",
+                    "cicerouiwndframe",
+                    "program manager",
+                ]:
                     return True
 
                 try:
                     _, pid = win32process.GetWindowThreadProcessId(hwnd)
                     proc_name = (psutil.Process(pid).name() or "").lower()
                     import re
+
                     proc_base = re.sub(r"\.exe$", "", proc_name)
                     proc_base = re.sub(r"app$", "", proc_base)
                 except Exception:
@@ -269,7 +282,11 @@ class ExecutionPolicy:
                     proc_base = ""
 
                 # Target matching logic: either title matches app_name or process matches AND window has non-empty title
-                name_match = app_lower in proc_base or app_lower in proc_name or app_lower in title
+                name_match = (
+                    app_lower in proc_base
+                    or app_lower in proc_name
+                    or app_lower in title
+                )
                 if name_match:
                     # Require non-empty title to prevent headless/helper HWND duplication
                     if title:

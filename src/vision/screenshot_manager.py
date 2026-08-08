@@ -8,7 +8,7 @@ import ctypes
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import win32api
 import win32con
@@ -315,7 +315,7 @@ class ScreenshotManager:
         self.last_capture = filepath
         return filepath
 
-    def _get_monitors(self) -> list[Dict]:
+    def _get_monitors(self) -> list[dict]:
         """
         Get list of all connected monitors.
 
@@ -373,7 +373,7 @@ class ScreenshotManager:
             # Fallback to screen info
             return self._get_monitors_fallback()
 
-    def _get_monitors_fallback(self) -> list[Dict]:
+    def _get_monitors_fallback(self) -> list[dict]:
         """
         Fallback method to get monitor information.
 

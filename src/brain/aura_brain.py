@@ -22,16 +22,16 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from .capability_selector import CapabilitySelection, CapabilitySelector
 from .context_manager import ContextManager, ContextSnapshot
-from .world_model import WorldModel, WorldState
-from .goal_analyzer import GoalAnalyzer, GoalAnalysis
-from .capability_selector import CapabilitySelector, CapabilitySelection
+from .execution_coordinator import CoordinationResult, ExecutionCoordinator
 from .execution_map_generator import ExecutionMapGenerator
 from .execution_map_validator import ExecutionMapValidator, ValidationResult
-from .execution_coordinator import ExecutionCoordinator, CoordinationResult
-from .verification import VerificationEngine, VerificationReport
+from .goal_analyzer import GoalAnalysis, GoalAnalyzer
+from .learning import LearnedItem, LearningEngine
 from .reflection import ReflectionEngine, ReflectionOutcome
-from .learning import LearningEngine, LearnedItem
+from .verification import VerificationEngine, VerificationReport
+from .world_model import WorldModel, WorldState
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +60,13 @@ class AuraBrainResponse:
             "success": self.success,
             "context": self.context.to_dict() if self.context else None,
             "world_state": self.world_state.to_dict() if self.world_state else None,
-            "goal_analysis": self.goal_analysis.to_dict() if self.goal_analysis else None,
+            "goal_analysis": (
+                self.goal_analysis.to_dict() if self.goal_analysis else None
+            ),
             "capability_selection": (
-                self.capability_selection.to_dict() if self.capability_selection else None
+                self.capability_selection.to_dict()
+                if self.capability_selection
+                else None
             ),
             "execution_map": self.execution_map,
             "validation": self.validation.to_dict() if self.validation else None,
@@ -114,7 +118,9 @@ class AuraBrain:
         self.execution_map_generator = execution_map_generator or ExecutionMapGenerator(
             llm_client=llm_client
         )
-        self.execution_map_validator = execution_map_validator or ExecutionMapValidator()
+        self.execution_map_validator = (
+            execution_map_validator or ExecutionMapValidator()
+        )
         self.execution_coordinator = execution_coordinator or ExecutionCoordinator()
         self.verification_engine = verification_engine or VerificationEngine()
         self.reflection_engine = reflection_engine or ReflectionEngine()
@@ -235,9 +241,7 @@ class AuraBrain:
         if verification.passed:
             # Success — compose from observations
             observations = [
-                obs
-                for step in coordination.step_results
-                for obs in step.observations
+                obs for step in coordination.step_results for obs in step.observations
             ]
             if observations:
                 lines.extend(observations)
@@ -246,13 +250,17 @@ class AuraBrain:
 
             # Add verification summary
             passed_checks = sum(1 for c in verification.checks if c.passed)
-            lines.append(f"\n✓ Verification: {passed_checks}/{len(verification.checks)} checks passed")
+            lines.append(
+                f"\n✓ Verification: {passed_checks}/{len(verification.checks)} checks passed"
+            )
         else:
             # Failure — explain what happened
             if reflection.user_message:
                 lines.append(f"✗ {reflection.user_message}")
             else:
-                lines.append(f"✗ Could not complete: {execution_map.get('goal', 'task')}")
+                lines.append(
+                    f"✗ Could not complete: {execution_map.get('goal', 'task')}"
+                )
 
             # Add recovery suggestions
             for recovery in reflection.recoveries:

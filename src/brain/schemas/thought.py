@@ -157,4 +157,11 @@ class Thought:
 # Backward-compatible aliases
 DecisionContext = Thought
 
-__all__ = ["Thought", "DecisionContext", "Goal", "Entity", "Confidence", "SafetyAssessment"]
+__all__ = [
+    "Thought",
+    "DecisionContext",
+    "Goal",
+    "Entity",
+    "Confidence",
+    "SafetyAssessment",
+]

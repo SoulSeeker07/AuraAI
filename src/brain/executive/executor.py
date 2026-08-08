@@ -180,9 +180,15 @@ class ExecutiveExecutor:
                 )
                 return StepResult(
                     action_id=action.action_id,
-                    success=result.get("success", True) if isinstance(result, dict) else True,
+                    success=(
+                        result.get("success", True)
+                        if isinstance(result, dict)
+                        else True
+                    ),
                     observations=observations,
-                    data=result if isinstance(result, dict) else {"output": str(result)},
+                    data=(
+                        result if isinstance(result, dict) else {"output": str(result)}
+                    ),
                     execution_time=execution_time,
                 )
             except Exception as e:
@@ -242,7 +248,13 @@ class ExecutiveExecutor:
             goal = action.description
             if params.get("url"):
                 goal = f"Navigate to {params['url']}"
-            elif params.get("app_name") and str(action.capability).lower() in ("desktop.launch", "app_open", "launch_app", "open_app", "window.open"):
+            elif params.get("app_name") and str(action.capability).lower() in (
+                "desktop.launch",
+                "app_open",
+                "launch_app",
+                "open_app",
+                "window.open",
+            ):
                 goal = f"Open {params['app_name']}"
             elif params.get("query"):
                 goal = f"Research: {params['query']}"
@@ -252,9 +264,7 @@ class ExecutiveExecutor:
             return await self.orchestrator.process_request_async(goal, None, params)
 
         # Fallback to sync orchestrator
-        return self.orchestrator.process_request(
-            action.description, None, params
-        )
+        return self.orchestrator.process_request(action.description, None, params)
 
     async def _execute_via_provider(self, action: PlannedAction) -> str:
         """
@@ -272,7 +282,10 @@ class ExecutiveExecutor:
                 response = llm.chat.completions.create(
                     model=params.get("model", "llama3-8b-8192"),
                     messages=[
-                        {"role": "system", "content": "You are Aura, an AI operating system."},
+                        {
+                            "role": "system",
+                            "content": "You are Aura, an AI operating system.",
+                        },
                         {"role": "user", "content": message},
                     ],
                 )

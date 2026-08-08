@@ -16,14 +16,18 @@ from core.orchestration.task_decomposer import PlannerRole, TaskDecomposer
 
 def test_resolve_browser_target_youtube():
     decomposer = TaskDecomposer()
-    site, url, query = decomposer._resolve_browser_target("open chrome and search youtube")
+    site, url, query = decomposer._resolve_browser_target(
+        "open chrome and search youtube"
+    )
     assert site == "youtube"
     assert url == "https://www.youtube.com"
 
 
 def test_resolve_browser_target_youtube_with_query():
     decomposer = TaskDecomposer()
-    site, url, query = decomposer._resolve_browser_target("search python tutorials on youtube")
+    site, url, query = decomposer._resolve_browser_target(
+        "search python tutorials on youtube"
+    )
     assert site == "youtube"
     assert "youtube.com/results?search_query=" in url
     assert query == "python tutorials"
@@ -32,7 +36,7 @@ def test_resolve_browser_target_youtube_with_query():
 def test_decompose_open_chrome_and_search_youtube():
     decomposer = TaskDecomposer()
     graph = decomposer.decompose("open chrome and search youtube")
-    
+
     # Clause 1: open chrome (desktop app_open)
     # Clause 2: search youtube (browser subtasks)
     subtask_caps = [t.capability for t in graph.subtasks.values()]
@@ -40,7 +44,9 @@ def test_decompose_open_chrome_and_search_youtube():
     assert "browser.navigate" in subtask_caps
 
     # Verify target_url parameter is passed correctly
-    nav_task = [t for t in graph.subtasks.values() if t.capability == "browser.navigate"][0]
+    nav_task = [
+        t for t in graph.subtasks.values() if t.capability == "browser.navigate"
+    ][0]
     assert nav_task.parameters.get("url") == "https://www.youtube.com"
     assert nav_task.parameters.get("site") == "youtube"
 
@@ -48,14 +54,18 @@ def test_decompose_open_chrome_and_search_youtube():
 def test_decompose_open_chrome_and_type_and_press_enter():
     decomposer = TaskDecomposer()
     graph = decomposer.decompose("open chrome and type youtube and press enter")
-    
+
     subtask_caps = [t.capability for t in graph.subtasks.values()]
     assert "app_open" in subtask_caps
     assert "keyboard.type" in subtask_caps
     assert "keyboard.press" in subtask_caps
 
-    type_task = [t for t in graph.subtasks.values() if t.capability == "keyboard.type"][0]
+    type_task = [t for t in graph.subtasks.values() if t.capability == "keyboard.type"][
+        0
+    ]
     assert type_task.parameters.get("text") == "youtube"
 
-    press_task = [t for t in graph.subtasks.values() if t.capability == "keyboard.press"][0]
+    press_task = [
+        t for t in graph.subtasks.values() if t.capability == "keyboard.press"
+    ][0]
     assert press_task.parameters.get("key") == "enter"

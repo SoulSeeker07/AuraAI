@@ -135,12 +135,19 @@ class DecisionEngine:
                 "where is my",
             ]
         ) or (
-            any(w in goal_lower for w in ["favorite", "favourite", "preference", "preferences"])
-            and any(w in goal_lower for w in ["what", "which", "where", "tell me", "do you know", "show"])
+            any(
+                w in goal_lower
+                for w in ["favorite", "favourite", "preference", "preferences"]
+            )
+            and any(
+                w in goal_lower
+                for w in ["what", "which", "where", "tell me", "do you know", "show"]
+            )
         )
 
         is_memory_write = not is_memory_recall and (
-            is_pending_question or any(
+            is_pending_question
+            or any(
                 w in goal_lower
                 for w in [
                     "remember",
@@ -150,8 +157,10 @@ class DecisionEngine:
                     "store in memory",
                     "save in memory",
                 ]
-            ) or any(
-                w in goal_lower for w in ["my favorite", "my favourite", "i like", "i prefer"]
+            )
+            or any(
+                w in goal_lower
+                for w in ["my favorite", "my favourite", "i like", "i prefer"]
             )
         )
 
@@ -177,21 +186,91 @@ class DecisionEngine:
             ]
         )
         # Desktop window control / app management takes precedence over browsing
-        app_verbs = ["open", "launch", "start", "bring", "focus", "close", "activate", "maximize", "minimize", "restore", "switch to"]
-        app_names = ["chrome", "google chrome", "edge", "msedge", "firefox", "browser", "notepad", "calc", "calculator", "vscode", "vs code", "visual studio code", "spotify", "word", "excel", "powerpoint", "paint", "mspaint", "cmd", "powershell"]
-        
+        app_verbs = [
+            "open",
+            "launch",
+            "start",
+            "bring",
+            "focus",
+            "close",
+            "activate",
+            "maximize",
+            "minimize",
+            "restore",
+            "switch to",
+        ]
+        app_names = [
+            "chrome",
+            "google chrome",
+            "edge",
+            "msedge",
+            "firefox",
+            "browser",
+            "notepad",
+            "calc",
+            "calculator",
+            "vscode",
+            "vs code",
+            "visual studio code",
+            "spotify",
+            "word",
+            "excel",
+            "powerpoint",
+            "paint",
+            "mspaint",
+            "cmd",
+            "powershell",
+        ]
+
         has_app_verb = any(v in goal_lower for v in app_verbs)
         has_app_name = any(a in goal_lower for a in app_names)
-        has_web_target = any(site in goal_lower for site in ["youtube", "github", "gmail", "google.com", "twitter", "reddit", "linkedin", "facebook", "instagram", "amazon", "netflix", "http://", "https://", "www."])
-        
-        is_window_control = (has_app_verb and has_app_name and not has_web_target) or any(
+        has_web_target = any(
+            site in goal_lower
+            for site in [
+                "youtube",
+                "github",
+                "gmail",
+                "google.com",
+                "twitter",
+                "reddit",
+                "linkedin",
+                "facebook",
+                "instagram",
+                "amazon",
+                "netflix",
+                "http://",
+                "https://",
+                "www.",
+            ]
+        )
+
+        is_window_control = (
+            has_app_verb and has_app_name and not has_web_target
+        ) or any(
             w in goal_lower
             for w in [
-                "bring to front", "bring chrome", "bring edge", "bring browser", "bring window",
-                "focus chrome", "focus edge", "focus firefox", "focus window",
-                "open chrome", "open edge", "open firefox", "open browser",
-                "close chrome", "close edge", "close firefox", "close browser",
-                "maximize", "minimize", "activate", "launch chrome", "launch edge"
+                "bring to front",
+                "bring chrome",
+                "bring edge",
+                "bring browser",
+                "bring window",
+                "focus chrome",
+                "focus edge",
+                "focus firefox",
+                "focus window",
+                "open chrome",
+                "open edge",
+                "open firefox",
+                "open browser",
+                "close chrome",
+                "close edge",
+                "close firefox",
+                "close browser",
+                "maximize",
+                "minimize",
+                "activate",
+                "launch chrome",
+                "launch edge",
             ]
         )
 
@@ -225,6 +304,11 @@ class DecisionEngine:
                 "vscode",
                 "vs code",
                 "visual studio code",
+                # Keyboard input
+                "type",
+                "press",
+                "hit",
+                "write",
                 # System radio / hardware controls
                 "bluetooth",
                 "wifi",
@@ -242,29 +326,71 @@ class DecisionEngine:
 
         # Refined coding detection: ignore IDE names when classifying coding intent
         clean_goal_for_coding = goal_lower
-        for ide in ["vs code", "vscode", "visual studio code", "notepad", "sublime", "atom"]:
+        for ide in [
+            "vs code",
+            "vscode",
+            "visual studio code",
+            "notepad",
+            "sublime",
+            "atom",
+        ]:
             clean_goal_for_coding = clean_goal_for_coding.replace(ide, "")
 
-        is_coding = any(
-            w in clean_goal_for_coding
-            for w in [
-                "refactor",
-                "unit test",
-                "fix bug",
-                "ast",
-                "git",
-                "repository",
-                "script",
-            ]
-        ) or (
-            "code" in clean_goal_for_coding and any(
-                v in clean_goal_for_coding
-                for v in ["write", "create", "implement", "refactor", "fix", "test", "modify", "update", "generate", "run", "add", "change", "synthesis"]
+        is_coding = (
+            any(
+                w in clean_goal_for_coding
+                for w in [
+                    "refactor",
+                    "unit test",
+                    "fix bug",
+                    "ast",
+                    "git",
+                    "repository",
+                    "script",
+                ]
             )
-        ) or (
-            "python" in clean_goal_for_coding and any(
-                v in clean_goal_for_coding
-                for v in ["write", "create", "implement", "refactor", "fix", "test", "modify", "update", "generate", "run", "add", "change", "script", "code"]
+            or (
+                "code" in clean_goal_for_coding
+                and any(
+                    v in clean_goal_for_coding
+                    for v in [
+                        "write",
+                        "create",
+                        "implement",
+                        "refactor",
+                        "fix",
+                        "test",
+                        "modify",
+                        "update",
+                        "generate",
+                        "run",
+                        "add",
+                        "change",
+                        "synthesis",
+                    ]
+                )
+            )
+            or (
+                "python" in clean_goal_for_coding
+                and any(
+                    v in clean_goal_for_coding
+                    for v in [
+                        "write",
+                        "create",
+                        "implement",
+                        "refactor",
+                        "fix",
+                        "test",
+                        "modify",
+                        "update",
+                        "generate",
+                        "run",
+                        "add",
+                        "change",
+                        "script",
+                        "code",
+                    ]
+                )
             )
         )
 
@@ -369,7 +495,11 @@ class DecisionEngine:
         # Q2: Can answer from system identity/state?
         can_from_sys = intent == IntentType.SYSTEM_QUERY or intent == IntentType.SESSION
         # Q3: Does this actually need a multi-step planner?
-        needs_planner = not (can_from_sys or intent == IntentType.CHAT or (intent == IntentType.SESSION and intent_capability == "session_summary"))
+        needs_planner = not (
+            can_from_sys
+            or intent == IntentType.CHAT
+            or (intent == IntentType.SESSION and intent_capability == "session_summary")
+        )
         # Q4: Which planner?
         if intent == IntentType.RESEARCH:
             planner = "research"
@@ -385,7 +515,13 @@ class DecisionEngine:
             planner = "desktop"
         # Q5: Requires cloud/external backend or local engine?
         needs_backend = (
-            intent in [IntentType.RESEARCH, IntentType.BROWSER, IntentType.CODING, IntentType.MEMORY]
+            intent
+            in [
+                IntentType.RESEARCH,
+                IntentType.BROWSER,
+                IntentType.CODING,
+                IntentType.MEMORY,
+            ]
         ) and not (active_budget.local_only or active_budget.offline_mode)
 
         should_search = (intent == IntentType.RESEARCH) and needs_backend

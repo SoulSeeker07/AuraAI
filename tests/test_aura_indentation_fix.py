@@ -7,7 +7,7 @@ This test focuses on a common Python error: IndentationError in docstrings.
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(SRC_DIR))
@@ -73,7 +73,7 @@ print("=" * 80)
 import subprocess
 
 result = subprocess.run(
-    [str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"), "buggy_code.py"],
+    [sys.executable, "buggy_code.py"],
     capture_output=True,
     text=True,
     cwd=PROJECT_ROOT,
@@ -136,7 +136,7 @@ print("🔄 Running fixed code...")
 print("=" * 80)
 
 result2 = subprocess.run(
-    [str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"), "fixed_code.py"],
+    [sys.executable, "fixed_code.py"],
     capture_output=True,
     text=True,
     cwd=PROJECT_ROOT,

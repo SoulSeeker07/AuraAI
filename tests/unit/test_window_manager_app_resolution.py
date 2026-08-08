@@ -2,8 +2,9 @@
 Unit test for WindowManager application executable resolution.
 """
 
-from desktop.native.managers.window_manager import WindowManager
 import os
+
+from desktop.native.managers.window_manager import WindowManager
 
 
 def test_resolve_app_executable_chrome():

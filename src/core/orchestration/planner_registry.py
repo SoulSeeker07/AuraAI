@@ -85,6 +85,7 @@ class PlannerRegistry:
 
         try:
             from ..planning.memory_planner import MemoryPlanner
+
             self.register(PlannerRole.MEMORY.value, MemoryPlanner())
         except Exception as e:
             logger.warning(f"Failed to load MemoryPlanner: {e}")

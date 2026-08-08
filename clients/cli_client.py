@@ -974,10 +974,18 @@ class CLIClient:
             if not is_py_fenced:
                 # Require at least 2 distinct Python signals
                 signatures = [
-                    r"\bdef\b", r"\bimport\b", r"\bclass\b", r"\bprint\(", 
-                    r"\bfrom\b", r"\bif\s+__name__\s*==\s*['\"]__main__['\"]",
-                    r"\bassert\b", r"\btry:", r"\bexcept\b", r"\bfor\s+\w+\s+in\s+",
-                    r"\bwith\s+open\b", r" = "
+                    r"\bdef\b",
+                    r"\bimport\b",
+                    r"\bclass\b",
+                    r"\bprint\(",
+                    r"\bfrom\b",
+                    r"\bif\s+__name__\s*==\s*['\"]__main__['\"]",
+                    r"\bassert\b",
+                    r"\btry:",
+                    r"\bexcept\b",
+                    r"\bfor\s+\w+\s+in\s+",
+                    r"\bwith\s+open\b",
+                    r" = ",
                 ]
                 match_count = sum(1 for sig in signatures if re.search(sig, code))
                 if match_count < 2:

@@ -22,6 +22,7 @@ class VerificationReport:
     """
     Structured outcome of artifact verification checks.
     """
+
     success: bool = True
     checks: dict[str, bool] = field(default_factory=dict)
     confidence: float = 1.0
@@ -58,7 +59,7 @@ class Artifact:
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     citations: list[str] = field(default_factory=list)  # Source URLs, references
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     # First-class resource fields for the AI Operating System
     session_id: str = ""
     owner: str = "aura"
@@ -84,7 +85,9 @@ class Artifact:
             "session_id": self.session_id,
             "owner": self.owner,
             "tags": self.tags,
-            "verification_report": self.verification_report.to_dict() if self.verification_report else None,
+            "verification_report": (
+                self.verification_report.to_dict() if self.verification_report else None
+            ),
         }
 
 
@@ -101,16 +104,19 @@ class ResearchArtifact(Artifact):
     def __post_init__(self):
         object.__setattr__(self, "artifact_type", "research")
         object.__setattr__(self, "mime_type", "application/json")
-        self.metadata.update({
-            "query": self.query,
-            "title": self.title,
-            "summary": self.executive_summary,
-            "findings": self.findings,
-            "sources": self.references,
-            "confidence": self.confidence,
-            "engine": self.engine,
-        })
+        self.metadata.update(
+            {
+                "query": self.query,
+                "title": self.title,
+                "summary": self.executive_summary,
+                "findings": self.findings,
+                "sources": self.references,
+                "confidence": self.confidence,
+                "engine": self.engine,
+            }
+        )
         import json
+
         object.__setattr__(self, "content", json.dumps(self.metadata))
 
 
@@ -123,11 +129,13 @@ class CodeArtifact(Artifact):
     def __post_init__(self):
         object.__setattr__(self, "artifact_type", "code")
         object.__setattr__(self, "mime_type", "text/x-python")
-        self.metadata.update({
-            "language": self.language,
-            "code": self.code,
-            "imports": self.imports,
-        })
+        self.metadata.update(
+            {
+                "language": self.language,
+                "code": self.code,
+                "imports": self.imports,
+            }
+        )
         object.__setattr__(self, "content", self.code)
 
 
@@ -140,11 +148,13 @@ class DocumentArtifact(Artifact):
     def __post_init__(self):
         object.__setattr__(self, "artifact_type", "document")
         object.__setattr__(self, "mime_type", "text/markdown")
-        self.metadata.update({
-            "title": self.title,
-            "body": self.body,
-            "doc_format": self.doc_format,
-        })
+        self.metadata.update(
+            {
+                "title": self.title,
+                "body": self.body,
+                "doc_format": self.doc_format,
+            }
+        )
         object.__setattr__(self, "content", self.body)
 
 
@@ -156,10 +166,12 @@ class ImageArtifact(Artifact):
     def __post_init__(self):
         object.__setattr__(self, "artifact_type", "image")
         object.__setattr__(self, "mime_type", "image/png")
-        self.metadata.update({
-            "image_path": self.image_path,
-            "dimensions": self.dimensions,
-        })
+        self.metadata.update(
+            {
+                "image_path": self.image_path,
+                "dimensions": self.dimensions,
+            }
+        )
         object.__setattr__(self, "content", self.image_path)
 
 
@@ -171,10 +183,12 @@ class MemoryArtifact(Artifact):
     def __post_init__(self):
         object.__setattr__(self, "artifact_type", "memory")
         object.__setattr__(self, "mime_type", "text/plain")
-        self.metadata.update({
-            "key": self.key,
-            "value": self.value,
-        })
+        self.metadata.update(
+            {
+                "key": self.key,
+                "value": self.value,
+            }
+        )
         object.__setattr__(self, "content", self.value)
 
 
@@ -191,13 +205,15 @@ class SessionSummaryArtifact(Artifact):
     def __post_init__(self):
         object.__setattr__(self, "artifact_type", "session_summary")
         object.__setattr__(self, "mime_type", "text/markdown")
-        self.metadata.update({
-            "date": self.date,
-            "runtime_id": self.runtime_id,
-            "summary": self.summary,
-            "actions": self.actions,
-            "timeline_events": self.timeline_events,
-            "artifact_count": self.artifact_count,
-            "verification_status": self.verification_status,
-        })
+        self.metadata.update(
+            {
+                "date": self.date,
+                "runtime_id": self.runtime_id,
+                "summary": self.summary,
+                "actions": self.actions,
+                "timeline_events": self.timeline_events,
+                "artifact_count": self.artifact_count,
+                "verification_status": self.verification_status,
+            }
+        )
         object.__setattr__(self, "content", self.summary)

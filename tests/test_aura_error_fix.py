@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(SRC_DIR))
@@ -61,7 +61,7 @@ print(f"Factorial of 5 is {result}")
 
     result = subprocess.run(
         [
-            str(Path(PROJECT_ROOT) / ".venv" / "Scripts" / "python.exe"),
+            sys.executable,
             "test_aura_fixed.py",
         ],
         capture_output=True,

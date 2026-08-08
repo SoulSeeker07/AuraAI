@@ -21,7 +21,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from .execution_map import ExecutionMap, ExecutionStep, Capability
+from .execution_map import Capability, ExecutionMap, ExecutionStep
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,9 @@ class ExecutivePlanner:
 
     # ── Public API ──────────────────────────────────────────────────────────
 
-    def create_plan(self, execution_map: ExecutionMap, session_id: str = "") -> ExecutionPlan:
+    def create_plan(
+        self, execution_map: ExecutionMap, session_id: str = ""
+    ) -> ExecutionPlan:
         """
         Convert an ExecutionMap into a concrete ExecutionPlan.
 

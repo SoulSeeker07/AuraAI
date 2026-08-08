@@ -18,7 +18,7 @@ Covers: Security, Permissions, User policies, Admin mode, Plugin permissions, Co
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from ..schemas.decision_context import DecisionContext
@@ -95,7 +95,9 @@ class PolicyEngine:
                     return PolicyDecision(
                         approved=False,
                         policy=policy_name,
-                        reason=policy.get("reason", f"Blocked by policy: {policy_name}"),
+                        reason=policy.get(
+                            "reason", f"Blocked by policy: {policy_name}"
+                        ),
                         risk_level=policy.get("risk_level", "high"),
                     )
                 elif action == "confirm":

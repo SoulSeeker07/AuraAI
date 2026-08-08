@@ -119,14 +119,14 @@ class VerificationEngine:
 
         # ── 3. Goal achieved ────────────────────────────────────────────────
         goal = execution_map.get("goal", "")
-        goal_achieved = all_steps_passed and all(
-            c.passed for c in checks[1:]
-        )
+        goal_achieved = all_steps_passed and all(c.passed for c in checks[1:])
         checks.append(
             VerificationCheck(
                 description=f"Goal achieved: {goal}",
                 passed=goal_achieved,
-                details="All criteria met" if goal_achieved else "Some criteria not met",
+                details=(
+                    "All criteria met" if goal_achieved else "Some criteria not met"
+                ),
             )
         )
 
@@ -169,7 +169,10 @@ class VerificationEngine:
             data = step_result.data
             if isinstance(data, dict):
                 for key, value in data.items():
-                    if criterion_lower in str(key).lower() or criterion_lower in str(value).lower():
+                    if (
+                        criterion_lower in str(key).lower()
+                        or criterion_lower in str(value).lower()
+                    ):
                         return True
 
         # Check step descriptions

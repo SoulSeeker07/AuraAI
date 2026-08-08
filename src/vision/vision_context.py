@@ -4,8 +4,8 @@ Vision Context Coordinator
 Coordinates vision processing across all components.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Any
 
 from .models import ImageType, VisionContext
@@ -343,7 +343,11 @@ class VisionContextCoordinator:
 
         return {
             "image_path": context.image_path,
-            "image_type": context.image_type.value if hasattr(context.image_type, "value") else str(context.image_type),
+            "image_type": (
+                context.image_type.value
+                if hasattr(context.image_type, "value")
+                else str(context.image_type)
+            ),
             "image_width": context.image_width,
             "image_height": context.image_height,
             "dimensions": {

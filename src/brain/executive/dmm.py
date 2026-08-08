@@ -45,7 +45,9 @@ logger = logging.getLogger(__name__)
 class ClarificationRequest:
     """DMM output when it needs more information from the user."""
 
-    def __init__(self, question: str, missing: list[str], suggestions: list[str] | None = None):
+    def __init__(
+        self, question: str, missing: list[str], suggestions: list[str] | None = None
+    ):
         self.question = question
         self.missing = missing
         self.suggestions = suggestions or []
@@ -173,7 +175,9 @@ class DecisionMakingModule:
 
     # ── Goal Understanding ──────────────────────────────────────────────────
 
-    def _understand_goal(self, text: str, context: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def _understand_goal(
+        self, text: str, context: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
         """
         Understand what the user is trying to accomplish.
 
@@ -200,7 +204,16 @@ class DecisionMakingModule:
         # "Open YouTube in Chrome" → also need to navigate to youtube
         for site, url in _BROWSER_URLS.items():
             if site in text_lower and any(
-                w in text_lower for w in ["open", "go to", "navigate", "browse", "visit", "take me to", "load"]
+                w in text_lower
+                for w in [
+                    "open",
+                    "go to",
+                    "navigate",
+                    "browse",
+                    "visit",
+                    "take me to",
+                    "load",
+                ]
             ):
                 modifiers["url"] = url
                 modifiers["site"] = site
@@ -212,7 +225,13 @@ class DecisionMakingModule:
             modifiers["url"] = url_match.group(0)
 
         # ── Research / Search ───────────────────────────────────────────────
-        research_indicators = ["research", "search for", "look up", "find information", "find out"]
+        research_indicators = [
+            "research",
+            "search for",
+            "look up",
+            "find information",
+            "find out",
+        ]
         if any(ind in text_lower for ind in research_indicators):
             # Extract the topic
             for ind in research_indicators:
@@ -224,8 +243,15 @@ class DecisionMakingModule:
 
         # ── Engineering / Coding ────────────────────────────────────────────
         coding_indicators = [
-            "implement", "code", "refactor", "fix bug", "unit test",
-            "debug", "create function", "write script", "build feature",
+            "implement",
+            "code",
+            "refactor",
+            "fix bug",
+            "unit test",
+            "debug",
+            "create function",
+            "write script",
+            "build feature",
         ]
         if any(ind in text_lower for ind in coding_indicators):
             modifiers["engineering"] = True
@@ -234,18 +260,30 @@ class DecisionMakingModule:
         # ── Session Summary ─────────────────────────────────────────────────
         if any(
             w in text_lower
-            for w in ["summarize today's session", "summarize session", "session summary"]
+            for w in [
+                "summarize today's session",
+                "summarize session",
+                "session summary",
+            ]
         ):
             modifiers["session_summary"] = True
 
         # ── Memory / Fact Recall ────────────────────────────────────────────
         if any(
             w in text_lower
-            for w in ["remember", "what do you know", "my facts", "preferences", "profile"]
+            for w in [
+                "remember",
+                "what do you know",
+                "my facts",
+                "preferences",
+                "profile",
+            ]
         ):
             modifiers["memory_op"] = "recall"
 
-        if any(w in text_lower for w in ["remember that", "store this", "save in memory"]):
+        if any(
+            w in text_lower for w in ["remember that", "store this", "save in memory"]
+        ):
             modifiers["memory_op"] = "write"
 
         # ── Chat / casual conversation ──────────────────────────────────────
@@ -257,7 +295,11 @@ class DecisionMakingModule:
     # ── Execution Map Builder ───────────────────────────────────────────────
 
     def _build_execution_map(
-        self, goal: str, original_text: str, modifiers: dict[str, Any], context: dict[str, Any]
+        self,
+        goal: str,
+        original_text: str,
+        modifiers: dict[str, Any],
+        context: dict[str, Any],
     ) -> ExecutionMap:
         """Build a structured execution map from understood goal and modifiers."""
 
@@ -297,7 +339,9 @@ class DecisionMakingModule:
 
     # ── Specific Map Builders ───────────────────────────────────────────────
 
-    def _map_browser_navigation(self, modifiers: dict[str, Any], original: str) -> ExecutionMap:
+    def _map_browser_navigation(
+        self, modifiers: dict[str, Any], original: str
+    ) -> ExecutionMap:
         """Open a browser and navigate to a URL."""
         app = modifiers.get("app", "chrome")
         url = modifiers.get("url", "https://www.google.com")
@@ -399,7 +443,9 @@ class DecisionMakingModule:
             ExecutionStep(
                 step_type=StepType.LAUNCH,
                 description=(
-                    f"Launch a new instance of {app}" if new_instance else f"Launch {app}"
+                    f"Launch a new instance of {app}"
+                    if new_instance
+                    else f"Launch {app}"
                 ),
                 capability=Capability.DESKTOP,
                 parameters={
@@ -544,7 +590,9 @@ class DecisionMakingModule:
             metadata={"original_request": original, "topic": topic},
         )
 
-    def _map_engineering(self, modifiers: dict[str, Any], original: str) -> ExecutionMap:
+    def _map_engineering(
+        self, modifiers: dict[str, Any], original: str
+    ) -> ExecutionMap:
         """Engineering / coding task."""
         task = modifiers.get("task", original)
 
@@ -594,7 +642,9 @@ class DecisionMakingModule:
             metadata={"original_request": original, "task": task},
         )
 
-    def _map_session_summary(self, modifiers: dict[str, Any], original: str) -> ExecutionMap:
+    def _map_session_summary(
+        self, modifiers: dict[str, Any], original: str
+    ) -> ExecutionMap:
         """Summarize the session."""
         steps: list[ExecutionStep] = [
             ExecutionStep(
@@ -628,7 +678,9 @@ class DecisionMakingModule:
             metadata={"original_request": original},
         )
 
-    def _map_memory_recall(self, modifiers: dict[str, Any], original: str) -> ExecutionMap:
+    def _map_memory_recall(
+        self, modifiers: dict[str, Any], original: str
+    ) -> ExecutionMap:
         """Recall facts from memory."""
         steps: list[ExecutionStep] = [
             ExecutionStep(
@@ -654,7 +706,9 @@ class DecisionMakingModule:
             metadata={"original_request": original},
         )
 
-    def _map_memory_write(self, modifiers: dict[str, Any], original: str) -> ExecutionMap:
+    def _map_memory_write(
+        self, modifiers: dict[str, Any], original: str
+    ) -> ExecutionMap:
         """Write facts to memory."""
         steps: list[ExecutionStep] = [
             ExecutionStep(
@@ -747,7 +801,7 @@ class DecisionMakingModule:
             Stored: {trigger: "Summarize today's session", action: "Summarize RuntimeSession"}
         """
         try:
-            from src.core.learning.rule_matcher import RuleMatcher
+            from core.learning.rule_matcher import RuleMatcher
 
             store = context.get("behavior_store")
             if store:
@@ -756,11 +810,11 @@ class DecisionMakingModule:
                 if rule:
                     return {
                         "rule_id": rule.rule_id,
-                        "resolved_goal": rule.behavior.get(
-                            "action", rule.trigger
-                        )
-                        if isinstance(rule.behavior, dict)
-                        else rule.trigger,
+                        "resolved_goal": (
+                            rule.behavior.get("action", rule.trigger)
+                            if isinstance(rule.behavior, dict)
+                            else rule.trigger
+                        ),
                     }
         except Exception as e:
             logger.debug(f"Learned rules consultation skipped: {e}")

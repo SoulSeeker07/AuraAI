@@ -3,14 +3,15 @@ Regression tests for Intent Routing and Slot Filling.
 """
 
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from Memory import Memory, PendingQuestion, FavoriteEditorQuestion
-from core.orchestration import MasterOrchestrator, DecisionEngine, IntentType
+from core.orchestration import DecisionEngine, IntentType, MasterOrchestrator
+from Memory import FavoriteEditorQuestion, Memory, PendingQuestion
 
 
 @pytest.fixture(autouse=True)
@@ -19,12 +20,12 @@ def patch_memory_db(tmp_path):
     original_init = Memory.__init__
     db_path = tmp_path / "Memory.db"
     chat_path = tmp_path / "ChatLog.json"
-    
+
     def patched_init(self, *args, **kwargs):
         p_db = kwargs.get("db_path") or (args[0] if len(args) > 0 else None)
         p_chat = kwargs.get("chat_log_path") or (args[1] if len(args) > 1 else None)
         original_init(self, db_path=p_db or db_path, chat_log_path=p_chat or chat_path)
-        
+
     Memory.__init__ = patched_init
     yield
     Memory.__init__ = original_init
@@ -49,7 +50,7 @@ async def test_remember_favorite_editor_routing():
     result = await orchestrator.process_request_async(goal_text=goal)
 
     assert result.success is True
-    
+
     memory = Memory()
     assert memory.favorite_editor == "VS Code"
 
@@ -116,7 +117,7 @@ async def test_session_summary_routing():
     assert "Today's Aura Session" in summary_obs
     assert "Artifacts" in summary_obs
     assert "Verification" in summary_obs
-    
+
     # Verify the SessionSummaryArtifact was added to artifacts
     assert len(result.artifacts) == 1
     assert result.artifacts[0].artifact_type == "session_summary"
@@ -131,10 +132,12 @@ async def test_favorite_editor_question_slot_filling():
     pending_question = FavoriteEditorQuestion()
     answer = "VS Code"
 
-    result = await orchestrator.process_request_async(goal_text=answer, context=pending_question)
+    result = await orchestrator.process_request_async(
+        goal_text=answer, context=pending_question
+    )
 
     assert result.success is True
-    
+
     memory = Memory()
     assert memory.favorite_editor == "VS Code"
     assert pending_question.slot_value == "VS Code"
@@ -155,7 +158,7 @@ async def test_pending_question_context():
 
     assert result.success is True
     assert context.slot_value == "VS Code"
-    
+
     memory = Memory()
     assert memory.favorite_editor == "VS Code"
     assert result.planner == "none"

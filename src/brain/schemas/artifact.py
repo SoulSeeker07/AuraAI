@@ -25,7 +25,9 @@ class Artifact:
     """An artifact created during execution."""
 
     artifact_id: str = field(default_factory=lambda: f"art_{uuid.uuid4().hex[:8]}")
-    artifact_type: str = ""  # research, code, document, file, image, voice, memory, generic
+    artifact_type: str = (
+        ""  # research, code, document, file, image, voice, memory, generic
+    )
     name: str = ""
     content: str = ""
     location: str = ""

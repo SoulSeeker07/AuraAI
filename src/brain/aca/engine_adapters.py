@@ -22,7 +22,7 @@ import asyncio
 import logging
 from typing import Any
 
-from .engine_interface import Engine, EngineRegistry, ALL_ENGINE_NAMES
+from .engine_interface import ALL_ENGINE_NAMES, Engine, EngineRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -38,20 +38,26 @@ class DesktopEngineAdapter(Engine):
         return "desktop"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"DesktopEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"DesktopEngineAdapter executing: action='{action}' params={parameters}"
+        )
         if self._engine is not None and hasattr(self._engine, "execute_task"):
             res = self._engine.execute_task({"type": action, "parameters": parameters})
             return {
-                "success": bool(res.get("success", True) if isinstance(res, dict) else True),
+                "success": bool(
+                    res.get("success", True) if isinstance(res, dict) else True
+                ),
                 "observations": [f"Desktop action '{action}' executed"],
                 "data": res if isinstance(res, dict) else {"result": str(res)},
             }
-        
+
         # Fallback desktop execution simulation
         app = parameters.get("application") or parameters.get("app") or "desktop_app"
         return {
             "success": True,
-            "observations": [f"Desktop application '{app}' action '{action}' completed"],
+            "observations": [
+                f"Desktop application '{app}' action '{action}' completed"
+            ],
             "data": {"application": app, "action": action, "hwnd": 1001},
         }
 
@@ -70,7 +76,9 @@ class BrowserEngineAdapter(Engine):
         return "browser"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"BrowserEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"BrowserEngineAdapter executing: action='{action}' params={parameters}"
+        )
         url = parameters.get("url", "https://google.com")
         if self._engine is not None and hasattr(self._engine, "navigate"):
             if asyncio.iscoroutinefunction(self._engine.navigate):
@@ -88,7 +96,12 @@ class BrowserEngineAdapter(Engine):
         return {
             "success": True,
             "observations": [f"Browser action '{action}' executed for {url}"],
-            "data": {"url": url, "action": action, "dom_status": "loaded", "playwright_attached": True},
+            "data": {
+                "url": url,
+                "action": action,
+                "dom_status": "loaded",
+                "playwright_attached": True,
+            },
         }
 
     def verify(self, result: dict[str, Any]) -> bool:
@@ -106,7 +119,9 @@ class ResearchEngineAdapter(Engine):
         return "research"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"ResearchEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"ResearchEngineAdapter executing: action='{action}' params={parameters}"
+        )
         query = parameters.get("query") or parameters.get("topic") or "General Inquiry"
         return {
             "success": True,
@@ -133,7 +148,9 @@ class EngineeringEngineAdapter(Engine):
         return "engineering"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"EngineeringEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"EngineeringEngineAdapter executing: action='{action}' params={parameters}"
+        )
         file_path = parameters.get("file_path") or parameters.get("path") or "code.py"
         return {
             "success": True,
@@ -156,7 +173,9 @@ class VoiceEngineAdapter(Engine):
         return "voice"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"VoiceEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"VoiceEngineAdapter executing: action='{action}' params={parameters}"
+        )
         text = parameters.get("text", "")
         return {
             "success": True,
@@ -179,7 +198,9 @@ class VisionEngineAdapter(Engine):
         return "vision"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"VisionEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"VisionEngineAdapter executing: action='{action}' params={parameters}"
+        )
         return {
             "success": True,
             "observations": [f"Vision analysis '{action}' completed"],
@@ -201,7 +222,9 @@ class MemoryEngineAdapter(Engine):
         return "memory"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"MemoryEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"MemoryEngineAdapter executing: action='{action}' params={parameters}"
+        )
         fact = parameters.get("fact") or parameters.get("key") or "memory_item"
         return {
             "success": True,
@@ -224,12 +247,22 @@ class WorkflowEngineAdapter(Engine):
         return "workflow"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"WorkflowEngineAdapter executing: action='{action}' params={parameters}")
-        workflow_name = parameters.get("workflow_name") or parameters.get("name") or "default_workflow"
+        logger.info(
+            f"WorkflowEngineAdapter executing: action='{action}' params={parameters}"
+        )
+        workflow_name = (
+            parameters.get("workflow_name")
+            or parameters.get("name")
+            or "default_workflow"
+        )
         return {
             "success": True,
             "observations": [f"Workflow '{workflow_name}' step '{action}' executed"],
-            "data": {"workflow_name": workflow_name, "action": action, "status": "active"},
+            "data": {
+                "workflow_name": workflow_name,
+                "action": action,
+                "status": "active",
+            },
         }
 
     def verify(self, result: dict[str, Any]) -> bool:
@@ -247,7 +280,9 @@ class PluginEngineAdapter(Engine):
         return "plugin"
 
     def execute(self, action: str, parameters: dict[str, Any]) -> dict[str, Any]:
-        logger.info(f"PluginEngineAdapter executing: action='{action}' params={parameters}")
+        logger.info(
+            f"PluginEngineAdapter executing: action='{action}' params={parameters}"
+        )
         plugin_id = parameters.get("plugin_id") or parameters.get("id") or "core_plugin"
         return {
             "success": True,
@@ -271,7 +306,9 @@ def register_all_default_adapters() -> EngineRegistry:
     registry.register(MemoryEngineAdapter())
     registry.register(WorkflowEngineAdapter())
     registry.register(PluginEngineAdapter())
-    logger.info(f"Registered all {len(ALL_ENGINE_NAMES)} default ACA engine adapters in EngineRegistry.")
+    logger.info(
+        f"Registered all {len(ALL_ENGINE_NAMES)} default ACA engine adapters in EngineRegistry."
+    )
     return registry
 
 

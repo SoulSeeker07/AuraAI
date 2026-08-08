@@ -21,6 +21,7 @@ class LearningRule:
     """
     Unified learned customization or behavior rule inside the Adaptive Learning Engine.
     """
+
     rule_id: str
     rule_type: RuleType
     trigger: str

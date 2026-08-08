@@ -386,7 +386,11 @@ class BrowserEngine:
                     if await loc.count() > 0:
                         await loc.click(timeout=3000)
                         await asyncio.sleep(1.0)
-                        return {"success": True, "action": "click_top_video", "selector": sel}
+                        return {
+                            "success": True,
+                            "action": "click_top_video",
+                            "selector": sel,
+                        }
                 except Exception:
                     pass
         return {"success": False, "action": "click_top_video"}
@@ -405,7 +409,11 @@ class BrowserEngine:
                     if await loc.count() > 0:
                         await loc.click(timeout=3000)
                         await asyncio.sleep(1.0)
-                        return {"success": True, "action": "click_top_product", "selector": sel}
+                        return {
+                            "success": True,
+                            "action": "click_top_product",
+                            "selector": sel,
+                        }
                 except Exception:
                     pass
         return {"success": False, "action": "click_top_product"}

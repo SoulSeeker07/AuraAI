@@ -121,9 +121,9 @@ def main_gui():
     print("✓ Launching AuraAI PySide6 Control Center & Spotlight HUD...")
 
     from src.gui.app import AuraGUI
+
     gui = AuraGUI()
     return gui.run()
-
 
 
 def main():
@@ -190,7 +190,6 @@ Modes:
         # CLI mode (default)
         asyncio.run(main_cli())
         return None
-
 
 
 if __name__ == "__main__":

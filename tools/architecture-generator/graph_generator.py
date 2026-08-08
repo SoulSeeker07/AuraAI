@@ -9,43 +9,45 @@ Generates visual and structural architecture representations:
 - Markdown Architecture Documentation (ARCHITECTURE.md)
 """
 
-from typing import Dict, List, Set, Optional
-from config import ArchitectureConfig, ArchitectureLayer
+from config import ArchitectureConfig
 
 
 class DotGraph:
     """Helper for generating Graphviz DOT format."""
-    
+
     def __init__(self, title: str = "AuraAI Cognitive Architecture"):
         self.title = title
         self.nodes = {}
         self.edges = []
         self.clusters = {}
-        
-    def add_node(self, node_id: str, label: str, layer: str, shape: str = "box", role: str = "UTILITY", color: str = "#4B8BBE"):
+
+    def add_node(
+        self,
+        node_id: str,
+        label: str,
+        layer: str,
+        shape: str = "box",
+        role: str = "UTILITY",
+        color: str = "#4B8BBE",
+    ):
         self.nodes[node_id] = {
-            'label': label,
-            'layer': layer,
-            'shape': shape,
-            'role': role,
-            'color': color
+            "label": label,
+            "layer": layer,
+            "shape": shape,
+            "role": role,
+            "color": color,
         }
-        
-    def add_edge(self, from_node: str, to_node: str, label: str = "", style: str = "solid"):
-        self.edges.append({
-            'from': from_node,
-            'to': to_node,
-            'label': label,
-            'style': style
-        })
-        
-    def add_cluster(self, layer_name: str, nodes: List[str], title: str, color: str):
-        self.clusters[layer_name] = {
-            'nodes': nodes,
-            'title': title,
-            'color': color
-        }
-        
+
+    def add_edge(
+        self, from_node: str, to_node: str, label: str = "", style: str = "solid"
+    ):
+        self.edges.append(
+            {"from": from_node, "to": to_node, "label": label, "style": style}
+        )
+
+    def add_cluster(self, layer_name: str, nodes: list[str], title: str, color: str):
+        self.clusters[layer_name] = {"nodes": nodes, "title": title, "color": color}
+
     def generate(self) -> str:
         lines = [
             "digraph AuraArchitecture {",
@@ -57,155 +59,176 @@ class DotGraph:
             '  bgcolor="#FFFFFF";',
             f'  label="{self.title}\\n ";',
             '  labelloc="t";',
-            '  fontsize=16;',
-            ""
+            "  fontsize=16;",
+            "",
         ]
-        
+
         # Add clusters
         for cluster_id, cluster in self.clusters.items():
             safe_id = "".join(c if c.isalnum() else "_" for c in cluster_id)
             lines.append(f"  subgraph cluster_{safe_id} {{")
             lines.append(f'    label="{cluster["title"]}";')
-            lines.append(f'    style="filled,rounded";')
+            lines.append('    style="filled,rounded";')
             lines.append(f'    color="{cluster["color"]}";')
             lines.append(f'    fillcolor="{cluster["color"]}22";')
-            lines.append('    fontsize=12;')
+            lines.append("    fontsize=12;")
             lines.append('    fontcolor="#1E293B";')
-            
-            for node_id in cluster['nodes']:
+
+            for node_id in cluster["nodes"]:
                 node = self.nodes.get(node_id)
                 if node:
                     safe_node = "".join(c if c.isalnum() else "_" for c in node_id)
-                    lines.append(f'    "{safe_node}" [label="{node["label"]}", shape="{node["shape"]}", fillcolor="{node["color"]}", color="{node["color"]}", fontcolor="#0F172A"];')
-            
+                    lines.append(
+                        f'    "{safe_node}" [label="{node["label"]}", shape="{node["shape"]}", fillcolor="{node["color"]}", color="{node["color"]}", fontcolor="#0F172A"];'
+                    )
+
             lines.append("  }")
             lines.append("")
-            
+
         # Add edges (limit top dependencies to prevent visual clutter)
         seen_edges = set()
         for edge in self.edges[:150]:
-            safe_from = "".join(c if c.isalnum() else "_" for c in edge['from'])
-            safe_to = "".join(c if c.isalnum() else "_" for c in edge['to'])
+            safe_from = "".join(c if c.isalnum() else "_" for c in edge["from"])
+            safe_to = "".join(c if c.isalnum() else "_" for c in edge["to"])
             edge_key = (safe_from, safe_to)
-            if edge_key not in seen_edges and safe_from in self.nodes and safe_to in self.nodes:
+            if (
+                edge_key not in seen_edges
+                and safe_from in self.nodes
+                and safe_to in self.nodes
+            ):
                 seen_edges.add(edge_key)
                 label_attr = f' [label="{edge["label"]}"]' if edge["label"] else ""
                 lines.append(f'  "{safe_from}" -> "{safe_to}"{label_attr};')
-                
+
         lines.append("}")
         return "\n".join(lines)
 
 
 class MermaidGraph:
     """Helper for generating Mermaid diagram format."""
-    
+
     def __init__(self, title: str = "Aura Architecture Flow"):
         self.title = title
         self.clusters = {}
         self.nodes = {}
         self.edges = []
-        
+
     def add_node(self, node_id: str, label: str, layer: str, icon: str = ""):
-        self.nodes[node_id] = {'label': label, 'layer': layer, 'icon': icon}
-        
+        self.nodes[node_id] = {"label": label, "layer": layer, "icon": icon}
+
     def add_edge(self, from_node: str, to_node: str, label: str = ""):
-        self.edges.append({'from': from_node, 'to': to_node, 'label': label})
-        
+        self.edges.append({"from": from_node, "to": to_node, "label": label})
+
     def add_cluster(self, layer_name: str, title: str, color: str):
-        self.clusters[layer_name] = {'title': title, 'color': color, 'nodes': []}
-        
+        self.clusters[layer_name] = {"title": title, "color": color, "nodes": []}
+
     def generate(self) -> str:
         lines = [
             "```mermaid",
             "graph TD",
             "  %% Aura Cognitive Architecture Flow",
-            "  classDef default font-family:sans-serif,font-size:12px;"
+            "  classDef default font-family:sans-serif,font-size:12px;",
         ]
-        
+
         # Add subgraphs
         for layer_config in ArchitectureConfig.ALL_LAYERS:
             layer_name = layer_config.name
             safe_cluster = "".join(c if c.isalnum() else "_" for c in layer_name)
-            lines.append(f"  subgraph {safe_cluster} [\"{layer_config.icon} {layer_name}\"]")
-            
+            lines.append(
+                f'  subgraph {safe_cluster} ["{layer_config.icon} {layer_name}"]'
+            )
+
             # Nodes in layer
             for n_id, n_info in self.nodes.items():
-                if n_info['layer'] == layer_name:
+                if n_info["layer"] == layer_name:
                     safe_n = "".join(c if c.isalnum() else "_" for c in n_id)
                     lines.append(f"    {safe_n}[\"{n_info['label']}\"]")
             lines.append("  end")
             lines.append("")
-            
+
             # Style subgraph
-            lines.append(f"  style {safe_cluster} fill:{layer_config.color}33,stroke:{layer_config.border_color},stroke-width:2px;")
-            
+            lines.append(
+                f"  style {safe_cluster} fill:{layer_config.color}33,stroke:{layer_config.border_color},stroke-width:2px;"
+            )
+
         # Add edges
         seen = set()
         for edge in self.edges[:120]:
-            sf = "".join(c if c.isalnum() else "_" for c in edge['from'])
-            st = "".join(c if c.isalnum() else "_" for c in edge['to'])
-            if (sf, st) not in seen and sf in self.nodes and st in self.nodes and sf != st:
+            sf = "".join(c if c.isalnum() else "_" for c in edge["from"])
+            st = "".join(c if c.isalnum() else "_" for c in edge["to"])
+            if (
+                (sf, st) not in seen
+                and sf in self.nodes
+                and st in self.nodes
+                and sf != st
+            ):
                 seen.add((sf, st))
                 lines.append(f"  {sf} --> {st}")
-                
+
         lines.append("```")
         return "\n".join(lines)
 
 
 class GraphGenerator:
     """Generates graphs and reports from ArchitectureGraph."""
-    
+
     def __init__(self, graph):
         self.graph = graph
-        
-    def generate_dot(self, format: str = 'dot') -> str:
+
+    def generate_dot(self, format: str = "dot") -> str:
         dot = DotGraph(title="AuraAI Architectural Layer & Dependency Graph")
-        
+
         for layer_config in ArchitectureConfig.ALL_LAYERS:
             layer_name = layer_config.name
             modules_in_layer = self.graph.layers.get(layer_name, [])
-            
+
             node_ids = []
             for mod in modules_in_layer:
-                shape = "box" if mod.role in ["ORCHESTRATOR", "ENGINE", "MANAGER"] else "ellipse"
+                shape = (
+                    "box"
+                    if mod.role in ["ORCHESTRATOR", "ENGINE", "MANAGER"]
+                    else "ellipse"
+                )
                 dot.add_node(
                     node_id=mod.name,
                     label=mod.name.replace("_", " ").title(),
                     layer=layer_name,
                     shape=shape,
                     role=mod.role,
-                    color=layer_config.color
+                    color=layer_config.color,
                 )
                 node_ids.append(mod.name)
-                
+
             if node_ids:
                 dot.add_cluster(
                     layer_name=layer_name,
                     nodes=node_ids,
                     title=f"{layer_config.icon} {layer_name} ({len(node_ids)} modules)",
-                    color=layer_config.border_color
+                    color=layer_config.border_color,
                 )
-                
+
         for dep in self.graph.dependencies:
-            dot.add_edge(from_node=dep.from_module, to_node=dep.to_module, label=dep.import_type)
-            
+            dot.add_edge(
+                from_node=dep.from_module, to_node=dep.to_module, label=dep.import_type
+            )
+
         return dot.generate()
 
-    def generate_mermaid(self, format: str = 'mermaid') -> str:
+    def generate_mermaid(self, format: str = "mermaid") -> str:
         mermaid = MermaidGraph(title="Aura Architecture Layer Breakdown")
-        
+
         for mod_name, mod in self.graph.modules.items():
             layer_config = ArchitectureConfig.get_layer_by_name(mod.layer_name)
             mermaid.add_node(
                 node_id=mod_name,
                 label=f"{mod_name.replace('_', ' ').title()}",
                 layer=mod.layer_name,
-                icon=layer_config.icon
+                icon=layer_config.icon,
             )
-            
+
         for dep in self.graph.dependencies:
             mermaid.add_edge(from_node=dep.from_module, to_node=dep.to_module)
-            
+
         return mermaid.generate()
 
     def generate_cognitive_flow_mermaid(self) -> str:
@@ -348,22 +371,22 @@ graph TD
     def generate_statistics(self) -> dict:
         """Calculates accurate layer statistics across all 520+ modules."""
         stats = {
-            'total_modules': len(self.graph.modules),
-            'total_dependencies': len(self.graph.dependencies),
-            'total_violations': len(self.graph.violations),
-            'layers': {},
-            'layer_dependencies': ArchitectureConfig.get_layer_dependencies()
+            "total_modules": len(self.graph.modules),
+            "total_dependencies": len(self.graph.dependencies),
+            "total_violations": len(self.graph.violations),
+            "layers": {},
+            "layer_dependencies": ArchitectureConfig.get_layer_dependencies(),
         }
-        
+
         for layer_config in ArchitectureConfig.ALL_LAYERS:
             layer_name = layer_config.name
             modules_in_layer = self.graph.layers.get(layer_name, [])
-            
-            stats['layers'][layer_name] = {
-                'module_count': len(modules_in_layer),
-                'class_count': sum(len(m.classes) for m in modules_in_layer),
-                'function_count': sum(len(m.functions) for m in modules_in_layer),
-                'complexity': sum(m.complexity for m in modules_in_layer)
+
+            stats["layers"][layer_name] = {
+                "module_count": len(modules_in_layer),
+                "class_count": sum(len(m.classes) for m in modules_in_layer),
+                "function_count": sum(len(m.functions) for m in modules_in_layer),
+                "complexity": sum(m.complexity for m in modules_in_layer),
             }
-            
+
         return stats

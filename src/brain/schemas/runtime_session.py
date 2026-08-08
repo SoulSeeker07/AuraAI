@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .task_graph import TaskGraph, TaskNode
+from .task_graph import TaskGraph
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,9 @@ class RuntimeSession:
 
     session_id: str = field(default_factory=lambda: f"sess_{uuid.uuid4().hex[:8]}")
     goal: str = ""
-    session_type: str = "standard"  # standard, desktop, browser, research, engineering, voice
+    session_type: str = (
+        "standard"  # standard, desktop, browser, research, engineering, voice
+    )
     status: str = "pending"  # pending, running, paused, completed, failed, cancelled
     task_graph: TaskGraph | None = None
     artifacts: list[dict[str, Any]] = field(default_factory=list)

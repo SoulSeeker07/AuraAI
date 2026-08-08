@@ -24,10 +24,10 @@ import json
 import logging
 from typing import Any
 
-from .context_manager import ContextSnapshot
-from .world_model import WorldState
-from .goal_analyzer import GoalAnalysis
 from .capability_selector import CapabilitySelection
+from .context_manager import ContextSnapshot
+from .goal_analyzer import GoalAnalysis
+from .world_model import WorldState
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,11 @@ class ExecutionMapGenerator:
         if self.llm_client is not None:
             try:
                 execution_map = self._generate_via_llm(
-                    user_input, context, world_state, goal_analysis, capability_selection
+                    user_input,
+                    context,
+                    world_state,
+                    goal_analysis,
+                    capability_selection,
                 )
                 if execution_map:
                     return execution_map
@@ -177,7 +181,9 @@ Create the Execution Map JSON now."""
             content = content.split("```")[1].split("```")[0].strip()
 
         execution_map = json.loads(content)
-        logger.info(f"LLM generated Execution Map: {execution_map.get('goal', 'unknown')}")
+        logger.info(
+            f"LLM generated Execution Map: {execution_map.get('goal', 'unknown')}"
+        )
         return execution_map
 
     # ── Deterministic Generation ────────────────────────────────────────────

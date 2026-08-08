@@ -136,7 +136,7 @@ class ActionPlan:
         session_id: str = "",
         hwnd: int | None = None,
         context: dict[str, Any] | None = None,
-    ) -> "ActionPlan":
+    ) -> ActionPlan:
         """Build an ActionPlan directly from a TaskDecomposer SubTask.
 
         Content propagation: if the subtask declares ``input_artifacts``,

@@ -60,6 +60,7 @@ class ActionVerifier:
         if after_snap is None:
             try:
                 from core.orchestration.world_snapshot import WorldSnapshotProvider
+
                 after_snap = WorldSnapshotProvider().snapshot()
             except Exception:
                 pass
@@ -91,7 +92,9 @@ class ActionVerifier:
 
                 proc_found = any(app_name in p.lower() for p in after_procs)
                 win_found = any(app_name in w.lower() for w in after_windows)
-                hwnds = ExecutionPolicy.get_instance()._get_running_windows(app_name, None)
+                hwnds = ExecutionPolicy.get_instance()._get_running_windows(
+                    app_name, None
+                )
 
                 if proc_found or win_found or len(hwnds) > 0:
                     break
@@ -101,7 +104,11 @@ class ActionVerifier:
                 verification["method"] = "os_enumwindows_diff"
                 verification["hwnd_count"] = len(hwnds)
                 verification["checks"].append(
-                    {"name": "os_process_window_detected", "passed": True, "hwnd_count": len(hwnds)}
+                    {
+                        "name": "os_process_window_detected",
+                        "passed": True,
+                        "hwnd_count": len(hwnds),
+                    }
                 )
             else:
                 verification["passed"] = False

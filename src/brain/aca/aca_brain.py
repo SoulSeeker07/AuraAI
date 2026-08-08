@@ -21,15 +21,15 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..schemas.artifact import Artifact
 from ..schemas.cognitive_state import CognitiveState
 from ..schemas.runtime_session import RuntimeSession
-from ..schemas.task_graph import TaskGraph, TaskNode
-from ..schemas.artifact import Artifact
-from .fusion_engine import FusionEngine
-from .confidence_gate import ConfidenceGate
-from .goal_manager import GoalManager, Goal
-from .policy_engine import PolicyEngine, PolicyDecision
+from ..schemas.task_graph import TaskGraph
 from .artifact_manager import ArtifactManager
+from .confidence_gate import ConfidenceGate
+from .fusion_engine import FusionEngine
+from .goal_manager import Goal, GoalManager
+from .policy_engine import PolicyEngine
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +194,9 @@ class ACABrain:
         # 1g. Confidence Gate
         gate_result = self.confidence_gate.evaluate(decision_context.confidence)
         if gate_result.clarification_needed:
-            logger.info(f"ACA needs clarification: {gate_result.clarification_question}")
+            logger.info(
+                f"ACA needs clarification: {gate_result.clarification_question}"
+            )
             return ACAResponse(
                 text=gate_result.clarification_question,
                 success=False,
@@ -245,7 +247,9 @@ class ACABrain:
         validation = None
         if self.validator and execution_map:
             validation = self.validator.validate(execution_map)
-            bb.validation = validation.to_dict() if hasattr(validation, "to_dict") else validation
+            bb.validation = (
+                validation.to_dict() if hasattr(validation, "to_dict") else validation
+            )
             if not validation.valid:
                 session.fail("Execution Map validation failed")
                 return ACAResponse(
@@ -264,7 +268,11 @@ class ACABrain:
 
         if self.coordinator and execution_map:
             coordination = await self.coordinator.coordinate(execution_map)
-            bb.coordination = coordination.to_dict() if hasattr(coordination, "to_dict") else coordination
+            bb.coordination = (
+                coordination.to_dict()
+                if hasattr(coordination, "to_dict")
+                else coordination
+            )
 
             # Update session from coordination
             if coordination.success:
@@ -274,7 +282,11 @@ class ACABrain:
 
         if self.verification and execution_map and coordination:
             verification = self.verification.verify(execution_map, coordination)
-            bb.verification = verification.to_dict() if hasattr(verification, "to_dict") else verification
+            bb.verification = (
+                verification.to_dict()
+                if hasattr(verification, "to_dict")
+                else verification
+            )
 
         # ── Artifact Manager: collect everything Aura created ───────────────
         artifacts = self.artifact_manager.collect_from_execution(
@@ -291,7 +303,9 @@ class ACABrain:
 
         if self.reflection and coordination:
             reflection = self.reflection.reflect(coordination)
-            bb.reflection = reflection.to_dict() if hasattr(reflection, "to_dict") else reflection
+            bb.reflection = (
+                reflection.to_dict() if hasattr(reflection, "to_dict") else reflection
+            )
 
         if self.learning:
             learned_items = self.learning.learn_from_interaction(
@@ -308,7 +322,9 @@ class ACABrain:
             self.goal_manager.update_progress(goal.goal_id, 100.0)
 
         # ── Compose Response ────────────────────────────────────────────────
-        response_text = self._compose_response(execution_map, coordination, verification, reflection, learned, artifacts)
+        response_text = self._compose_response(
+            execution_map, coordination, verification, reflection, learned, artifacts
+        )
 
         overall_success = (
             bool(verification.passed)
@@ -355,21 +371,31 @@ class ACABrain:
             if observations:
                 lines.extend(observations)
             else:
-                lines.append(f"✓ {execution_map.get('goal', 'Task completed') if execution_map else 'Task completed'}")
+                lines.append(
+                    f"✓ {execution_map.get('goal', 'Task completed') if execution_map else 'Task completed'}"
+                )
 
             if verification and hasattr(verification, "checks"):
                 passed_checks = sum(1 for c in verification.checks if c.passed)
-                lines.append(f"\n✓ Verification: {passed_checks}/{len(verification.checks)} checks passed")
+                lines.append(
+                    f"\n✓ Verification: {passed_checks}/{len(verification.checks)} checks passed"
+                )
 
             # Artifact summary
             if artifacts:
                 types = ", ".join(a.artifact_type for a in artifacts[:5])
                 lines.append(f"📦 Artifacts: {types}")
         else:
-            if reflection and hasattr(reflection, "user_message") and reflection.user_message:
+            if (
+                reflection
+                and hasattr(reflection, "user_message")
+                and reflection.user_message
+            ):
                 lines.append(f"✗ {reflection.user_message}")
             else:
-                lines.append(f"✗ Could not complete: {execution_map.get('goal', 'task') if execution_map else 'task'}")
+                lines.append(
+                    f"✗ Could not complete: {execution_map.get('goal', 'task') if execution_map else 'task'}"
+                )
 
             if reflection and hasattr(reflection, "recoveries"):
                 for recovery in reflection.recoveries:

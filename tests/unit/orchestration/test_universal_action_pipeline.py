@@ -41,7 +41,7 @@ def test_shopping_multi_turn_constraint_accumulation():
     assert t2.capability == "shopping.filter"
     c2 = t2.parameters["constraints"]
     assert c2["price_max"] == 70000.0  # Retained from turn 1!
-    assert c2["ram_gb_min"] == 16       # Added in turn 2!
+    assert c2["ram_gb_min"] == 16  # Added in turn 2!
 
     # Turn 3: "No HP"
     g3 = decomposer.decompose("No HP")
@@ -49,7 +49,7 @@ def test_shopping_multi_turn_constraint_accumulation():
     assert t3.capability == "shopping.filter"
     c3 = t3.parameters["constraints"]
     assert c3["price_max"] == 70000.0  # Retained!
-    assert c3["ram_gb_min"] == 16       # Retained!
+    assert c3["ram_gb_min"] == 16  # Retained!
     assert "HP" in c3["brand_exclude"]  # Added!
 
     # Turn 4: "Sort by rating"
@@ -127,7 +127,9 @@ def test_comments_reviews_cart_checkout_execution():
     assert "4.5/5 stars" in res_rev.observations[1]
 
     # Turn 3: "Add it to cart"
-    store.shopping.products = [{"title": "Lenovo Legion i7", "price": "$1200", "url": "https://amazon.com/p1"}]
+    store.shopping.products = [
+        {"title": "Lenovo Legion i7", "price": "$1200", "url": "https://amazon.com/p1"}
+    ]
     g_cart = decomposer.decompose("add it to cart")
     t_cart = list(g_cart.subtasks.values())[0]
     assert t_cart.capability == "shopping.cart.add"

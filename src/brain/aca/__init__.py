@@ -23,13 +23,13 @@ Stage 3: Execution Coordination
 Stage 4: Reflection & Learning
 """
 
-from .fusion_engine import FusionEngine
-from .confidence_gate import ConfidenceGate
-from .strategy_engine import StrategyEngine, ACAPlanner
-from .goal_manager import GoalManager, Goal
-from .policy_engine import PolicyEngine, PolicyDecision
-from .artifact_manager import ArtifactManager
 from .aca_brain import ACABrain, ACAResponse
+from .artifact_manager import ArtifactManager
+from .confidence_gate import ConfidenceGate
+from .fusion_engine import FusionEngine
+from .goal_manager import Goal, GoalManager
+from .policy_engine import PolicyDecision, PolicyEngine
+from .strategy_engine import ACAPlanner, StrategyEngine
 
 __all__ = [
     "FusionEngine",

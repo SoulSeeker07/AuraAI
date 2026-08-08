@@ -125,8 +125,7 @@ class ExecutionCoordinator:
             params = step.get("parameters", {})
 
             logger.info(
-                f"Coordinator step {i + 1}/{len(steps)}: "
-                f"[{engine}] {action}"
+                f"Coordinator step {i + 1}/{len(steps)}: " f"[{engine}] {action}"
             )
 
             step_result = await self._coordinate_step(i, engine, action, params)
@@ -180,7 +179,9 @@ class ExecutionCoordinator:
             try:
                 res = reg_engine.execute(action, params)
                 execution_time = time.time() - start_time
-                observations = res.get("observations", []) if isinstance(res, dict) else [str(res)]
+                observations = (
+                    res.get("observations", []) if isinstance(res, dict) else [str(res)]
+                )
                 return StepResult(
                     step_index=index,
                     engine=engine,
@@ -218,9 +219,15 @@ class ExecutionCoordinator:
                     step_index=index,
                     engine=engine,
                     action=action,
-                    success=result.get("success", True) if isinstance(result, dict) else True,
+                    success=(
+                        result.get("success", True)
+                        if isinstance(result, dict)
+                        else True
+                    ),
                     observations=observations,
-                    data=result if isinstance(result, dict) else {"output": str(result)},
+                    data=(
+                        result if isinstance(result, dict) else {"output": str(result)}
+                    ),
                     execution_time=execution_time,
                 )
             except Exception as e:
@@ -280,7 +287,13 @@ class ExecutionCoordinator:
         goal = f"{action}"
         if params.get("url"):
             goal = f"Navigate to {params['url']}"
-        elif params.get("application") and action in ("launch", "launch_application", "open_application", "app_open", "open"):
+        elif params.get("application") and action in (
+            "launch",
+            "launch_application",
+            "open_application",
+            "app_open",
+            "open",
+        ):
             goal = f"Open {params['application']}"
         elif params.get("query"):
             goal = f"Research: {params['query']}"
@@ -303,7 +316,10 @@ class ExecutionCoordinator:
                 response = llm.chat.completions.create(
                     model=params.get("model", "llama3-8b-8192"),
                     messages=[
-                        {"role": "system", "content": "You are Aura, an AI operating system."},
+                        {
+                            "role": "system",
+                            "content": "You are Aura, an AI operating system.",
+                        },
                         {"role": "user", "content": message},
                     ],
                 )

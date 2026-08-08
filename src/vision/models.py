@@ -33,7 +33,6 @@ class VisionProvider(str, Enum):
     FUTURE = "future"
 
 
-
 @dataclass
 class VisionContext:
     """
@@ -112,7 +111,6 @@ class VisionContext:
 
     def __getitem__(self, key: str) -> Any:
         return getattr(self, key)
-
 
     def to_dict(self) -> dict[str, Any]:
         """Convert vision context to dictionary."""

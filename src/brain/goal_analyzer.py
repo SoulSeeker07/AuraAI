@@ -23,7 +23,6 @@ Notice: No mention of Browser Intent. Only goals.
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -73,7 +72,9 @@ class GoalAnalyzer:
     This is NOT intent classification. It's goal understanding.
     """
 
-    def analyze(self, user_input: str, context: dict[str, Any] | None = None) -> GoalAnalysis:
+    def analyze(
+        self, user_input: str, context: dict[str, Any] | None = None
+    ) -> GoalAnalysis:
         """
         Analyze a user request into structured goals.
 
@@ -89,29 +90,110 @@ class GoalAnalyzer:
         text_lower = text.lower()
 
         # ── Browser navigation: "Open YouTube in Chrome" ────────────────────
-        if any(site in text_lower for site in ["youtube", "github", "gmail", "google", "twitter", "reddit", "linkedin", "facebook", "instagram", "amazon", "stackoverflow", "netflix"]) and any(
-            w in text_lower for w in ["open", "go to", "navigate", "browse", "visit", "take me to", "load"]
+        if any(
+            site in text_lower
+            for site in [
+                "youtube",
+                "github",
+                "gmail",
+                "google",
+                "twitter",
+                "reddit",
+                "linkedin",
+                "facebook",
+                "instagram",
+                "amazon",
+                "stackoverflow",
+                "netflix",
+            ]
+        ) and any(
+            w in text_lower
+            for w in [
+                "open",
+                "go to",
+                "navigate",
+                "browse",
+                "visit",
+                "take me to",
+                "load",
+            ]
         ):
             return self._analyze_browser_navigation(text, text_lower)
 
         # ── App launch: "Open Notepad" / "Open another Notepad" ─────────────
-        if any(app in text_lower for app in ["notepad", "chrome", "edge", "firefox", "spotify", "calculator", "calc", "vscode", "vs code", "visual studio code", "paint", "mspaint", "word", "excel", "powerpoint"]):
+        if any(
+            app in text_lower
+            for app in [
+                "notepad",
+                "chrome",
+                "edge",
+                "firefox",
+                "spotify",
+                "calculator",
+                "calc",
+                "vscode",
+                "vs code",
+                "visual studio code",
+                "paint",
+                "mspaint",
+                "word",
+                "excel",
+                "powerpoint",
+            ]
+        ):
             return self._analyze_app_launch(text, text_lower)
 
         # ── Research: "Research X" / "Search for X" ─────────────────────────
-        if any(ind in text_lower for ind in ["research", "search for", "look up", "find information", "find out"]):
+        if any(
+            ind in text_lower
+            for ind in [
+                "research",
+                "search for",
+                "look up",
+                "find information",
+                "find out",
+            ]
+        ):
             return self._analyze_research(text, text_lower)
 
         # ── Engineering: "Implement X" / "Fix bug" ──────────────────────────
-        if any(ind in text_lower for ind in ["implement", "refactor", "fix bug", "unit test", "debug", "write script", "build feature", "create function"]):
+        if any(
+            ind in text_lower
+            for ind in [
+                "implement",
+                "refactor",
+                "fix bug",
+                "unit test",
+                "debug",
+                "write script",
+                "build feature",
+                "create function",
+            ]
+        ):
             return self._analyze_engineering(text, text_lower)
 
         # ── Session summary ─────────────────────────────────────────────────
-        if any(w in text_lower for w in ["summarize today's session", "summarize session", "session summary"]):
+        if any(
+            w in text_lower
+            for w in [
+                "summarize today's session",
+                "summarize session",
+                "session summary",
+            ]
+        ):
             return self._analyze_session_summary(text, text_lower)
 
         # ── Memory operations ───────────────────────────────────────────────
-        if any(w in text_lower for w in ["remember", "what do you know", "my facts", "preferences", "profile"]):
+        if any(
+            w in text_lower
+            for w in [
+                "remember",
+                "what do you know",
+                "my facts",
+                "preferences",
+                "profile",
+            ]
+        ):
             return self._analyze_memory(text, text_lower)
 
         # ── Chat / general conversation ─────────────────────────────────────
@@ -122,7 +204,20 @@ class GoalAnalyzer:
     def _analyze_browser_navigation(self, text: str, text_lower: str) -> GoalAnalysis:
         """Analyze browser navigation requests."""
         site = ""
-        for s in ["youtube", "github", "gmail", "google", "twitter", "reddit", "linkedin", "facebook", "instagram", "amazon", "stackoverflow", "netflix"]:
+        for s in [
+            "youtube",
+            "github",
+            "gmail",
+            "google",
+            "twitter",
+            "reddit",
+            "linkedin",
+            "facebook",
+            "instagram",
+            "amazon",
+            "stackoverflow",
+            "netflix",
+        ]:
             if s in text_lower:
                 site = s
                 break
@@ -151,14 +246,34 @@ class GoalAnalyzer:
         return GoalAnalysis(
             primary_goal=f"Open {site} in {browser}",
             goals=goals,
-            modifiers={"site": site, "browser": browser, "url": f"https://www.{site}.com"},
+            modifiers={
+                "site": site,
+                "browser": browser,
+                "url": f"https://www.{site}.com",
+            },
             original_input=text,
         )
 
     def _analyze_app_launch(self, text: str, text_lower: str) -> GoalAnalysis:
         """Analyze application launch requests."""
         app = ""
-        for a in ["notepad", "chrome", "edge", "firefox", "spotify", "calculator", "calc", "vscode", "vs code", "visual studio code", "paint", "mspaint", "word", "excel", "powerpoint"]:
+        for a in [
+            "notepad",
+            "chrome",
+            "edge",
+            "firefox",
+            "spotify",
+            "calculator",
+            "calc",
+            "vscode",
+            "vs code",
+            "visual studio code",
+            "paint",
+            "mspaint",
+            "word",
+            "excel",
+            "powerpoint",
+        ]:
             if a in text_lower:
                 app = a
                 break
@@ -188,7 +303,13 @@ class GoalAnalyzer:
     def _analyze_research(self, text: str, text_lower: str) -> GoalAnalysis:
         """Analyze research requests."""
         topic = text
-        for ind in ["research", "search for", "look up", "find information", "find out"]:
+        for ind in [
+            "research",
+            "search for",
+            "look up",
+            "find information",
+            "find out",
+        ]:
             if ind in text_lower:
                 topic = text_lower.split(ind, 1)[1].strip()
                 break
@@ -257,7 +378,10 @@ class GoalAnalyzer:
 
     def _analyze_memory(self, text: str, text_lower: str) -> GoalAnalysis:
         """Analyze memory operations."""
-        is_recall = any(w in text_lower for w in ["what do you know", "my facts", "preferences", "profile"])
+        is_recall = any(
+            w in text_lower
+            for w in ["what do you know", "my facts", "preferences", "profile"]
+        )
         is_write = text_lower.startswith("remember")
 
         op = "recall" if is_recall else ("write" if is_write else "recall")

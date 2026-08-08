@@ -62,11 +62,14 @@ class LayoutAnalyzer:
                 "layout": layout_info,
                 "elements": elements,
                 "sections": sections,
-                "header": layout_info.get("header") if isinstance(layout_info, dict) else None,
-                "footer": layout_info.get("footer") if isinstance(layout_info, dict) else None,
+                "header": (
+                    layout_info.get("header") if isinstance(layout_info, dict) else None
+                ),
+                "footer": (
+                    layout_info.get("footer") if isinstance(layout_info, dict) else None
+                ),
             }
         return res
-
 
     def _analyze_screenshot_layout(self, image: np.ndarray) -> tuple:
         """
@@ -549,7 +552,6 @@ class LayoutAnalyzer:
             y = height - footer_height
             w = content_width
             h = footer_height
-
 
             return {
                 "type": "footer",

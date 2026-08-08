@@ -190,7 +190,9 @@ class ExecutionMapValidator:
                 continue
 
             if action not in _KNOWN_ACTIONS.get(engine, set()):
-                errors.append(f"Step {i}: unknown action '{action}' for engine '{engine}'")
+                errors.append(
+                    f"Step {i}: unknown action '{action}' for engine '{engine}'"
+                )
 
             # Validate URL parameters
             params = step.get("parameters", {})
@@ -218,7 +220,9 @@ class ExecutionMapValidator:
 
         # ── 5. Warnings ─────────────────────────────────────────────────────
         if len(steps) > 10:
-            warnings.append(f"Execution Map has {len(steps)} steps — consider simplifying")
+            warnings.append(
+                f"Execution Map has {len(steps)} steps — consider simplifying"
+            )
 
         if not fallbacks:
             warnings.append("Execution Map has no fallbacks")
@@ -244,9 +248,7 @@ class ExecutionMapValidator:
     def _is_dangerous(command: str) -> bool:
         """Check if a command contains dangerous patterns."""
         command_lower = command.lower()
-        return any(
-            re.search(pattern, command_lower) for pattern in _DANGEROUS_PATTERNS
-        )
+        return any(re.search(pattern, command_lower) for pattern in _DANGEROUS_PATTERNS)
 
 
 __all__ = ["ExecutionMapValidator", "ValidationResult"]

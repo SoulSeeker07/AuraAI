@@ -11,12 +11,11 @@ Tests:
 
 import pytest
 
-from core.backends.backend_registry import BackendRegistry
+from core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
 from core.backends.adapters.desktop_backend import DesktopEngineBackend
 from core.backends.adapters.gemini_backend import GeminiBackend
 from core.backends.adapters.groq_backend import GroqBackend
-from core.backends.adapters.antigravity_backend import AntigravityBackendAdapter
-
+from core.backends.backend_registry import BackendRegistry
 from core.orchestration import (
     MasterOrchestrator,
     PlannerRegistry,
