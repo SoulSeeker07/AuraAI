@@ -30,7 +30,7 @@ class RepositoryState:
     """Live model of repository state."""
 
     path: Path
-    name: str
+    name: str = ""
     language: str = "unknown"
     framework: str = "unknown"
     modules: list[str] = field(default_factory=list)
@@ -132,16 +132,43 @@ class RepositoryManager:
         self._build_state()
         return self._state
 
+    IGNORED_DIRS = {
+        ".venv",
+        "venv",
+        "node_modules",
+        ".git",
+        "__pycache__",
+        ".pytest_cache",
+        ".idea",
+        ".vscode",
+        "dist",
+        "build",
+    }
+
+    def _is_ignored(self, path: Path) -> bool:
+        """Check if a path is inside an ignored directory."""
+        return any(part in self.IGNORED_DIRS for part in path.parts)
+
+    def _safe_rglob(self, pattern: str) -> list[Path]:
+        """Safely find files matching pattern, filtering out ignored directories."""
+        results = []
+        try:
+            for p in self.repository_path.rglob(pattern):
+                if not self._is_ignored(p):
+                    results.append(p)
+        except Exception as e:
+            logger.warning(f"Error scanning pattern '{pattern}': {e}")
+        return results
+
     def _build_state(self):
         """Build the repository state."""
         self._state = RepositoryState(path=self.repository_path)
-
-        # Basic information
         self._state.name = self.repository_path.name
-        self._state.size = sum(
-            f.stat().st_size for f in self.repository_path.rglob("*") if f.is_file()
-        )
-        self._state.file_count = len(list(self.repository_path.rglob("*")))
+
+        # Count non-ignored files efficiently
+        all_files = [f for f in self._safe_rglob("*") if f.is_file()]
+        self._state.file_count = len(all_files)
+        self._state.size = sum(f.stat().st_size for f in all_files if f.exists())
 
         # Detect language/framework
         self._detect_language_and_framework()
@@ -171,13 +198,13 @@ class RepositoryManager:
 
     def _detect_language_and_framework(self):
         """Detect the programming language and framework."""
-        py_files = list(self.repository_path.rglob("*.py"))
-        js_files = list(self.repository_path.rglob("*.js"))
-        ts_files = list(self.repository_path.rglob("*.ts"))
-        java_files = list(self.repository_path.rglob("*.java"))
-        cpp_files = list(self.repository_path.rglob("*.cpp"))
-        go_files = list(self.repository_path.rglob("*.go"))
-        rs_files = list(self.repository_path.rglob("*.rs"))
+        py_files = self._safe_rglob("*.py")
+        js_files = self._safe_rglob("*.js")
+        ts_files = self._safe_rglob("*.ts")
+        java_files = self._safe_rglob("*.java")
+        cpp_files = self._safe_rglob("*.cpp")
+        go_files = self._safe_rglob("*.go")
+        rs_files = self._safe_rglob("*.rs")
 
         max_files = max(
             len(py_files),
@@ -191,14 +218,9 @@ class RepositoryManager:
 
         if max_files == len(py_files) and py_files:
             self._state.language = "python"
-            # Detect framework
-            if any(
-                "requirements.txt" in str(f) for f in self.repository_path.rglob("*")
-            ):
-                self._state.framework = "python"
-            elif any(
-                "pyproject.toml" in str(f) for f in self.repository_path.rglob("*")
-            ):
+            if (self.repository_path / "requirements.txt").exists() or (
+                self.repository_path / "pyproject.toml"
+            ).exists():
                 self._state.framework = "python"
 
         elif max_files == len(ts_files) and ts_files:
@@ -232,17 +254,17 @@ class RepositoryManager:
         """Find application entry points."""
         if self._state.language == "python":
             self._state.entrypoints.extend(
-                str(f) for f in self.repository_path.rglob("main.py")
+                str(f) for f in self._safe_rglob("main.py")
             )
             self._state.entrypoints.extend(
-                str(f) for f in self.repository_path.rglob("app.py")
+                str(f) for f in self._safe_rglob("app.py")
             )
         elif self._state.language == "typescript":
             self._state.entrypoints.extend(
-                str(f) for f in self.repository_path.rglob("index.ts")
+                str(f) for f in self._safe_rglob("index.ts")
             )
             self._state.entrypoints.extend(
-                str(f) for f in self.repository_path.rglob("main.ts")
+                str(f) for f in self._safe_rglob("main.ts")
             )
 
     def _find_test_files(self):
@@ -264,7 +286,7 @@ class RepositoryManager:
 
         for pattern in patterns:
             self._state.tests.extend(
-                str(f) for f in self.repository_path.rglob(pattern)
+                str(f) for f in self._safe_rglob(pattern)
             )
 
     def _find_documentation(self):
@@ -277,58 +299,40 @@ class RepositoryManager:
             "HISTORY.md",
             "history.md",
             "AUTHORS.md",
-            "docs/",
-            "doc/",
-            "readme/",
-            "docs/",
+            "docs",
+            "doc",
+            "readme",
         ]
 
         for pattern in doc_patterns:
-            if pattern.endswith("/"):
-                docs = list(self.repository_path.rglob(pattern))
-                self._state.documentation.extend(str(f) for f in docs if f.is_dir())
-            else:
-                docs = list(self.repository_path.rglob(pattern))
-                self._state.documentation.extend(str(f) for f in docs)
+            docs = self._safe_rglob(pattern)
+            self._state.documentation.extend(str(f) for f in docs)
 
     def _find_assets(self):
         """Find asset files."""
         asset_patterns = [
-            "assets/",
-            "static/",
-            "public/",
-            "dist/",
-            "build/",
-            "node_modules/",
-            "venv/",
-            "env/",
-            ".venv/",
-            ".env",
+            "assets",
+            "static",
+            "public",
         ]
 
         for pattern in asset_patterns:
-            assets = list(self.repository_path.rglob(pattern))
+            assets = self._safe_rglob(pattern)
             self._state.assets.extend(str(f) for f in assets if f.is_dir())
 
     def _find_configs(self):
         """Find configuration files."""
         config_patterns = [
-            "config/",
-            "configs/",
-            ".config/",
             "package.json",
             "tsconfig.json",
             "pyproject.toml",
             "setup.py",
             "setup.cfg",
             "requirements.txt",
-            ".env*",
-            "docker-compose*",
-            "Dockerfile*",
         ]
 
         for pattern in config_patterns:
-            configs = list(self.repository_path.rglob(pattern))
+            configs = self._safe_rglob(pattern)
             self._state.configs.extend(str(f) for f in configs)
 
     def _detect_git_status(self):

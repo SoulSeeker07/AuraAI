@@ -5,6 +5,7 @@ Streaming Text-to-Speech with low-latency, real-time playback.
 Enables responsive voice interactions.
 """
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable

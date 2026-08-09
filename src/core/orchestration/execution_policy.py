@@ -68,8 +68,8 @@ class PendingConfirmation:
 
 class ExecutionPolicy:
     """
-    Singleton that evaluates every desktop action request and decides
-    REUSE_EXISTING | LAUNCH_NEW | ASK_USER | CONFIRMED_LAUNCH | FAIL.
+    Singleton that evaluates desktop action requests, autonomy modes (ASK, ASSISTED, AUTONOMOUS),
+    and action risk levels.
 
     Holds pending confirmations across turns.
     """
@@ -77,7 +77,9 @@ class ExecutionPolicy:
     _instance: ExecutionPolicy | None = None
 
     def __init__(self) -> None:
+        from .autonomy_mode import AutonomyLevel
         self._pending: dict[str, PendingConfirmation] = {}
+        self._autonomy_level: AutonomyLevel = AutonomyLevel.ASSISTED
 
     @classmethod
     def get_instance(cls) -> ExecutionPolicy:
@@ -88,6 +90,54 @@ class ExecutionPolicy:
     @classmethod
     def reset_instance(cls) -> None:
         cls._instance = None
+
+    # ── Autonomy Level API ──────────────────────────────────────────────────
+
+    def set_autonomy_level(self, level: Any) -> None:
+        from .autonomy_mode import AutonomyLevel
+        if isinstance(level, str):
+            level = AutonomyLevel(level.lower())
+        self._autonomy_level = level
+        logger.info(f"ExecutionPolicy autonomy level set to: {self._autonomy_level.value}")
+
+    def get_autonomy_level(self) -> Any:
+        return self._autonomy_level
+
+    def evaluate_action(
+        self, engine: str, action: str, params: dict[str, Any] | None = None
+    ) -> PolicyDecision:
+        """
+        Evaluate any engine action against the active autonomy mode and action risk level.
+
+        Returns PolicyDecision with PolicyAction.ASK_USER if confirmation is required.
+        """
+        from .autonomy_mode import classify_action_risk, should_require_confirmation
+
+        risk = classify_action_risk(engine, action, params)
+        requires_conf = should_require_confirmation(self._autonomy_level, risk)
+
+        if requires_conf:
+            key = self._make_key(f"{engine}_{action}_{params}")
+            msg = (
+                f"Action [{engine}] '{action}' carries {risk.value.upper()} risk under "
+                f"{self._autonomy_level.value.upper()} autonomy. Require confirmation? (yes/no)"
+            )
+            self._pending[key] = PendingConfirmation(
+                key=key, app_name=f"{engine}.{action}", goal=f"Execute {action}"
+            )
+            logger.info(f"ExecutionPolicy action blocked: [{engine}] {action} (Risk: {risk.value}) → ASK_USER")
+            return PolicyDecision(
+                action=PolicyAction.ASK_USER,
+                message=msg,
+                app_name=f"{engine}.{action}",
+                confirmation_key=key,
+            )
+
+        return PolicyDecision(
+            action=PolicyAction.LAUNCH_NEW,
+            message=f"Action [{engine}] '{action}' approved under {self._autonomy_level.value.upper()} autonomy.",
+            app_name=f"{engine}.{action}",
+        )
 
     # ── Public API ──────────────────────────────────────────────────────────
 

@@ -82,6 +82,13 @@ class Memory:
         logger.info(f"[Memory] Chat log will be written to: {self.chat_log_path}")
 
         self._init_db()
+        try:
+            from src.memory.cognitive_memory import CognitiveMemoryEngine
+            self.cognitive = CognitiveMemoryEngine(db_path=self.db_path)
+        except Exception as e:
+            logger.warning(f"[Memory] CognitiveMemoryEngine init warning: {e}")
+            self.cognitive = None
+
         self.recover_profile_from_chat_log()
 
     # ------------------------------------------------------------------
@@ -539,6 +546,26 @@ class Memory:
             )
         logger.info("[Memory] Fact successfully inserted into database")
 
+        # Sync with Cognitive Memory Engine
+        if getattr(self, "cognitive", None) is not None:
+            try:
+                from src.memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
+                mem_type = MemoryType.PREFERENCE if category in ("preference", "profile") else MemoryType.LONG_TERM
+                item = MemoryItem(
+                    content=f"{category}: {key} = {value}",
+                    type=mem_type,
+                    importance=0.85 if category in ("preference", "profile", "important") else 0.6,
+                    topic=category,
+                    provenance=MemoryProvenance(
+                        source_type=ProvenanceSource.USER_EXPLICIT,
+                        verified=True,
+                    ),
+                    metadata={"category": category, "key": key, "value": value},
+                )
+                self.cognitive.store_memory(item)
+            except Exception as e:
+                logger.warning(f"[Memory] Cognitive memory sync error: {e}")
+
         # Log memory count after insertion
         new_count = self.count_memories()
         logger.info(
@@ -625,7 +652,7 @@ class Memory:
         raise AttributeError(f"'Memory' object has no attribute '{name}'")
 
     def __setattr__(self, name: str, value: Any) -> None:
-        standard_attrs = ["db_path", "chat_log_path"]
+        standard_attrs = ["db_path", "chat_log_path", "cognitive"]
         if name in standard_attrs or name.startswith("_"):
             super().__setattr__(name, value)
         else:

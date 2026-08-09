@@ -84,7 +84,7 @@ class VoiceManager:
 
         # Barge-in handler
         self.barge_in_handler = BargeInHandler(
-            vad_callback=self._on_vad_speech_start,
+            vad_callback=self._on_speech_start,
             on_interrupt=self._on_interrupt,
             on_resume=self._on_resume,
         )
@@ -151,12 +151,14 @@ class VoiceManager:
         self.wake_word.on_wake_word_detected = self._on_wake_word_detected
 
         # STT callbacks
-        self.stt_manager.engine._partial_callback = self._on_stt_partial
-        self.stt_manager.engine._final_callback = self._on_stt_final
+        if getattr(self.stt_manager, "engine", None):
+            self.stt_manager.engine._partial_callback = self._on_stt_partial
+            self.stt_manager.engine._final_callback = self._on_stt_final
 
         # TTS callbacks
-        self.tts_manager.engine._playback_complete_callback = self._on_tts_complete
-        self.tts_manager.engine._interrupt_callback = self._on_tts_interrupt
+        if getattr(self.tts_manager, "engine", None):
+            self.tts_manager.engine._playback_complete_callback = self._on_tts_complete
+            self.tts_manager.engine._interrupt_callback = self._on_tts_interrupt
 
         # Interruption callbacks
         self.interruption_manager.on_interrupt_start = self._on_interrupt_start
@@ -476,7 +478,8 @@ class VoiceManager:
 
         # Transition to next state
         self._update_state(ConversationState.IDLE)
-        self.session.update_state(ConversationState.IDLE)
+        if self.session:
+            self.session.update_state(ConversationState.IDLE)
 
     def _on_tts_interrupt(self) -> None:
         """Called when TTS is interrupted."""

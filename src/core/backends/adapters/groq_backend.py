@@ -6,8 +6,12 @@ High-speed LLM backend adapter for quick reasoning and chat.
 from datetime import datetime
 from typing import Any
 
-from ...planning.execution_result import ExecutionResult
-from ..base_backend import BaseBackendAdapter
+try:
+    from ...planning.execution_result import ExecutionResult
+    from ..base_backend import BaseBackendAdapter
+except (ImportError, ValueError):
+    from core.planning.execution_result import ExecutionResult
+    from core.backends.base_backend import BaseBackendAdapter
 
 
 class GroqBackend(BaseBackendAdapter):

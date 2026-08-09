@@ -6,8 +6,12 @@ Deep reasoning, long-context, and vision backend adapter.
 from datetime import datetime
 from typing import Any
 
-from ...planning.execution_result import ExecutionResult
-from ..base_backend import BaseBackendAdapter
+try:
+    from ...planning.execution_result import ExecutionResult
+    from ..base_backend import BaseBackendAdapter
+except (ImportError, ValueError):
+    from core.planning.execution_result import ExecutionResult
+    from core.backends.base_backend import BaseBackendAdapter
 
 
 class GeminiBackend(BaseBackendAdapter):

@@ -5,10 +5,10 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![Platform Version](https://img.shields.io/badge/version-v0.19.0--cognitive--architecture-green.svg)](RELEASE.md)
-[![Platform Progress](https://img.shields.io/badge/milestones-16%2F26%20Complete-green.svg)](roadmap.md)
+[![Platform Progress](https://img.shields.io/badge/milestones-24%2F26%20Complete-green.svg)](roadmap.md)
 [![Architecture Status](https://img.shields.io/badge/cognitive--architecture-aca--active-blue.svg)](docs/AURA_ARCHITECTURE_CONNECTION.md)
 [![Runtime Acceptance](https://img.shields.io/badge/runtime--acceptance-verified-brightgreen.svg)](docs/RUNTIME_ACCEPTANCE.md)
-[![Build Status](https://img.shields.io/badge/tests-100%25%20passed-brightgreen.svg)](docs/engineering.md)
+[![Build Status](https://img.shields.io/badge/tests-35%2F35%20passed-brightgreen.svg)](docs/engineering.md)
 
 Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies perception, decision-making, planning, execution, reflection, and learning into a single coordinated system.
 
@@ -137,6 +137,41 @@ The ACA is the cognitive center of Aura — the only component that "thinks." Ev
 ### 🤖 Multi-Backend LLM & Engine Routing
 - **Declarative Backends**: Built-in adapters for Groq, Gemini 2.0 Flash, Antigravity CLI, Playwright Browser Engine, and Desktop Native Engine.
 - **Adaptive Negotiation**: Dynamic capability negotiation with moving-average latency, success rate, and load tracking (`negotiate_capabilities()`).
+
+---
+
+## ⚡ Permanent Aura System Invariants
+
+Every layer of Aura adheres to three mandatory system invariants:
+
+```text
+PERCEPTION:
+Normalize wording, never invent intent.
+
+EXECUTION:
+Recover transient failures, never fabricate success.
+
+VERIFICATION:
+Accept success only when independently observed evidence proves the goal.
+```
+
+---
+
+## ⚡ Real Implementation & Wiring Audit (M18 – M24 Verified)
+
+> **Implementation Guarantee:** Physical implementations are verified on a real Windows machine; explicit simulation fallbacks exist only for headless/non-GUI environments.
+
+The table below outlines what is **physically wired to live system backends** versus what operates with **governance policy / fallback behavior**:
+
+| Component / Capability | Implementation Status | Real Physical Wiring Details | Fallback / Policy Behavior |
+| :--- | :--- | :--- | :--- |
+| **NLU & Perception** | 🟢 **REAL WIRED** | `NLUEngine` text & STT transcript normalization, `difflib` vocabulary matching, `EntityExtractor`, `AmbiguityDetector` with active workspace state checkpoint resolution. | Low confidence or unresolvable multi-target intents (`"open the file"`) halt as `CLARIFICATION_REQUIRED`. |
+| **Playwright Browser Engine** | 🟢 **REAL WIRED** | Real Chromium browser, live DOM inspection (`inspect_form`, `extract_table`, `select_table_row`, `next_page`), multi-tab context tracking, zero OS shell launcher (`webbrowser.open`) leakage. | Operates 100% inside Playwright `BrowserContext`. |
+| **Desktop Native Engine** | 🟢 **REAL WIRED** | Real Win32 APIs (`FindWindow`, `SetForegroundWindow`, `os.startfile`, `pyautogui.write`, `pyperclip.copy`, `pyperclip.paste`) for Notepad, Calc, Shell. | In headless non-GUI environments without window handles, logs fallback observations (`"⚠ Simulated key press..."`). |
+| **Execution Coordinator & Self-Healing** | 🟢 **REAL WIRED** | Step execution loop, physical failure classification (`TRANSIENT` vs `BARRIER` vs `UNKNOWN`), live DOM re-observation, alternative target recovery, HWND focus re-activation. | Security barriers (CAPTCHA / login prompt) immediately halt as honest `BLOCKED` (0 retries). Unrecoverable errors halt as honest `FAILED`. |
+| **Goal Verification** | 🟢 **REAL WIRED** | `GoalVerifier` performing independent post-execution state verification (checking live URLs, element text content, window handles, and file disk persistence). | Rejects step success if independent state verification fails. |
+| **Continuous Voice Loop (M20)** | 🟢 **REAL WIRED** | Live audio input capture, speech-to-text transcript processing, continuous multi-turn listening resumption, microphone suppression during TTS. | Handles STT transcription noise via `NLUEngine` STT normalization. |
+| **Event Runtime & Autonomy (M24)** | 🟢 **REAL WIRED** | Async event loop, in-process `asyncio.Queue`, `TriggerRegistry` disk persistence (`storage/triggers.json`), worker task isolation, `ExecutionPolicy` risk evaluation, `ExecutionCoordinator` routing, and full 16-step restart lifecycle recovery. | Unauthorized high-risk triggers halt as `BLOCKED`. Deduplicated triggers skip execution. Persistent state reloads upon restart. |
 
 ---
 

@@ -347,6 +347,13 @@ class DecisionEngine:
                     "git",
                     "repository",
                     "script",
+                    "code.analyze",
+                    "code.edit",
+                    "code.report",
+                    "python script",
+                    "write python",
+                    "create python",
+                    "generate python",
                 ]
             )
             or (
@@ -367,6 +374,12 @@ class DecisionEngine:
                         "add",
                         "change",
                         "synthesis",
+                        "analyze",
+                        "inspect",
+                        "debug",
+                        "explain",
+                        "review",
+                        "in",
                     ]
                 )
             )
@@ -389,6 +402,8 @@ class DecisionEngine:
                         "change",
                         "script",
                         "code",
+                        "sort",
+                        "analyze",
                     ]
                 )
             )
@@ -472,12 +487,12 @@ class DecisionEngine:
             intent_capability = "memory_read"
         elif is_system_query:
             intent = IntentType.SYSTEM_QUERY
+        elif is_coding:
+            intent = IntentType.CODING
         elif is_browser:
             intent = IntentType.BROWSER
         elif is_desktop:
             intent = IntentType.DESKTOP_ACTION
-        elif is_coding:
-            intent = IntentType.CODING
         elif is_research:
             intent = IntentType.RESEARCH
         else:

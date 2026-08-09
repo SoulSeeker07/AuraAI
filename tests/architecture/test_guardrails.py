@@ -59,6 +59,16 @@ ENGINE_ALLOWLIST = {
     },
     ROOT
     / "src"
+    / "core"
+    / "backends"
+    / "adapters"
+    / "antigravity_backend.py": {
+        "reason": "Backend adapter direct engineering manager wrapper",
+        "owner": "Integration Team",
+        "milestone": "v0.20",
+    },
+    ROOT
+    / "src"
     / "engineering"
     / "engineering_manager.py": {
         "reason": "Legacy engineering sub-engines direct instantiation",

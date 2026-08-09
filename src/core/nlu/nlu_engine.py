@@ -1,0 +1,237 @@
+"""
+NLU Engine (Stage 0 Perception Layer)
+Location: src/core/nlu/nlu_engine.py
+
+Pure perception layer ("What did the human mean?").
+Performs text normalization, typo correction, shorthand expansion, entity extraction,
+and ambiguity detection, producing a structured NLUResult for DMM.
+
+Architectural Rule:
+    NLU is Perception, NOT Decision-Making.
+    NLU does NOT call backends, execute actions, or bypass DMM.
+"""
+
+import difflib
+import logging
+import re
+from typing import Any
+
+from .ambiguity_detector import AmbiguityDetector
+from .entity_extractor import EntityExtractor
+from .models import NLUResult
+
+logger = logging.getLogger(__name__)
+
+# Core vocabulary set for dynamic fuzzy matching
+_VOCABULARY = {
+    "open", "chrome", "google", "youtube", "tutorial", "video", "videos",
+    "notepad", "vscode", "sublime", "search", "find", "delete", "remove",
+    "close", "minimize", "maximize", "restore", "play", "select"
+}
+
+# Common shorthand, STT noise, and typos mapped to clean English
+_TYPO_MAP = {
+    "opn": "open",
+    "oepn": "open",
+    "openup": "open",
+    "chorme": "chrome",
+    "chrm": "chrome",
+    "crom": "chrome",
+    "gogle": "google",
+    "googl": "google",
+    "youtub": "youtube",
+    "yutub": "youtube",
+    "tutrial": "tutorial",
+    "tutoral": "tutorial",
+    "vid": "video",
+    "vids": "videos",
+    "notpad": "notepad",
+    "vsc": "vscode",
+    "vScode": "vscode",
+    "vs code": "vscode",
+    "sublm": "sublime",
+    "plz": "please",
+    "pls": "please",
+    "u": "you",
+    "ur": "your",
+    "r": "are",
+    "n": "and",
+    "wat": "what",
+    "wats": "what is",
+    "whats": "what is",
+    "showme": "show me",
+    "gimme": "give me",
+    "deleteit": "delete it",
+    "openit": "open it",
+    "cant": "can not",
+    "wont": "will not",
+    "dont": "do not",
+    "im": "i am",
+}
+
+
+class NLUEngine:
+    """
+    Stage 0 Perception Layer.
+
+    Normalizes user input, extracts entities, and scores intent confidence
+    without making execution decisions.
+    """
+
+    def __init__(self):
+        self.entity_extractor = EntityExtractor()
+        self.ambiguity_detector = AmbiguityDetector()
+
+    def process(self, raw_text: str, context: dict[str, Any] | None = None) -> NLUResult:
+        """
+        Process raw user text through the NLU perception pipeline.
+
+        Returns structured NLUResult containing normalized text, extracted entities,
+        non-binding intent hint, perception confidence score, and ambiguity prompt if needed.
+        """
+        if not raw_text or not raw_text.strip():
+            return NLUResult(
+                raw_text="",
+                normalized_text="",
+                confidence=0.0,
+                is_ambiguous=True,
+                clarification_prompt="I didn't receive any input. How can I help you?",
+            )
+
+        # 1. Fast Path: Text Normalization & Typo/Shorthand Correction
+        normalized_text, typos_fixed = self.normalize_text(raw_text)
+
+        # 2. Entity Extraction
+        entities = self.entity_extractor.extract_entities(normalized_text)
+
+        # 3. Non-binding Intent Hint Generation
+        intent_hint, intent_confidence = self._infer_intent_hint(normalized_text, entities)
+
+        # Overall Perception Confidence
+        overall_confidence = round(
+            0.6 * intent_confidence + (0.4 if entities else 0.3), 2
+        )
+        if typos_fixed:
+            overall_confidence = max(0.75, overall_confidence)
+
+        # 4. Ambiguity Assessment
+        nlu_result = self.ambiguity_detector.evaluate(
+            raw_text=raw_text,
+            normalized_text=normalized_text,
+            intent_hint=intent_hint,
+            entities=entities,
+            confidence=overall_confidence,
+            context=context,
+        )
+        nlu_result.metadata["typos_fixed"] = typos_fixed
+
+        logger.debug(f"[NLU] raw='{raw_text}' → norm='{normalized_text}' intent='{intent_hint}' conf={overall_confidence}")
+        return nlu_result
+
+    def normalize_text(self, text: str) -> tuple[str, list[str]]:
+        """
+        Normalize text: lowercasing, expanding shorthand, fixing common typos,
+        cleaning punctuation.
+
+        Returns (normalized_text, list_of_typos_fixed).
+        """
+        # Clean extra spaces & trailing punctuation except ?
+        cleaned = re.sub(r"\s+", " ", text.strip())
+        words = cleaned.split()
+        normalized_words = []
+        typos_fixed = []
+
+        for word in words:
+            word_clean = word.strip(".,!;:'\"")
+            word_lower = word_clean.lower()
+            if word_lower in _TYPO_MAP:
+                replacement = _TYPO_MAP[word_lower]
+                normalized_words.append(replacement)
+                typos_fixed.append(f"'{word_clean}'→'{replacement}'")
+            elif word_lower not in _VOCABULARY and len(word_lower) >= 4:
+                matches = difflib.get_close_matches(word_lower, list(_VOCABULARY), n=1, cutoff=0.75)
+                if matches:
+                    replacement = matches[0]
+                    normalized_words.append(replacement)
+                    typos_fixed.append(f"Fuzzy '{word_clean}'→'{replacement}'")
+                else:
+                    normalized_words.append(word_clean)
+            else:
+                normalized_words.append(word_clean)
+
+        normalized = " ".join(normalized_words)
+
+        # STT Multi-word phrase cleanup
+        stt_phrases = [
+            (r"\byou\s+tube\b", "youtube"),
+            (r"\ban\s+(search|find|open|play)\b", r"and \1"),
+        ]
+        for pat, repl in stt_phrases:
+            if re.search(pat, normalized, flags=re.IGNORECASE):
+                normalized = re.sub(pat, repl, normalized, flags=re.IGNORECASE)
+                typos_fixed.append(f"STT phrase '{pat}'→'{repl}'")
+
+        # Handle conversational prefixes like "can u open", "please open", "show me"
+        normalized = re.sub(
+            r"^(can|could|would|will)\s+(you|u)\s+(please|plz\s+)?",
+            "",
+            normalized,
+            flags=re.IGNORECASE,
+        ).strip()
+        normalized = re.sub(r"^(please|plz)\s+", "", normalized, flags=re.IGNORECASE).strip()
+
+        return normalized, typos_fixed
+
+    def _infer_intent_hint(
+        self, normalized_text: str, entities: dict[str, Any]
+    ) -> tuple[str, float]:
+        """
+        Infer a non-binding intent hint for DMM.
+
+        Returns (intent_hint_string, confidence_score).
+        """
+        norm_lower = normalized_text.lower()
+
+        # Desktop Action
+        if entities.get("app_name") or any(
+            w in norm_lower for w in ["open", "launch", "start", "close", "minimize", "focus", "bring"]
+        ):
+            return "desktop_action", 0.95
+
+        # Research / Search
+        if entities.get("search_query") or any(
+            w in norm_lower for w in ["search", "look up", "find", "google", "weather", "what is", "who is", "where is"]
+        ):
+            return "research", 0.90
+
+        # Coding
+        if any(
+            w in norm_lower
+            for w in [
+                "code",
+                "python",
+                "script",
+                "refactor",
+                "ast",
+                "git",
+                "bug",
+                "test",
+                "function",
+                "repository",
+            ]
+        ):
+            return "coding", 0.90
+
+        # Memory / Recall
+        if any(
+            w in norm_lower
+            for w in ["remember", "recall", "favorite", "my name", "what did we do", "summarize session"]
+        ):
+            return "memory", 0.90
+
+        # System Query
+        if any(w in norm_lower for w in ["system info", "cpu", "ram", "battery", "status", "version"]):
+            return "system_query", 0.90
+
+        # Default Chat / Conversation
+        return "chat", 0.70

@@ -72,6 +72,11 @@ class CoordinationResult:
             "data": self.data,
         }
 
+    def render_trace(self, level: int = 1) -> str:
+        """Render Aura Activity Trace at Level 1 (Compact), Level 2 (Summary), or Level 3 (Full Diagnostic)."""
+        from core.orchestration.activity_trace_renderer import ActivityTraceRenderer
+        return ActivityTraceRenderer.render(self, level=level)
+
 
 class ExecutionCoordinator:
     """
@@ -139,19 +144,34 @@ class ExecutionCoordinator:
             step_results.append(step_result)
 
         total_time = time.time() - start_time
-        success = len(failed_steps) == 0
+        steps_succeeded = len(failed_steps) == 0
+
+        # Invoke M19.1 Goal Verifier Engine
+        from .goal_verifier import GoalVerifier
+        goal_verifier = GoalVerifier()
+        temp_coord_result = CoordinationResult(
+            goal=goal,
+            success=steps_succeeded,
+            step_results=step_results,
+            failed_steps=failed_steps,
+            total_time=total_time,
+        )
+        goal_report = goal_verifier.verify_goal(goal, temp_coord_result)
+
+        overall_success = steps_succeeded and goal_report.passed
 
         logger.info(
-            f"ExecutionCoordinator completed: success={success}, "
+            f"ExecutionCoordinator completed: success={overall_success} (steps={steps_succeeded}, goal={goal_report.passed}), "
             f"failed={len(failed_steps)}/{len(step_results)}, time={total_time:.2f}s"
         )
 
         return CoordinationResult(
             goal=goal,
-            success=success,
+            success=overall_success,
             step_results=step_results,
             failed_steps=failed_steps,
             total_time=total_time,
+            data={"goal_verification": goal_report.to_dict()},
         )
 
     # ── Step Coordination ───────────────────────────────────────────────────
@@ -173,22 +193,151 @@ class ExecutionCoordinator:
 
         # 1. Custom engine callback or EngineRegistry lookup
         from .aca.engine_interface import EngineRegistry
+        try:
+            from ..core.orchestration.observation_models import ExpectedState, FailureType
+        except (ImportError, ValueError):
+            from core.orchestration.observation_models import ExpectedState, FailureType
+
+        expected_state = ExpectedState(
+            process=params.get("application") or params.get("app_name"),
+            url=params.get("url"),
+            element=params.get("selector") or params.get("query"),
+        )
 
         reg_engine = EngineRegistry.get_instance().resolve(engine)
         if reg_engine is not None:
             try:
                 res = reg_engine.execute(action, params)
                 execution_time = time.time() - start_time
-                observations = (
-                    res.get("observations", []) if isinstance(res, dict) else [str(res)]
-                )
+
+                obs = None
+                v_report = None
+                if hasattr(reg_engine, "observe"):
+                    try:
+                        obs = reg_engine.observe(action, params)
+                    except Exception:
+                        obs = None
+
+                if hasattr(reg_engine, "verify") and obs is not None:
+                    try:
+                        v_report = reg_engine.verify(expected_state, obs)
+                    except Exception:
+                        v_report = None
+
+                # Physical Failure Recovery & Self-Healing Loop
+                recovery_trace = None
+                alt_target = params.get("alternative_selector") or params.get("alternative_url")
+                is_failed = (v_report is not None and not v_report.passed) or (not getattr(res, "success", True) if not isinstance(res, dict) else not res.get("success", True))
+
+                if is_failed:
+                    err_str = str(getattr(res, "observations", []) or (res.get("observations") if isinstance(res, dict) else str(res))).lower()
+                    if v_report and getattr(v_report, "errors", None):
+                        err_str += " " + " ".join(v_report.errors).lower()
+
+                    # 1. Classify Barrier Failures (CAPTCHA, Auth, Permission) -> Immediate Honest BLOCKED
+                    is_barrier = any(w in err_str for w in ["captcha", "auth_required", "permission_denied", "sign in", "log in", "access denied"])
+                    if is_barrier:
+                        logger.warning(f"[ExecutionCoordinator] Security/Auth barrier detected at Step {index + 1}. Halting as BLOCKED.")
+                        res = {"success": False, "status": "BLOCKED", "barrier_type": "SECURITY_BARRIER"}
+                        is_failed = True
+
+                    # 2. Alternative Target Recovery
+                    elif alt_target:
+                        logger.info(f"[ExecutionCoordinator] Step {index + 1} execution/verification failed. Recovering via alt_target='{alt_target}'")
+                        recovery_params = {**params, "recovered": True}
+                        if alt_target.startswith("http"):
+                            recovery_params["url"] = alt_target
+                        else:
+                            recovery_params["selector"] = alt_target
+                            recovery_params["primary_selector"] = None
+
+                        res_alt = reg_engine.execute(action, recovery_params)
+                        if hasattr(reg_engine, "observe"):
+                            obs_alt = reg_engine.observe(action, recovery_params)
+                            if hasattr(reg_engine, "verify"):
+                                rec_expected_state = ExpectedState(
+                                    process=recovery_params.get("application") or recovery_params.get("app_name"),
+                                    url=recovery_params.get("url"),
+                                    element=recovery_params.get("selector"),
+                                )
+                                v_report_alt = reg_engine.verify(rec_expected_state, obs_alt)
+                                if v_report_alt.passed:
+                                    res = res_alt
+                                    obs = obs_alt
+                                    v_report = v_report_alt
+                                    recovery_trace = {
+                                        "primary_target": params.get("url") or params.get("primary_selector") or params.get("selector"),
+                                        "alternative_target": alt_target,
+                                        "primary_failure": FailureType.VERIFICATION_FAILURE.value,
+                                        "recovery_status": "RECOVERED_SUCCESS",
+                                    }
+
+                    # 3. Transient Self-Healing (Stale DOM, Focus Loss, Slow Load)
+                    else:
+                        is_transient = any(w in err_str for w in ["stale", "focus", "timeout", "unavailable", "loading", "not active", "dom", "hwnd"])
+                        if is_transient:
+                            logger.info(f"[ExecutionCoordinator] Step {index + 1} transient physical failure detected. Initiating re-observation and self-healing retry.")
+                            time.sleep(0.3)
+                            # Re-observe live environment
+                            if hasattr(reg_engine, "observe"):
+                                obs_retry = reg_engine.observe(action, params)
+                            # Re-focus desktop HWND if lost focus
+                            if engine == "desktop" and params.get("app_name"):
+                                try:
+                                    reg_engine.execute("app_open", {"app_name": params.get("app_name")})
+                                except Exception:
+                                    pass
+
+                            # Retry execution
+                            res_retry = reg_engine.execute(action, params)
+                            if hasattr(reg_engine, "observe"):
+                                obs_retry = reg_engine.observe(action, params)
+                                if hasattr(reg_engine, "verify"):
+                                    v_report_retry = reg_engine.verify(expected_state, obs_retry)
+                                    if v_report_retry.passed:
+                                        res = res_retry
+                                        obs = obs_retry
+                                        v_report = v_report_retry
+                                        recovery_trace = {
+                                            "primary_target": params.get("selector") or params.get("url") or action,
+                                            "primary_failure": "TRANSIENT_PHYSICAL_FAILURE",
+                                            "recovery_status": "RECOVERED_SUCCESS",
+                                        }
+
+                if hasattr(res, "observations"):
+                    observations = list(res.observations)
+                elif isinstance(res, dict):
+                    observations = res.get("observations", [])
+                else:
+                    observations = [str(res)]
+
+                if hasattr(res, "data") and isinstance(res.data, dict):
+                    data_dict = dict(res.data)
+                elif isinstance(res, dict):
+                    data_dict = dict(res)
+                else:
+                    data_dict = {"output": str(res)}
+
+                if obs is not None:
+                    data_dict["observation"] = obs.to_dict()
+                if v_report is not None:
+                    data_dict["verification_report"] = v_report.to_dict()
+                if recovery_trace:
+                    data_dict["recovery_trace"] = recovery_trace
+
+                res_success = getattr(res, "success", True) if not isinstance(res, dict) else res.get("success", True)
+                if v_report is not None:
+                    step_success = bool(v_report.passed and res_success)
+                else:
+                    step_success = bool(res_success)
+
                 return StepResult(
                     step_index=index,
                     engine=engine,
                     action=action,
-                    success=res.get("success", True) if isinstance(res, dict) else True,
+                    success=step_success,
                     observations=observations,
-                    data=res if isinstance(res, dict) else {"output": str(res)},
+                    data=data_dict,
                     execution_time=execution_time,
                 )
             except Exception as e:

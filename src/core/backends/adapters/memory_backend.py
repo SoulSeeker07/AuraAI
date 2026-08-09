@@ -8,8 +8,12 @@ Integrates the unified memory database as a registered Backend Adapter.
 import logging
 from typing import Any
 
-from ...planning.execution_result import ExecutionResult
-from ..base_backend import BaseBackendAdapter
+try:
+    from ...planning.execution_result import ExecutionResult
+    from ..base_backend import BaseBackendAdapter
+except (ImportError, ValueError):
+    from core.planning.execution_result import ExecutionResult
+    from core.backends.base_backend import BaseBackendAdapter
 
 
 class MemoryBackend(BaseBackendAdapter):

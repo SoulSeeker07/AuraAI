@@ -1303,10 +1303,10 @@ class TaskDecomposer:
             subtasks.append(
                 SubTask(
                     task_id=t_id,
-                    title="Execute Code Changes & Synthesis",
+                    title="Execute Code Operation",
                     required_role=PlannerRole.CODING,
                     capability="coding",
-                    description="Implement code updates and generate artifacts",
+                    description=raw_goal,
                     dependencies=deps,
                 )
             )

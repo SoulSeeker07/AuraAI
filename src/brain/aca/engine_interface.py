@@ -96,10 +96,13 @@ class EngineRegistry:
         """Reset global EngineRegistry singleton instance."""
         cls._instance = None
 
-    def register(self, engine: Engine) -> None:
-        """Register an engine."""
-        self._engines[engine.name] = engine
-        logger.info(f"EngineRegistry registered: {engine.name}")
+    def register(self, engine: Any, name: str | None = None) -> None:
+        """Register an engine, optionally with a custom alias name."""
+        key = name or getattr(engine, "name", "unknown")
+        self._engines[key] = engine
+        if hasattr(engine, "name") and engine.name not in self._engines:
+            self._engines[engine.name] = engine
+        logger.info(f"EngineRegistry registered: {key}")
 
     def resolve(self, name: str) -> Engine | None:
         """Resolve an engine by name."""

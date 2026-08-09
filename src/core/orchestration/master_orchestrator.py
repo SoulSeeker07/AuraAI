@@ -16,11 +16,17 @@ Operates natively on AgentSession processes across the 7-stage cognitive pipelin
 import asyncio
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-from ..backends.backend_registry import BackendRegistry
-from ..planning.execution_result import ExecutionResult
-from ..system.prompt_builder import PromptBuilder
+try:
+    from ..backends.backend_registry import BackendRegistry
+    from ..planning.execution_result import ExecutionResult
+    from ..system.prompt_builder import PromptBuilder
+except (ImportError, ValueError):
+    from core.backends.backend_registry import BackendRegistry
+    from core.planning.execution_result import ExecutionResult
+    from core.system.prompt_builder import PromptBuilder
 from .agent_session import AgentSession, ExecutionBudget
 from .artifact import Artifact
 from .decision_engine import DecisionEngine
@@ -48,6 +54,7 @@ class MasterOrchestrator:
         decision_engine: DecisionEngine | None = None,
         supervisor_agent: SupervisorAgent | None = None,
         result_merger: ResultMerger | None = None,
+        memory_db_path: Path | str | None = None,
     ):
         self.planner_registry = planner_registry or PlannerRegistry.get_instance()
         self.backend_registry = backend_registry or BackendRegistry.get_instance()
@@ -55,6 +62,7 @@ class MasterOrchestrator:
         self.decision_engine = decision_engine or DecisionEngine()
         self.supervisor = supervisor_agent or SupervisorAgent(self.planner_registry)
         self.result_merger = result_merger or ResultMerger()
+        self.memory_db_path = memory_db_path
         self._last_result: Any = None
         self._last_session: Any = (
             None  # AgentSession — used for session-scoped confirmation
@@ -82,9 +90,9 @@ class MasterOrchestrator:
         )
 
     @classmethod
-    def get_instance(cls) -> "MasterOrchestrator":
-        if cls._instance is None:
-            cls._instance = cls()
+    def get_instance(cls, memory_db_path: Path | str | None = None) -> "MasterOrchestrator":
+        if cls._instance is None or memory_db_path is not None:
+            cls._instance = cls(memory_db_path=memory_db_path)
         return cls._instance
 
     @classmethod
@@ -289,9 +297,38 @@ class MasterOrchestrator:
         self._last_session = session  # for session-scoped confirmation resolution
         self._log_pipeline_start(goal_text, session.session_id)
 
+        # Stage 0: Perception (NLU Layer)
+        t_nlu = datetime.now().timestamp()
+        try:
+            from ..nlu.nlu_engine import NLUEngine
+
+            nlu_engine = NLUEngine()
+            nlu_result = nlu_engine.process(goal_text, context={"session_id": session.session_id})
+            session.metrics["nlu_ms"] = round(
+                (datetime.now().timestamp() - t_nlu) * 1000, 2
+            )
+            session.metrics["nlu_result"] = nlu_result.to_dict()
+
+            # Ambiguity Clarification Gate: ask for clarification if perception is ambiguous
+            if nlu_result.is_ambiguous and nlu_result.clarification_prompt:
+                logger.info(f"[MasterOrchestrator] Perception ambiguous: {nlu_result.clarification_prompt}")
+                return ExecutionResult(
+                    success=False,
+                    planner="nlu_perception",
+                    goal=goal_text,
+                    confidence=nlu_result.confidence,
+                    observations=[nlu_result.clarification_prompt],
+                    data={"is_ambiguous": True, "nlu_result": nlu_result.to_dict()},
+                )
+
+            effective_goal = nlu_result.normalized_text or goal_text
+        except Exception as e:
+            logger.warning(f"[MasterOrchestrator] NLU perception bypass on error: {e}")
+            effective_goal = goal_text
+
         # Stage 1: Memory Recall
         t0 = datetime.now().timestamp()
-        session.memory_context = self._recall_memory(goal_text)
+        session.memory_context = self._recall_memory(effective_goal)
         session.metrics["memory_recall_ms"] = round(
             (datetime.now().timestamp() - t0) * 1000, 2
         )
@@ -508,6 +545,53 @@ class MasterOrchestrator:
                 session.metrics["reference_resolved"] = ref_meta
         except Exception as exc:
             logger.debug(f"Reference resolution skipped: {exc}")
+
+        # Stage 1.6: Dynamic Preference Resolution ("Open my favorite editor" -> "Open VS Code")
+        try:
+            if any(w in goal_text.lower() for w in ["favorite", "preferred", "my editor", "my browser", "my ide"]):
+                ranked = session.memory_context.get("ranked_cognitive_memories") or []
+                pref_val = None
+                pref_slot = None
+                for mem_dict in ranked:
+                    meta = mem_dict.get("metadata", {})
+                    cat = meta.get("category")
+                    k = meta.get("key", "")
+                    val = meta.get("value")
+                    if cat in ("preference", "profile") or "editor" in k or "ide" in k or "browser" in k:
+                        if val:
+                            pref_val = val
+                            pref_slot = k or cat
+                            break
+                    content = mem_dict.get("content", "")
+                    if "VS Code" in content:
+                        pref_val = "VS Code"
+                        pref_slot = "favorite_editor"
+                        break
+
+                if not pref_val:
+                    try:
+                        from Memory import Memory as AuraMemory
+                        amem = AuraMemory()
+                        if getattr(amem, "cognitive", None) is not None:
+                            p_mems = amem.cognitive.search_memories("editor ide favorite preference", limit=5)
+                            for pm in p_mems:
+                                if "VS Code" in pm.content or pm.metadata.get("value") == "VS Code":
+                                    pref_val = pm.metadata.get("value") or "VS Code"
+                                    pref_slot = pm.metadata.get("key") or "favorite_editor"
+                                    break
+                    except Exception:
+                        pass
+
+                if pref_val:
+                    import re
+                    new_goal = re.sub(r"\bmy\s+(?:favorite\s+|preferred\s+)?(?:editor|ide)\b", pref_val, goal_text, flags=re.IGNORECASE)
+                    if new_goal != goal_text:
+                        logger.info(f"[MasterOrchestrator] Resolved preference '{goal_text}' -> '{new_goal}' (slot={pref_slot}, val={pref_val})")
+                        goal_text = new_goal
+                        session.goal = new_goal
+                        session.metrics["preference_resolved"] = {"slot": pref_slot, "value": pref_val}
+        except Exception as pref_err:
+            logger.debug(f"Preference resolution skipped: {pref_err}")
 
         # Stage 2: Decision Engine (Reasoning, Risk, Budget, Policy)
         t1 = datetime.now().timestamp()
@@ -927,6 +1011,7 @@ class MasterOrchestrator:
             ):
                 sub_res = shared_context["previous_results"][single_task_id]
                 final_result.planner = getattr(sub_res, "planner", final_result.planner)
+                final_result.success = sub_res.success
                 if isinstance(sub_res.data, dict):
                     for k, v in sub_res.data.items():
                         if k not in final_result.data:
@@ -1002,9 +1087,9 @@ class MasterOrchestrator:
 
         return exec_res
 
-    def _recall_memory(self, goal: str) -> dict[str, Any]:
-        """Stage 1: Pre-fetch memory context from persistent store."""
-        logger.info(f"Stage 1 Memory Recall for goal: '{goal[:30]}...'")
+    def _recall_memory(self, goal: str, project_id: str = "global") -> dict[str, Any]:
+        """Stage 1: Pre-fetch ranked cognitive memory context from persistent store."""
+        logger.info(f"Stage 1 Cognitive Memory Recall for goal: '{goal[:30]}...' [project={project_id}]")
         try:
             try:
                 from Memory import Memory as AuraMemory
@@ -1017,16 +1102,26 @@ class MasterOrchestrator:
                     sys.path.insert(0, root_path)
                 from Memory import Memory as AuraMemory
 
-            mem = AuraMemory()
+            mem = AuraMemory(db_path=self.memory_db_path) if self.memory_db_path else AuraMemory()
             facts = mem.search(goal)
             all_facts = mem.facts()
             context_str = mem.build_context(user_input=goal)
+
+            ranked_items = []
+            if getattr(mem, "cognitive", None) is not None:
+                try:
+                    ranked_memories = mem.cognitive.recall_ranked(query=goal, active_project=project_id, limit=10)
+                    ranked_items = [m.to_dict() for m in ranked_memories]
+                except Exception as rank_err:
+                    logger.warning(f"Cognitive ranked recall warning: {rank_err}")
+
             return {
                 "recalled_facts": [f.value for f in facts],
                 "all_facts": [
                     {"category": f.category, "key": f.key, "value": f.value}
                     for f in all_facts
                 ],
+                "ranked_cognitive_memories": ranked_items,
                 "context_string": context_str,
                 "session_id": "current_session",
             }
@@ -1034,10 +1129,10 @@ class MasterOrchestrator:
             logger.warning(
                 f"Memory recall failed, falling back to empty context: {exc}"
             )
-            return {"recalled_facts": [], "session_id": "current_session"}
+            return {"recalled_facts": [], "ranked_cognitive_memories": [], "session_id": "current_session"}
 
     def _write_memory(self, session: AgentSession, result: ExecutionResult) -> None:
-        """Stage 7: Persist outcomes to unified memory."""
+        """Stage 7: Persist outcomes to unified memory and run verified consolidation."""
         logger.info(
             f"Stage 7 Memory Write for Session [{session.session_id}] (Success={result.success})"
         )
@@ -1053,7 +1148,7 @@ class MasterOrchestrator:
                     sys.path.insert(0, root_path)
                 from Memory import Memory as AuraMemory
 
-            mem = AuraMemory()
+            mem = AuraMemory(db_path=self.memory_db_path) if self.memory_db_path else AuraMemory()
             obs_summary = (
                 "; ".join(result.observations[:3])
                 if result.observations
@@ -1064,6 +1159,25 @@ class MasterOrchestrator:
                 answer=f"Result success={result.success}. {obs_summary}",
                 topic=result.planner or "orchestrator",
             )
+
+            # Cognitive Memory Consolidation (Guardrail: only verified successful sessions consolidate)
+            if getattr(mem, "cognitive", None) is not None:
+                try:
+                    project_id = getattr(session, "project_id", "global")
+                    consolidated = mem.cognitive.consolidation_engine.consolidate_session(
+                        session_id=session.session_id,
+                        goal=session.goal,
+                        execution_success=result.success,
+                        observations=result.observations,
+                        data=result.data if isinstance(result.data, dict) else {},
+                        project_id=project_id,
+                    )
+                    for item in consolidated:
+                        mem.cognitive.store_memory(item)
+                    logger.info(f"Stage 7 Cognitive Memory: Consolidated {len(consolidated)} verified item(s).")
+                except Exception as cons_err:
+                    logger.warning(f"Cognitive memory consolidation warning: {cons_err}")
+
         except Exception as exc:
             logger.warning(f"Memory write failed: {exc}")
 

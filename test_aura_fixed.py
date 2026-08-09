@@ -1,37 +1,42 @@
-Here’s a cleaned‑up, production‑ready version of the factorial function that addresses the only hidden issue — handling invalid inputs (negative numbers or non‑integers) and adding proper type hints and indentation.
+Here’s a cleaned‑up version of the factorial function that handles the common edge‑cases (negative numbers, non‑integers, and recursion‑depth limits) and includes a short docstring. The test at the bottom shows that it still produces the correct result for 5.
 ```python
 def factorial(n: int) -> int:
 """
-Compute n! (the factorial of n) using recursion.
-Args:
-n: A non‑negative integer.
-Returns:
-The factorial of n.
-Raises:
-ValueError: If n is negative.
-TypeError:  If n is not an integer.
+Return n! (n factorial) for a non‑negative integer n.
+Raises
+------
+TypeError
+If *n* is not an integer.
+ValueError
+If *n* is negative.
+RecursionError
+If *n* is too large for the recursive implementation (default limit ≈ 1000).
 """
-# Guard‑clauses for invalid input
+# ---- input validation -------------------------------------------------
 if not isinstance(n, int):
-raise TypeError("n must be an integer")
+raise TypeError("factorial() only accepts integer arguments")
 if n < 0:
-raise ValueError("n must be non‑negative")
-# Base case
+raise ValueError("factorial() is undefined for negative numbers")
+# ---- base case ---------------------------------------------------------
 if n == 0:
 return 1
-# Recursive case
+# ---- recursive step ----------------------------------------------------
 return n * factorial(n - 1)
-# ---- Test the function -------------------------------------------------
+# -------------------------- simple test ------------------------------------
 if __name__ == "__main__":
+try:
 result = factorial(5)
 print(f"Factorial of 5 is {result}")   # → Factorial of 5 is 120
+except (TypeError, ValueError, RecursionError) as e:
+print(f"Error: {e}")
 ```
-### What changed?
+### What changed / why
 | Change | Reason |
 |--------|--------|
-| **Added type hints (`n: int -> int`)** | Improves readability and IDE assistance (you love VS Code!). |
-| **Input validation (`isinstance`, `n < 0`)** | Prevents infinite recursion for negative numbers and gives clear error messages for wrong types. |
-| **Docstring** | Documents the function’s purpose, parameters, return value, and possible exceptions. |
-| **`if __name__ == "__main__":` guard** | Allows the file to be imported without automatically running the test code. |
-| **Proper indentation** | Ensures the code runs without `IndentationError`. |
-The core recursion (`return n * factorial(n‑1)`) remains the same, so the logic and performance for valid inputs are unchanged. If you ever need to compute very large factorials (e.g., > 1000), you could switch to an iterative version to avoid hitting Python’s recursion limit, but for typical use this recursive implementation works perfectly.
+| Added type hint (`n: int -> int`) | Improves readability and helps static analysers. |
+| Added a docstring | Documents expected behavior and possible exceptions. |
+| Checked `isinstance(n, int)` | Prevents obscure errors when a float or string is passed. |
+| Checked `n < 0` and raised `ValueError` | Avoids infinite recursion for negative inputs. |
+| Wrapped the test in `if __name__ == "__main__":` | Makes the script import‑safe (the function can be reused without running the test). |
+| Added a `try/except` block around the test | Shows graceful error handling if something goes wrong. |
+The function will still compute `factorial(5)` correctly (`120`). If you need to compute very large factorials (e.g., `factorial(2000)`), consider using an **iterative** version or Python’s built‑in `math.factorial`, which is optimized and not limited by recursion depth.

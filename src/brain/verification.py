@@ -183,4 +183,33 @@ class VerificationEngine:
         return False
 
 
-__all__ = ["VerificationEngine", "VerificationReport", "VerificationCheck"]
+@dataclass
+class GoalVerificationReport:
+    """Independent end-to-end goal verification report."""
+
+    goal: str
+    passed: bool
+    failure_type: str = "none"
+    evidence: list[str] = field(default_factory=list)
+    observed_state: dict[str, Any] = field(default_factory=dict)
+    step_count: int = 0
+    verified_steps: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "goal": self.goal,
+            "passed": self.passed,
+            "failure_type": self.failure_type,
+            "evidence": self.evidence,
+            "observed_state": self.observed_state,
+            "step_count": self.step_count,
+            "verified_steps": self.verified_steps,
+        }
+
+
+__all__ = [
+    "VerificationEngine",
+    "VerificationReport",
+    "VerificationCheck",
+    "GoalVerificationReport",
+]
