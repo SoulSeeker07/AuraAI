@@ -21,13 +21,11 @@ from .models import (
     ConversationSession,
     ConversationState,
     InterruptReason,
-    STTSettings,
-    TTSSettings,
     VADMode,
     VoiceContext,
 )
-from .stt_manager import STTManager, STTProvider
-from .tts_manager import TTSManger, TTSSpeaker
+from .stt_manager import STTManager, STTProvider, STTSettings
+from .tts_manager import TTSManger, TTSSpeaker, TTSSettings
 from .vad import VoiceActivityDetector
 from .wake_word import WakeWordManager, WakeWordProvider
 
@@ -115,17 +113,18 @@ class VoiceManager:
             "wake_word_sensitivity": 0.5,
             "wake_word_phrases": ["aura", "hey aura"],
             "stt_settings": {
-                "provider": STTProvider.WHISPER.value,
-                "language": "en-US",
+                "provider": STTProvider.FASTER_WHISPER.value,
+                "language": "en",
                 "sample_rate": 16000,
-                "model_size": "base",
+                "model_size": "tiny",
                 "verbose": False,
                 "chunk_size": 20,
                 "processing_delay_ms": 50,
                 "max_alternatives": 1,
             },
             "tts_settings": {
-                "speaker": TTSSpeaker.EDGE_TTS.value,
+                "speaker": TTSSpeaker.PIPER.value,
+                "fallback_speaker": TTSSpeaker.EDGE_TTS.value,
                 "voice": None,
                 "rate": 1.0,
                 "pitch": 1.0,
@@ -155,10 +154,12 @@ class VoiceManager:
             self.stt_manager.engine._partial_callback = self._on_stt_partial
             self.stt_manager.engine._final_callback = self._on_stt_final
 
-        # TTS callbacks
-        if getattr(self.tts_manager, "engine", None):
-            self.tts_manager.engine._playback_complete_callback = self._on_tts_complete
-            self.tts_manager.engine._interrupt_callback = self._on_tts_interrupt
+        # TTS callbacks — use set_callbacks() so they are stored and applied
+        # when the engine is lazily created, even if it doesn't exist yet.
+        self.tts_manager.set_callbacks(
+            complete=self._on_tts_complete,
+            interrupt=self._on_tts_interrupt,
+        )
 
         # Interruption callbacks
         self.interruption_manager.on_interrupt_start = self._on_interrupt_start
@@ -222,12 +223,20 @@ class VoiceManager:
     def activate(self) -> bool:
         """Activate wake word listening."""
         with self._lock:
+            if self.state == ConversationState.WAKE_LISTENING:
+                return True
+
             if self.state != ConversationState.IDLE:
                 logger.warning(f"Voice system not in IDLE state, current: {self.state}")
                 return False
 
             try:
-                self.wake_word.activate()
+                if not self.wake_word.activate():
+                    logger.error("Failed to activate wake word")
+                    return False
+                if not self._ensure_input_recording():
+                    logger.error("Failed to start microphone stream for wake word")
+                    return False
                 self._update_state(ConversationState.WAKE_LISTENING)
                 return True
 
@@ -241,7 +250,19 @@ class VoiceManager:
         """Deactivate voice system."""
         with self._lock:
             self.wake_word.deactivate()
+            self.audio_manager.stop_recording()
             self._update_state(ConversationState.IDLE)
+
+    def _on_audio_chunk(self, chunk: bytes) -> None:
+        """Route microphone audio through the active voice state machine."""
+        self.process_audio(chunk, 16000)
+
+    def _ensure_input_recording(self) -> bool:
+        """Ensure the microphone stream is owned by VoiceManager."""
+        if self.audio_manager.is_recording():
+            return True
+
+        return self.audio_manager.start_recording(self._on_audio_chunk)
 
     def process_audio(self, audio_data: bytes, sample_rate: int) -> None:
         """
@@ -300,11 +321,7 @@ class VoiceManager:
                 logger.error("Failed to initialize STT")
                 return
 
-            # Start audio recording
-            def on_audio_chunk(chunk: bytes) -> None:
-                self.process_audio(chunk, 16000)
-
-            if not self.audio_manager.start_recording(on_audio_chunk):
+            if not self._ensure_input_recording():
                 logger.error("Failed to start audio recording")
                 return
 
@@ -341,7 +358,7 @@ class VoiceManager:
 
             if not transcript:
                 logger.warning("No transcript generated")
-                return
+                transcript = ""
 
             # Create voice context
             context = VoiceContext(transcript=transcript)
@@ -350,16 +367,17 @@ class VoiceManager:
 
             logger.info(f"Final transcript: {transcript}")
 
-            if self.on_stt_result:
-                self.on_stt_result(context)
-
             # Transition to thinking
             self._update_state(ConversationState.THINKING)
-            self.session.update_state(ConversationState.THINKING)
+            if self.session:
+                self.session.update_state(ConversationState.THINKING)
 
-            # Stop recording
+            # Suppress the microphone before coordinator/TTS work begins.
             self.audio_manager.stop_recording()
             self.stt_manager.reset()
+
+            if self.on_stt_result:
+                self.on_stt_result(context)
 
         except Exception as e:
             logger.error(f"Error finalizing STT: {e}")
@@ -377,7 +395,9 @@ class VoiceManager:
             True if successful
         """
         try:
-            # Add text to TTS
+            self.audio_manager.stop_recording()
+
+            # Add text to TTS (lazy initialization happens inside add_text if needed)
             if not self.tts_manager.add_text(text):
                 logger.error("Failed to add text to TTS")
                 return False
@@ -389,7 +409,8 @@ class VoiceManager:
 
             # Update state
             self._update_state(ConversationState.SPEAKING)
-            self.session.update_state(ConversationState.SPEAKING)
+            if self.session:
+                self.session.update_state(ConversationState.SPEAKING)
 
             logger.info(f"Speaking: {text}")
 
@@ -473,13 +494,13 @@ class VoiceManager:
         """Called when TTS completes."""
         logger.info("TTS complete")
 
-        if self.on_tts_complete:
-            self.on_tts_complete()
-
         # Transition to next state
         self._update_state(ConversationState.IDLE)
         if self.session:
             self.session.update_state(ConversationState.IDLE)
+
+        if self.on_tts_complete:
+            self.on_tts_complete()
 
     def _on_tts_interrupt(self) -> None:
         """Called when TTS is interrupted."""

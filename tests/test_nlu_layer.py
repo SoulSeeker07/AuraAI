@@ -17,9 +17,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.core.nlu.ambiguity_detector import AmbiguityDetector
-from src.core.nlu.entity_extractor import EntityExtractor
-from src.core.nlu.nlu_engine import NLUEngine
+from core.nlu.ambiguity_detector import AmbiguityDetector
+from core.nlu.entity_extractor import EntityExtractor
+from core.nlu.nlu_engine import NLUEngine
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@ Location: tests/test_runtime_checkpoints.py
 """
 
 import pytest
-from src.core.orchestration.runtime_checkpoint import (
+from core.orchestration.runtime_checkpoint import (
     RuntimeCheckpointManager,
     ActionReversibility,
 )

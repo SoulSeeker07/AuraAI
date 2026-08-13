@@ -10,13 +10,192 @@ Verifies:
 """
 
 import pytest
-from src.brain.aca.engine_interface import EngineRegistry
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
-from src.core.backends.adapters.desktop_backend import DesktopEngineBackend
-from src.voice.continuous_loop import ContinuousVoiceLoop
-from src.voice.models import ConversationState, VoiceContext
-from src.voice.voice_manager import VoiceManager
+from brain.aca.engine_interface import EngineRegistry
+from brain.execution_coordinator import ExecutionCoordinator
+from core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
+from core.backends.adapters.desktop_backend import DesktopEngineBackend
+from voice.continuous_loop import ContinuousVoiceLoop
+from voice.audio_manager import AudioDeviceInfo
+from voice.models import ConversationState, VoiceContext
+from voice.voice_manager import VoiceManager
+
+
+class FakeAudioManager:
+    def __init__(self):
+        self.recording = False
+        self.start_count = 0
+        self.stop_count = 0
+        self.callback = None
+        self.input_device = AudioDeviceInfo(1, "Fake Mic", input=True, output=False)
+        self.output_device = AudioDeviceInfo(2, "Fake Speaker", input=False, output=True)
+
+    def get_default_input_device(self):
+        return self.input_device
+
+    def get_default_output_device(self):
+        return self.output_device
+
+    def select_input_device(self, device_id):
+        return True
+
+    def select_output_device(self, device_id):
+        return True
+
+    def start_recording(self, callback, sample_rate=16000, channels=1, device_id=None):
+        if self.recording:
+            return False
+        self.recording = True
+        self.start_count += 1
+        self.callback = callback
+        return True
+
+    def stop_recording(self):
+        if not self.recording:
+            return False
+        self.recording = False
+        self.stop_count += 1
+        self.callback = None
+        return True
+
+    def stop_playback(self):
+        return True
+
+    def is_recording(self):
+        return self.recording
+
+    def get_audio_stats(self):
+        return {"is_recording": self.recording}
+
+
+class FakeWakeWord:
+    def __init__(self):
+        self.is_initialized = False
+        self.is_active = False
+        self.processed_chunks = 0
+        self.on_wake_word_detected = None
+
+    def initialize(self):
+        self.is_initialized = True
+        return True
+
+    def activate(self):
+        self.is_active = True
+        return True
+
+    def deactivate(self):
+        self.is_active = False
+        return True
+
+    def process_audio(self, audio_data, sample_rate):
+        self.processed_chunks += 1
+        if audio_data == b"wake" and self.on_wake_word_detected:
+            self.on_wake_word_detected("aura")
+        return True
+
+    def get_status(self):
+        return {"is_active": self.is_active}
+
+
+class FakeSTTManager:
+    def __init__(self):
+        self.initialized = False
+        self.processed_chunks = 0
+        self.reset_count = 0
+        self.final_transcript = "Open Calculator"
+        self.settings = type(
+            "Settings",
+            (),
+            {"provider": type("Provider", (), {"value": "fake"})()},
+        )()
+
+    def initialize(self):
+        self.initialized = True
+        return True
+
+    def process_audio(self, audio_data):
+        self.processed_chunks += 1
+
+    def finalize(self):
+        return self.final_transcript
+
+    def reset(self):
+        self.reset_count += 1
+
+    def get_status(self):
+        return {"initialized": self.initialized}
+
+
+class FakeTTSManager:
+    def __init__(self):
+        self.text = ""
+
+    def add_text(self, text):
+        self.text = text
+        return True
+
+    def speak(self):
+        return True
+
+    def stop(self):
+        return True
+
+    def get_status(self):
+        return {"text": self.text}
+
+
+class FakeVAD:
+    def __init__(self):
+        self.on_speech_start = None
+        self.on_speech_end = None
+
+    def process_audio(self, audio_data, sample_rate):
+        return None, 0.0
+
+    def get_stats(self):
+        return {}
+
+    def reset(self):
+        return None
+
+
+class FakeBargeInHandler:
+    def set_aura_speaking(self, is_speaking):
+        return None
+
+    def check_for_interrupt(self):
+        return False
+
+
+class FakeInterruptionManager:
+    def __init__(self):
+        self.state = None
+        self.on_interrupt_start = None
+        self.on_interrupt_end = None
+
+    def start_interrupt(self, reason):
+        return None
+
+    def end_interrupt(self):
+        return None
+
+    def get_stats(self):
+        return {}
+
+    def reset(self):
+        return None
+
+
+def make_hardware_free_voice_manager():
+    voice_mgr = VoiceManager()
+    voice_mgr.audio_manager = FakeAudioManager()
+    voice_mgr.wake_word = FakeWakeWord()
+    voice_mgr.stt_manager = FakeSTTManager()
+    voice_mgr.tts_manager = FakeTTSManager()
+    voice_mgr.vad = FakeVAD()
+    voice_mgr.barge_in_handler = FakeBargeInHandler()
+    voice_mgr.interruption_manager = FakeInterruptionManager()
+    voice_mgr._setup_callbacks()
+    return voice_mgr
 
 
 @pytest.fixture
@@ -125,3 +304,43 @@ def test_06_microphone_suppression_during_tts(voice_loop):
     # STT manager should NOT have processed audio frames during SPEAKING state (Mic Suppressed)
     assert voice_mgr.state == ConversationState.SPEAKING
 
+
+def test_07_start_enters_real_wake_word_microphone_mode(clean_registry):
+    registry, desktop, browser = clean_registry
+    voice_mgr = make_hardware_free_voice_manager()
+    loop = ContinuousVoiceLoop(voice_manager=voice_mgr, coordinator=ExecutionCoordinator())
+
+    assert loop.start() is True
+
+    assert loop._running is True
+    assert voice_mgr.state == ConversationState.WAKE_LISTENING
+    assert voice_mgr.audio_manager.is_recording() is True
+
+    voice_mgr.process_audio(b"noise", 16000)
+    assert voice_mgr.wake_word.processed_chunks == 1
+    assert loop.turn_count == 0
+
+
+def test_08_spoken_wake_then_stt_then_tts_restores_wake_mode(clean_registry):
+    registry, desktop, browser = clean_registry
+    voice_mgr = make_hardware_free_voice_manager()
+    loop = ContinuousVoiceLoop(voice_manager=voice_mgr, coordinator=ExecutionCoordinator())
+    assert loop.start() is True
+
+    voice_mgr.process_audio(b"wake", 16000)
+
+    assert voice_mgr.state == ConversationState.ACTIVE_LISTENING
+    assert voice_mgr.audio_manager.start_count == 1
+    assert voice_mgr.stt_manager.initialized is True
+
+    voice_mgr._finalize_stt()
+
+    assert loop.turn_count == 1
+    assert loop.history[0]["transcript"] == "Open Calculator"
+    assert voice_mgr.state == ConversationState.SPEAKING
+    assert voice_mgr.audio_manager.is_recording() is False
+
+    voice_mgr._on_tts_complete()
+
+    assert voice_mgr.state == ConversationState.WAKE_LISTENING
+    assert voice_mgr.audio_manager.is_recording() is True

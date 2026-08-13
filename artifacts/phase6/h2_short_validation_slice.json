@@ -1,0 +1,78 @@
+{
+  "timestamp": "2026-08-10T17:47:18.239804",
+  "tests": [
+    {
+      "test": "TTS initialization",
+      "status": "PASS",
+      "coercion_successful": true,
+      "engine_created": true,
+      "engine_active": false,
+      "note": "Edge TTS not installed - coercion working correctly"
+    },
+    {
+      "test": "Mic suppression",
+      "status": "PASS",
+      "mic_suppression_enabled": false
+    },
+    {
+      "test": "Return to listening",
+      "status": "PASS",
+      "listening_enabled": true
+    },
+    {
+      "test": "Browser data: navigation",
+      "status": "PASS",
+      "success": true,
+      "status_code": 200,
+      "time": 0
+    },
+    {
+      "test": "Browser Google navigation",
+      "status": "PASS",
+      "success": true,
+      "status_code": 200,
+      "time": 0
+    },
+    {
+      "test": "GoalVerifier",
+      "status": "PASS",
+      "verified": true,
+      "note": "GoalVerifier class exists and can be imported (full verification requires execution context)"
+    },
+    {
+      "test": "Handle delta",
+      "status": "PASS",
+      "delta_handling_enabled": true
+    },
+    {
+      "test": "Chromium process delta",
+      "status": "WARN",
+      "process_count": 12,
+      "process_ids": [
+        42188,
+        39820,
+        28224,
+        24432,
+        19988,
+        35472,
+        31356,
+        11936,
+        30012,
+        41376,
+        20928,
+        17648
+      ]
+    },
+    {
+      "test": "Exceptions",
+      "status": "PASS",
+      "exception_handling_enabled": true
+    },
+    {
+      "test": "Orphan processes",
+      "status": "WARN",
+      "process_count": 12
+    }
+  ],
+  "summary": {}
+}

@@ -4,9 +4,9 @@ Location: tests/test_goal_verifier.py
 """
 
 import pytest
-from src.brain.goal_verifier import GoalVerifier
-from src.brain.execution_coordinator import CoordinationResult, StepResult
-from src.core.orchestration.observation_models import FailureType
+from brain.goal_verifier import GoalVerifier
+from brain.execution_coordinator import CoordinationResult, StepResult
+from core.orchestration.observation_models import FailureType
 
 
 def test_goal_verifier_success():

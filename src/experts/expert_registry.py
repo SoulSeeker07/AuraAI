@@ -41,8 +41,8 @@ class DomainExpertRegistry:
     def register(self, expert: BaseExpertSystem, domain: DomainType | str | None = None) -> None:
         """Register a domain expert system instance."""
         if domain is None:
-            key = expert.domain.value
-        elif isinstance(domain, DomainType):
+            key = expert.domain.value if hasattr(expert.domain, "value") else str(expert.domain)
+        elif hasattr(domain, "value"):
             key = domain.value
         else:
             key = str(domain).lower().strip()
@@ -55,7 +55,7 @@ class DomainExpertRegistry:
         Resolve a domain expert system by DomainType or domain string.
         Returns None if domain is unknown / unsupported.
         """
-        if isinstance(domain, DomainType):
+        if hasattr(domain, "value"):
             key = domain.value
         else:
             key = str(domain).lower().strip()

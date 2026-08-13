@@ -56,9 +56,23 @@ def get_aura_core(config: dict = None) -> AuraCore:
         if config is None:
             config = {}
 
-        if "data_path" not in config:
+        # Try to load configuration from config.json (only if not already set)
+        try:
+            import json
             from pathlib import Path
 
+            config_path = Path(__file__).resolve().parent / "config" / "config.json"
+            if config_path.exists() and "voice_enabled" not in config:
+                with open(config_path, 'r') as f:
+                    file_config = json.load(f)
+                # Only use file config if voice_enabled not in runtime config
+                if "voice_enabled" in file_config:
+                    config["voice_enabled"] = file_config["voice_enabled"]
+                logger.info(f"Loaded voice_enabled={config['voice_enabled']} from {config_path}")
+        except Exception as e:
+            logger.debug(f"Could not load configuration: {e}")
+
+        if "data_path" not in config:
             config["data_path"] = str(
                 Path(__file__).resolve().parent / "Data" / "ChatLog.json"
             )

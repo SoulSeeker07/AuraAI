@@ -643,8 +643,8 @@ print("Hello")
 
     def test_web_search_with_cache(self, mocker):
         """Test web search with caching."""
-        from src.brain.live_search_engine import LiveSearchEngine
-        from src.brain.search_cache import SearchCache
+        from brain.live_search_engine import LiveSearchEngine
+        from brain.search_cache import SearchCache
 
         # Mock cache
         cache = SearchCache()
@@ -672,7 +672,7 @@ print("Hello")
 
     def test_research_agent_planning(self, mocker):
         """Test research agent planning multi-step research."""
-        from src.brain.research_agent import ResearchAgent
+        from brain.research_agent import ResearchAgent
 
         # Mock components
         mock_intent = mocker.Mock()
@@ -710,7 +710,7 @@ print("Hello")
 
     def test_research_agent_execution(self, mocker):
         """Test research agent executing research plan."""
-        from src.brain.research_agent import ResearchAgent
+        from brain.research_agent import ResearchAgent
 
         # Mock components
         mock_intent = mocker.Mock()
@@ -761,7 +761,7 @@ print("Hello")
 
     def test_aura_search_system_basic_search(self, mocker):
         """Test AuraSearchSystem basic web search."""
-        from src.brain.aura_search_system import AuraSearchSystem
+        from brain.aura_search_system import AuraSearchSystem
 
         # Mock components
         mock_intent = mocker.Mock()

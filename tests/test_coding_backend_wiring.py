@@ -25,7 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
 @pytest.fixture
 def adapter():
     """Import and return a fresh CodingBackendAdapter."""
-    from src.core.backends.adapters.antigravity_backend import CodingBackendAdapter
+    from core.backends.adapters.antigravity_backend import CodingBackendAdapter
 
     return CodingBackendAdapter()
 
@@ -142,7 +142,7 @@ def test_coding_backend_registered_in_backend_registry():
     The CodingBackendAdapter must be registered in BackendRegistry so coding
     requests flow through the real orchestration pipeline.
     """
-    from src.core.backends.backend_registry import BackendRegistry
+    from core.backends.backend_registry import BackendRegistry
 
     registry = BackendRegistry()
     # Select a backend for the 'coding' capability

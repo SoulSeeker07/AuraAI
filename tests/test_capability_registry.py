@@ -4,11 +4,11 @@ Location: tests/test_capability_registry.py
 """
 
 import pytest
-from src.core.capabilities.capability_registry import (
+from core.capabilities.capability_registry import (
     CapabilityRegistry,
     CapabilityDefinition,
 )
-from src.core.orchestration.autonomy_mode import ActionRisk
+from core.orchestration.autonomy_mode import ActionRisk
 
 
 def test_capability_registry_defaults_and_custom():

@@ -273,7 +273,8 @@ class VoiceActivityDetector:
             return 0.0
 
         # Calculate RMS
-        rms = np.sqrt(np.mean(audio**2))
+        audio_float = audio.astype(np.float32)
+        rms = np.sqrt(np.mean(audio_float**2))
 
         # Normalize to 0-1 range (assuming 16-bit audio)
         max_amplitude = 32768

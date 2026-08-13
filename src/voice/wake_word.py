@@ -368,7 +368,7 @@ class LocalWakeWord(WakeWordEngine):
             import numpy as np
 
             # Calculate energy
-            audio = np.frombuffer(audio_data, dtype=np.int16)
+            audio = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
             energy = np.sqrt(np.mean(audio**2))
             max_amplitude = 32768
             energy_norm = energy / max_amplitude

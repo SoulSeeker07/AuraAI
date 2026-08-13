@@ -1,42 +1,59 @@
-Here’s a cleaned‑up version of the factorial function that handles the common edge‑cases (negative numbers, non‑integers, and recursion‑depth limits) and includes a short docstring. The test at the bottom shows that it still produces the correct result for 5.
+Here’s a clean, production‑ready version of the factorial function that:
+* Handles negative inputs with a clear exception.
+* Uses a type hint and a docstring for readability.
+* Provides both a recursive implementation (kept for illustration) **and** an iterative version that avoids recursion‑depth limits.
+* Includes a small test harness you can run directly in VS Code.
 ```python
-def factorial(n: int) -> int:
+def factorial_recursive(n: int) -> int:
 """
-Return n! (n factorial) for a non‑negative integer n.
-Raises
-------
-TypeError
-If *n* is not an integer.
-ValueError
-If *n* is negative.
-RecursionError
-If *n* is too large for the recursive implementation (default limit ≈ 1000).
+Return the factorial of a non‑negative integer *n* using recursion.
+Raises:
+ValueError: If *n* is negative.
 """
-# ---- input validation -------------------------------------------------
-if not isinstance(n, int):
-raise TypeError("factorial() only accepts integer arguments")
 if n < 0:
-raise ValueError("factorial() is undefined for negative numbers")
-# ---- base case ---------------------------------------------------------
+raise ValueError("n must be a non‑negative integer")
 if n == 0:
 return 1
-# ---- recursive step ----------------------------------------------------
-return n * factorial(n - 1)
-# -------------------------- simple test ------------------------------------
+return n * factorial_recursive(n - 1)
+def factorial_iterative(n: int) -> int:
+"""
+Return the factorial of a non‑negative integer *n* using an iterative loop.
+This version is safe for large *n* (e.g., > 1000) because it never hits
+Python's recursion limit.
+"""
+if n < 0:
+raise ValueError("n must be a non‑negative integer")
+result = 1
+for i in range(2, n + 1):
+result *= i
+return result
+# ------------------------------
+# Simple test / demo (run this file)
+# ------------------------------
 if __name__ == "__main__":
-try:
-result = factorial(5)
-print(f"Factorial of 5 is {result}")   # → Factorial of 5 is 120
-except (TypeError, ValueError, RecursionError) as e:
-print(f"Error: {e}")
+test_vals = [0, 1, 5, 10]
+print("Recursive version:")
+for v in test_vals:
+print(f"  {v}! = {factorial_recursive(v)}")
+print("\nIterative version:")
+for v in test_vals:
+print(f"  {v}! = {factorial_iterative(v)}")
 ```
-### What changed / why
-| Change | Reason |
-|--------|--------|
-| Added type hint (`n: int -> int`) | Improves readability and helps static analysers. |
-| Added a docstring | Documents expected behavior and possible exceptions. |
-| Checked `isinstance(n, int)` | Prevents obscure errors when a float or string is passed. |
-| Checked `n < 0` and raised `ValueError` | Avoids infinite recursion for negative inputs. |
-| Wrapped the test in `if __name__ == "__main__":` | Makes the script import‑safe (the function can be reused without running the test). |
-| Added a `try/except` block around the test | Shows graceful error handling if something goes wrong. |
-The function will still compute `factorial(5)` correctly (`120`). If you need to compute very large factorials (e.g., `factorial(2000)`), consider using an **iterative** version or Python’s built‑in `math.factorial`, which is optimized and not limited by recursion depth.
+### How to run in VS Code
+1. **Save** the file as `factorial_demo.py`.
+2. Make sure the **Python** extension is installed (it gives you IntelliSense, linting, etc.).
+3. Press **Ctrl + Shift + B** (or right‑click → *Run Python File in Terminal*) to execute.
+4. You should see:
+```
+Recursive version:
+0! = 1
+1! = 1
+5! = 120
+10! = 3628800
+Iterative version:
+0! = 1
+1! = 1
+5! = 120
+10! = 3628800
+```
+Feel free to use either implementation; the iterative one is generally safer for large inputs.

@@ -20,13 +20,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from core.orchestration import MasterOrchestrator
-from src.brain.aca.aca_brain import ACABrain
-from src.brain.aca.engine_interface import Engine, EngineRegistry
-from src.brain.aca.planner import ACAPlanner
-from src.brain.aca.strategy_engine import StrategyEngine
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.brain.schemas.artifact import Artifact
-from src.brain.schemas.runtime_session import RuntimeSession
+from brain.aca.aca_brain import ACABrain
+from brain.aca.engine_interface import Engine, EngineRegistry
+from brain.aca.planner import ACAPlanner
+from brain.aca.strategy_engine import StrategyEngine
+from brain.execution_coordinator import ExecutionCoordinator
+from brain.schemas.artifact import Artifact
+from brain.schemas.runtime_session import RuntimeSession
 
 
 class MockChromeDesktopEngine(Engine):

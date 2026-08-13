@@ -1,0 +1,6 @@
+{
+  "voice_enabled": true,
+  "memory_enabled": true,
+  "knowledge_enabled": true,
+  "plugins_enabled": true
+}

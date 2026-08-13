@@ -76,6 +76,9 @@ jobs:
       - name: Import Linter
         run: lint-imports
 
+      - name: Import Convention Check (split-singleton guard)
+        run: python scripts/check_import_convention.py
+
       - name: Architecture Tests
         run: pytest tests/architecture -v
 

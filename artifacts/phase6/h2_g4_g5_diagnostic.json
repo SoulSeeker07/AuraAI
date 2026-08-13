@@ -1,0 +1,353 @@
+{
+  "meta": {
+    "timestamp": "2026-08-10T09:14:34",
+    "script": "h2_g4_g5_diagnostic",
+    "duration_s": 55.38
+  },
+  "runtime_boot": "BOOTED",
+  "g4_browser": {
+    "through_runtime": [
+      {
+        "probe": 1,
+        "report": {
+          "goal": "navigate browser to data:text/html,<h1>Endurance</h1>",
+          "input_type": "text",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com stopped/failed.\n\n  Worked for 45.0s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com.\n\n  Worked for 45.0s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 1 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'navigate browser to data:text/html,<h1>Endurance</h1>' failed execution."
+        }
+      },
+      {
+        "probe": 2,
+        "report": {
+          "goal": "navigate browser to data:text/html,<h1>Endurance</h1>",
+          "input_type": "text",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com stopped/failed.\n\n  Worked for 0.8s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com.\n\n  Worked for 0.8s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'navigate browser to data:text/html,<h1>Endurance</h1>' failed execution."
+        }
+      },
+      {
+        "probe": 3,
+        "report": {
+          "goal": "navigate browser to data:text/html,<h1>Endurance</h1>",
+          "input_type": "text",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com stopped/failed.\n\n  Worked for 0.8s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com.\n\n  Worked for 0.8s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'navigate browser to data:text/html,<h1>Endurance</h1>' failed execution."
+        }
+      },
+      {
+        "probe": 4,
+        "report": {
+          "goal": "navigate browser to data:text/html,<h1>Endurance</h1>",
+          "input_type": "text",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com stopped/failed.\n\n  Worked for 0.8s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com.\n\n  Worked for 0.8s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'navigate browser to data:text/html,<h1>Endurance</h1>' failed execution."
+        }
+      },
+      {
+        "probe": 5,
+        "report": {
+          "goal": "navigate browser to data:text/html,<h1>Endurance</h1>",
+          "input_type": "text",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com stopped/failed.\n\n  Worked for 0.9s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com.\n\n  Worked for 0.9s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'navigate browser to data:text/html,<h1>Endurance</h1>' failed execution."
+        }
+      },
+      {
+        "probe": 6,
+        "report": {
+          "goal": "navigate browser to data:text/html,<h1>Endurance</h1>",
+          "input_type": "text",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com stopped/failed.\n\n  Worked for 0.9s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://x.com\n\nAura: \u2717 Done \u2014 Navigate to https://x.com.\n\n  Worked for 0.9s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'navigate browser to data:text/html,<h1>Endurance</h1>' failed execution."
+        }
+      }
+    ],
+    "direct_engine": [
+      {
+        "probe": 1,
+        "engine_result": {
+          "success": true,
+          "error": null,
+          "observations": [
+            "Navigated to data:text/html,<h1>Endurance</h1>"
+          ],
+          "data": {
+            "backend": "Playwright Browser Engine",
+            "result": {
+              "success": true,
+              "status_code": 200,
+              "title": "",
+              "url": "data:text/html,<h1>Endurance</h1>"
+            }
+          },
+          "verification": null
+        }
+      },
+      {
+        "probe": 2,
+        "engine_result": {
+          "success": true,
+          "error": null,
+          "observations": [
+            "Navigated to data:text/html,<h1>Endurance</h1>"
+          ],
+          "data": {
+            "backend": "Playwright Browser Engine",
+            "result": {
+              "success": true,
+              "status_code": 200,
+              "title": "",
+              "url": "data:text/html,<h1>Endurance</h1>"
+            }
+          },
+          "verification": null
+        }
+      },
+      {
+        "probe": 3,
+        "engine_result": {
+          "success": true,
+          "error": null,
+          "observations": [
+            "Navigated to data:text/html,<h1>Endurance</h1>"
+          ],
+          "data": {
+            "backend": "Playwright Browser Engine",
+            "result": {
+              "success": true,
+              "status_code": 200,
+              "title": "",
+              "url": "data:text/html,<h1>Endurance</h1>"
+            }
+          },
+          "verification": null
+        }
+      }
+    ]
+  },
+  "g5_voice": {
+    "through_runtime": [
+      {
+        "probe": 1,
+        "report": {
+          "goal": "open browser and search google",
+          "input_type": "voice",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com stopped/failed.\n\n  Worked for 0.8s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com.\n\n  Worked for 0.8s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'open browser and search google' failed execution."
+        }
+      },
+      {
+        "probe": 2,
+        "report": {
+          "goal": "open browser and search google",
+          "input_type": "voice",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com stopped/failed.\n\n  Worked for 0.8s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com.\n\n  Worked for 0.8s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'open browser and search google' failed execution."
+        }
+      },
+      {
+        "probe": 3,
+        "report": {
+          "goal": "open browser and search google",
+          "input_type": "voice",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com stopped/failed.\n\n  Worked for 0.9s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com.\n\n  Worked for 0.9s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'open browser and search google' failed execution."
+        }
+      },
+      {
+        "probe": 4,
+        "report": {
+          "goal": "open browser and search google",
+          "input_type": "voice",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com stopped/failed.\n\n  Worked for 0.9s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com.\n\n  Worked for 0.9s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'open browser and search google' failed execution."
+        }
+      },
+      {
+        "probe": 5,
+        "report": {
+          "goal": "open browser and search google",
+          "input_type": "voice",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com stopped/failed.\n\n  Worked for 0.9s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com.\n\n  Worked for 0.9s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'open browser and search google' failed execution."
+        }
+      },
+      {
+        "probe": 6,
+        "report": {
+          "goal": "open browser and search google",
+          "input_type": "voice",
+          "success": false,
+          "status": "FAILED",
+          "verification_passed": false,
+          "steps_executed": 3,
+          "domain_expert_used": null,
+          "intent_type": "desktop_action",
+          "evidence": [
+            "Step 3 failed: Verification failed"
+          ],
+          "activity_trace_l1": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com stopped/failed.\n\n  Worked for 0.9s  \u203a",
+          "activity_trace_l2": "Aura\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nYou: Navigate to https://www.google.com\n\nAura: \u2717 Done \u2014 Navigate to https://www.google.com.\n\n  Worked for 0.9s  \u25bc\n\n  \u251c\u2500 3 steps \u00b7 2 verified \u00b7 0 retries\n  \u251c\u2500 Engines: Browser, Desktop\n  \u2514\u2500 Status: STEP FAILURE ENCOUNTERED",
+          "spoken_summary": "Goal 'open browser and search google' failed execution."
+        }
+      }
+    ],
+    "voice_component": {
+      "voice_manager_present": true,
+      "tts_manager_engine": null,
+      "vm_speak_return": false,
+      "tts_initialize_return": false
+    }
+  },
+  "classification": {
+    "g4_browser_overall_pass": false,
+    "g5_voice_overall_pass": false,
+    "g4_common_error": [
+      null,
+      null,
+      null
+    ],
+    "tts_engine_initialized": false,
+    "vm_speak_return": false
+  },
+  "final_classification": {
+    "g4_browser": {
+      "status": "FAIL",
+      "pass_rule": "success AND verification_passed via execute_goal('navigate browser to data:text/html,<h1>Endurance</h1>', text)",
+      "root_cause": [
+        "Runtime DMM plans goal 'Navigate to https://x.com' for H2's data:text/html,... goal (data: URLs are not extracted; live x.com is targeted instead), so the intended offline page is never exercised on the runtime path.",
+        "Goal-verifier fails on the live x.com navigation with page-load confidence 0.4 ('Step 3 failed: Verification failed'); host network to x.com returns HTTP 200 via httpx, isolating the failure to Playwright in-browser navigation/verification rather than a system/network outage.",
+        "Direct PlaywrightBrowserAdapter.execute('browser.navigate', data-url) returns success 3/3 => the engine can load local data pages; failure is specific to the runtime routing + live-page verification leg."
+      ],
+      "evidence": [
+        "through_runtime[0].report: success=False status=FAILED verify=False activities trace1 shows 'Navigate to https://x.com' failed",
+        "direct_engine[0..2]: success=True observations=['Navigated to data:text/html,<h1>Endurance</h1>'] data.url=data:text/html...",
+        "httpx.get('https://x.com') -> 200"
+      ]
+    },
+    "g5_voice": {
+      "status": "FAIL",
+      "pass_rule": "success AND input_type=='voice' via execute_goal('open browser and search google', voice)",
+      "root_cause": [
+        "report.input_type IS 'voice', so the gate fails on the execution leg: the goal performs LIVE google.com navigation that fails Playwright verification (success=False status=FAILED; httpx to google.com returns 200).",
+        "Independent real TTS defect: voice_manager feeds speaker=TTSSpeaker.EDGE_TTS.value (string 'edge_tts') into TTSSettings.speaker; tts_manager.initialize() compares settings.speaker==TTSSpeaker.EDGE_TTS (ENUM) => never equal => 'Unsupported speaker: edge_tts' => engine None => vm.speak() returns False => 'Failed to add text to TTS'."
+      ],
+      "evidence": [
+        "through_runtime[0..2].report: success=False input_type=voice status=FAILED trace1='Navigate to https://www.google.com stopped/failed'",
+        "voice_component: tts_manager_engine=null, vm_speak_return=False, tts_initialize_return=False",
+        "TTS log: 'voice.tts_manager: Unsupported speaker: edge_tts'",
+        "httpx.get('https://www.google.com') -> 200"
+      ]
+    }
+  }
+}

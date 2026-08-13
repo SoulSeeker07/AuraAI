@@ -29,3 +29,6 @@ generated_code/
 
 node_modules/
 .git/
+
+# Voice Models
+models/

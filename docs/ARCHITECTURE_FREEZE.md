@@ -103,6 +103,11 @@ Every future milestone must satisfy the **[Definition of Done](file:///d:/Sreeka
      - `Artifact`
    - **DO NOT** create a new core abstraction. Extend the existing ones.
 
+6. **The M26 Unified Integration Runtime Freeze**:
+   - `PersonalOSRuntime` (`src/core/orchestration/personal_os_runtime.py`) is frozen as the final top-level integration runtime.
+   - **DO NOT** create new top-level master brains, super routers, or capability-specific autonomous loops.
+   - All text, voice, event, and expert capabilities MUST flow through `PersonalOSRuntime.execute_goal()`.
+
 
 ---
 

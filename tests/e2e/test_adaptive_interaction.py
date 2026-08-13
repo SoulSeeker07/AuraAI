@@ -23,11 +23,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.brain.execution_coordinator import ExecutionCoordinator, StepResult
-from src.core.backends.adapters.desktop_backend import DesktopEngineBackend
-from src.core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
-from src.core.orchestration.observation_models import ExpectedState, FailureType, Observation, VerificationReport
-from src.brain.aca.engine_interface import EngineRegistry
+from brain.execution_coordinator import ExecutionCoordinator, StepResult
+from core.backends.adapters.desktop_backend import DesktopEngineBackend
+from core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
+from core.orchestration.observation_models import ExpectedState, FailureType, Observation, VerificationReport
+from brain.aca.engine_interface import EngineRegistry
 
 
 @pytest.fixture

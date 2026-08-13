@@ -3,8 +3,8 @@ Unit tests for ActivityTraceRenderer
 Location: tests/unit/test_activity_trace_renderer.py
 """
 
-from src.core.orchestration.activity_trace_renderer import ActivityTraceRenderer
-from src.brain.execution_coordinator import CoordinationResult, StepResult
+from core.orchestration.activity_trace_renderer import ActivityTraceRenderer
+from brain.execution_coordinator import CoordinationResult, StepResult
 
 
 def test_activity_trace_renderer_levels():

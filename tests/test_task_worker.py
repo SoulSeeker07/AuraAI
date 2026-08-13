@@ -4,7 +4,7 @@ Location: tests/test_task_worker.py
 """
 
 import pytest
-from src.core.orchestration.task_worker import (
+from core.orchestration.task_worker import (
     TaskWorker,
     ResearchProfile,
     TestProfile,

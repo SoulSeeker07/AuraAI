@@ -41,6 +41,8 @@ class DomainFinding:
     description: str
     severity: SeverityLevel = SeverityLevel.INFO
     evidence: list[str] = field(default_factory=list)
+    location: str = ""
+    confidence: float = 0.95
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,6 +51,8 @@ class DomainFinding:
             "description": self.description,
             "severity": self.severity.value,
             "evidence": self.evidence,
+            "location": self.location,
+            "confidence": self.confidence,
         }
 
 

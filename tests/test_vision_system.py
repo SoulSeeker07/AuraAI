@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 import pytest
 
-from src.vision.models import (
+from vision.models import (
     ImageType,
     OCRSettings,
     ScreenshotSettings,
@@ -28,7 +28,7 @@ from src.vision.models import (
 )
 
 # Import vision system modules
-from src.vision.vision_manager import VisionManager
+from vision.vision_manager import VisionManager
 
 
 @pytest.fixture
@@ -284,7 +284,7 @@ def test_code_detector_detection(vision_manager):
 
 def test_vision_context_types():
     """Test that VisionContext has all expected fields."""
-    from src.vision.models import VisionContext
+    from vision.models import VisionContext
 
     # Create a minimal context
     context = VisionContext(

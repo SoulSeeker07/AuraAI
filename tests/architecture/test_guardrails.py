@@ -83,6 +83,14 @@ ENGINE_ALLOWLIST = {
         "owner": "Vision Team",
         "milestone": "v0.20",
     },
+    ROOT
+    / "src"
+    / "voice"
+    / "continuous_loop.py": {
+        "reason": "M26 PersonalOSRuntime voice-loop wiring — ContinuousVoiceLoop legitimately constructs VoiceManager as part of the frozen voice stack",
+        "owner": "Voice Team",
+        "milestone": "v0.20",
+    },
 }
 
 ALLOWED_MAP_FILES = {
@@ -129,7 +137,7 @@ def _iter_py_files(directory: Path):
 
 
 def test_guardrail_1_no_backend_imports_aca():
-    """No backend/engine module may import from src.brain.aca."""
+    """No backend/engine module may import from brain.aca."""
     forbidden_dirs = [
         ROOT / "src" / "desktop",
         ROOT / "src" / "browser",

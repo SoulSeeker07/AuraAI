@@ -220,7 +220,7 @@ class DecisionMakingModule:
                 break
 
         # Direct URL
-        url_match = re.search(r"https?://[^\s]+", text)
+        url_match = re.search(r"(?:https?://|data:text/html)[^\s,]+", text)
         if url_match:
             modifiers["url"] = url_match.group(0)
 

@@ -52,13 +52,12 @@ class TTSSpeaker(Enum):
     Text-to-Speech speakers/providers.
     """
 
-    ELEVENLABS = "elevenlabs"  # ElevenLabs
-    EDGE_TTS = "edge_tts"  # Microsoft Edge TTS
-    PIPER = "piper"  # Piper (offline)
-    AZURE_TTS = "azure_tts"  # Azure TTS
-    GOOGLE_TTS = "google_tts"  # Google TTS
-    LOCALLY = "locally"  # Local TTS (system voice)
-    FUTURE = "future"  # Future TTS providers
+    PIPER    = "piper"     # Piper TTS (local / primary)
+    EDGE_TTS = "edge_tts"  # Microsoft Edge TTS (online / fallback)
+    AZURE_TTS   = "azure_tts"
+    GOOGLE_TTS  = "google_tts"
+    LOCALLY     = "locally"
+    FUTURE      = "future"
 
 
 class WakeWordProvider(Enum):
@@ -383,7 +382,7 @@ class TTSRequest:
     """
 
     text: str  # Text to speak
-    speaker: TTSSpeaker = TTSSpeaker.EDGE_TTS  # Speaker to use
+    speaker: TTSSpeaker = TTSSpeaker.PIPER  # Speaker to use
     voice: str | None = None  # Voice name (if applicable)
     rate: float = 1.0  # Speaking rate (0.5 - 2.0)
     pitch: float = 1.0  # Pitch (0.5 - 2.0)
@@ -438,7 +437,7 @@ class TTSSettings:
     Settings for Text-to-Speech.
     """
 
-    speaker: TTSSpeaker = TTSSpeaker.EDGE_TTS
+    speaker: TTSSpeaker = TTSSpeaker.PIPER
     voice: str | None = None
     rate: float = 1.0
     pitch: float = 1.0

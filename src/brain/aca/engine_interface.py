@@ -100,7 +100,7 @@ class EngineRegistry:
         """Register an engine, optionally with a custom alias name."""
         key = name or getattr(engine, "name", "unknown")
         self._engines[key] = engine
-        if hasattr(engine, "name") and engine.name not in self._engines:
+        if hasattr(engine, "name") and engine.name:
             self._engines[engine.name] = engine
         logger.info(f"EngineRegistry registered: {key}")
 

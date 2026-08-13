@@ -207,7 +207,10 @@ class ExecutionCoordinator:
         reg_engine = EngineRegistry.get_instance().resolve(engine)
         if reg_engine is not None:
             try:
-                res = reg_engine.execute(action, params)
+                try:
+                    res = reg_engine.execute(action, params)
+                except Exception as exc:
+                    res = {"success": False, "observations": [f"Execution exception: {exc}"]}
                 execution_time = time.time() - start_time
 
                 obs = None
@@ -274,7 +277,7 @@ class ExecutionCoordinator:
 
                     # 3. Transient Self-Healing (Stale DOM, Focus Loss, Slow Load)
                     else:
-                        is_transient = any(w in err_str for w in ["stale", "focus", "timeout", "unavailable", "loading", "not active", "dom", "hwnd"])
+                        is_transient = any(w in err_str for w in ["stale", "focus", "timeout", "unavailable", "loading", "not active", "dom", "hwnd", "exception", "failure"])
                         if is_transient:
                             logger.info(f"[ExecutionCoordinator] Step {index + 1} transient physical failure detected. Initiating re-observation and self-healing retry.")
                             time.sleep(0.3)
@@ -328,8 +331,10 @@ class ExecutionCoordinator:
                 res_success = getattr(res, "success", True) if not isinstance(res, dict) else res.get("success", True)
                 if v_report is not None:
                     step_success = bool(v_report.passed and res_success)
+                    logger.warning(f"[DEBUG_COORD] step={index+1} action={action} res_success={res_success} v_report_passed={v_report.passed} evidence={v_report.evidence}")
                 else:
                     step_success = bool(res_success)
+                    logger.warning(f"[DEBUG_COORD] step={index+1} action={action} res_success={res_success} v_report=None")
 
                 return StepResult(
                     step_index=index,

@@ -90,6 +90,8 @@ class BrowserEngine:
                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 ),
             )
+            # Capture the event loop for use in sync callbacks
+            self._loop = asyncio.get_running_loop()
             self._context.on("page", self._on_new_page)
             self._page = await self._context.new_page()
             self.is_active = True
@@ -113,10 +115,33 @@ class BrowserEngine:
             self.is_active = True
             return True
 
-    def _on_new_page(self, new_page: Any) -> None:
-        """Automatically track and attach newly opened browser pages/tabs."""
+    async def _safe_close_page(self, page: Any) -> None:
+        """Safely close a page, suppressing errors."""
         try:
+            if page and not page.is_closed():
+                await page.close()
+        except Exception as e:
+            logger.debug(f"[BrowserEngine] Error closing page: {e}")
+
+    def _on_new_page(self, new_page: Any) -> None:
+        """Automatically track and attach newly opened browser pages/tabs, closing old pages."""
+        try:
+            old_page = self._page
             self._page = new_page
+            if old_page and old_page is not new_page and not old_page.is_closed():
+                logger.info(f"[BrowserEngine] Closing old page (now replaced by new page/tab)")
+                # Schedule async close on the captured loop (safe for sync callback)
+                loop = getattr(self, "_loop", None)
+                if loop and loop.is_running():
+                    try:
+                        loop.call_soon_threadsafe(
+                            lambda p=old_page: asyncio.ensure_future(self._safe_close_page(p))
+                        )
+                        logger.info("[BrowserEngine] Scheduled old page close on event loop")
+                    except Exception as e:
+                        logger.debug(f"[BrowserEngine] Failed to schedule close: {e}")
+                else:
+                    logger.debug("[BrowserEngine] No running loop captured — cannot close old page")
             logger.info("[BrowserEngine] Automatically attached newly opened browser page/tab.")
         except Exception as e:
             logger.debug(f"[BrowserEngine] Error attaching new page: {e}")
@@ -175,6 +200,13 @@ class BrowserEngine:
                 }
             except Exception as e:
                 logger.error(f"Navigation error for {url}: {e}")
+                # Close the page before nulling the reference to avoid handle leak
+                if self._page and not self._page.is_closed():
+                    try:
+                        await self._page.close()
+                        logger.info("[BrowserEngine] Closed page after navigation failure")
+                    except Exception:
+                        pass
                 self._page = None
                 return {"success": False, "url": url, "error": str(e)}
         else:

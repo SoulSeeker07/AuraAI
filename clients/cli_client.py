@@ -26,6 +26,9 @@ class CLIClient:
         self.command_history = []
         self.history_index = -1
 
+        # Voice listening configuration
+        self.voice_listening = False
+
         # Initialize autonomous coding agent
         try:
             self.autonomous_coding_agent = AutonomousCodingAgent(
@@ -57,6 +60,9 @@ class CLIClient:
         )
         print(f"Plugins : {self.aura_core.plugin_count} Loaded")
         print(f"Voice : {'Enabled' if self.aura_core.voice_enabled else 'Disabled'}")
+        print(
+            f"Voice Listening : {'ON' if self.voice_listening else 'OFF'}"
+        )
         print(
             f"Vision : {'Ready' if self.aura_core.vision_enabled else 'Disabled (camera not detected)'}"
         )
@@ -90,11 +96,16 @@ class CLIClient:
             "engineering",  # Engineering tools
             "doctor",  # Health check
             "graph",  # Architecture graph
+            "Start Listening",  # Start continuous voice listening
+            "Stop Listening",  # Stop continuous voice listening
+            "voice_listen",  # Legacy alias for Start Listening
             "help",  # Show help
             "reload",  # Reload configuration
             "quit",  # Exit CLI
         ]
+        voice_status = "ON" if self.voice_listening else "OFF"
         print(f"\nAvailable Commands: {', '.join(commands)}")
+        print(f"Voice Listening: {voice_status}")
 
     def print_status(self):
         """Print detailed system status."""
@@ -425,6 +436,9 @@ class CLIClient:
         print("  chat            - Start interactive chat")
         print("  doctor          - Run health check")
         print("  graph           - Show architecture graph")
+        print("  Start Listening - Start microphone wake-word listening")
+        print("  Stop Listening  - Stop microphone wake-word listening")
+        print("  voice_listen    - Legacy alias for Start Listening")
         print("  help            - Show this help")
         print("  quit            - Exit CLI")
         print("  reload          - Reload configuration")
@@ -752,6 +766,111 @@ class CLIClient:
             elif cmd == "doctor":
                 self.print_doctor_report()
 
+            elif command == "Start Listening" or command == "start listening" or command == "START LISTENING":
+                # Start voice listening mode using ContinuousVoiceLoop
+                # Idempotent: can be called multiple times safely
+                if not self.aura_core.voice_enabled:
+                    print("\n✗ Voice is not enabled in Aura.")
+                    print("  Enable voice with your configuration or use voice-embedded apps.")
+                    return
+
+                if self.voice_listening:
+                    # Idempotent: already running, no action needed
+                    print("\n✓ Voice listening is already active.")
+                    return
+
+                self.voice_listening = True
+                print("\n✓ Voice listening enabled.")
+                print("  ContinuousVoiceLoop owns the microphone.")
+                print("  Waiting for wake word: Aura")
+                print("  Use 'Stop Listening' to disable.")
+
+                try:
+                    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+
+                    # Get PersonalOSRuntime and start its voice loop
+                    personal_os = PersonalOSRuntime.get_instance()
+                    if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                        success = personal_os.voice_loop.start()
+                        if success:
+                            print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                        else:
+                            print(f"  ✗ Failed to start ContinuousVoiceLoop")
+                            self.voice_listening = False
+                    else:
+                        print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                        self.voice_listening = False
+                except Exception as e:
+                    logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
+                    print(f"  ✗ Error starting voice listening: {e}")
+                    print(f"  Exception type: {type(e).__name__}")
+                    import traceback
+                    print(f"  Full traceback:")
+                    for line in traceback.format_exc().split('\n'):
+                        print(f"    {line}")
+                    self.voice_listening = False
+
+                self.print_commands()
+
+            elif command == "Stop Listening" or command == "stop listening" or command == "STOP LISTENING":
+                # Stop voice listening mode using ContinuousVoiceLoop
+                # Idempotent: can be called multiple times safely
+                if not self.voice_listening:
+                    # Idempotent: already stopped, no action needed
+                    print("\n✓ Voice listening is already stopped.")
+                    return
+
+                print("\n✓ Stopping voice listening...")
+
+                try:
+                    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+
+                    # Get PersonalOSRuntime and stop its voice loop
+                    personal_os = PersonalOSRuntime.get_instance()
+                    if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                        personal_os.voice_loop.stop()
+                        print("  ContinuousVoiceLoop stopped.")
+                        self.voice_listening = False
+                    else:
+                        print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                        self.voice_listening = False
+                except Exception as e:
+                    logger.error(f"Failed to stop ContinuousVoiceLoop: {e}", exc_info=True)
+                    print(f"  ✗ Error stopping voice listening: {e}")
+
+                self.print_commands()
+
+            elif command == "voice_listen" or command == "voice_listen_toggle":
+                # Legacy alias for voice listening (case-insensitive)
+                # Changed from toggle to enable-only for clarity
+                self.voice_listening = True
+                print("\n✓ Voice listening enabled (legacy alias).")
+                print("  Use 'Start Listening' for explicit start command.")
+                print("  Waiting for wake word: Aura")
+                print("  Use 'Stop Listening' to disable.")
+
+                try:
+                    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+
+                    # Get PersonalOSRuntime and start its voice loop
+                    personal_os = PersonalOSRuntime.get_instance()
+                    if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                        success = personal_os.voice_loop.start()
+                        if success:
+                            print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                        else:
+                            print(f"  ✗ Failed to start ContinuousVoiceLoop")
+                            self.voice_listening = False
+                    else:
+                        print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                        self.voice_listening = False
+                except Exception as e:
+                    logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
+                    print(f"  ✗ Error starting voice listening: {e}")
+                    self.voice_listening = False
+
+                self.print_commands()
+
             elif cmd == "mode" or cmd.startswith("mode"):
                 parts = command.split()
                 valid_modes = ["normal", "developer", "debug", "benchmark", "trace"]
@@ -800,6 +919,11 @@ class CLIClient:
                 print("\n✓ Shutting down AuraAI...")
                 print("✓ Goodbye!")
                 self.aura_core.shutdown()
+
+            elif self.voice_listening:
+                print("\nVoice listening is ON; terminal text is not used as voice input.")
+                print("  Speak 'Aura' into the microphone, then say your command.")
+                print("  Type 'Stop Listening' to disable microphone wake-word mode.")
 
             else:
                 # Not a recognized command — treat it as a chat message
@@ -1127,6 +1251,106 @@ class CLIClient:
                     self.running = False
                     break
 
+                # Command parsing before chat handler
+                command = user_input
+
+                # Check for voice listening commands
+                if command == "Start Listening" or command == "start listening" or command == "START LISTENING":
+                    # Handle voice start command
+                    if not self.aura_core.voice_enabled:
+                        print("\n✗ Voice is not enabled in Aura.")
+                        print("  Enable voice with your configuration or use voice-embedded apps.")
+                        return
+                    if self.voice_listening:
+                        print("\n✓ Voice listening is already active.")
+                        return
+                    self.voice_listening = True
+                    print("\n✓ Voice listening enabled.")
+                    print("  ContinuousVoiceLoop owns the microphone.")
+                    print("  Waiting for wake word: Aura")
+                    print("  Use 'Stop Listening' to disable.")
+                    try:
+                        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                        personal_os = PersonalOSRuntime.get_instance()
+                        if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                            success = personal_os.voice_loop.start()
+                            if success:
+                                print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                            else:
+                                print(f"  ✗ Failed to start ContinuousVoiceLoop")
+                                self.voice_listening = False
+                        else:
+                            print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                            self.voice_listening = False
+                    except Exception as e:
+                        logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
+                        print(f"  ✗ Error starting voice listening: {e}")
+                        self.voice_listening = False
+                    self.print_commands()
+                    continue
+
+                if command == "Stop Listening" or command == "stop listening" or command == "STOP LISTENING":
+                    if not self.voice_listening:
+                        print("\n✓ Voice listening is already stopped.")
+                        return
+                    print("\n✓ Stopping voice listening...")
+                    try:
+                        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                        personal_os = PersonalOSRuntime.get_instance()
+                        if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                            personal_os.voice_loop.stop()
+                            print("  ContinuousVoiceLoop stopped.")
+                            self.voice_listening = False
+                        else:
+                            print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                            self.voice_listening = False
+                    except Exception as e:
+                        logger.error(f"Failed to stop ContinuousVoiceLoop: {e}", exc_info=True)
+                        print(f"  ✗ Error stopping voice listening: {e}")
+                    self.print_commands()
+                    continue
+
+                # Check for legacy voice_listen command
+                if command == "voice_listen" or command == "voice_listen_toggle":
+                    if not self.aura_core.voice_enabled:
+                        print("\n✗ Voice is not enabled in Aura.")
+                        print("  Enable voice with your configuration or use voice-embedded apps.")
+                        return
+                    if self.voice_listening:
+                        print("\n✓ Voice listening is already active.")
+                        return
+                    self.voice_listening = True
+                    print("\n✓ Voice listening enabled (legacy alias).")
+                    print("  Use 'Start Listening' for explicit start command.")
+                    print("  Waiting for wake word: Aura")
+                    print("  Use 'Stop Listening' to disable.")
+                    try:
+                        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                        personal_os = PersonalOSRuntime.get_instance()
+                        if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                            success = personal_os.voice_loop.start()
+                            if success:
+                                print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                            else:
+                                print(f"  ✗ Failed to start ContinuousVoiceLoop")
+                                self.voice_listening = False
+                        else:
+                            print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                            self.voice_listening = False
+                    except Exception as e:
+                        logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
+                        print(f"  ✗ Error starting voice listening: {e}")
+                        self.voice_listening = False
+                    self.print_commands()
+                    continue
+
+                if self.voice_listening:
+                    print("\nVoice listening is ON; terminal text is not used as voice input.")
+                    print("  Speak 'Aura' into the microphone, then say your command.")
+                    print("  Type 'Stop Listening' to disable microphone wake-word mode.")
+                    continue
+
+                # If not a command, send as chat message
                 await self._send_chat_message(user_input)
 
             except KeyboardInterrupt:
@@ -1156,23 +1380,24 @@ class CLIClient:
                     self.print_current_task()
                     print("-" * 60)
 
-                # Get user input
+                # Command mode - type commands normally
+                # Voice listening runs independently via ContinuousVoiceLoop
+                # Terminal is only for control commands like "Stop Listening"
                 user_input = input("\nYou > ").strip()
 
-                # Process command
+                if not user_input:
+                    continue
+
+                if user_input.lower() == "quit":
+                    self.running = False
+                    break
+
                 await self.process_command(user_input)
-
-            except KeyboardInterrupt:
-                print("\n\nUse 'quit' command to exit properly.")
-                continue
-
-            except EOFError:
-                print("\n\n")
+                
+            except (KeyboardInterrupt, EOFError):
+                print("\nExiting...")
                 self.running = False
                 break
-
             except Exception as e:
-                print(f"\n✗ Unexpected error: {e}")
-                logger.error(f"CLI error: {e}", exc_info=True)
-
-        print("\n✓ AuraAI has been shut down successfully")
+                print(f"\n✗ Error: {e}")
+                logger.error(f"Error in main loop: {e}", exc_info=True)

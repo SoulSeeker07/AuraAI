@@ -3,27 +3,45 @@ Text-to-Speech Manager
 
 Streaming Text-to-Speech with low-latency, real-time playback.
 Enables responsive voice interactions.
+
+Primary TTS engine : Piper (local / offline)
+Fallback TTS engine: Edge-TTS (online / Microsoft)
 """
 
 import asyncio
 import logging
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Project root — used to resolve relative model paths from .env / config.
+_PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
+
+
+def _resolve_model_path(raw: str | None) -> str | None:
+    """Return an absolute path string, resolving relative paths from project root."""
+    if not raw:
+        return None
+    p = Path(raw)
+    if p.is_absolute():
+        return str(p)
+    resolved = _PROJECT_ROOT / p
+    return str(resolved)
 
 
 class TTSSpeaker(Enum):
     """Text-to-Speech speakers."""
 
-    ELEVENLABS = "elevenlabs"
-    EDGE_TTS = "edge_tts"
-    PIPER = "piper"
-    AZURE_TTS = "azure_tts"
-    GOOGLE_TTS = "google_tts"
-    LOCALLY = "locally"
+    PIPER    = "piper"     # Piper TTS (local / primary)
+    EDGE_TTS = "edge_tts"  # Microsoft Edge TTS (online / fallback)
+    AZURE_TTS   = "azure_tts"
+    GOOGLE_TTS  = "google_tts"
+    LOCALLY     = "locally"
 
 
 class TTSSettings:
@@ -31,23 +49,47 @@ class TTSSettings:
 
     def __init__(
         self,
-        speaker: TTSSpeaker = TTSSpeaker.EDGE_TTS,
+        speaker: "TTSSpeaker | str" = TTSSpeaker.PIPER,
         voice: str | None = None,
         rate: float = 1.0,
         pitch: float = 1.0,
         volume: float = 1.0,
         streaming: bool = True,
         interruptible: bool = True,
-        fallback_speaker: TTSSpeaker | None = None,
+        fallback_speaker: "TTSSpeaker | str | None" = None,
     ):
-        self.speaker = speaker
+        # Coerce string to TTSSpeaker enum
+        if isinstance(speaker, str):
+            speaker_enum = None
+            for member in TTSSpeaker:
+                if member.value == speaker:
+                    speaker_enum = member
+                    break
+            if speaker_enum is None:
+                raise ValueError(f"Invalid speaker string: {speaker!r}")
+            self.speaker = speaker_enum
+        else:
+            self.speaker = speaker
+
+        # Coerce fallback_speaker string to TTSSpeaker enum if provided
+        if isinstance(fallback_speaker, str):
+            fallback_enum = None
+            for member in TTSSpeaker:
+                if member.value == fallback_speaker:
+                    fallback_enum = member
+                    break
+            if fallback_enum is None:
+                raise ValueError(f"Invalid fallback_speaker string: {fallback_speaker!r}")
+            self.fallback_speaker = fallback_enum
+        else:
+            self.fallback_speaker = fallback_speaker
+
         self.voice = voice
         self.rate = rate
         self.pitch = pitch
         self.volume = volume
         self.streaming = streaming
         self.interruptible = interruptible
-        self.fallback_speaker = fallback_speaker
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -71,7 +113,7 @@ class TTSEngine(ABC):
         self.settings = settings
         self.is_active = False
         self._is_playing = False
-        self._stream = []
+        self._stream: list[str] = []
         self._playback_complete_callback: Callable[[], None] | None = None
         self._interrupt_callback: Callable[[], None] | None = None
 
@@ -118,8 +160,133 @@ class TTSEngine(ABC):
             self._interrupt_callback()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Piper TTS  (primary — local / offline)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PiperTTSEngine(TTSEngine):
+    """Piper TTS — local, offline, no API key required.
+
+    Requires:
+      - ``piper-tts`` package (``pip install piper-tts``)
+      - A Piper voice model (.onnx + .onnx.json).
+        Path configured via PIPER_MODEL_PATH in .env (relative to project root).
+    """
+
+    def __init__(self, settings: TTSSettings):
+        super().__init__(settings)
+        self.voice = None  # piper.voice.PiperVoice instance
+
+    # ── internal helpers ───────────────────────────────────────────────────
+
+    def _get_model_path(self) -> str | None:
+        """Return resolved absolute path to .onnx model, or None."""
+        import os
+        raw = self.settings.voice or os.getenv("PIPER_MODEL_PATH")
+        return _resolve_model_path(raw)
+
+    # ── TTSEngine interface ────────────────────────────────────────────────
+
+    def initialize(self) -> bool:
+        try:
+            from piper.voice import PiperVoice  # piper-tts 1.6+
+
+            model_path = self._get_model_path()
+            if not model_path:
+                logger.error(
+                    "Piper: no model path. Set PIPER_MODEL_PATH in .env or "
+                    "pass voice=<path> in TTSSettings."
+                )
+                return False
+
+            if not Path(model_path).exists():
+                logger.error(f"Piper model not found: {model_path}")
+                return False
+
+            logger.info(f"Loading Piper model: {model_path}")
+            self.voice = PiperVoice.load(model_path)
+            self.is_active = True
+            logger.info("Piper TTS initialized")
+            return True
+
+        except ImportError:
+            logger.error("piper-tts not installed: pip install piper-tts")
+            return False
+        except Exception as e:
+            logger.error(f"Error initializing Piper TTS: {e}")
+            return False
+
+    def add_text(self, text: str, interruptible: bool = True) -> bool:
+        if not self.is_active:
+            return False
+        self._stream.append(text)
+        return True
+
+    def speak(self) -> bool:
+        if not self.is_active or not self._stream:
+            return False
+        if self._is_playing:
+            return True
+
+        text = " ".join(self._stream)
+        self._stream.clear()
+        self._is_playing = True
+
+        def _run():
+            try:
+                import numpy as np
+                import sounddevice as sd
+
+                sample_rate = self.voice.config.sample_rate
+                chunks: list[bytes] = []
+                for audio_chunk in self.voice.synthesize(text):
+                    chunks.append(audio_chunk.audio_int16_bytes)
+
+                if chunks:
+                    raw = b"".join(chunks)
+                    audio_np = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+                    sd.play(audio_np, samplerate=sample_rate)
+                    sd.wait()
+
+                self._emit_complete()
+            except Exception as e:
+                logger.error(f"Piper speak error: {e}")
+            finally:
+                self._is_playing = False
+
+        threading.Thread(target=_run, daemon=True).start()
+        return True
+
+    def stop(self) -> bool:
+        try:
+            import sounddevice as sd
+            sd.stop()
+        except Exception:
+            pass
+        self._stream.clear()
+        self._is_playing = False
+        self._emit_interrupt()
+        return True
+
+    def is_playing(self) -> bool:
+        return self._is_playing
+
+    def get_status(self) -> dict[str, Any]:
+        return {
+            "speaker": self.settings.speaker.value,
+            "is_active": self.is_active,
+            "is_playing": self._is_playing,
+            "model": self._get_model_path(),
+            "chunks": len(self._stream),
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Edge TTS  (fallback — online / Microsoft)
+# ─────────────────────────────────────────────────────────────────────────────
+
 class EdgeTTSEngine(TTSEngine):
-    """Microsoft Edge TTS."""
+    """Microsoft Edge TTS — online fallback, no subscription required."""
 
     def __init__(self, settings: TTSSettings):
         super().__init__(settings)
@@ -127,13 +294,13 @@ class EdgeTTSEngine(TTSEngine):
 
     def initialize(self) -> bool:
         try:
-            import edge_tts
+            import edge_tts  # noqa: F401
 
             self.is_active = True
             logger.info("Edge TTS initialized")
             return True
         except ImportError:
-            logger.error("edge-tts not installed")
+            logger.error("edge-tts not installed: pip install edge-tts")
             return False
         except Exception as e:
             logger.error(f"Error initializing Edge TTS: {e}")
@@ -142,7 +309,6 @@ class EdgeTTSEngine(TTSEngine):
     def add_text(self, text: str, interruptible: bool = True) -> bool:
         if not self.is_active:
             return False
-
         self._stream.append(text)
         return True
 
@@ -152,64 +318,65 @@ class EdgeTTSEngine(TTSEngine):
 
         try:
             import asyncio
-
             import edge_tts
 
             if not self._is_playing:
                 self._is_playing = True
 
-                # Create voice name
                 voice_name = self.settings.voice or "en-US-AriaNeural"
-
-                # Create communicate
                 communicate = edge_tts.Communicate(
-                    self._stream[0],  # Speak first chunk
+                    self._stream[0],
                     voice_name,
-                    rate=f"{(self.settings.rate - 1) * 100:+d}",
-                    pitch=f"{(self.settings.pitch - 1) * 100:+d}",
+                    rate=f"{(self.settings.rate - 1) * 100:+.0f}%",
+                    volume=f"{(self.settings.volume - 1) * 100:+.0f}%",
                 )
 
-                # Run in background
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
                 async def _speak():
                     try:
-                        for chunk in communicate.stream():
+                        import io
+                        import sounddevice as sd
+                        import soundfile as sf
+
+                        audio_buf = io.BytesIO()
+                        async for chunk in communicate.stream():
                             if chunk["type"] == "audio":
-                                yield chunk["data"]
+                                audio_buf.write(chunk["data"])
 
+                        audio_buf.seek(0)
+                        data, samplerate = sf.read(audio_buf)
+                        sd.play(data, samplerate=samplerate)
+                        sd.wait()
                         self._emit_complete()
-
                     except asyncio.CancelledError:
-                        logger.info("Speech interrupted")
+                        logger.info("Edge TTS speech interrupted")
                         self._emit_interrupt()
-
                     finally:
                         self._is_playing = False
 
-                # Spawn task
-                task = loop.create_task(_speak())
+                def _run():
+                    loop.run_until_complete(_speak())
+                    loop.close()
 
-                # Schedule cleanup
-                import threading
-
-                threading.Thread(
-                    target=lambda: self._cleanup_async(loop, task), daemon=True
-                ).start()
+                threading.Thread(target=_run, daemon=True).start()
 
             return True
 
         except Exception as e:
-            logger.error(f"Error starting speech: {e}")
+            logger.error(f"Edge TTS speak error: {e}")
             return False
 
     def stop(self) -> bool:
-        if not self.is_playing():
-            return True
-
-        self._emit_interrupt()
+        try:
+            import sounddevice as sd
+            sd.stop()
+        except Exception:
+            pass
         self._stream.clear()
+        self._is_playing = False
+        self._emit_interrupt()
         return True
 
     def is_playing(self) -> bool:
@@ -224,270 +391,99 @@ class EdgeTTSEngine(TTSEngine):
             "voice": self.settings.voice,
         }
 
-    def _cleanup_async(self, loop: asyncio.AbstractEventLoop, task):
-        try:
-            loop.run_until_complete(asyncio.sleep(1))  # Wait for completion
-        except:
-            pass
-        finally:
-            loop.close()
 
-
-class PiperTTSEngine(TTSEngine):
-    """Piper TTS (offline)."""
-
-    def __init__(self, settings: TTSSettings):
-        super().__init__(settings)
-        self.synthesizer = None
-
-    def initialize(self) -> bool:
-        try:
-            import piper
-
-            # Piper requires model path
-            model_path = self._get_model_path()
-            if not model_path:
-                logger.error("No Piper model path")
-                return False
-
-            # Initialize
-            self.synthesizer = piper.initialize(model_path)
-            self.is_active = True
-            logger.info("Piper TTS initialized")
-            return True
-        except ImportError:
-            logger.error("piper not installed")
-            return False
-        except Exception as e:
-            logger.error(f"Error initializing Piper: {e}")
-            return False
-
-    def add_text(self, text: str, interruptible: bool = True) -> bool:
-        if not self.is_active:
-            return False
-
-        self._stream.append(text)
-        return True
-
-    def speak(self) -> bool:
-        if not self.is_active or not self._stream:
-            return False
-
-        try:
-            if not self._is_playing:
-                self._is_playing = True
-
-                # Load model
-                model_path = self._get_model_path()
-                voice_path = self.settings.voice
-
-                # Synthesize
-                output = piper.synthesize(
-                    self.synthesizer, model_path, voice_path, self._stream[0]
-                )
-
-                # Play audio
-                import sounddevice as sd
-
-                audio_data = output.audio_data
-                sample_rate = output.sample_rate
-
-                self.output_stream = sd.OutputStream(
-                    data=audio_data, samplerate=sample_rate
-                )
-                self.output_stream.start()
-
-                # Wait for completion
-                import time
-
-                duration = len(audio_data) / sample_rate
-                time.sleep(duration)
-
-                self._emit_complete()
-                self._is_playing = False
-                self._stream.clear()
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Error starting speech: {e}")
-            return False
-
-    def stop(self) -> bool:
-        if not self.is_playing():
-            return True
-
-        self._emit_interrupt()
-        self._stream.clear()
-        return True
-
-    def is_playing(self) -> bool:
-        return self._is_playing
-
-    def get_status(self) -> dict[str, Any]:
-        return {
-            "speaker": self.settings.speaker.value,
-            "is_active": self.is_active,
-            "is_playing": self._is_playing,
-            "chunks": len(self._stream),
-        }
-
-    def _get_model_path(self) -> str | None:
-        import os
-
-        return os.getenv("PIPER_MODEL_PATH")
-
-
-class ElevenLabTTS(TTSEngine):
-    """ElevenLabs TTS."""
-
-    def __init__(self, settings: TTSSettings):
-        super().__init__(settings)
-        self.client = None
-
-    def initialize(self) -> bool:
-        try:
-            import elevenlabs.client
-
-            key = self._get_api_key()
-            if not key:
-                logger.error("No ElevenLabs API key")
-                return False
-
-            self.client = elevenlabs.client.ElevenLabsClient(key)
-            self.is_active = True
-            logger.info("ElevenLabs TTS initialized")
-            return True
-        except ImportError:
-            logger.error("elevenlabs not installed")
-            return False
-        except Exception as e:
-            logger.error(f"Error initializing ElevenLabs: {e}")
-            return False
-
-    def add_text(self, text: str, interruptible: bool = True) -> bool:
-        if not self.is_active:
-            return False
-
-        self._stream.append(text)
-        return True
-
-    def speak(self) -> bool:
-        if not self.is_active or not self._stream:
-            return False
-
-        try:
-            if not self._is_playing:
-                self._is_playing = True
-
-                # Generate speech
-                voice_id = self.settings.voice or self._get_voice_id()
-
-                response = self.client.text_to_speech.convert(
-                    voice_id=voice_id,
-                    text=self._stream[0],
-                    model_id=self._get_model_id(),
-                    output_format="mp3_44100_128",
-                )
-
-                # Save and play
-                import tempfile
-
-                import sounddevice as sd
-                import soundfile as sf
-
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
-                    f.write(response)
-                    filepath = f.name
-
-                # Play
-                audio_data, sample_rate = sf.read(filepath)
-                self.output_stream = sd.OutputStream(
-                    data=audio_data, samplerate=sample_rate
-                )
-                self.output_stream.start()
-
-                # Wait and cleanup
-                import time
-
-                duration = len(audio_data) / sample_rate
-                time.sleep(duration)
-
-                self._emit_complete()
-                self._is_playing = False
-                self._stream.clear()
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Error starting speech: {e}")
-            return False
-
-    def stop(self) -> bool:
-        if not self.is_playing():
-            return True
-
-        self._emit_interrupt()
-        self._stream.clear()
-        return True
-
-    def is_playing(self) -> bool:
-        return self._is_playing
-
-    def get_status(self) -> dict[str, Any]:
-        return {
-            "speaker": self.settings.speaker.value,
-            "is_active": self.is_active,
-            "is_playing": self._is_playing,
-            "chunks": len(self._stream),
-        }
-
-    def _get_api_key(self) -> str | None:
-        import os
-
-        return os.getenv("ELEVENLABS_API_KEY")
-
-    def _get_voice_id(self) -> str:
-        # Default voice ID
-        return "21m00Tcm4TlvDq8ikWAM"
-
-    def _get_model_id(self) -> str:
-        return "eleven_monolingual_v1"
-
+# ─────────────────────────────────────────────────────────────────────────────
+#  TTSManger  (orchestrator)
+# ─────────────────────────────────────────────────────────────────────────────
 
 class TTSManger:
-    """Streaming TTS Manager."""
+    """Streaming TTS Manager.
+
+    Lifecycle
+    ---------
+    Lazy initialization: the underlying engine is created on the first call to
+    :meth:`add_text`. Callers do not need to call :meth:`initialize` explicitly.
+    Explicit :meth:`initialize` is idempotent — safe to call multiple times.
+
+    Callbacks
+    ---------
+    Register callbacks via :meth:`set_callbacks` at any point — before or after
+    the engine is created. They are stored and wired to the engine whenever it
+    becomes available.
+    """
 
     def __init__(self, settings: TTSSettings):
         self.settings = settings
         self.engine: TTSEngine | None = None
+        # Pending callbacks stored so they survive lazy initialization.
+        self._pending_complete_callback: Callable[[], None] | None = None
+        self._pending_interrupt_callback: Callable[[], None] | None = None
+
+    def set_callbacks(
+        self,
+        complete: Callable[[], None],
+        interrupt: Callable[[], None],
+    ) -> None:
+        """Register playback-complete and interrupt callbacks.
+
+        Safe to call before or after the engine is created — callbacks are
+        stored and applied to the engine whenever it becomes available.
+        """
+        self._pending_complete_callback = complete
+        self._pending_interrupt_callback = interrupt
+        if self.engine:
+            self.engine.set_callbacks(complete, interrupt)
 
     def initialize(self) -> bool:
-        """Initialize TTS engine."""
+        """Initialize TTS engine. Idempotent — safe to call multiple times."""
         if self.engine and self.engine.is_active:
             return True
 
         try:
-            if self.settings.speaker == TTSSpeaker.EDGE_TTS:
-                self.engine = EdgeTTSEngine(self.settings)
-            elif self.settings.speaker == TTSSpeaker.PIPER:
-                self.engine = PiperTTSEngine(self.settings)
-            elif self.settings.speaker == TTSSpeaker.ELEVENLABS:
-                self.engine = ElevenLabTTS(self.settings)
-            else:
-                logger.error(f"Unsupported speaker: {self.settings.speaker}")
+            speaker_enum = self._resolve_speaker()
+            if speaker_enum is None:
                 return False
 
-            return self.engine.initialize()
+            if speaker_enum == TTSSpeaker.PIPER:
+                self.engine = PiperTTSEngine(self.settings)
+            elif speaker_enum == TTSSpeaker.EDGE_TTS:
+                self.engine = EdgeTTSEngine(self.settings)
+            else:
+                logger.error(f"Unsupported speaker: {speaker_enum}")
+                return False
+
+            ok = self.engine.initialize()
+            if ok and self._pending_complete_callback:
+                self.engine.set_callbacks(
+                    self._pending_complete_callback,
+                    self._pending_interrupt_callback,
+                )
+            return ok
 
         except Exception as e:
             logger.error(f"Error initializing TTS manager: {e}")
             return False
 
+    def _resolve_speaker(self) -> TTSSpeaker | None:
+        if isinstance(self.settings.speaker, str):
+            for member in TTSSpeaker:
+                if member.value == self.settings.speaker:
+                    return member
+            logger.error(f"Unsupported speaker string: {self.settings.speaker!r}")
+            return None
+        return self.settings.speaker
+
     def add_text(self, text: str) -> bool:
-        """Add text to speech queue."""
+        """Add text to speech queue.
+
+        Performs lazy initialization if the engine has not been created yet,
+        so callers do not need to call :meth:`initialize` explicitly.
+        """
         if not self.engine:
-            return False
+            logger.debug("TTS engine not yet initialized — attempting lazy init")
+            if not self.initialize():
+                logger.error("TTS lazy initialization failed; cannot add text")
+                return False
 
         return self.engine.add_text(text)
 
@@ -495,21 +491,18 @@ class TTSManger:
         """Start speaking."""
         if not self.engine:
             return False
-
         return self.engine.speak()
 
     def stop(self) -> bool:
         """Stop speaking."""
         if not self.engine:
             return False
-
         return self.engine.stop()
 
     def is_playing(self) -> bool:
         """Check if speaking."""
         if not self.engine:
             return False
-
         return self.engine.is_playing()
 
     def get_status(self) -> dict[str, Any]:

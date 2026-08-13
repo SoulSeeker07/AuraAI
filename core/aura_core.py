@@ -181,7 +181,7 @@ class AuraCore:
         self.workflow_engine = None
         self.vision_enabled = True
         self.vision_manager = None
-        self.voice_enabled = False
+        self.voice_enabled = self.config.get("voice_enabled", False)
         self.executive_brain = None
         self.executive_brain_enabled = False
         self.current_task: str | None = None

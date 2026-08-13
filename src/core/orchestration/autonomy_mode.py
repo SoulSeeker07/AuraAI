@@ -8,6 +8,7 @@ Defines system autonomy levels (ASK, ASSISTED, AUTONOMOUS) and deterministic act
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import Any
 
@@ -57,6 +58,26 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
         "rmdir", "destroy", "format"
     ]
     if any(kw in action_lower for kw in high_keywords):
+        return ActionRisk.HIGH
+
+    # 2b. High-risk phrasing embedded in the execution parameters (intent text,
+    #     app targets, or UI labels). Provider/chat-styled steps collapse to a
+    #     generic action such as `open_app`, hiding the original intent in the
+    #     action name — but the params keep the actual user wording. Phrase-based
+    #     matching preserves innocuous chat (e.g. "what is format in excel?",
+    #     "explain kill in linux") while blocking destructive imperatives such
+    #     as "format drive C" or "kill all running processes".
+    params_text = str(params).lower()
+    high_risk_phrase_patterns = [
+        r"\bformat\b.*\b(?:drive|disk|volume|partition|usb|flash|media)\b",
+        r"\b(?:wipe|erase|purge)\b.*\b(?:all|everything|entire|drive|disk)\b",
+        r"\bkill\b.*\b(?:all|every|process|processes|task|tasks|service|services)\b",
+        r"\b(?:delete|remove|drop|destroy)\b.*\b(?:all|everything|every|entire)\b",
+        r"\b(?:shutdown|reboot|halt)\b.*\b(?:all|everything|now|processes|services)\b",
+        r"\b(?:logout|sign\s*out|signout)\b.*\b(?:all|every|now|sessions?)\b",
+        r"\brm\s+-\s*rf\b",
+    ]
+    if any(re.search(pat, params_text) for pat in high_risk_phrase_patterns):
         return ActionRisk.HIGH
 
     # Check file modification risk

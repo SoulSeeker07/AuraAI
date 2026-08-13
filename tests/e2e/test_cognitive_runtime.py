@@ -37,8 +37,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from Memory import Memory
-from src.core.nlu.nlu_engine import NLUEngine
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
+from core.nlu.nlu_engine import NLUEngine
+from core.orchestration.master_orchestrator import MasterOrchestrator
 from src.memory.cognitive_memory import CognitiveMemoryEngine
 from src.memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
 

@@ -5,14 +5,16 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![Platform Version](https://img.shields.io/badge/version-v0.19.0--cognitive--architecture-green.svg)](RELEASE.md)
-[![Platform Progress](https://img.shields.io/badge/milestones-24%2F26%20Complete-green.svg)](roadmap.md)
+[![Platform Progress](https://img.shields.io/badge/milestones-26%2F26%20Integrated-green.svg)](roadmap.md)
 [![Architecture Status](https://img.shields.io/badge/cognitive--architecture-aca--active-blue.svg)](docs/AURA_ARCHITECTURE_CONNECTION.md)
 [![Runtime Acceptance](https://img.shields.io/badge/runtime--acceptance-verified-brightgreen.svg)](docs/RUNTIME_ACCEPTANCE.md)
-[![Build Status](https://img.shields.io/badge/tests-35%2F35%20passed-brightgreen.svg)](docs/engineering.md)
+[![Build Status](https://img.shields.io/badge/tests-111%2F111%20passed-brightgreen.svg)](docs/engineering.md)
 
 Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies perception, decision-making, planning, execution, reflection, and learning into a single coordinated system.
 
 > **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the Native Desktop Engine, browser tasks by Playwright, research by Gemini, and software engineering by Antigravity CLI.
+>
+> *Note: All 26 core architecture milestones (M1–M26) are fully integrated into the unified `PersonalOSRuntime` pipeline. Platform focus has now transitioned to **Phase 6 — Hardening & Real-World Validation**.*
 
 Read the [Architecture Connection](docs/AURA_ARCHITECTURE_CONNECTION.md) for how everything is wired, the [Architecture Audit](docs/AURA_ARCHITECTURE_AUDIT.md) for what's connected vs. missing, and the [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs.
 
@@ -101,21 +103,30 @@ The ACA is the cognitive center of Aura — the only component that "thinks." Ev
 ### New Architectural Pieces
 
 | Piece | File | Purpose |
-|-------|------|---------|
-| **Blackboard** | `src/brain/schemas/blackboard.py` | Shared working memory — all stages read/write one object |
-| **DecisionContext** | `src/brain/schemas/decision_context.py` | Aura's internal "thought" — the ONLY thing the Planner consumes |
-| **TaskGraph** | `src/brain/schemas/task_graph.py` | DAG for parallel execution (not linear) |
-| **RuntimeSession** | `src/brain/schemas/runtime_session.py` | Source of truth for every execution |
-| **Artifact** | `src/brain/schemas/artifact.py` | Everything Aura creates |
-| **GoalManager** | `src/brain/aca/goal_manager.py` | Long-term goal tracking across requests |
-| **PolicyEngine** | `src/brain/aca/policy_engine.py` | Governance layer — security, permissions, policies |
-| **ArtifactManager** | `src/brain/aca/artifact_manager.py` | Collects artifacts from execution |
-| **FusionEngine** | `src/brain/aca/fusion_engine.py` | Fuses all retrieval into DecisionContext |
-| **ConfidenceGate** | `src/brain/aca/confidence_gate.py` | Per-domain confidence scores |
+Stage 1: Intent & Decision Reasoning               Memory Engine
+    │
+    ▼
+Stage 2: Goal & Task Decomposer
+    │
+    ▼
+Stage 3: Supervisor Planner Integration
+    │
+    ▼
+Stage 4: Execution Coordinator
+    │   ├─ Native Desktop Engine
+    │   ├─ Playwright Browser Engine
+    │   ├─ Research Engine
+    │   └─ Professional Expert Systems
+    ▼
+Stage 5: Verification & Self-Healing
+    │
+    ▼
+Stage 6: Activity Trace & User Feedback
+```
 
 ---
 
-## ✨ Features Overview
+## 🧠 Core Capabilities
 
 ### 🧠 Cognitive Architecture
 - **5-Stage Cognitive Pipeline**: Perception → Decision → Planning → Execution → Reflection/Learning
@@ -157,7 +168,7 @@ Accept success only when independently observed evidence proves the goal.
 
 ---
 
-## ⚡ Real Implementation & Wiring Audit (M18 – M24 Verified)
+## ⚡ Real Implementation & Wiring Audit (M18 – M25 Verified)
 
 > **Implementation Guarantee:** Physical implementations are verified on a real Windows machine; explicit simulation fallbacks exist only for headless/non-GUI environments.
 
@@ -172,6 +183,7 @@ The table below outlines what is **physically wired to live system backends** ve
 | **Goal Verification** | 🟢 **REAL WIRED** | `GoalVerifier` performing independent post-execution state verification (checking live URLs, element text content, window handles, and file disk persistence). | Rejects step success if independent state verification fails. |
 | **Continuous Voice Loop (M20)** | 🟢 **REAL WIRED** | Live audio input capture, speech-to-text transcript processing, continuous multi-turn listening resumption, microphone suppression during TTS. | Handles STT transcription noise via `NLUEngine` STT normalization. |
 | **Event Runtime & Autonomy (M24)** | 🟢 **REAL WIRED** | Async event loop, in-process `asyncio.Queue`, `TriggerRegistry` disk persistence (`storage/triggers.json`), worker task isolation, `ExecutionPolicy` risk evaluation, `ExecutionCoordinator` routing, and full 16-step restart lifecycle recovery. | Unauthorized high-risk triggers halt as `BLOCKED`. Deduplicated triggers skip execution. Persistent state reloads upon restart. |
+| **Professional Expert Systems (M25.1)** | 🟢 **REAL WIRED** | `DomainExpertRegistry` discovery mechanism, `BaseExpertSystem` error isolation, 4 specialized domain experts (`SoftwareEngineeringExpert`, `NetworkDiagnosticsExpert`, `CybersecurityAuditExpert`, `FinancialAnalysisExpert`) generating `DomainActionProposal`s. | Reasoning proposes; physical execution strictly routes through `ExecutionPolicy` → `ExecutionCoordinator` → `GoalVerifier`. |
 
 ---
 

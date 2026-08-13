@@ -11,10 +11,10 @@ Verifies:
 """
 
 import pytest
-from src.brain.aca.engine_interface import EngineRegistry
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
-from src.core.backends.adapters.desktop_backend import DesktopEngineBackend
+from brain.aca.engine_interface import EngineRegistry
+from brain.execution_coordinator import ExecutionCoordinator
+from core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
+from core.backends.adapters.desktop_backend import DesktopEngineBackend
 
 
 @pytest.fixture

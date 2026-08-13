@@ -4,13 +4,13 @@ Location: tests/test_autonomy_hooks.py
 """
 
 import pytest
-from src.core.orchestration.autonomy_mode import (
+from core.orchestration.autonomy_mode import (
     AutonomyLevel,
     ActionRisk,
     classify_action_risk,
     should_require_confirmation,
 )
-from src.core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
 
 
 def test_classify_action_risk():

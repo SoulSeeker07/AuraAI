@@ -2,31 +2,42 @@
 Aura Continuous Voice Loop Orchestrator
 =======================================
 
-Provides a continuous voice interaction loop:
-  Wake Word ("Hey Aura") / STT
-       ↓
-  NLU Intent Parsing & Strategy Generation
-       ↓
-  ExecutionCoordinator Loop (Execute → Observe → Verify → Recover → Goal Verify)
-       ↓
-  TTS Response (Spoken Activity Trace Summary)
-       ↓
-  Continuous Loop (Auto-resume Listening)
+Provides a continuous voice interaction loop using a strict state machine.
+This orchestrator sits on top of the VoiceManager to handle lifecycle
+transitions, handoffs to the existing NLU/Execution engines, and TTS echo
+suppression boundaries.
 """
 
 import asyncio
 import logging
-from typing import Any, Callable
+import time
+from enum import Enum, auto
+from typing import Any
 
-from .models import ConversationState, VoiceContext
+from .models import VoiceContext
 from .voice_manager import VoiceManager
 
 logger = logging.getLogger(__name__)
 
 
+class VoiceState(Enum):
+    """Explicit lifecycle states for the voice interaction loop."""
+    IDLE = auto()          # Waiting for the wake word (via VoiceManager)
+    WAKE_DETECTED = auto() # Wake word confirmed; preparing audio capture
+    LISTENING = auto()     # Capturing user speech via the microphone
+    TRANSCRIBING = auto()  # Speech ended; STT engine decoding audio
+    UNDERSTANDING = auto() # Routing transcript to existing NLU
+    EXECUTING = auto()     # Running local deterministic tools
+    AI_RESPONSE = auto()   # Generating conversational replies
+    SPEAKING = auto()      # Piper TTS is actively playing audio
+    COOLDOWN = auto()      # Settling period before explicit buffer flush
+
+
 class ContinuousVoiceLoop:
     """
-    Continuous Voice Loop orchestrator connecting VoiceManager with ExecutionCoordinator.
+    Continuous Voice Loop orchestrator.
+    Strictly manages voice state transitions and hands off STT to 
+    existing CoreRouter/ExecutionCoordinator without bypassing them.
     """
 
     def __init__(
@@ -38,10 +49,13 @@ class ContinuousVoiceLoop:
         self.voice_manager = voice_manager or VoiceManager()
         self.coordinator = coordinator
         self.nlu_engine = nlu_engine
+        
         self._running = False
         self._loop_task: asyncio.Task | None = None
+        self.state = VoiceState.IDLE
 
         # Wire VoiceManager callbacks
+        self.voice_manager.on_wake_word_detected = self._on_wake_word_detected
         self.voice_manager.on_stt_result = self._on_stt_result
         self.voice_manager.on_tts_complete = self._on_tts_complete
         self.voice_manager.on_error = self._on_voice_error
@@ -50,151 +64,172 @@ class ContinuousVoiceLoop:
         self.turn_count = 0
         self.history: list[dict[str, Any]] = []
 
+        logger.info("[ContinuousVoiceLoop] INITIALIZING")
+        self._set_state(VoiceState.IDLE)
+
+    def _set_state(self, new_state: VoiceState):
+        logger.info(f"[ContinuousVoiceLoop] State Transition: {self.state.name} -> {new_state.name}")
+        self.state = new_state
+
     def start(self) -> bool:
-        """Start the continuous voice loop."""
+        """Start the continuous voice loop lifecycle."""
         if self._running:
             logger.warning("ContinuousVoiceLoop already running")
             return True
 
+        self._running = True
+        self._set_state(VoiceState.IDLE)
+        
         success = self.voice_manager.start()
-        if success:
-            self._running = True
-            # Activate initial wake word / listening state
-            self.voice_manager.activate()
-            logger.info("ContinuousVoiceLoop started and listening")
-        return success
+        if not success:
+            logger.error("ContinuousVoiceLoop failed to start voice manager")
+            self._running = False
+            return False
+
+        if not self.voice_manager.activate():
+            self._running = False
+            self.voice_manager.stop()
+            logger.error("ContinuousVoiceLoop failed to enter wake-word listening")
+            return False
+
+        logger.info("ContinuousVoiceLoop started and listening")
+        return True
 
     def stop(self) -> None:
-        """Stop the continuous voice loop."""
+        """Stop the continuous voice loop cleanly."""
+        logger.info("[ContinuousVoiceLoop] State: STOP_REQUESTED")
         self._running = False
         self.voice_manager.stop()
-        logger.info("ContinuousVoiceLoop stopped")
+        logger.info("[ContinuousVoiceLoop] State: STOPPED")
+        self._set_state(VoiceState.IDLE)
 
-    def process_spoken_command(self, transcript: str) -> dict[str, Any]:
-        """
-        Process a spoken transcript through NLU and ExecutionCoordinator.
-        """
-        self.turn_count += 1
-        logger.info(f"[ContinuousVoiceLoop Turn #{self.turn_count}] Processing transcript: '{transcript}'")
+    # ------------------------------------------------------------------------
+    # State Machine Event Injections (For Testing & Hardware Callbacks)
+    # ------------------------------------------------------------------------
 
-        # Parse NLU or build execution plan map
-        exec_map = self._build_execution_map(transcript)
+    def trigger_wake_detected(self, wake_word: str = "Aura"):
+        if self.state == VoiceState.IDLE and self._running:
+            self._set_state(VoiceState.WAKE_DETECTED)
+            # Typically, audio capture triggers immediately
+            self.trigger_listening()
 
-        coord_result = None
-        if self.coordinator and exec_map:
-            try:
-                # Synchronous dispatch if event loop active
-                try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    loop = None
+    def trigger_listening(self):
+        if self.state == VoiceState.WAKE_DETECTED:
+            self._set_state(VoiceState.LISTENING)
 
-                if loop and loop.is_running():
-                    fut = asyncio.run_coroutine_threadsafe(
-                        self.coordinator.coordinate(exec_map), loop
-                    )
-                    coord_result = fut.result(timeout=60)
-                else:
-                    coord_result = asyncio.run(self.coordinator.coordinate(exec_map))
-            except Exception as e:
-                logger.error(f"[ContinuousVoiceLoop] Coordination error: {e}")
+    def trigger_transcription_ready(self, transcript: str):
+        if self.state in (VoiceState.LISTENING, VoiceState.WAKE_DETECTED, VoiceState.TRANSCRIBING):
+            if not transcript.strip():
+                # Empty transcription, return to IDLE
+                self._set_state(VoiceState.IDLE)
+                return
+                
+            self._set_state(VoiceState.TRANSCRIBING)
+            self.turn_count += 1
+            self._process_transcript(transcript)
+        elif not self._running:
+             if not transcript.strip():
+                 self._set_state(VoiceState.IDLE)
+                 return
+             self._set_state(VoiceState.TRANSCRIBING)
+             self.turn_count += 1
+             self._process_transcript(transcript)
 
-        # Formulate spoken summary
-        success = getattr(coord_result, "success", True) if coord_result else True
-        duration = getattr(coord_result, "total_time", 1.5) if coord_result else 1.5
+    def trigger_tts_completed(self):
+        if self.state == VoiceState.SPEAKING:
+            self._set_state(VoiceState.COOLDOWN)
+            self._handle_cooldown()
 
-        if success:
-            spoken_summary = f"Done. {transcript} completed in {duration:.1f} seconds."
+    # ------------------------------------------------------------------------
+    # Hardware Callbacks
+    # ------------------------------------------------------------------------
+
+    def _on_wake_word_detected(self, wake_word: str) -> None:
+        """Callback when the microphone wake word is detected."""
+        self.trigger_wake_detected(wake_word)
+
+    def _on_stt_result(self, context: VoiceContext) -> None:
+        """Callback when STT finishes transcribing speech."""
+        logger.info(f"[ContinuousVoiceLoop] STT result received: {context.transcript}")
+        self.trigger_transcription_ready(context.transcript)
+
+    def _on_tts_complete(self) -> None:
+        """Callback when TTS finishes speaking response."""
+        self.trigger_tts_completed()
+
+    def _on_voice_error(self, error: str) -> None:
+        """Callback on voice system error."""
+        logger.error(f"[ContinuousVoiceLoop] Voice error: {error}")
+        if self.state == VoiceState.SPEAKING:
+             self.trigger_tts_completed()
         else:
-            spoken_summary = f"Sorry, {transcript} could not be completed successfully."
+             self._set_state(VoiceState.IDLE)
+
+    # ------------------------------------------------------------------------
+    # Internal Handoffs
+    # ------------------------------------------------------------------------
+
+    def _process_transcript(self, transcript: str):
+        self._set_state(VoiceState.UNDERSTANDING)
+        logger.info(f"[ContinuousVoiceLoop Turn #{self.turn_count}] Processing transcript: '{transcript}'")
+        
+        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+        os_runtime = PersonalOSRuntime.get_instance()
+        
+        self._set_state(VoiceState.EXECUTING)
+        
+        report = None
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                fut = asyncio.run_coroutine_threadsafe(
+                    os_runtime.execute_goal(transcript, input_type="voice"), loop
+                )
+                report = fut.result(timeout=60)
+            else:
+                report = asyncio.run(os_runtime.execute_goal(transcript, input_type="voice"))
+        except Exception as e:
+            logger.error(f"[ContinuousVoiceLoop] Coordination error: {e}")
+                
+        success = getattr(report, "success", True) if report else False
+        spoken_summary = getattr(report, "spoken_summary", None)
+        
+        if not spoken_summary:
+            if success:
+                spoken_summary = f"Done processing: {transcript}."
+            else:
+                spoken_summary = f"Sorry, {transcript} could not be completed successfully."
 
         turn_fact = {
             "turn": self.turn_count,
             "transcript": transcript,
             "success": success,
-            "duration": duration,
             "spoken_summary": spoken_summary,
-            "coord_result": coord_result,
-            "exec_map": exec_map,
+            "report": report,
         }
         self.history.append(turn_fact)
-
-        # Trigger TTS response
-        self.voice_manager.speak(spoken_summary)
-        return turn_fact
-
-    def _build_execution_map(self, transcript: str) -> dict[str, Any]:
-        """Map spoken transcript to ExecutionMap structure."""
-        t_lower = transcript.lower()
-
-        if any(kw in t_lower for kw in ["first result", "top result", "open the first", "open that", "first video", "now open"]):
-            last_query = getattr(self, "_last_search_query", "Python tutorial")
-            return {
-                "goal": transcript,
-                "context_resolved": True,
-                "resolved_query": last_query,
-                "steps": [
-                    {"engine": "browser", "action": "browser.select_video", "parameters": {"query": last_query}},
-                    {"engine": "browser", "action": "browser.verify_video", "parameters": {"target": "selected_video"}},
-                    {"engine": "browser", "action": "media.play", "parameters": {"target": "selected_video"}},
-                ],
-            }
-
-        if "youtube" in t_lower:
-            query = t_lower.replace("open chrome and go youtube find", "").replace("search youtube for", "").replace("search youtube", "").replace("and play", "").strip()
-            self._last_search_query = query or "Python tutorial"
-            return {
-                "goal": transcript,
-                "steps": [
-                    {"engine": "browser", "action": "browser.navigate", "parameters": {"url": "https://www.youtube.com"}},
-                    {"engine": "browser", "action": "browser.search", "parameters": {"query": query or "Python tutorial"}},
-                    {"engine": "browser", "action": "browser.select_video", "parameters": {"query": query or "Python tutorial"}},
-                    {"engine": "browser", "action": "media.play", "parameters": {"target": "selected_video"}},
-                ],
-            }
-        elif "notepad" in t_lower:
-            return {
-                "goal": transcript,
-                "steps": [
-                    {"engine": "desktop", "action": "app_open", "parameters": {"app_name": "notepad"}},
-                    {"engine": "desktop", "action": "keyboard.type", "parameters": {"text": "Aura Continuous Voice Test"}},
-                    {"engine": "desktop", "action": "app_close", "parameters": {"target": "notepad"}},
-                ],
-            }
-        elif "facebook" in t_lower:
-            query = t_lower.replace("find", "").replace("on facebook", "").replace("and show me the relevant result", "").strip()
-            self._last_search_query = query or "Meta AI"
-            return {
-                "goal": transcript,
-                "steps": [
-                    {"engine": "browser", "action": "browser.ensure_open", "parameters": {"browser": "chrome"}},
-                    {"engine": "browser", "action": "browser.navigate", "parameters": {"url": "https://www.facebook.com"}},
-                    {"engine": "browser", "action": "social.search", "parameters": {"query": query or "Meta AI", "platform": "facebook"}},
-                    {"engine": "browser", "action": "social.inspect_result", "parameters": {"query": query or "Meta AI", "platform": "facebook"}},
-                    {"engine": "browser", "action": "social.verify_result", "parameters": {"target": "result_page"}},
-                ],
-            }
-        else:
-            return {
-                "goal": transcript,
-                "steps": [
-                    {"engine": "browser", "action": "browser.ensure_open", "parameters": {"browser": "chrome"}},
-                    {"engine": "browser", "action": "browser.navigate", "parameters": {"url": "https://www.google.com"}},
-                ],
-            }
-
-    def _on_stt_result(self, context: VoiceContext) -> None:
-        """Callback when STT finishes transcribing speech."""
-        logger.info(f"[ContinuousVoiceLoop] STT result received: {context.transcript}")
-        self.process_spoken_command(context.transcript)
-
-    def _on_tts_complete(self) -> None:
-        """Callback when TTS finishes speaking response."""
-        logger.info("[ContinuousVoiceLoop] TTS completed — resuming continuous active listening")
+        
+        self._set_state(VoiceState.SPEAKING)
+        
+        # If running, we send to actual VoiceManager. If just state-testing, we skip actual TTS.
         if self._running:
-            # Reactivate voice manager for continuous conversation
-            self.voice_manager.activate()
+            # We assume VoiceManager handles the underlying hardware speak task,
+            # which will eventually trigger on_tts_complete and call trigger_tts_completed()
+            self.voice_manager.speak(spoken_summary)
+            
+    def _handle_cooldown(self):
+        """Brief settling period before flushing mic buffer and returning to IDLE."""
+        if self._running:
+            time.sleep(0.2)
+            if self.voice_manager.activate():
+                self._set_state(VoiceState.IDLE)
+            else:
+                logger.error("[ContinuousVoiceLoop] Failed to restore wake-word listening")
+        else:
+            self._set_state(VoiceState.IDLE)
 
-    def _on_voice_error(self, error: str) -> None:
-        """Callback on voice system error."""
-        logger.error(f"[ContinuousVoiceLoop] Voice error: {error}")
+

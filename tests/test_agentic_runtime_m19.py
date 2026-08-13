@@ -7,21 +7,21 @@ import pytest
 import asyncio
 from pathlib import Path
 
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.brain.goal_verifier import GoalVerifier
-from src.core.orchestration.autonomy_mode import (
+from brain.execution_coordinator import ExecutionCoordinator
+from brain.goal_verifier import GoalVerifier
+from core.orchestration.autonomy_mode import (
     AutonomyLevel,
     ActionRisk,
     classify_action_risk,
     should_require_confirmation,
 )
-from src.core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
-from src.core.orchestration.runtime_checkpoint import (
+from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+from core.orchestration.runtime_checkpoint import (
     RuntimeCheckpointManager,
     ActionReversibility,
 )
-from src.core.orchestration.task_worker import TaskWorker, ResearchProfile
-from src.core.capabilities.capability_registry import CapabilityRegistry
+from core.orchestration.task_worker import TaskWorker, ResearchProfile
+from core.capabilities.capability_registry import CapabilityRegistry
 from src.workspace.workspace_instruction_loader import WorkspaceInstructionLoader
 
 

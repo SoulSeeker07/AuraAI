@@ -1,0 +1,93 @@
+{
+  "note": "Consolidated H2 endurance run evidence (Phase 6 freeze investigation). Run1 report JSON in APPDATA was overwritten by Run3 on 2026-08-10; key metrics from Run1 captured here before overwrite along with Run2/Run3 from their stdout logs + saved reports.",
+  "run1": {
+    "status": "COMPLETED",
+    "duration_s": 1804.24,
+    "cycles": 403,
+    "exceptions": 0,
+    "stuck": 0,
+    "false_successes": 0,
+    "orphan_processes": 2,
+    "rss_mb": [
+      81.54,
+      135.67,
+      54.13
+    ],
+    "handles": [
+      833,
+      7326,
+      6493
+    ],
+    "threads": [
+      19,
+      13,
+      -6
+    ],
+    "chromium": [
+      20,
+      22,
+      2
+    ],
+    "event_queue_depth": [
+      0,
+      0
+    ],
+    "gates": {
+      "G1-G10": "PASS",
+      "G11": "FAIL",
+      "G12": "FAIL",
+      "G13-G15": "PASS"
+    },
+    "log": "scratch/h2_postretrofit_stdout.log",
+    "classification": "+6493 handles leak observation; NOT reproduced in run3"
+  },
+  "run2": {
+    "status": "ABORTED/DIED_MIDRUN",
+    "note": "Died at ~1428s / cycle ~345; no report written; stderr empty; last log shows TTS degradation + one browser step failure; likely resource-exhaustion/native termination",
+    "log": "scratch/h2_run2_stdout.log"
+  },
+  "run3": {
+    "status": "COMPLETED",
+    "duration_s": 1801.88,
+    "cycles": 715,
+    "exceptions": 0,
+    "stuck": 0,
+    "false_successes": 0,
+    "orphan_processes": 0,
+    "rss_mb": [
+      81.12,
+      97.16,
+      16.04
+    ],
+    "handles": [
+      820,
+      794,
+      -26
+    ],
+    "threads": [
+      18,
+      12,
+      -6
+    ],
+    "chromium": [
+      13,
+      6,
+      -7
+    ],
+    "event_queue_depth": [
+      0,
+      0
+    ],
+    "gates": {
+      "G1-G3": "PASS",
+      "G4": "FAIL(715/715)",
+      "G5": "FAIL(715/715)",
+      "G6-G10": "PASS",
+      "G11": "PASS",
+      "G12": "PASS",
+      "G13-G15": "PASS"
+    },
+    "log": "scratch/h2_run3_stdout.log",
+    "classification": "resource leak NOT reproduced; G4/G5 functional failures the open issue"
+  }
+}

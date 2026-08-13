@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "C:\Users\yrsre\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\yrsre\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Sreekanta\VS Code Project\Desktop AI\AuraAI\scratch\test_phase6_endurance.py", line 559, in <module>
+    overall_pass, report = asyncio.run(
+                           ^^^^^^^^^^^^
+  File "C:\Users\yrsre\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\yrsre\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
