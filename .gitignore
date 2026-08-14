@@ -31,4 +31,9 @@ node_modules/
 .git/
 
 # Voice Models
-models/
+models/ 
+# Generated architecture diagrams
+*.dot
+
+# Generated test/runtime artifacts
+artifacts/

@@ -20,6 +20,32 @@ Read the [Architecture Connection](docs/AURA_ARCHITECTURE_CONNECTION.md) for how
 
 ---
 
+## 🚀 Development Status
+
+```text
+Current Development
+├── M17 Cognitive Memory — IN PROGRESS
+└── M18 World Model — IN PROGRESS
+
+Next Critical Milestones
+├── M19 Capability & Tool Runtime
+├── M20 Coding Intelligence 2.0
+├── M21 Research Intelligence 2.0
+└── M22 Browser Intelligence
+
+Future Platform Milestones
+├── M23 MCP Ecosystem
+├── M24 Event Runtime
+├── M25 Expert Systems
+├── M26 Personal OS
+├── M27 Autonomous Engineering
+├── M28 Aura OS
+├── M29 Natural Interaction
+└── M30 Aura GUI
+```
+
+---
+
 ## 🏛️ System Architecture
 
 Aura operates as an AI Operating System where the **Aura Cognitive Architecture (ACA)** serves as the cognitive runtime — the only component that "thinks" — while execution is delegated to specialized engines.

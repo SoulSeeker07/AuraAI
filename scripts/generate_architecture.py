@@ -17,7 +17,8 @@ import sys
 from pathlib import Path
 
 # Add tools/architecture-generator to sys.path
-TOOL_DIR = Path(__file__).resolve().parent / "tools" / "architecture-generator"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+TOOL_DIR = PROJECT_ROOT / "tools" / "architecture-generator"
 if str(TOOL_DIR) not in sys.path:
     sys.path.insert(0, str(TOOL_DIR))
 
