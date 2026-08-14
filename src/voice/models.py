@@ -106,7 +106,8 @@ class VoiceContext:
 
     # Transcript data
     transcript: str  # Complete transcript
-    partial_transcript: str = ""  # Current partial transcript (streaming)
+    confirmed_transcript: str = ""  # Locked in text
+    tentative_transcript: str = ""  # Fluctuating text
     final_transcript: str = ""  # Most recent final transcript
 
     # Confidence and quality
@@ -149,9 +150,10 @@ class VoiceContext:
         self.sample_rate = max(8000, min(48000, self.sample_rate))
         self.interruptions = max(0, self.interruptions)
 
-    def update_partial(self, partial: str):
+    def update_partial(self, confirmed: str, tentative: str):
         """Update partial transcript."""
-        self.partial_transcript = partial
+        self.confirmed_transcript = confirmed
+        self.tentative_transcript = tentative
 
     def finalize(self, full_transcript: str):
         """Finalize transcript with full content."""
@@ -166,7 +168,8 @@ class VoiceContext:
 
     def reset(self):
         """Reset context for new utterance."""
-        self.partial_transcript = ""
+        self.confirmed_transcript = ""
+        self.tentative_transcript = ""
         self.final_transcript = ""
         self.confidence = 0.0
         self.interruptions = 0
@@ -178,7 +181,8 @@ class VoiceContext:
         """Convert to dictionary for serialization."""
         return {
             "transcript": self.transcript,
-            "partial_transcript": self.partial_transcript,
+            "confirmed_transcript": self.confirmed_transcript,
+            "tentative_transcript": self.tentative_transcript,
             "final_transcript": self.final_transcript,
             "confidence": self.confidence,
             "language": self.language,
@@ -242,7 +246,7 @@ class ConversationSession:
 
     # Configuration
     silence_threshold: float = 1.0  # Silence duration in seconds
-    energy_threshold: float = 0.1  # Energy threshold (0.0 - 1.0)
+    energy_threshold: float = 0.01  # Energy threshold (0.0 - 1.0)
     vad_mode: VADMode = VADMode.BOTH
 
     # Latency tracking
@@ -503,7 +507,7 @@ class VoiceSettings:
     wake_word_settings: WakeWordSettings = field(default_factory=WakeWordSettings)
     vad_mode: VADMode = VADMode.BOTH
     silence_threshold: float = 1.0  # End-of-speech silence duration
-    energy_threshold: float = 0.1  # End-of-speech energy threshold
+    energy_threshold: float = 0.01  # End-of-speech energy threshold
     enable_interruptibility: bool = True  # Enable barge-in capability
     enable_streaming: bool = True  # Enable streaming STT/TTS
     log_level: str = "INFO"

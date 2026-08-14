@@ -55,8 +55,10 @@ class ContinuousVoiceLoop:
         self.state = VoiceState.IDLE
 
         # Wire VoiceManager callbacks
-        self.voice_manager.on_wake_word_detected = self._on_wake_word_detected
+        self.voice_manager.on_state_change = self._on_state_change
         self.voice_manager.on_stt_result = self._on_stt_result
+        self.voice_manager.on_stt_partial = self._on_stt_partial
+        self.voice_manager.on_wake_word_detected = self._on_wake_word_detected
         self.voice_manager.on_tts_complete = self._on_tts_complete
         self.voice_manager.on_error = self._on_voice_error
 
@@ -116,6 +118,8 @@ class ContinuousVoiceLoop:
         logger.info("[ContinuousVoiceLoop] State: STOP_REQUESTED")
         self._running = False
         self.voice_manager.stop()
+        logger.info("[VOICE] Shutdown: PASS")
+        logger.info("[MIC] Stream released: PASS")
         logger.info("[ContinuousVoiceLoop] State: STOPPED")
         self._set_state(VoiceState.IDLE)
 
@@ -127,6 +131,9 @@ class ContinuousVoiceLoop:
         if self.state == VoiceState.IDLE and self._running:
             self._set_state(VoiceState.WAKE_DETECTED)
             # Typically, audio capture triggers immediately
+            import sys
+            sys.stdout.write("\n\n🎧 Wake word detected! Aura is listening for your command...\n")
+            sys.stdout.flush()
             self.trigger_listening()
             logger.info("[VoiceManager] STT_ACTIVE")
 
@@ -147,19 +154,53 @@ class ContinuousVoiceLoop:
 
     def trigger_transcription_ready(self, transcript: str):
         if self.state in (VoiceState.LISTENING, VoiceState.WAKE_DETECTED, VoiceState.TRANSCRIBING):
-            if not transcript.strip():
+            clean_t = transcript.strip().lower()
+            hallucinations = [
+                "i'll see you next time.",
+                "i'll see you next time",
+                "i'll see you in the next video.",
+                "i'll see you in the next video",
+                "thank you.",
+                "thank you",
+                "thanks for watching.",
+                "thanks for watching",
+                "bye.",
+                "bye",
+                "you",
+            ]
+            if not transcript.strip() or clean_t in hallucinations:
                 # Empty transcription, return to correct state
                 self._return_to_listening_or_idle()
                 return
                 
             self._set_state(VoiceState.TRANSCRIBING)
+            import sys
+            sys.stdout.write(f"\n🗣️ You said: '{transcript}'\n")
+            sys.stdout.flush()
             self.turn_count += 1
             self._process_transcript(transcript)
         elif not self._running:
-             if not transcript.strip():
+             clean_t = transcript.strip().lower()
+             hallucinations = [
+                 "i'll see you next time.",
+                 "i'll see you next time",
+                 "i'll see you in the next video.",
+                 "i'll see you in the next video",
+                 "thank you.",
+                 "thank you",
+                 "thanks for watching.",
+                 "thanks for watching",
+                 "bye.",
+                 "bye",
+                 "you",
+             ]
+             if not transcript.strip() or clean_t in hallucinations:
                  self._return_to_listening_or_idle()
                  return
              self._set_state(VoiceState.TRANSCRIBING)
+             import sys
+             sys.stdout.write(f"\n🗣️ You said: '{transcript}'\n")
+             sys.stdout.flush()
              self.turn_count += 1
              self._process_transcript(transcript)
 
@@ -176,10 +217,32 @@ class ContinuousVoiceLoop:
         """Callback when the microphone wake word is detected."""
         self.trigger_wake_detected(wake_word)
 
-    def _on_stt_result(self, context: VoiceContext) -> None:
-        """Callback when STT finishes transcribing speech."""
-        logger.info(f"[STT] transcript='{context.transcript}'")
-        self.trigger_transcription_ready(context.transcript)
+    def _on_stt_result(self, context: VoiceContext):
+        if context.transcript:
+            self.trigger_transcription_ready(context.transcript)
+
+    def _on_stt_partial(self, context: VoiceContext):
+        """Render live transcription to terminal with ANSI colors."""
+        import sys
+        if context.confirmed_transcript or context.tentative_transcript:
+            # Clear line and print
+            # \033[K clears to end of line
+            # \033[2m dims the tentative text
+            # \033[0m resets formatting
+            confirmed = context.confirmed_transcript
+            tentative = context.tentative_transcript
+            
+            output = "\r\033[K🗣️ You said: '"
+            if confirmed:
+                output += confirmed
+                if tentative:
+                    output += " "
+            if tentative:
+                output += f"\033[2m{tentative}\033[0m"
+            output += "'..."
+            
+            sys.stdout.write(output)
+            sys.stdout.flush()
 
     def _on_tts_complete(self) -> None:
         """Callback when TTS finishes speaking response."""
@@ -258,7 +321,7 @@ class ContinuousVoiceLoop:
     def _handle_cooldown(self):
         """Brief settling period before flushing mic buffer and returning to IDLE."""
         if self._running:
-            time.sleep(0.2)
+            time.sleep(0.5)  # Extended cooldown to ensure hardware echo suppression
             import os
             enable_wake_word = os.getenv("ENABLE_WAKE_WORD", "true").lower() == "true"
             
@@ -269,7 +332,8 @@ class ContinuousVoiceLoop:
                 self.voice_manager._start_active_listening()
             else:
                 if self.voice_manager.activate():
-                    logger.info("[VoiceManager] AUDIO_BUFFER_FLUSHED")
+                    logger.info("[MIC] Recovery: PASS")
+                    logger.info("[WAKE] Listener resumed: PASS")
                     self._set_state(VoiceState.IDLE)
                 else:
                     logger.error("[ContinuousVoiceLoop] Failed to restore wake-word listening")

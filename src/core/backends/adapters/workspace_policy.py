@@ -105,6 +105,12 @@ class WorkspacePolicy:
         """
         target_path = self.validate_path(file_path)
         self.validate_boundary(target_path)
+        
+        # M20.5: Enforce project directory policy for generic files
+        rel_path = target_path.relative_to(self.workspace_root)
+        if len(rel_path.parts) == 1 and rel_path.name.lower() in ["app.py", "main.py", "script.py", "index.py", "index.js", "index.html"]:
+            raise WorkspacePolicyError(f"Attempted to write generic file '{rel_path.name}' directly to root. Please place it in a project subdirectory.")
+
         self.validate_extension(target_path)
         self.validate_protected_path(target_path)
         self.check_existing_file(target_path, allow_overwrite=allow_overwrite)

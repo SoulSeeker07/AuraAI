@@ -91,6 +91,7 @@ class VoiceManager:
         self.on_state_change: Callable[[ConversationState], None] | None = None
         self.on_wake_word_detected: Callable[[str], None] | None = None
         self.on_stt_result: Callable[[VoiceContext], None] | None = None
+        self.on_stt_partial: Callable[[str, str], None] | None = None
         self.on_tts_start: Callable[[str], None] | None = None
         self.on_tts_complete: Callable[[], None] | None = None
         self.on_error: Callable[[str], None] | None = None
@@ -108,8 +109,8 @@ class VoiceManager:
         defaults = {
             "vad_mode": VADMode.BOTH.value,
             "silence_threshold": 1.0,
-            "energy_threshold": 0.1,
-            "wake_word_provider": WakeWordProvider.LOCAL.value,
+            "energy_threshold": 0.01,
+            "wake_word_provider": WakeWordProvider.AURA.value,
             "wake_word_sensitivity": 0.5,
             "wake_word_phrases": ["aura", "hey aura"],
             "stt_settings": {
@@ -236,14 +237,14 @@ class VoiceManager:
 
             try:
                 if not self.wake_word.activate():
-                    logger.error("Failed to activate wake word")
+                    logger.error("[WAKE] Listener active: FAIL")
                     return False
                 if not self._ensure_input_recording():
-                    logger.error("Failed to start microphone stream for wake word")
+                    logger.error("[MIC] Stream opened: FAIL")
                     return False
                 
-                logger.info("[WakeWordManager] MICROPHONE_ACQUIRED")
-                logger.info("[WakeWordManager] LISTENING")
+                logger.info("[MIC] Stream opened: PASS")
+                logger.info("[WAKE] Listener active: PASS")
                 self._update_state(ConversationState.WAKE_LISTENING)
                 return True
 
@@ -312,8 +313,7 @@ class VoiceManager:
 
     def _on_wake_word_detected(self, wake_word: str) -> None:
         """Handle wake word detection."""
-        logger.info("[WakeWordManager] WAKE_DETECTED")
-        logger.info(f"Wake word detected: {wake_word}")
+        logger.info(f"[WAKE] Wake detected: PASS ({wake_word})")
 
         if self.on_wake_word_detected:
             self.on_wake_word_detected(wake_word)
@@ -340,7 +340,7 @@ class VoiceManager:
             # Update state
             self._update_state(ConversationState.ACTIVE_LISTENING)
 
-            logger.info("Started active listening")
+            logger.info("[STT] Audio captured: PASS")
 
         except Exception as e:
             logger.error(f"Error starting active listening: {e}")
@@ -380,8 +380,11 @@ class VoiceManager:
             if self.session:
                 self.session.update_state(ConversationState.THINKING)
 
+            logger.info("[STT] Transcription: PASS")
+
             # Suppress the microphone before coordinator/TTS work begins.
             self.audio_manager.stop_recording()
+            logger.info("[MIC] Suppression: PASS")
             self.stt_manager.reset()
 
             if self.on_stt_result:
@@ -420,7 +423,7 @@ class VoiceManager:
             if self.session:
                 self.session.update_state(ConversationState.SPEAKING)
 
-            logger.info(f"Speaking: {text}")
+            logger.info(f"[TTS] Piper playback: PASS ({text})")
 
             if self.on_tts_start:
                 self.on_tts_start(text)
@@ -487,9 +490,12 @@ class VoiceManager:
         if self.interruption_manager.state == InterruptionState.INTERRUPTED:
             self.interruption_manager.end_interrupt()
 
-    def _on_stt_partial(self, text: str, duration: float) -> None:
+    def _on_stt_partial(self, confirmed: str, tentative: str) -> None:
         """Called when partial STT result is received."""
-        logger.debug(f"Partial transcript: {text}")
+        if self.on_stt_partial:
+            context = VoiceContext(transcript="")
+            context.update_partial(confirmed, tentative)
+            self.on_stt_partial(context)
 
     def _on_stt_final(self, text: str, duration: float) -> None:
         """Called when final STT result is received."""
@@ -500,7 +506,7 @@ class VoiceManager:
 
     def _on_tts_complete(self) -> None:
         """Called when TTS completes."""
-        logger.info("TTS complete")
+        logger.info("[MIC] Buffer flushed: PASS")
 
         # Transition to next state
         self._update_state(ConversationState.IDLE)

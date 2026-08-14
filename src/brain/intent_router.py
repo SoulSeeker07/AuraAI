@@ -118,6 +118,9 @@ class IntentRouter:
                 "current",
                 "what time",
                 "what date",
+                "todays",
+                "today's",
+                "today",
             )
         ):
             return True

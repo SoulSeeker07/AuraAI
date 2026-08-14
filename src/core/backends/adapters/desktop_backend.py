@@ -1210,11 +1210,15 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 },
             )
 
-        # Standard execute path — pass typed arguments
+        # Standard execute path - pass typed arguments
+        exec_args = dict(plan.arguments or {})
+        exec_args["policy_action"] = plan.policy_action
+        exec_args["reuse_existing"] = plan.reuse_existing
+
         result = self.execute(
             capability=plan.capability,
             goal=plan.goal,
-            arguments=plan.arguments,
+            arguments=exec_args,
         )
 
         # Stamp plan_id into result.data for traceability

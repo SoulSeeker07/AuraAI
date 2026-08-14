@@ -192,7 +192,7 @@ class BackendRegistry:
         self.register(DefaultNativeDesktopAdapter())
         self.register(DefaultGeminiResearchAdapter())
         self.register(AntigravityBackendAdapter())
-        self.register(PlaywrightBrowserAdapter())
+        self.register(PlaywrightBrowserAdapter(headless=False))
         self.register(MemoryBackend())
 
     def load_capability_manifest(self, manifest_path: Path | None = None) -> None:

@@ -196,6 +196,12 @@ class TaskDecomposer:
                         "key",
                         "hotkey",
                         "play",
+                        "create",
+                        "make",
+                        "build",
+                        "refactor",
+                        "generate",
+                        "implement",
                     ]
                 ):
                     valid_clauses.append(p_clean)
@@ -230,7 +236,7 @@ class TaskDecomposer:
                 for idx, clause in enumerate(valid_clauses):
                     clause_lower = clause.lower()
                     clause_tasks = self._analyze_goal_clauses_single(
-                        clause_lower, clause, decision
+                        clause_lower, clause, None
                     )
                     for t in clause_tasks:
                         t.task_id = f"task_{task_counter}"
@@ -720,13 +726,17 @@ class TaskDecomposer:
                 )
             ]
 
-        has_research = (intent_val == "research") or any(
-            w in goal_lower
-            for w in ["research", "search web", "look up", "find papers"]
+        resolved_intents = {"coding", "browser", "desktop_action", "system_query", "chat", "research", "memory"}
+        intent_is_authoritative = intent_val in resolved_intents
+
+        has_research = (intent_val == "research") or (
+            not intent_is_authoritative and any(
+                w in goal_lower
+                for w in ["research", "search web", "look up", "find papers"]
+            )
         )
         has_coding = (intent_val == "coding") or (
-            intent_val not in ["desktop_action", "browser", "system_query", "chat"]
-            and any(
+            not intent_is_authoritative and any(
                 w in goal_lower
                 for w in [
                     "refactor",
@@ -737,22 +747,27 @@ class TaskDecomposer:
                     "implement feature",
                     "unit test",
                     "git commit",
+                    "create",
+                    "make",
+                    "build",
+                    "python",
                 ]
             )
         )
-        has_browser = (intent_val == "browser") or any(
-            w in goal_lower
-            for w in [
-                "browse",
-                "web page",
-                "navigate",
-                "url",
-                "site",
-                "instagram",
-                "github",
-                "linkedin",
-                "youtube",
-            ]
+        has_browser = (intent_val == "browser") or (
+            not intent_is_authoritative and any(
+                w in goal_lower
+                for w in [
+                    "browse",
+                    "web page",
+                    "navigate",
+                    "url",
+                    "instagram",
+                    "github",
+                    "linkedin",
+                    "youtube",
+                ]
+            )
         )
 
         if has_browser and intent_val != "desktop_action":
@@ -807,9 +822,18 @@ class TaskDecomposer:
                 r"\bwi-fi\b",
                 r"\bbrightness\b",
             ]
-            has_desktop = (intent_val == "desktop_action") or any(
-                re.search(pat, goal_lower) for pat in desktop_patterns
+            has_desktop = (intent_val == "desktop_action") or (
+                not intent_is_authoritative and any(
+                    re.search(pat, goal_lower) for pat in desktop_patterns
+                )
             )
+
+        if has_coding and has_desktop and not intent_is_authoritative:
+            # Prevent nouns like 'app' or 'calculator' from spuriously triggering desktop actions 
+            # in coding clauses, unless there is a clear desktop action verb.
+            desktop_verbs = ["open", "launch", "close", "minimize", "maximize", "restore", "type", "press", "hit"]
+            if not any(v in goal_lower for v in desktop_verbs):
+                has_desktop = False
 
         # Check for multi-stage research -> document -> persist -> open DAG
         if (

@@ -10,8 +10,12 @@ Fallback STT engine: Vosk (local / offline, smaller footprint)
 
 import logging
 import os
+import threading
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -101,7 +105,7 @@ class STTEngine(ABC):
         self.settings = settings
         self.is_active = False
         self._stream = None
-        self._partial_callback: Callable[[str, float], None] | None = None
+        self._partial_callback: Callable[[str, str], None] | None = None
         self._final_callback: Callable[[str, float], None] | None = None
         self._error_callback: Callable[[str], None] | None = None
         self._total_duration = 0.0
@@ -131,7 +135,7 @@ class STTEngine(ABC):
 
     def set_callbacks(
         self,
-        partial: Callable[[str, float], None],
+        partial: Callable[[str, str], None],
         final: Callable[[str, float], None],
         error: Callable[[str], None],
     ) -> None:
@@ -139,9 +143,9 @@ class STTEngine(ABC):
         self._final_callback = final
         self._error_callback = error
 
-    def _emit_partial(self, text: str, duration: float) -> None:
+    def _emit_partial(self, confirmed: str, tentative: str) -> None:
         if self._partial_callback:
-            self._partial_callback(text, duration)
+            self._partial_callback(confirmed, tentative)
 
     def _emit_final(self, text: str, duration: float) -> None:
         if self._final_callback:
@@ -156,7 +160,58 @@ class STTEngine(ABC):
 #  FasterWhisperSTTEngine  (primary — local / offline)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
+@dataclass
+class StabilizedResult:
+    confirmed_text: str
+    tentative_text: str
+    newly_confirmed: str
+
+class LocalAgreementStabilizer:
+    def __init__(self):
+        self._confirmed_words: list[str] = []
+        self._previous_hypothesis_words: list[str] = []
+        self.confirmed_audio_offset_s: float = 0.0
+
+    def reset(self) -> None:
+        self._confirmed_words.clear()
+        self._previous_hypothesis_words.clear()
+        self.confirmed_audio_offset_s = 0.0
+
+    def update(self, words_with_timestamps: list[tuple[str, float, float]]) -> StabilizedResult:
+        current_words = [w for w, _, _ in words_with_timestamps]
+        
+        current_tail = current_words[len(self._confirmed_words):]
+        previous_tail = self._previous_hypothesis_words[len(self._confirmed_words):]
+        agreement_len = self._common_prefix_len(current_tail, previous_tail)
+
+        newly_confirmed = words_with_timestamps[
+            len(self._confirmed_words): len(self._confirmed_words) + agreement_len
+        ]
+        if newly_confirmed:
+            self._confirmed_words.extend(w for w, _, _ in newly_confirmed)
+            self.confirmed_audio_offset_s = newly_confirmed[-1][2]
+
+        tentative_words = current_words[len(self._confirmed_words):]
+        self._previous_hypothesis_words = current_words
+
+        return StabilizedResult(
+            confirmed_text=" ".join(self._confirmed_words),
+            tentative_text=" ".join(tentative_words),
+            newly_confirmed=" ".join(w for w, _, _ in newly_confirmed),
+        )
+
+    @staticmethod
+    def _common_prefix_len(a: list[str], b: list[str]) -> int:
+        n = 0
+        for wa, wb in zip(a, b):
+            if wa != wb:
+                break
+            n += 1
+        return n
+
 class FasterWhisperSTTEngine(STTEngine):
+
     """faster-whisper STT — local, offline, no API key required.
 
     Requires:
@@ -170,6 +225,13 @@ class FasterWhisperSTTEngine(STTEngine):
         super().__init__(settings)
         self.model = None
         self._audio_buffer: list[bytes] = []
+        self._last_partial_time = 0.0
+        self._partial_interval_s = 0.5
+        self._partial_in_flight = threading.Lock()
+        self._partial_executor = ThreadPoolExecutor(max_workers=1)
+        self._stabilizer = LocalAgreementStabilizer()
+        self._max_window_s = 15.0
+        self._utterance_id = 0
 
     def initialize(self) -> bool:
         try:
@@ -197,12 +259,67 @@ class FasterWhisperSTTEngine(STTEngine):
             return False
 
     def process_chunk(self, audio_data: bytes) -> str:
-        """Buffer audio chunk; returns empty string (transcription happens at finalize)."""
+        """Buffer audio chunk and trigger partial transcribes."""
         if not self.is_active:
             return ""
         self._audio_buffer.append(audio_data)
         self._total_duration += len(audio_data) / (self.settings.sample_rate * 2)
+
+        now = time.time()
+        if now - self._last_partial_time < self._partial_interval_s:
+            return ""
+            
+        if not self._partial_in_flight.acquire(blocking=False):
+            return ""
+            
+        self._last_partial_time = now
+
+        safety_margin_s = 1.0
+        window_start_s = max(0.0, self._stabilizer.confirmed_audio_offset_s - safety_margin_s)
+        
+        buffer_duration_s = sum(len(b) for b in self._audio_buffer) / (self.settings.sample_rate * 2)
+        window_start_s = max(window_start_s, buffer_duration_s - self._max_window_s)
+        
+        start_byte = int(window_start_s * self.settings.sample_rate) * 2
+        
+        # Audio buffer is a list of bytes, we need to join it and slice
+        raw = b"".join(self._audio_buffer)
+        snapshot = raw[start_byte:]
+        
+        self._partial_executor.submit(self._run_partial_transcribe, snapshot, window_start_s, self._utterance_id)
+        
         return ""
+
+    def _run_partial_transcribe(self, audio_snapshot: bytes, offset_s: float, utterance_id: int) -> None:
+        try:
+            import numpy as np
+            audio_np = np.frombuffer(audio_snapshot, dtype=np.int16).astype(np.float32) / 32768.0
+            lang = self.settings.language.split("-")[0]
+            
+            segments, _ = self.model.transcribe(
+                audio_np,
+                language=lang,
+                beam_size=1,
+                best_of=1,
+                temperature=0.0,
+                condition_on_previous_text=False,
+                word_timestamps=True,
+            )
+            
+            words = []
+            for seg in segments:
+                if seg.words:
+                    for w in seg.words:
+                        words.append((w.word.strip(), offset_s + w.start, offset_s + w.end))
+            
+            # Prevent straggler partials from corrupting the next utterance
+            if self._utterance_id == utterance_id:
+                result = self._stabilizer.update(words)
+                self._emit_partial(result.confirmed_text, result.tentative_text)
+        except Exception as e:
+            logger.error(f"Partial transcribe failed: {e}")
+        finally:
+            self._partial_in_flight.release()
 
     def finalize(self) -> str:
         """Transcribe all buffered audio and return full transcript."""
@@ -236,7 +353,9 @@ class FasterWhisperSTTEngine(STTEngine):
 
     def reset(self) -> None:
         self._audio_buffer.clear()
+        self._stabilizer.reset()
         self._total_duration = 0.0
+        self._utterance_id += 1
         logger.debug("faster-whisper STT reset")
 
     def get_status(self) -> dict[str, Any]:

@@ -47,3 +47,36 @@ def test_implicit_app_type_decomposition():
     assert task2.parameters["text"] == "test successful"
     assert task2.dependencies == ["task_1"]
 
+
+from unittest.mock import MagicMock
+
+def test_single_clause_intent_gating():
+    decomposer = TaskDecomposer()
+    decision = MagicMock()
+    decision.intent_type.value = "coding"
+    
+    # Even though "calculator" and "app" are in the text, it should trust the coding intent
+    goal = "create a python calculator app"
+    
+    graph = decomposer.decompose(goal, decision=decision)
+    
+    # Should only have one coding task, no desktop task
+    assert len(graph.subtasks) == 1
+    task = list(graph.subtasks.values())[0]
+    assert task.required_role == PlannerRole.CODING
+
+def test_multi_clause_mixed_intent():
+    decomposer = TaskDecomposer()
+    decision = MagicMock()
+    decision.intent_type.value = "coding"
+    
+    # Coding intent globally, but second clause is clearly desktop
+    goal = "create a python calculator app and open the file explorer"
+    
+    graph = decomposer.decompose(goal, decision=decision)
+    
+    # Should have two tasks: coding, and desktop (app_open)
+    assert len(graph.subtasks) == 2
+    roles = [t.required_role for t in graph.subtasks.values()]
+    assert PlannerRole.CODING in roles
+    assert PlannerRole.DESKTOP in roles

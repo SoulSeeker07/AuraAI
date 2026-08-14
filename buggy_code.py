@@ -1,7 +1,7 @@
-def add_numbers(a, b):
-    """Add two numbers and return the result."""
-    result = a + b
-    return result
+def greet(name):
+"""Return a greeting string."""
+# Properly indented function body
+return f"Hello, {name}!"
 if __name__ == "__main__":
-    # Test the function (will raise an IndentationError before execution)
-    print(add_numbers(3, 5))
+# Test the function (this line will never be reached because of the IndentationError above)
+print(greet("World"))

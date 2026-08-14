@@ -76,6 +76,9 @@ class AudioManager:
         self._is_recording = False
         self._is_playing = False
         self._recording_thread = None
+        
+        import queue
+        self._audio_queue = queue.Queue()
 
         logger.info("Audio Manager initialized")
         self._initialized = True
@@ -238,18 +241,22 @@ class AudioManager:
             self._is_recording = True
 
             # Start recording
-            self.input_stream = sd.InputStream(
-                device=input_device.device_id,
-                channels=channels,
-                samplerate=sample_rate,
-                dtype='int16',
-                callback=self._stream_callback,
-            )
+            if not self.input_stream:
+                self.input_stream = sd.InputStream(
+                    device=input_device.device_id,
+                    channels=channels,
+                    samplerate=sample_rate,
+                    dtype='int16',
+                    callback=self._stream_callback,
+                )
 
             self.input_stream.start()
-            self._recording_thread = threading.Thread(target=self._monitor_stream)
-            self._recording_thread.daemon = True
-            self._recording_thread.start()
+            
+            # Start monitor thread if not already running
+            if not self._recording_thread or not self._recording_thread.is_alive():
+                self._recording_thread = threading.Thread(target=self._monitor_stream)
+                self._recording_thread.daemon = True
+                self._recording_thread.start()
 
             logger.info(f"Started recording on device {input_device.device_id}")
             return True
@@ -267,11 +274,14 @@ class AudioManager:
         try:
             if self.input_stream:
                 self.input_stream.stop()
-                self.input_stream.close()
-                self.input_stream = None
+                # Do NOT close the stream here, keep it for deterministic ownership
+                # We just pause capturing.
 
             self._is_recording = False
             self._input_callback = None
+            
+            with self._buffer_lock:
+                self._input_buffer.clear()
 
             logger.info("Stopped recording")
             return True
@@ -372,8 +382,11 @@ class AudioManager:
         if status:
             logger.warning(f"Audio input status: {status}")
 
-        if self._input_callback and self._is_recording:
-            self._input_callback(indata.tobytes())
+        if self._is_recording:
+            try:
+                self._audio_queue.put_nowait(indata.tobytes())
+            except Exception:
+                pass
 
     def _playback_callback(self, outdata, frames, time, status):
         """Callback for audio output stream."""
@@ -392,15 +405,19 @@ class AudioManager:
             outdata[:] = b"\x00" * len(outdata)
 
     def _monitor_stream(self):
-        """Monitor recording stream status."""
+        """Monitor recording stream status and process audio queue."""
+        import queue
+        import time
         while self._is_recording:
             try:
-                if self.input_stream:
-                    self.input_stream.read(0)  # Poll
+                chunk = self._audio_queue.get(timeout=0.1)
+                if self._input_callback and self._is_recording:
+                    self._input_callback(chunk)
+            except queue.Empty:
+                pass
             except Exception as e:
                 if self._is_recording:
                     logger.error(f"Stream monitoring error: {e}")
-                break
 
     def save_recording(
         self, filepath: str, sample_rate: int = 16000, channels: int = 1
@@ -505,6 +522,15 @@ class AudioManager:
         """Clean up audio resources."""
         logger.info("Cleaning up audio resources")
         self.stop_recording()
+        
+        # Explicitly close streams on full cleanup
+        if self.input_stream:
+            try:
+                self.input_stream.close()
+            except Exception:
+                pass
+            self.input_stream = None
+            
         self.stop_playback()
         self._input_buffer.clear()
         self._output_buffer.clear()

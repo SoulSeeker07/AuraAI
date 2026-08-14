@@ -538,10 +538,33 @@ class AuraCore:
 
             if hasattr(result, "final_output") and getattr(result, "final_output"):
                 return str(getattr(result, "final_output"))
-            elif result.observations:
-                return "\n".join(result.observations)
-            elif result.data:
-                return str(result.data)
+            elif result.observations or result.data:
+                # If we have observations/data but no final output, and it's a browser/research task, synthesize an answer
+                if (
+                    self.llm_enabled 
+                    and self.groq_client is not None 
+                    and intent_type in ["browser", "research"]
+                ):
+                    obs_text = "\n".join(result.observations) if result.observations else ""
+                    if result.data:
+                        # Extract important nested data safely
+                        import json
+                        try:
+                            # Filter out large raw HTML/system data to avoid context window explosion
+                            clean_data = {k: v for k, v in result.data.items() if k not in ["metrics", "budget", "system_observations"] and not (isinstance(v, str) and len(v) > 2000)}
+                            if clean_data:
+                                obs_text += "\n\nAdditional Data:\n" + json.dumps(clean_data, default=str, indent=2)
+                        except Exception:
+                            obs_text += f"\n\nAdditional Data:\n{result.data}"
+
+                    synth_goal = (
+                        f"The user originally asked: '{user_goal}'.\n\n"
+                        f"The system performed the action and found this information:\n{obs_text}\n\n"
+                        f"Please provide a direct, helpful conversational answer to the user's question based ONLY on these findings."
+                    )
+                    return await self.get_ai_response(synth_goal)
+                
+                return "\n".join(result.observations) if result.observations else str(result.data)
             else:
                 return f"Execution ({result.planner}): {'Success' if result.success else 'Failed'}"
         except Exception as e:

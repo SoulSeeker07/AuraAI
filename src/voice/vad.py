@@ -12,15 +12,9 @@ from enum import Enum
 
 import numpy as np
 
+from .models import VADMode
+
 logger = logging.getLogger(__name__)
-
-
-class VADMode(Enum):
-    """VAD detection modes."""
-
-    SILENCE = "silence"  # End speech on silence
-    ENERGY = "energy"  # End speech on low energy
-    HYBRID = "hybrid"  # Both silence and energy
 
 
 class VADState(Enum):
@@ -42,9 +36,9 @@ class VoiceActivityDetector:
 
     def __init__(
         self,
-        mode: VADMode = VADMode.HYBRID,
+        mode: VADMode = VADMode.BOTH,
         silence_threshold: float = 1.0,
-        energy_threshold: float = 0.1,
+        energy_threshold: float = 0.01,
         window_size_ms: int = 30,
         min_speech_duration: float = 0.3,
         max_speech_duration: float = 30.0,
@@ -78,6 +72,8 @@ class VoiceActivityDetector:
             maxlen=int(silence_threshold / (window_size_ms / 1000.0))
         )
         self.current_energy = 0.0
+        self.noise_floor = 0.0
+        self.noise_floor_initialized = False
 
         # Statistics
         self.speech_count = 0
@@ -130,7 +126,18 @@ class VoiceActivityDetector:
 
     def _process_idle(self, audio: np.ndarray) -> tuple[VADState, float]:
         """Process IDLE state - looking for speech start."""
-        if self.current_energy > self.energy_threshold:
+        # Update dynamic noise floor when idle
+        if not self.noise_floor_initialized:
+            self.noise_floor = self.current_energy
+            self.noise_floor_initialized = True
+        else:
+            # Exponential moving average for noise floor
+            self.noise_floor = 0.95 * self.noise_floor + 0.05 * self.current_energy
+
+        # Dynamic threshold is at least the base threshold, or 2x the noise floor
+        dynamic_threshold = max(self.energy_threshold, self.noise_floor * 2.0)
+
+        if self.current_energy > dynamic_threshold:
             self.state = VADState.SPEECH_START
             self.speech_start_time = 0.0
             self.silence_timer = 0.0
@@ -139,7 +146,7 @@ class VoiceActivityDetector:
             if self.on_speech_start:
                 self.on_speech_start()
 
-            logger.debug("Speech start detected")
+            logger.debug(f"Speech start detected (energy: {self.current_energy:.4f}, noise: {self.noise_floor:.4f}, thresh: {dynamic_threshold:.4f})")
 
         return VADState.IDLE, self.current_energy
 
@@ -150,14 +157,16 @@ class VoiceActivityDetector:
         # Check for speech end conditions
         should_end = False
 
-        if self.mode == VADMode.SILENCE:
+        dynamic_threshold = max(self.energy_threshold, self.noise_floor * 1.5)
+
+        if self.mode == VADMode.SILENCE_THRESHOLD:
             should_end = self._check_silence(audio)
-        elif self.mode == VADMode.ENERGY:
-            should_end = self.current_energy < self.energy_threshold
-        elif self.mode == VADMode.HYBRID:
+        elif self.mode == VADMode.ENERGY_THRESHOLD:
+            should_end = self.current_energy < dynamic_threshold
+        elif self.mode in (VADMode.HYBRID, VADMode.BOTH):
             should_end = (
                 self._check_silence(audio)
-                or self.current_energy < self.energy_threshold
+                or self.current_energy < dynamic_threshold
             )
 
         # Update silence buffer
@@ -210,9 +219,10 @@ class VoiceActivityDetector:
         if len(self.silence_buffer) < 3:
             return False
 
+        dynamic_threshold = max(self.energy_threshold, self.noise_floor * 1.5)
         # Check if most recent energy values are below threshold
         energy_values = list(self.silence_buffer)
-        below_threshold = sum(1 for e in energy_values if e < self.energy_threshold)
+        below_threshold = sum(1 for e in energy_values if e < dynamic_threshold)
 
         return below_threshold >= len(energy_values) - 1
 

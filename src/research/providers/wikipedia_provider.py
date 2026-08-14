@@ -5,7 +5,11 @@ Provides research capabilities from Wikipedia.
 """
 
 import logging
+import warnings
 from typing import Any
+
+# Suppress BeautifulSoup's parser warnings from the wikipedia package
+warnings.filterwarnings("ignore", category=UserWarning, module='wikipedia')
 
 import wikipedia
 from wikipedia import WikipediaPage

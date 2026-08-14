@@ -54,6 +54,7 @@ _SUPPORTED_CAPABILITIES = frozenset(
         "code.create",
         "code.implement",
         "code.debug",
+        "code.execute",
     ]
 )
 
@@ -156,6 +157,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
             operation = "edit"
         elif capability == "code.report":
             operation = "report"
+        elif capability == "code.execute" or "execute " in goal_lower or "run " in goal_lower:
+            operation = "execute"
         elif "analyze" in goal_lower or "inspect" in goal_lower or "explain" in goal_lower:
             operation = "analyze"
         elif "test" in goal_lower:
@@ -197,6 +200,9 @@ class CodingBackendAdapter(BaseBackendAdapter):
         repo_path = self._resolve_repo_path(args)
 
         # ── Route by capability ────────────────────────────────────────────
+        if capability == "code.execute" or operation == "execute":
+            return self._execute_run(goal, args, repo_path)
+
         if capability == "code.debug" or operation == "debug":
             return self._execute_debug(goal, args, repo_path)
 
@@ -229,6 +235,80 @@ class CodingBackendAdapter(BaseBackendAdapter):
         )
 
     # ── Private: route handlers ────────────────────────────────────────────
+
+    def _execute_run(
+        self, goal: str, args: dict[str, Any], repo_path: Path
+    ) -> ExecutionResult:
+        import os
+        import subprocess
+        
+        script_path = args.get("file_path") or args.get("script") or "app.py"
+        abs_path = (repo_path / script_path).resolve()
+        
+        if not abs_path.exists():
+            # If the LLM passed a generic command instead of a file
+            command = args.get("command")
+            if command:
+                cmd = command.split()
+            else:
+                return self._error_result(
+                    goal, "code.execute", f"Target file '{script_path}' not found at {abs_path}"
+                )
+        else:
+            venv_python = repo_path / ".venv" / "Scripts" / "python.exe"
+            if not venv_python.exists():
+                venv_python = Path("python")
+            cmd = [str(venv_python), str(abs_path)]
+            
+        logger.info(f"Executing: {' '.join(cmd)}")
+        
+        try:
+            # M20.5 Execution Model (CLI Default)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=str(repo_path)
+            )
+            stdout = result.stdout.strip()
+            stderr = result.stderr.strip()
+            
+            obs = ["Execution completed."]
+            if stdout:
+                obs.append(f"STDOUT:\n{stdout}")
+            if stderr:
+                obs.append(f"STDERR:\n{stderr}")
+                
+            return ExecutionResult(
+                success=result.returncode == 0,
+                planner="coding",
+                goal=goal,
+                confidence=1.0,
+                observations=obs,
+                data={
+                    "returncode": result.returncode,
+                    "stdout": stdout,
+                    "stderr": stderr
+                }
+            )
+            
+        except subprocess.TimeoutExpired as e:
+            # M20.5: gracefully catch timeout for GUI apps or long-running servers
+            partial_stdout = e.stdout.decode('utf-8', errors='replace').strip() if isinstance(e.stdout, bytes) else (e.stdout or "").strip()
+            obs = ["Process timed out after 10 seconds (still running)."]
+            if partial_stdout:
+                obs.append(f"Partial STDOUT:\n{partial_stdout}")
+            return ExecutionResult(
+                success=True,
+                planner="coding",
+                goal=goal,
+                confidence=0.8,
+                observations=obs,
+                data={"timeout": True}
+            )
+        except Exception as e:
+            return self._error_result(goal, "code.execute", f"Failed to execute: {e}")
 
     def _execute_generate(
         self, goal: str, args: dict[str, Any], repo_path: Path
@@ -395,6 +475,7 @@ class CodingBackendAdapter(BaseBackendAdapter):
         agy_goal = (
             f"Goal: {goal}\n"
             f"Requirements: {_json.dumps(req_model.model_dump())}\n\n"
+            "Put new projects in their own subdirectory (e.g., `calculator_app/app.py`), never directly in the repository root. "
             "Return ONLY a JSON object matching this schema, no markdown, "
             "no preamble: "
             '{"files": [{"path": "relative/path.py", "content": "full source code"}]}'
@@ -417,8 +498,9 @@ class CodingBackendAdapter(BaseBackendAdapter):
         # Groq fallback — identical to the pre-M20.3 flow.
         plan_sys = (
             "You are an expert software engineer. Implement the feature. "
+            "Put new projects in their own subdirectory (e.g., `calculator_app/app.py`), never directly in the repository root. "
             "Output exactly a JSON object matching this schema: "
-            '{"files": [{"path": "relative/path.py", "content": "source code"}]}. '
+            '{"files": [{"path": "relative/path.py", "content": "full source code"}]}. '
             "Do not output any markdown formatting."
         )
         plan_msg = [

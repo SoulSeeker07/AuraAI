@@ -61,17 +61,13 @@ class AuraWakeDetector(WakeWordEngine):
         if not self.enabled or self.ort_session is None:
             return False
             
-        if self.cooldown_frames > 0:
-            self.cooldown_frames -= 1
-            return False
-
         try:
+            # ALWAYS update the audio buffer first!
             # Convert raw bytes (16-bit PCM) to float32 numpy array
             chunk_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
             
             # Resample if necessary (VoiceManager usually provides 16kHz)
             if sample_rate != self.sample_rate:
-                # Naive resample, but we assume 16kHz input from VoiceManager
                 pass
                 
             chunk_len = len(chunk_np)
@@ -79,6 +75,11 @@ class AuraWakeDetector(WakeWordEngine):
             # Roll buffer and append new chunk
             self.audio_buffer = np.roll(self.audio_buffer, -chunk_len)
             self.audio_buffer[-chunk_len:] = chunk_np
+            
+            # Now check cooldown before running heavy inference
+            if self.cooldown_frames > 0:
+                self.cooldown_frames -= 1
+                return False
             
             # Only run inference every N chunks to save CPU if desired, 
             # but modern CPUs can run this ONNX model instantly.
@@ -101,7 +102,16 @@ class AuraWakeDetector(WakeWordEngine):
             import os
             threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.60))
             
+            if probability > 0.10:
+                logger.debug(f"[AuraWakeDetector] Debug Score: {probability:.4f}")
+                import sys
+                sys.stdout.write(f"\r🎤 Live Score: {probability:.4f}    ")
+                sys.stdout.flush()
+                
             if probability >= threshold:
+                import sys
+                sys.stdout.write("\r" + " " * 30 + "\r") # Clear the line
+                sys.stdout.flush()
                 logger.info(f"[AuraWakeDetector] Wake word detected! (Prob: {probability:.3f} | Threshold: {threshold})")
                 
                 # Prevent double-triggering for 2 seconds

@@ -961,6 +961,30 @@ class CLIClient:
         self.aura_core.add_to_conversation("assistant", response)
         print(f"\nAura > {response}")
 
+        # Trigger TTS if voice is enabled and conditions are met
+        should_speak = getattr(self, "voice_listening", False)
+        lower_input = user_input.lower().strip()
+        if lower_input.startswith("speak") or lower_input.startswith("say"):
+            should_speak = True
+
+        if self.aura_core.voice_enabled and should_speak:
+            try:
+                import re
+                from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                personal_os = PersonalOSRuntime.get_instance()
+                
+                # Check if voice components are available
+                if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                    if hasattr(personal_os.voice_loop, 'voice_manager') and personal_os.voice_loop.voice_manager:
+                        # Clean up markdown formatting for speech
+                        clean_text = re.sub(r'[*_#`]', '', response)
+                        if clean_text.strip():
+                            personal_os.voice_loop.voice_manager.speak(clean_text)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to trigger TTS: {e}")
+
+
         if self.verbosity_mode in ("benchmark", "trace"):
             try:
                 from core.orchestration import MasterOrchestrator
