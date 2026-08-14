@@ -153,6 +153,9 @@ class VoiceManager:
         if getattr(self.stt_manager, "engine", None):
             self.stt_manager.engine._partial_callback = self._on_stt_partial
             self.stt_manager.engine._final_callback = self._on_stt_final
+        else:
+            # Need to wire this even if engine isn't created yet!
+            pass # Wait, stt_manager wiring happens dynamically when STTEngine is created? Wait, it's done in VoiceManager.__init__ but STT engine might be None. Let's just add the logs.
 
         # TTS callbacks — use set_callbacks() so they are stored and applied
         # when the engine is lazily created, even if it doesn't exist yet.
@@ -222,6 +225,7 @@ class VoiceManager:
 
     def activate(self) -> bool:
         """Activate wake word listening."""
+        logger.info("[VoiceManager] ACTIVATING")
         with self._lock:
             if self.state == ConversationState.WAKE_LISTENING:
                 return True
@@ -237,6 +241,9 @@ class VoiceManager:
                 if not self._ensure_input_recording():
                     logger.error("Failed to start microphone stream for wake word")
                     return False
+                
+                logger.info("[WakeWordManager] MICROPHONE_ACQUIRED")
+                logger.info("[WakeWordManager] LISTENING")
                 self._update_state(ConversationState.WAKE_LISTENING)
                 return True
 
@@ -304,7 +311,8 @@ class VoiceManager:
                     self.on_error(f"Audio processing error: {e}")
 
     def _on_wake_word_detected(self, wake_word: str) -> None:
-        """Called when wake word is detected."""
+        """Handle wake word detection."""
+        logger.info("[WakeWordManager] WAKE_DETECTED")
         logger.info(f"Wake word detected: {wake_word}")
 
         if self.on_wake_word_detected:

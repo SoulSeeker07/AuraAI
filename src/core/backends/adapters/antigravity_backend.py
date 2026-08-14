@@ -111,6 +111,27 @@ class CodingBackendAdapter(BaseBackendAdapter):
             f"CodingBackendAdapter: capability='{capability}' goal='{goal[:80]}'"
         )
 
+        print("\n" + "=" * 60)
+        print("CODING BACKEND TRACE")
+        print("=" * 60)
+        print(f"Goal        : {goal}")
+        print(f"Capability  : {capability}")
+        
+        operation = "unknown"
+        if capability in ("code.edit", "code.modify", "code.refactor"):
+            operation = "code.edit"
+        elif capability in ("code.analyze", "code.test", "coding"):
+            if args.get("edit_operations") or args.get("new_content"):
+                operation = "code.edit"
+            else:
+                operation = "code.analyze"
+        elif capability == "code.report":
+            operation = "code.report"
+            
+        print(f"Operation   : {operation}")
+        print("Engineering : loaded")
+        print("=" * 60 + "\n")
+
         # ── Deferred capabilities (M20) ────────────────────────────────────
         if capability in _DEFERRED_TO_M20 or self._is_generation_request(goal, args):
             return self._not_implemented_result(goal, capability)
@@ -171,6 +192,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
 
         try:
             from ....engineering.engineering_manager import EngineeringManager
+        except (ImportError, ValueError):
+            from engineering.engineering_manager import EngineeringManager
 
             mgr = EngineeringManager(
                 repository_path=repo_path,
@@ -255,8 +278,10 @@ class CodingBackendAdapter(BaseBackendAdapter):
                 return self._error_result(goal, "code.analyze", str(e))
 
         except ImportError as e:
+            import traceback
+            tb = traceback.format_exc()
             return self._error_result(
-                goal, "code.analyze", f"EngineeringManager import failed: {e}"
+                goal, "code.analyze", f"EngineeringManager import failed: {e}\nTraceback:\n{tb}"
             )
         except Exception as e:
             return self._error_result(goal, "code.analyze", str(e))
@@ -297,6 +322,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
 
         try:
             from ....engineering.engineering_manager import EngineeringManager
+        except (ImportError, ValueError):
+            from engineering.engineering_manager import EngineeringManager
 
             mgr = EngineeringManager(
                 repository_path=repo_path,
@@ -356,8 +383,10 @@ class CodingBackendAdapter(BaseBackendAdapter):
             )
 
         except ImportError as e:
+            import traceback
+            tb = traceback.format_exc()
             return self._error_result(
-                goal, "code.edit", f"EngineeringManager import failed: {e}"
+                goal, "code.edit", f"EngineeringManager import failed: {e}\nTraceback:\n{tb}"
             )
         except Exception as e:
             return self._error_result(goal, "code.edit", str(e))
@@ -370,6 +399,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
         """
         try:
             from ....engineering.engineering_manager import EngineeringManager
+        except (ImportError, ValueError):
+            from engineering.engineering_manager import EngineeringManager
 
             mgr = EngineeringManager(
                 repository_path=repo_path,
@@ -398,8 +429,10 @@ class CodingBackendAdapter(BaseBackendAdapter):
             )
 
         except ImportError as e:
+            import traceback
+            tb = traceback.format_exc()
             return self._error_result(
-                goal, "code.report", f"EngineeringManager import failed: {e}"
+                goal, "code.report", f"EngineeringManager import failed: {e}\nTraceback:\n{tb}"
             )
         except Exception as e:
             return self._error_result(goal, "code.report", str(e))

@@ -68,6 +68,7 @@ class WakeWordProvider(Enum):
     PORCUPINE = "porcupine"  # Picovoice Porcupine
     OPEN_WAKE_WORD = "openwakeword"  # OpenWakeWord
     LOCAL = "local"  # Local wake word detection
+    AURA = "aura"  # Local wake word detection
     FUTURE = "future"  # Future wake word providers
 
 
@@ -218,8 +219,8 @@ class ConversationSession:
     Tracks conversation state, timing, and metadata.
     """
 
-    session_id: str  # Unique session identifier
-    conversation_id: str  # Reference to conversation in other systems
+    session_id: str = ""  # Unique session identifier
+    conversation_id: str = ""  # Reference to conversation in other systems
     state: ConversationState = ConversationState.IDLE
     language: str = "en-US"
     device: dict[str, Any] | None = None  # Audio device info

@@ -101,17 +101,28 @@ class IntentRouter:
             self.memory.upsert_fact(fact.category, fact.key, fact.value)
 
     def _asks_for_time_or_date(self, normalized: str) -> bool:
-        time_words = ("time", "date", "day", "today")
-        return any(word in normalized for word in time_words) and any(
+        # Prevent freshness constraints like "today's exchange rate" from matching
+        if any(w in normalized for w in ("rate", "exchange", "conversion", "price")):
+            return False
+            
+        time_words = ("time", "date")
+        has_time_word = any(word in normalized for word in time_words)
+        
+        # Explicitly asking for time or date
+        if has_time_word and any(
             phrase in normalized
             for phrase in (
-                "current",
                 "what is",
                 "what's",
                 "tell me",
-                "today",
+                "current",
+                "what time",
+                "what date",
             )
-        )
+        ):
+            return True
+            
+        return False
 
     def _is_memory_statement(self, user_input: str) -> bool:
         return not user_input.strip().endswith("?")

@@ -30,6 +30,9 @@ class ReferenceResolver:
     PRONOUN_PATTERNS = [
         r"\b(minimize|close|restore|focus|maximize|activate|hide|show|switch to|open|launch)\s+(it|that|this|that window|the window|the app|the application|the tab|the browser|that tab|that app)\b",
         r"\b(close|minimize|restore|focus)\s+the\s+(last\s+opened|last\s+active|last\s+created)\s+(app|window|tab|file|resource)\b",
+        r"^as of (today|now|yesterday|tomorrow)[?]?$",
+        r"^(what about|and) (today|now|yesterday|tomorrow)[?]?$",
+        r"^how about (today|now|yesterday|tomorrow)[?]?$",
     ]
 
     @classmethod
@@ -179,6 +182,45 @@ class ReferenceResolver:
             if focused:
                 target_name = focused.split("-")[0].strip()
                 target_source = "world_state_context"
+
+        # ── Priority 5: Conversational Fragments ──
+        if not target_name and context:
+            try:
+                # We can import memory locally to get the very last turn
+                from Memory import Memory as AuraMemory
+                mem = AuraMemory()
+                recent = mem.recent_messages(limit=5)
+                last_user_msg = None
+                for msg in reversed(recent):
+                    if msg.get("role") == "user":
+                        last_user_msg = msg.get("content", "")
+                        break
+                
+                fragment_patterns = [
+                    r"^as of (today|now|yesterday|tomorrow)[?]?$",
+                    r"^(what about|and) (today|now|yesterday|tomorrow)[?]?$",
+                    r"^how about (today|now|yesterday|tomorrow)[?]?$"
+                ]
+                
+                is_fragment = any(re.match(p, goal_lower) for p in fragment_patterns)
+                if is_fragment and last_user_msg:
+                    # Strip words like 'current', 'latest' from previous message to avoid semantic conflicts
+                    clean_last = re.sub(r"\b(current|latest|now)\b", "", last_user_msg, flags=re.IGNORECASE).strip()
+                    clean_fragment = goal_lower.rstrip("?")
+                    resolved_text = f"{clean_last} {clean_fragment}".strip()
+                    resolved_text = re.sub(r"\s+", " ", resolved_text)
+                    
+                    logger.info(
+                        f"ReferenceResolver: Fragment '{goal_text}' resolved using previous context -> '{resolved_text}'"
+                    )
+                    return resolved_text, {
+                        "resolved": True,
+                        "target": clean_last,
+                        "source": "conversational_memory",
+                        "original_goal": goal_text,
+                    }
+            except Exception as exc:
+                logger.debug(f"ReferenceResolver: Fragment resolution failed: {exc}")
 
         if target_name:
             resolved_text = re.sub(

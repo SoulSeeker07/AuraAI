@@ -409,6 +409,12 @@ class DecisionEngine:
             )
         )
 
+        is_definition = any(
+            w in goal_lower for w in ["what does", "what is the meaning of", "mean?", " mean"]
+        ) and not any(
+            w in goal_lower for w in ["current", "today", "now", "latest"]
+        )
+
         is_research = (
             any(
                 w in goal_lower
@@ -419,9 +425,16 @@ class DecisionEngine:
                     "find papers",
                     "oauth2",
                     "release",
+                    "conversion rate",
+                    "exchange rate",
+                    "currency",
+                    "usd",
+                    "inr",
+                    " rate",
                 ]
             )
             and not is_system_query
+            and not is_definition
         )
         is_browser = not is_window_control and any(
             w in goal_lower
@@ -581,6 +594,17 @@ class DecisionEngine:
             confidence=0.95,
             expected_outcome=f"Execute goal using {planner} planner and state reuse rules",
         )
+
+        print("\n" + "=" * 60)
+        print("AURA ROUTING TRACE")
+        print("=" * 60)
+        print(f"Input       : {goal}")
+        print(f"DMM intent  : {intent.value}")
+        print(f"Decision    : {intent.value}")
+        print(f"Planner     : {planner}")
+        print(f"Backend     : {needs_backend}")
+        print(f"Capability  : {intent_capability}")
+        print("=" * 60 + "\n")
 
         return DecisionOutcome(
             goal=goal,

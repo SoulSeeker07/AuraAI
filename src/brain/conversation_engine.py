@@ -37,14 +37,18 @@ class ConversationEngine:
         web_search: WebSearchClient | None = None,
         deep_research_enabled: bool = True,
         aura_core=None,
+        memory_manager=None,
     ):
+        # TODO(M2): Once M1 is stable, remove old `self.memory` from ConversationEngine
+        # and rely exclusively on `memory_manager`.
         self.memory = memory
+        self.memory_manager = memory_manager
         self.provider_manager = provider_manager
         self.settings = settings or {}
         self.model = model
         self.intent_router = IntentRouter(memory)
         self.context_builder = ContextBuilder(
-            memory, self.settings, username, assistant_name
+            memory, self.settings, username, assistant_name, memory_manager=memory_manager
         )
         self.web_search = web_search or WebSearchClient()
         self._cancel_requested = False
@@ -450,6 +454,10 @@ class ConversationEngine:
         topic = self._infer_topic(context.user_input)
         self.memory.record_turn(context.user_input, answer, topic)
         self.memory.remember_exchange(context.user_input, answer, topic)
+        
+        if getattr(self, "memory_manager", None):
+            self.memory_manager.add_user_turn(context.user_input)
+            self.memory_manager.add_assistant_turn(answer, context.user_input)
 
     def _fact_ack(self, facts: list[MemoryFact]) -> str:
         if (

@@ -33,6 +33,8 @@ from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
 from core.orchestration.reference_resolver import ReferenceResolver
 from core.orchestration.runtime_checkpoint import RuntimeCheckpointManager
 from voice.continuous_loop import ContinuousVoiceLoop
+from memory.manager.memory_manager import MemoryManager
+from ai.provider_manager import ProviderManager
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,11 @@ class PersonalOSRuntime:
         self.dmm = DecisionMakingModule()
         self.reference_resolver = ReferenceResolver()
         self.checkpoint_manager = RuntimeCheckpointManager()
+        
+        # Central memory coordination
+        self.provider_manager = ProviderManager()
+        self.memory_manager = MemoryManager(provider_manager=self.provider_manager)
+        
         self.event_runtime = EventRuntime(
             registry=self.trigger_registry,
             coordinator=self.coordinator,
@@ -122,6 +129,11 @@ class PersonalOSRuntime:
                     asyncio.run(cls._instance.event_runtime.stop())
             if cls._instance.voice_loop._running:
                 cls._instance.voice_loop.stop()
+                # M2: trigger session-close consolidation (idempotent)
+                try:
+                    cls._instance.memory_manager.close_session()
+                except Exception as _mem_exc:
+                    logger.debug(f"[PersonalOSRuntime] close_session skipped: {_mem_exc}")
             cls._instance = None
 
     def boot(self) -> dict[str, Any]:
@@ -215,12 +227,18 @@ class PersonalOSRuntime:
         start_time = time.perf_counter()
         ctx = context or {}
 
+        # 0. Memory - Log user turn
+        self.memory_manager.add_user_turn(goal)
+
         # 1. NLU & Contextual Follow-Up Resolution (G3)
-        resolved_goal, _ = self.reference_resolver.resolve_references(goal, ctx)
+        mem_ctx = {"memory_context": " ".join([t.content for t in self.memory_manager.get_raw_turns()])}
+        resolved_goal = self.reference_resolver.resolve_references(goal, {**ctx, **mem_ctx})[0]
         nlu_res = self.nlu_engine.process(resolved_goal, ctx)
+        
+        normalized_goal = nlu_res.normalized_text
 
         # 2. Decision Engine (DMM) & Expert System Routing (G5)
-        expert_domains = self._resolve_expert_domains(resolved_goal)
+        expert_domains = self._resolve_expert_domains(normalized_goal)
 
         exec_map = None
         expert_used_name = None
@@ -232,7 +250,7 @@ class PersonalOSRuntime:
             for domain in expert_domains:
                 expert = self.expert_registry.resolve(domain)
                 if expert:
-                    expert_analysis = expert.analyze(resolved_goal, ctx)
+                    expert_analysis = expert.analyze(normalized_goal, ctx)
                     used_names.append(domain.value)
                     combined_summaries.append(f"[{domain.value.upper()}]: {expert_analysis.summary}")
                     for prop in expert_analysis.proposals:
@@ -251,14 +269,14 @@ class PersonalOSRuntime:
                             "parameters": {"response": " | ".join(combined_summaries)},
                         }
                     ]
-                exec_map = {"goal": resolved_goal, "steps": combined_steps}
+                exec_map = {"goal": normalized_goal, "steps": combined_steps}
 
         if exec_map is None:
-            dmm_res = self.dmm.analyze(resolved_goal, ctx)
+            dmm_res = self.dmm.analyze(normalized_goal, ctx)
             if isinstance(dmm_res, ExecutionMap):
                 exec_map = dmm_res
             else:
-                exec_map = ExecutionMap(goal=resolved_goal, execution_plan=[])
+                exec_map = ExecutionMap(goal=normalized_goal, execution_plan=[])
 
         # 3. Policy & Governance Enforcer (G7)
         if isinstance(exec_map, dict):
@@ -339,6 +357,10 @@ class PersonalOSRuntime:
             evidence=evidence_list,
             spoken_summary=spoken,
         )
+
+        # Log assistant turn to memory (if there's a spoken summary)
+        if report.spoken_summary:
+            self.memory_manager.add_assistant_turn(report.spoken_summary, user_text=resolved_goal)
 
         self.turn_history.append(report)
         for listener in self._on_report_listeners:

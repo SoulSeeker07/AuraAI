@@ -10,7 +10,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 
 while "" in sys.path:
     sys.path.remove("")
-while str(PROJECT_ROOT) in sys.path:
+while str(PROJECT_ROOT) in sys.path: 
     sys.path.remove(str(PROJECT_ROOT))
 while str(SRC_DIR) in sys.path:
     sys.path.remove(str(SRC_DIR))

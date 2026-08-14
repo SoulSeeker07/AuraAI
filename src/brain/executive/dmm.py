@@ -231,14 +231,33 @@ class DecisionMakingModule:
             "look up",
             "find information",
             "find out",
+            "conversion rate",
+            "exchange rate",
+            "currency",
+            "usd to inr",
         ]
-        if any(ind in text_lower for ind in research_indicators):
+        
+        # Don't classify as research if they just want the definition
+        is_definition = any(
+            w in text_lower for w in ["what does", "what is the meaning of", "mean?", " mean"]
+        ) and not any(
+            w in text_lower for w in ["current", "today", "now", "latest"]
+        )
+        
+        if not is_definition and any(ind in text_lower for ind in research_indicators):
             # Extract the topic
             for ind in research_indicators:
                 if ind in text_lower:
-                    topic = text_lower.split(ind, 1)[1].strip()
-                    if topic:
-                        modifiers["research_topic"] = topic
+                    if ind in ["conversion rate", "exchange rate", "currency", "usd to inr", "rate"]:
+                        topic = text_lower.strip('?.,')
+                    else:
+                        topic = text_lower.split(ind, 1)[1].strip()
+                        # Clean up trailing punctuation like ?
+                        topic = topic.strip('?.,')
+                        if not topic:
+                            # If the indicator is at the end, use the whole query as the topic
+                            topic = text_lower.strip('?.,')
+                    modifiers["research_topic"] = topic
                     break
 
         # ── Engineering / Coding ────────────────────────────────────────────

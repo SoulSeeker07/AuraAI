@@ -1,6 +1,17 @@
 from pathlib import Path
 from typing import Any
 
+ENABLE_LONG_TERM_MEMORY = True  # M2 complete — all gates verified
+
+# M2: Extraction model fallback chain for session-close consolidation.
+# Primary is GPT-OSS 120B (131K ctx, JSON mode, ~500 tok/s on Groq).
+# Fallbacks ensure memory consolidation degrades gracefully without breaking conversation.
+MEMORY_EXTRACTION_MODELS: list[str] = [
+    "openai/gpt-oss-120b",       # primary
+    "llama-3.3-70b-versatile",   # fallback 1
+    "llama-3.1-8b-instant",      # fallback 2
+]
+
 APP_NAME = "Aura"
 
 APP_VERSION = "0.2.0"

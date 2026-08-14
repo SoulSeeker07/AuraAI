@@ -68,7 +68,7 @@ class ContinuousVoiceLoop:
         self._set_state(VoiceState.IDLE)
 
     def _set_state(self, new_state: VoiceState):
-        logger.info(f"[ContinuousVoiceLoop] State Transition: {self.state.name} -> {new_state.name}")
+        logger.info(f"[ContinuousVoiceLoop] State: {new_state.name}")
         self.state = new_state
 
     def start(self) -> bool:
@@ -77,6 +77,12 @@ class ContinuousVoiceLoop:
             logger.warning("ContinuousVoiceLoop already running")
             return True
 
+        try:
+            self.main_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.main_loop = None
+
+        logger.info("[ContinuousVoiceLoop] START_REQUESTED")
         self._running = True
         self._set_state(VoiceState.IDLE)
         
@@ -86,11 +92,21 @@ class ContinuousVoiceLoop:
             self._running = False
             return False
 
-        if not self.voice_manager.activate():
-            self._running = False
-            self.voice_manager.stop()
-            logger.error("ContinuousVoiceLoop failed to enter wake-word listening")
-            return False
+        import os
+        enable_wake_word = os.getenv("ENABLE_WAKE_WORD", "true").lower() == "true"
+
+        if enable_wake_word:
+            if not self.voice_manager.activate():
+                self._running = False
+                self.voice_manager.stop()
+                logger.error("ContinuousVoiceLoop failed to enter wake-word listening")
+                return False
+            logger.info("[ContinuousVoiceLoop] WAITING_FOR_WAKE")
+        else:
+            logger.info("Wake word disabled by .env, skipping wake word and activating STT immediately")
+            self._set_state(VoiceState.WAKE_DETECTED)
+            self.trigger_listening()
+            self.voice_manager._start_active_listening()
 
         logger.info("ContinuousVoiceLoop started and listening")
         return True
@@ -112,16 +128,28 @@ class ContinuousVoiceLoop:
             self._set_state(VoiceState.WAKE_DETECTED)
             # Typically, audio capture triggers immediately
             self.trigger_listening()
+            logger.info("[VoiceManager] STT_ACTIVE")
 
     def trigger_listening(self):
         if self.state == VoiceState.WAKE_DETECTED:
             self._set_state(VoiceState.LISTENING)
 
+    def _return_to_listening_or_idle(self):
+        """Helper to return to correct state based on wake word setting."""
+        import os
+        enable_wake_word = os.getenv("ENABLE_WAKE_WORD", "true").lower() == "true"
+        if not enable_wake_word and self._running:
+            self._set_state(VoiceState.WAKE_DETECTED)
+            self.trigger_listening()
+            self.voice_manager._start_active_listening()
+        else:
+            self._set_state(VoiceState.IDLE)
+
     def trigger_transcription_ready(self, transcript: str):
         if self.state in (VoiceState.LISTENING, VoiceState.WAKE_DETECTED, VoiceState.TRANSCRIBING):
             if not transcript.strip():
-                # Empty transcription, return to IDLE
-                self._set_state(VoiceState.IDLE)
+                # Empty transcription, return to correct state
+                self._return_to_listening_or_idle()
                 return
                 
             self._set_state(VoiceState.TRANSCRIBING)
@@ -129,7 +157,7 @@ class ContinuousVoiceLoop:
             self._process_transcript(transcript)
         elif not self._running:
              if not transcript.strip():
-                 self._set_state(VoiceState.IDLE)
+                 self._return_to_listening_or_idle()
                  return
              self._set_state(VoiceState.TRANSCRIBING)
              self.turn_count += 1
@@ -150,11 +178,12 @@ class ContinuousVoiceLoop:
 
     def _on_stt_result(self, context: VoiceContext) -> None:
         """Callback when STT finishes transcribing speech."""
-        logger.info(f"[ContinuousVoiceLoop] STT result received: {context.transcript}")
+        logger.info(f"[STT] transcript='{context.transcript}'")
         self.trigger_transcription_ready(context.transcript)
 
     def _on_tts_complete(self) -> None:
         """Callback when TTS finishes speaking response."""
+        logger.info("[VoiceManager] TTS_COMPLETE")
         self.trigger_tts_completed()
 
     def _on_voice_error(self, error: str) -> None:
@@ -163,7 +192,7 @@ class ContinuousVoiceLoop:
         if self.state == VoiceState.SPEAKING:
              self.trigger_tts_completed()
         else:
-             self._set_state(VoiceState.IDLE)
+             self._return_to_listening_or_idle()
 
     # ------------------------------------------------------------------------
     # Internal Handoffs
@@ -180,10 +209,14 @@ class ContinuousVoiceLoop:
         
         report = None
         try:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
+            # Use the captured main_loop if available and running
+            loop = getattr(self, "main_loop", None)
+            
+            if not loop or not loop.is_running():
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
 
             if loop and loop.is_running():
                 fut = asyncio.run_coroutine_threadsafe(
@@ -191,6 +224,7 @@ class ContinuousVoiceLoop:
                 )
                 report = fut.result(timeout=60)
             else:
+                logger.warning("[ContinuousVoiceLoop] Falling back to asyncio.run (no running loop found)")
                 report = asyncio.run(os_runtime.execute_goal(transcript, input_type="voice"))
         except Exception as e:
             logger.error(f"[ContinuousVoiceLoop] Coordination error: {e}")
@@ -225,11 +259,20 @@ class ContinuousVoiceLoop:
         """Brief settling period before flushing mic buffer and returning to IDLE."""
         if self._running:
             time.sleep(0.2)
-            if self.voice_manager.activate():
-                self._set_state(VoiceState.IDLE)
+            import os
+            enable_wake_word = os.getenv("ENABLE_WAKE_WORD", "true").lower() == "true"
+            
+            if not enable_wake_word:
+                logger.info("Wake word disabled, returning to active listening immediately")
+                self._set_state(VoiceState.WAKE_DETECTED)
+                self.trigger_listening()
+                self.voice_manager._start_active_listening()
             else:
-                logger.error("[ContinuousVoiceLoop] Failed to restore wake-word listening")
+                if self.voice_manager.activate():
+                    logger.info("[VoiceManager] AUDIO_BUFFER_FLUSHED")
+                    self._set_state(VoiceState.IDLE)
+                else:
+                    logger.error("[ContinuousVoiceLoop] Failed to restore wake-word listening")
+                    self._set_state(VoiceState.IDLE)
         else:
             self._set_state(VoiceState.IDLE)
-
-

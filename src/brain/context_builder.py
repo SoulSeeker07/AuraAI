@@ -31,20 +31,21 @@ class ContextBuilder:
         workspace_manager: Any = None,
         response_coordinator: Any = None,
     ):
-        self._aura_mode = memory_manager is not None
+        self._aura_mode = workspace_manager is not None or response_coordinator is not None
+
+        # TODO(M2): Once M1 is stable, remove old `self.memory` from ContextBuilder
+        # and rely exclusively on `memory_manager`.
+        self.memory = memory
+        self.memory_manager = memory_manager
+        self.settings = settings or {}
+        self.username = username
+        self.assistant_name = assistant_name
 
         if self._aura_mode:
-            self.memory_manager = memory_manager
             self.workspace = workspace_manager
             self.response_coordinator = response_coordinator
-            self.username = username
             self.assistant_name = assistant_name or "Aura"
             logger.info(f"Context Builder initialized for {self.assistant_name}")
-        else:
-            self.memory = memory
-            self.settings = settings or {}
-            self.username = username
-            self.assistant_name = assistant_name
 
     def build(
         self,
@@ -57,7 +58,7 @@ class ContextBuilder:
         if self._aura_mode:
             raise RuntimeError("Use build_aura() in AuraBrain mode")
 
-        memory_context = self.memory.get_context()
+        memory_context = self.memory.get_context() if self.memory else ""
         messages = self._system_messages()
         if memory_context:
             messages.append(
@@ -67,7 +68,15 @@ class ContextBuilder:
             messages.append(
                 ChatMessage("system", self._format_web_results(web_results))
             )
-        messages.extend(self._recent_messages(limit=12))
+            
+        if getattr(self, "memory_manager", None):
+            mgr_msgs = self.memory_manager.get_context_messages(user_input)
+            for m in mgr_msgs:
+                role = cast(MessageRole, str(m.get("role", "user")))
+                messages.append(ChatMessage(role, str(m.get("content", ""))))
+        else:
+            messages.extend(self._recent_messages(limit=12))
+            
         messages.append(ChatMessage("user", user_input))
 
         return ConversationContext(

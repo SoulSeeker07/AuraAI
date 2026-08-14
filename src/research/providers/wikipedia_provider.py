@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # which otherwise surfaces as a confusing JSONDecodeError deep inside the
 # wikipedia package ("Expecting value: line 1 column 1 (char 0)").
 wikipedia.set_user_agent(
-    "AuraAI-JarvisAssistant/1.0 (research provider; contact: you@example.com)"
+    "AuraAI-AuraAssistant/1.0 (research provider; contact: you@example.com)"
 )
 
 

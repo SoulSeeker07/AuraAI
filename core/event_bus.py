@@ -1,7 +1,7 @@
 """
 core/event_bus.py
 
-Simple thread-safe pub/sub Event Bus for Jarvis AI.
+Simple thread-safe pub/sub Event Bus for Aura AI.
 
 Usage:
     from core.event_bus import EventBus

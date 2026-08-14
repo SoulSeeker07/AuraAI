@@ -791,6 +791,7 @@ class AuraCore:
 
             # Create ConversationEngine
             from ai.provider_manager import ProviderManager
+            from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
 
             # Build provider manager
             from src.ai.groq_provider import (  # adjust path if it lives elsewhere
@@ -798,10 +799,14 @@ class AuraCore:
             )
             from src.brain.conversation_engine import ConversationEngine
 
-            provider_manager = ProviderManager(default_provider="groq")
+            personal_os_runtime = PersonalOSRuntime.get_instance()
+            memory_manager = personal_os_runtime.memory_manager
+
+            provider_manager = personal_os_runtime.provider_manager
             provider_manager.register(
                 "groq", GroqProvider(api_key=os.environ.get("GROQ_API_KEY", ""))
             )
+            provider_manager.set_default("groq")
 
             # Create ConversationEngine
             self.conversation_engine = ConversationEngine(
@@ -813,7 +818,11 @@ class AuraCore:
                 },
                 model=self.groq_model,
                 aura_core=self,
+                memory_manager=memory_manager,
             )
+            
+            if self.conversation_engine.context_builder.memory_manager is not personal_os_runtime.memory_manager:
+                raise RuntimeError("MemoryManager instance mismatch: ConversationEngine and PersonalOSRuntime are not sharing state")
 
             self.brain_enabled = True
             self.components["brain"] = ComponentStatus(
@@ -824,7 +833,13 @@ class AuraCore:
 
             logger.info("Brain initialized successfully")
         except Exception as e:
-            logger.exception("Failed to initialize brain")
+            logger.critical(
+                f"[_init_brain] FAILED — brain will be DISABLED. "
+                f"ConversationEngine is NOT wired. Memory context will NOT flow. "
+                f"Cause: {type(e).__name__}: {e}"
+            )
+            logger.exception("Full brain_init traceback:")
+            self._brain_init_error = e          # expose for tests / health checks
             self.brain_enabled = False
             self.components["brain"] = ComponentStatus(
                 name="Brain", status=AuraCoreStatus.ERROR, message=str(e), loaded=False
@@ -1721,6 +1736,16 @@ MasterOrchestrator
         logger.info("Shutting down Aura Core...")
         self._save_conversation_history()
         self.clear_conversation_history()
+        
+        # M2: Trigger explicit session close for short-term memory consolidation
+        try:
+            from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+            runtime = PersonalOSRuntime.get_instance()
+            if hasattr(runtime, "memory_manager") and runtime.memory_manager:
+                runtime.memory_manager.close_session(wait_for_consolidation=True)
+        except Exception as _mem_exc:
+            logger.debug(f"[AuraCore] Memory consolidation on shutdown skipped: {_mem_exc}")
+                
         try:
             from core.backends.backend_registry import BackendRegistry
 

@@ -67,6 +67,11 @@ _TYPO_MAP = {
     "wont": "will not",
     "dont": "do not",
     "im": "i am",
+    "doller": "dollar",
+    "dollers": "dollars",
+    "covertion": "conversion",
+    "convertion": "conversion",
+    "calculater": "calculator",
 }
 
 
@@ -193,44 +198,33 @@ class NLUEngine:
         norm_lower = normalized_text.lower()
 
         # Desktop Action
-        if entities.get("app_name") or any(
-            w in norm_lower for w in ["open", "launch", "start", "close", "minimize", "focus", "bring"]
+        if entities.get("app_name") or re.search(
+            r"\b(open|launch|start|close|minimize|focus|bring)\b", norm_lower
         ):
             return "desktop_action", 0.95
 
         # Research / Search
-        if entities.get("search_query") or any(
-            w in norm_lower for w in ["search", "look up", "find", "google", "weather", "what is", "who is", "where is"]
+        if entities.get("search_query") or re.search(
+            r"\b(search|look up|find|google|weather|what is|who is|where is|conversion rate|exchange rate|currency|usd|inr|rate)\b", norm_lower
         ):
             return "research", 0.90
 
         # Coding
-        if any(
-            w in norm_lower
-            for w in [
-                "code",
-                "python",
-                "script",
-                "refactor",
-                "ast",
-                "git",
-                "bug",
-                "test",
-                "function",
-                "repository",
-            ]
+        if re.search(
+            r"\b(code|python|script|refactor|ast|git|bug|test|function|repository)\b", norm_lower
         ):
             return "coding", 0.90
 
         # Memory / Recall
-        if any(
-            w in norm_lower
-            for w in ["remember", "recall", "favorite", "my name", "what did we do", "summarize session"]
+        if re.search(
+            r"\b(remember|recall|favorite|my name|what did we do|summarize session)\b", norm_lower
         ):
             return "memory", 0.90
 
         # System Query
-        if any(w in norm_lower for w in ["system info", "cpu", "ram", "battery", "status", "version"]):
+        if re.search(
+            r"\b(system info|cpu|ram|battery|status|version)\b", norm_lower
+        ):
             return "system_query", 0.90
 
         # Default Chat / Conversation

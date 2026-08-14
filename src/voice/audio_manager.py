@@ -242,6 +242,7 @@ class AudioManager:
                 device=input_device.device_id,
                 channels=channels,
                 samplerate=sample_rate,
+                dtype='int16',
                 callback=self._stream_callback,
             )
 
@@ -331,6 +332,7 @@ class AudioManager:
                 device=output_device.device_id,
                 channels=channels,
                 samplerate=sample_rate,
+                dtype='int16',
                 callback=self._playback_callback,
             )
 

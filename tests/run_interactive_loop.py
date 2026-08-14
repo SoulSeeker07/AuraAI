@@ -47,7 +47,7 @@ async def main():
     
     print("[1/2] Booting PersonalOSRuntime...")
     try:
-        await os_runtime.boot()
+        os_runtime.boot()
     except Exception as e:
         print(f"Error booting OS Runtime: {e}")
         

@@ -463,23 +463,35 @@ class ExecutionCoordinator:
         self, engine: str, action: str, params: dict[str, Any]
     ) -> str:
         """Generate a natural language response using the LLM provider."""
-        llm = getattr(self, "_llm_client", None)
-        if llm is not None:
-            try:
-                message = params.get("message", f"{action} {params}")
-                response = llm.chat.completions.create(
-                    model=params.get("model", "llama3-8b-8192"),
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are Aura, an AI operating system.",
-                        },
-                        {"role": "user", "content": message},
-                    ],
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                logger.debug(f"LLM call failed: {e}")
+        from ai.provider_manager import ProviderManager
+        from ai.models import ChatRequest, ChatMessage
+        from core.orchestration.personal_os_runtime import PersonalOSRuntime
+
+        provider = ProviderManager()
+        try:
+            message = params.get("message") or params.get("response") or f"{action} {params}"
+            messages = []
+            
+            runtime = PersonalOSRuntime.get_instance()
+            if runtime and hasattr(runtime, "memory_manager"):
+                context_msgs = runtime.memory_manager.get_context_messages()
+                # Prepend Persona System Prompt
+                messages.append(ChatMessage(role="system", content="You are Aura, an AI operating system."))
+                for msg in context_msgs:
+                    messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
+            else:
+                messages.append(ChatMessage(role="system", content="You are Aura, an AI operating system."))
+                
+            messages.append(ChatMessage(role="user", content=message))
+
+            req = ChatRequest(
+                messages=messages,
+                model=params.get("model", "llama-3.1-8b-instant"),
+            )
+            response = provider.chat(req)
+            return response.text
+        except Exception as e:
+            logger.debug(f"LLM call failed: {e}")
 
         return f"[{engine}] {action} completed"
 

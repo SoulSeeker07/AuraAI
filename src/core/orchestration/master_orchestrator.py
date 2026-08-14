@@ -535,7 +535,9 @@ class MasterOrchestrator:
         try:
             from .reference_resolver import ReferenceResolver
 
-            resolved_goal, ref_meta = ReferenceResolver.resolve_references(goal_text)
+            resolved_goal, ref_meta = ReferenceResolver.resolve_references(
+                goal_text, context={"memory_context": session.memory_context}
+            )
             if ref_meta.get("resolved"):
                 logger.info(
                     f"MasterOrchestrator resolved goal '{goal_text}' -> '{resolved_goal}'"

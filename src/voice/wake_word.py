@@ -26,6 +26,7 @@ class WakeWordProvider(Enum):
     OPEN_WAKE_WORD = "openwakeword"  # OpenWakeWord
     LOCAL = "local"  # Local wake word detection
     FUTURE = "future"  # Future wake word providers
+    AURA = "aura"  # Custom local Aura Wake Word
 
 
 class WakeWordEngine(ABC):
@@ -459,7 +460,18 @@ class WakeWordManager:
 
         try:
             # Create engine based on provider
-            if self.provider == WakeWordProvider.PORCUPINE:
+            if self.provider == WakeWordProvider.AURA:
+                from AuraWakeWord.runtime.aura_wake_detector import AuraWakeDetector
+                import os
+                # Look for the model in the project directory
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                model_path = os.path.join(base_dir, "AuraWakeWord", "models", "aura_wakeword.onnx")
+                self.engine = AuraWakeDetector(
+                    model_path=model_path,
+                    sensitivity=self.sensitivity,
+                    phrase_list=self.phrase_list
+                )
+            elif self.provider == WakeWordProvider.PORCUPINE:
                 # Need access key
                 access_key = self._get_access_key()
                 if not access_key:
@@ -505,6 +517,7 @@ class WakeWordManager:
 
     def activate(self) -> bool:
         """Activate wake word detection."""
+        logger.info("[WakeWordManager] STARTING")
         if not self.is_initialized:
             return self.initialize()
 
