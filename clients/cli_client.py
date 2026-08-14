@@ -876,6 +876,8 @@ class CLIClient:
                 valid_modes = ["normal", "developer", "debug", "benchmark", "trace"]
                 if len(parts) > 1 and parts[1].lower() in valid_modes:
                     self.verbosity_mode = parts[1].lower()
+                    import os
+                    os.environ["AURA_VERBOSITY"] = self.verbosity_mode
                     print(f"\n✓ Output verbosity set to '{self.verbosity_mode}' mode.")
                     if self.verbosity_mode == "trace":
                         print(
@@ -944,7 +946,16 @@ class CLIClient:
         """
         self.aura_core.add_to_conversation("user", user_input)
 
-        print(f"\nAura is thinking... [Mode: {self.verbosity_mode}]")
+        intent = "unknown"
+        try:
+            from core.orchestration.decision_engine import DecisionEngine
+            engine = DecisionEngine()
+            outcome = engine.evaluate(user_input)
+            intent = outcome.intent_type.value
+        except Exception:
+            pass
+
+        print(f"\nAura is thinking... [Intent: {intent} | Verbosity: {self.verbosity_mode}]")
         response = await self.aura_core.process_request(user_input)
 
         self.aura_core.add_to_conversation("assistant", response)

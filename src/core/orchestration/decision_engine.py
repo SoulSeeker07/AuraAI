@@ -595,16 +595,19 @@ class DecisionEngine:
             expected_outcome=f"Execute goal using {planner} planner and state reuse rules",
         )
 
-        print("\n" + "=" * 60)
-        print("AURA ROUTING TRACE")
-        print("=" * 60)
-        print(f"Input       : {goal}")
-        print(f"DMM intent  : {intent.value}")
-        print(f"Decision    : {intent.value}")
-        print(f"Planner     : {planner}")
-        print(f"Backend     : {needs_backend}")
-        print(f"Capability  : {intent_capability}")
-        print("=" * 60 + "\n")
+        import os
+        verbosity = os.environ.get("AURA_VERBOSITY", "normal")
+        if verbosity in ("developer", "debug", "trace"):
+            print("\n" + "=" * 60)
+            print("AURA ROUTING TRACE")
+            print("=" * 60)
+            print(f"Input       : {goal}")
+            print(f"DMM intent  : {intent.value}")
+            print(f"Decision    : {intent.value}")
+            print(f"Planner     : {planner}")
+            print(f"Backend     : {needs_backend}")
+            print(f"Capability  : {intent_capability}")
+            print("=" * 60 + "\n")
 
         return DecisionOutcome(
             goal=goal,

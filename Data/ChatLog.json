@@ -2,126 +2,6 @@
   {
     "role": "user",
     "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-13T17:40:52.619165"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-13T17:40:52.619165"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-13T17:40:53.665984"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-13T17:40:53.665984"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-13T17:40:53.679623"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-13T17:40:53.679623"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-13T18:58:22.539102"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-13T18:58:22.539102"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-13T18:58:23.685648"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-13T18:58:23.685648"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-13T18:58:23.697467"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-13T18:58:23.697467"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-13T19:13:10.738995"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-13T19:13:10.738995"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-13T19:13:11.615985"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How’s your day going?",
-    "topic": "General",
-    "timestamp": "2026-08-13T19:13:11.615985"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-13T19:13:11.621633"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How’s your day going?",
-    "topic": "General",
-    "timestamp": "2026-08-13T19:13:11.621633"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T14:11:03.478412"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T14:11:03.478412"
-  },
-  {
-    "role": "user",
-    "content": "hi",
     "topic": "General",
     "timestamp": "2026-08-14T14:11:04.723902"
   },
@@ -310,5 +190,173 @@
     "content": "Result success=True. Repository analysis complete: AuraAI; Files: unknown; Issues: unknown",
     "topic": "coding",
     "timestamp": "2026-08-14T14:39:25.257062"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:21:40.751755"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:21:40.751755"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:21:42.122186"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi Sreekanta! How can I assist you today?",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:21:42.122186"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:21:42.134262"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi Sreekanta! How can I assist you today?",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:21:42.134262"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:21:43.109740"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:21:43.109740"
+  },
+  {
+    "role": "user",
+    "content": "create student database python code",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:21:43.173822"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Pre-execution Decision: DecisionEngine evaluated goal [coding]: Memory=False, System=False, NeedsPlanner=True, Planner=coding, Backend=True, Search=False.; LLM-guided code generation is not yet implemented in the coding backend.; This capability is scheduled for M20 (Coding Intelligence 2.0).",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:21:43.173822"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:22:32.812053"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:22:32.812053"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:22:34.093053"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi Sreekanta! How can I help you today?",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:22:34.093053"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:22:34.109782"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi Sreekanta! How can I help you today?",
+    "topic": "General",
+    "timestamp": "2026-08-14T15:22:34.109782"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:22:35.085594"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-14T15:22:35.085594"
+  },
+  {
+    "role": "user",
+    "content": "create student database python code",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:22:35.168400"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Pre-execution Decision: DecisionEngine evaluated goal [coding]: Memory=False, System=False, NeedsPlanner=True, Planner=coding, Backend=True, Search=False.; LLM-guided code generation is not yet implemented in the coding backend.; This capability is scheduled for M20 (Coding Intelligence 2.0).",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:22:35.168400"
+  },
+  {
+    "role": "user",
+    "content": "analyze my repository",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:23:50.690260"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Repository analysis complete: AuraAI; Files: unknown; Issues: unknown",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:23:50.690260"
+  },
+  {
+    "role": "user",
+    "content": "fix the bug in my Python code",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:25:26.630129"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Repository analysis complete: AuraAI; Files: unknown; Issues: unknown",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:25:26.630129"
+  },
+  {
+    "role": "user",
+    "content": "fix the bug in my Python code",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:25:34.204452"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Repository analysis complete: AuraAI; Files: unknown; Issues: unknown",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:25:34.204452"
+  },
+  {
+    "role": "user",
+    "content": "create student database python code",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:59:03.294790"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Pre-execution Decision: DecisionEngine evaluated goal [coding]: Memory=False, System=False, NeedsPlanner=True, Planner=coding, Backend=True, Search=False.; Coding backend encountered an error during 'code.generate'.; Error: Failed to parse CodeGenerationPlan: Unterminated string starting at: line 1 column 49 (char 48)\nResponse: {\"files\": [{\"path\": \"student_db.py\", \"content\": \"import argparse\\nimport sqlite3\\nimport sys\\nfrom pathlib import Path\\nfrom typing import List, Tuple, Optional\\n\\nDB_PATH = Path('students.db')\\n\\n# ---------------------------------------------------------------------------\\n# Database utilities\\n# ---------------------------------------------------------------------------\\n\\ndef get_connection() -> sqlite3.Connection:\\n    \\\"\\\"\\\"Return a SQLite connection, creating the DB file if necessary.\\\"\\\"\\\"\\n    conn = sqlite3.connect(DB_PATH)\\n    conn.row_factory = sqlite3.Row\\n    return conn\\n\\n\\ndef init_db() -> None:\\n    \\\"\\\"\\\"Create the students table if it does not already exist.\\\"\\\"\\\"\\n    with get_connection() as conn:\\n        conn.execute(\\n            '''\\n            CREATE TABLE IF NOT EXISTS students (\\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\\n                name TEXT NOT NULL,\\n                age INTEGER NOT NULL CHECK(age > 0),\\n                major TEXT NOT NULL,\\n                gpa REAL NOT NULL CHECK(gpa BETWEEN 0.0 AND 4.0)\\n            )\\n            '''\\n        )\\n        conn.commit()\\n\\n# ---------------------------------------------------------------------------\\n# Validation helpers\\n# ---------------------------------------------------------------------------\\n\\ndef validate_name(name: str) -> str:\\n    name = name.strip()\\n    if not name:\\n        raise ValueError('Name cannot be empty.')\\n    return name\\n\\n\\ndef validate_age(age: str) -> int:\\n    try:\\n        age_int = int(age)\\n    except ValueError:\\n        raise ValueError('Age must be an integer.')\\n    if age_int <= 0:\\n        raise ValueError('Age must be a positive integer.')\\n    return age_int\\n\\n\\ndef validate_major(major: str) -> str:\\n    major = major.strip()\\n    if not major:\\n        raise ValueError('Major cannot be empty.')\\n    return major\\n\\n\\ndef validate_gpa(gpa: str) -> float:\\n    try:\\n        gpa_f = float(gpa)\\n    except ValueError:\\n        raise ValueError('GPA must be a number.')\\n    if not (0.0 <= gpa_f <= 4.0):\\n        raise ValueError('GPA must be between 0.0 and 4.0.')\\n    return gpa_f\\n\\n# ---------------------------------------------------------------------------\\n# CRUD operations\\n# ---------------------------------------------------------------------------\\n\\ndef create_student(name: str, age: int, major: str, gpa: float) -> int:\\n    \\\"\\\"\\\"Insert a new student record and return its generated ID.\\\"\\\"\\\"\\n    with get_connection() as conn:\\n        cur = conn.execute(\\n            'INSERT INTO students (name, age, major, gpa) VALUES (?, ?, ?, ?)',\\n            (name, age, major, gpa)\\n        )\\n        conn.commit()\\n        return cur.lastrowid\\n\\n\\ndef read_student(student_id: int) -> Optional[sqlite3.Row]:\\n    with get_connection() as conn:\\n        cur = conn.execute('SELECT * FROM students WHERE id = ?', (student_id,))\\n        return cur.fetchone()\\n\\n\\ndef update_student(student_id: int, name: Optional[str], age: Optional[int], major: Optional[str], gpa: Optional[float]) -> bool:\\n    \\\"\\\"\\\"Update fields that are not None. Returns True if a row was updated.\\\"\\\"\\\"\\n    fields: List[str] = []\\n    values: List = []\\n    if name is not None:\\n        fields.append('name = ?')\\n        values.append(name)\\n    if age is not None:\\n        fields.append('age = ?')\\n        values.append(age)\\n    if major is not None:\\n        fields.append('major = ?')\\",
+    "topic": "coding",
+    "timestamp": "2026-08-14T15:59:03.294790"
   }
 ]

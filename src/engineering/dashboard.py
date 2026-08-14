@@ -91,6 +91,7 @@ class EngineeringDashboard:
             },
             "statistics": {
                 "file_count": repo_state.file_count,
+                "folder_count": repo_state.folder_count,
                 "size": repo_state.size,
                 "tests": len(repo_state.tests),
                 "documentation": len(repo_state.documentation),

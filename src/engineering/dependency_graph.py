@@ -76,18 +76,25 @@ class DependencyGraph:
             print(f"Cycle: {' -> '.join(cycle)}")
     """
 
-    def __init__(self, repository_path: Path):
+    def __init__(self, repository_path: Path, workspace_walker=None):
         """
         Initialize the Dependency Graph.
 
         Args:
             repository_path: Path to the repository
+            workspace_walker: Walker instance for repository discovery
         """
         self.repository_path = Path(repository_path).resolve()
         self._graph = nx.DiGraph()
         self._dependencies: dict[str, list[Dependency]] = {}
         self._module_dependencies: dict[str, set[str]] = {}
         self._circular_dependencies: list[list[str]] = []
+        
+        if workspace_walker is None:
+            from .workspace_walker import WorkspaceFileWalker
+            self.workspace_walker = WorkspaceFileWalker(repository_path=self.repository_path)
+        else:
+            self.workspace_walker = workspace_walker
 
     def build_from_files(self, file_paths: list[Path] | None = None):
         """
@@ -100,7 +107,7 @@ class DependencyGraph:
 
         # Find files to analyze
         if file_paths is None:
-            file_paths = list(self.repository_path.rglob("*.py"))
+            file_paths = self.workspace_walker.walk("*.py").files
 
         # Clear existing data
         self._graph.clear()

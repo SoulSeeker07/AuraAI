@@ -92,7 +92,10 @@ disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "union-a
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib"
+addopts = "--import-mode=importlib -m 'not slow'"
+markers = [
+    "slow: marks tests as slow (integration tests that run EngineeringManager on the full workspace). Run with: pytest -m slow",
+]
 
 [build-system]
 requires = ["setuptools", "wheel"]

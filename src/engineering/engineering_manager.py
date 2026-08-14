@@ -132,18 +132,32 @@ class EngineeringManager:
         self.enable_lsp = enable_lsp
         self.enable_auto_sync = enable_auto_sync
 
+        from .workspace_walker import WorkspaceFileWalker
+        self.workspace_walker = WorkspaceFileWalker(
+            repository_path=self.repository_path,
+            max_files=2000
+        )
+
         # Initialize sub-managers
         self.repository_manager = RepositoryManager(
-            repository_path=self.repository_path, auto_sync=enable_auto_sync
+            repository_path=self.repository_path, 
+            auto_sync=enable_auto_sync,
+            workspace_walker=self.workspace_walker
         )
 
         self.ast_manager = ASTManager(
             repository_path=self.repository_path, enable_lsp=enable_lsp
         )
 
-        self.symbol_graph = SymbolGraph(repository_path=self.repository_path)
+        self.symbol_graph = SymbolGraph(
+            repository_path=self.repository_path,
+            workspace_walker=self.workspace_walker
+        )
 
-        self.dependency_graph = DependencyGraph(repository_path=self.repository_path)
+        self.dependency_graph = DependencyGraph(
+            repository_path=self.repository_path,
+            workspace_walker=self.workspace_walker
+        )
 
         self.engineering_planner = EngineeringPlanner(
             repository_path=self.repository_path
@@ -161,13 +175,17 @@ class EngineeringManager:
             ast_manager=self.ast_manager,
             symbol_graph=self.symbol_graph,
             dependency_graph=self.dependency_graph,
+            workspace_walker=self.workspace_walker
         )
 
         self.import_manager = ImportManager(
             repository_path=self.repository_path, ast_manager=self.ast_manager
         )
 
-        self.test_engine = TestEngine(repository_path=self.repository_path)
+        self.test_engine = TestEngine(
+            repository_path=self.repository_path,
+            workspace_walker=self.workspace_walker
+        )
 
         self.bug_repair = BugRepairLoop(
             repository_path=self.repository_path,

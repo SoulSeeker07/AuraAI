@@ -119,7 +119,12 @@ class RefactoringEngine:
     """
 
     def __init__(
-        self, repository_path: Path, ast_manager, symbol_graph, dependency_graph
+        self, 
+        repository_path: Path, 
+        ast_manager, 
+        symbol_graph, 
+        dependency_graph,
+        workspace_walker=None
     ):
         """
         Initialize the Refactoring Engine.
@@ -129,11 +134,18 @@ class RefactoringEngine:
             ast_manager: AST manager for parsing
             symbol_graph: Symbol graph for symbol tracking
             dependency_graph: Dependency graph for dependency tracking
+            workspace_walker: Walker instance for repository discovery
         """
         self.repository_path = Path(repository_path).resolve()
         self.ast_manager = ast_manager
         self.symbol_graph = symbol_graph
         self.dependency_graph = dependency_graph
+        
+        if workspace_walker is None:
+            from .workspace_walker import WorkspaceFileWalker
+            self.workspace_walker = WorkspaceFileWalker(repository_path=self.repository_path)
+        else:
+            self.workspace_walker = workspace_walker
 
     def rename_symbol(
         self,
@@ -341,7 +353,7 @@ class RefactoringEngine:
         affected_files = []
 
         # Find files containing the symbol
-        for file_path in self.repository_path.rglob("*.py"):
+        for file_path in self.workspace_walker.walk("*.py").files:
             if name.lower() in file_path.stem.lower():
                 affected_files.append(str(file_path))
 

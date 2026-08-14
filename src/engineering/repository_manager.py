@@ -46,6 +46,7 @@ class RepositoryState:
     health: RepositoryHealth = RepositoryHealth.UNKNOWN
     size: int = 0
     file_count: int = 0
+    folder_count: int = 0
     last_sync: datetime = field(default_factory=datetime.now)
     active_files: list[Path] = field(default_factory=list)
     recent_changes: list[str] = field(default_factory=list)
@@ -104,7 +105,11 @@ class RepositoryManager:
     """
 
     def __init__(
-        self, repository_path: Path, auto_sync: bool = True, watch_interval: int = 5
+        self, 
+        repository_path: Path, 
+        auto_sync: bool = True, 
+        watch_interval: int = 5,
+        workspace_walker=None
     ):
         """
         Initialize the Repository Manager.
@@ -113,10 +118,17 @@ class RepositoryManager:
             repository_path: Path to the repository
             auto_sync: Whether to automatically sync on changes
             watch_interval: Interval in seconds for file watching
+            workspace_walker: Walker instance for repository discovery
         """
         self.repository_path = Path(repository_path).resolve()
         self.auto_sync = auto_sync
         self.watch_interval = watch_interval
+
+        if workspace_walker is None:
+            from .workspace_walker import WorkspaceFileWalker
+            self.workspace_walker = WorkspaceFileWalker(repository_path=self.repository_path)
+        else:
+            self.workspace_walker = workspace_walker
 
         # Build initial state
         self._build_state()
@@ -132,33 +144,14 @@ class RepositoryManager:
         self._build_state()
         return self._state
 
-    IGNORED_DIRS = {
-        ".venv",
-        "venv",
-        "node_modules",
-        ".git",
-        "__pycache__",
-        ".pytest_cache",
-        ".idea",
-        ".vscode",
-        "dist",
-        "build",
-    }
-
-    def _is_ignored(self, path: Path) -> bool:
-        """Check if a path is inside an ignored directory."""
-        return any(part in self.IGNORED_DIRS for part in path.parts)
-
     def _safe_rglob(self, pattern: str) -> list[Path]:
-        """Safely find files matching pattern, filtering out ignored directories."""
-        results = []
+        """Safely find files matching pattern, using WorkspaceFileWalker."""
         try:
-            for p in self.repository_path.rglob(pattern):
-                if not self._is_ignored(p):
-                    results.append(p)
+            scope = self.workspace_walker.walk(pattern=pattern)
+            return scope.files
         except Exception as e:
             logger.warning(f"Error scanning pattern '{pattern}': {e}")
-        return results
+            return []
 
     def _build_state(self):
         """Build the repository state."""
@@ -168,6 +161,7 @@ class RepositoryManager:
         # Count non-ignored files efficiently
         all_files = [f for f in self._safe_rglob("*") if f.is_file()]
         self._state.file_count = len(all_files)
+        self._state.folder_count = len(set(f.parent for f in all_files))
         self._state.size = sum(f.stat().st_size for f in all_files if f.exists())
 
         # Detect language/framework

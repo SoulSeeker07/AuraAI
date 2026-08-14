@@ -24,10 +24,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 @pytest.fixture
 def adapter():
-    """Import and return a fresh CodingBackendAdapter."""
+    """Import and return a fresh CodingBackendAdapter with a non-shelling agy client."""
     from core.backends.adapters.antigravity_backend import CodingBackendAdapter
+    from tests.fake_agy_client import FakeAgyClient
 
-    return CodingBackendAdapter()
+    # Default: agy returns an empty plan (no files, no edit_ops).
+    # Individual tests that care about agy's output should use _make_adapter()
+    # from test_coding_backend_wiring_m20.py or pass their own FakeAgyClient.
+    return CodingBackendAdapter(agy_client=FakeAgyClient())
 
 
 @pytest.fixture
@@ -41,34 +45,54 @@ def project_root() -> Path:
 
 def test_coding_backend_rejects_generation_request_without_files(adapter):
     """
-    A code generation request with no target_files must return success=False.
-    The old mock always returned success=True — this test proves that is gone.
+    A code generation request with no target_files must route to generation.
     """
-    result = adapter.execute(
-        capability="coding",
-        goal="write a function that sorts a list",
-        arguments={},
-    )
-    assert result.success is False, (
-        "Backend must not return success=True for a generation request with no target files. "
-        f"Got: success={result.success}, observations={result.observations}"
-    )
-    assert result.data.get("backend") is not None
-    # Must not contain hardcoded filenames from the old mock
-    assert "PYTHON_3_14_RELEASE_NOTES.md" not in str(result.data)
-    assert "src/core/version_compat.py" not in str(result.data)
+    with patch.object(adapter, "_execute_generate") as mock_gen:
+        result = adapter.execute(
+            capability="coding",
+            goal="write a function that sorts a list",
+            arguments={},
+        )
+        assert mock_gen.called
 
 
-def test_coding_backend_does_not_return_hardcoded_filenames(adapter):
+def test_coding_backend_generation_phrases(adapter):
+    """
+    Ensure the backend correctly identifies natural language generation requests
+    and routes them to _execute_generate.
+    """
+    phrases = [
+        "create student database python code",
+        "make a python student management system",
+        "build a student database",
+        "write code for student database",
+        "develop a student CRUD application",
+        "generate python code for students",
+        "make a database program for students",
+        "create code to manage student records",
+    ]
+    
+    for goal in phrases:
+        with patch.object(adapter, "_execute_generate") as mock_gen:
+            result = adapter.execute(
+                capability="coding",
+                goal=goal,
+                arguments={},
+            )
+            assert mock_gen.called, f"Generation request '{goal}' was not routed to generation."
+
+
+def test_coding_backend_does_not_return_hardcoded_filenames(adapter, tmp_path):
     """
     The old mock always returned ['PYTHON_3_14_RELEASE_NOTES.md', 'src/core/version_compat.py'].
     Verify these strings never appear in any real result.
     """
+    # Use tmp_path so code.analyze doesn't scan the full 82K-file workspace
     for capability in ["coding", "code.analyze", "code.edit", "code.report"]:
         result = adapter.execute(
             capability=capability,
             goal="fix the bug",
-            arguments={},
+            arguments={"repository_path": str(tmp_path)},
         )
         result_str = str(result.data) + str(result.observations)
         assert "PYTHON_3_14_RELEASE_NOTES.md" not in result_str, (
@@ -98,6 +122,7 @@ def test_coding_backend_edit_requires_operations(adapter):
 # ── Test: real analysis on a real file ────────────────────────────────────────
 
 
+@pytest.mark.slow
 def test_coding_backend_analyzes_real_python_file(adapter, project_root):
     """
     Given a real Python file path, code.analyze should return a real result
@@ -162,19 +187,63 @@ def test_coding_backend_registered_in_backend_registry():
     )
 
 
-def test_coding_result_always_has_backend_field(adapter):
+@pytest.mark.slow
+def test_coding_backend_analyzes_repository(adapter, project_root):
+    """
+    Given an 'analyze' goal without target_files, it should perform repository-level analysis
+    and return actual statistical values, not hardcoded 'unknown'.
+    """
+    result = adapter.execute(
+        capability="code.analyze",
+        goal="analyze my repository",
+        arguments={},
+    )
+    assert result.success is True
+    
+    # Verify the structure has our new counts
+    obs_text = "\n".join(result.observations)
+    assert "Files analyzed" in obs_text, f"Missing files count in {obs_text}"
+    assert "Folders" in obs_text, f"Missing folders count in {obs_text}"
+    assert "Issues found" in obs_text, f"Missing issues count in {obs_text}"
+    
+    # It shouldn't literally say 'unknown' for these numeric stats anymore
+    assert "Files analyzed : unknown" not in obs_text
+    assert "Folders        : unknown" not in obs_text
+
+    data = result.data
+    assert "analysis" in data
+    assert "statistics" in data["analysis"]
+    assert "file_count" in data["analysis"]["statistics"]
+    assert "folder_count" in data["analysis"]["statistics"]
+
+
+def test_coding_result_always_has_backend_field(adapter, tmp_path):
     """
     Every ExecutionResult from the coding backend must include
     data['backend'] so the orchestrator can trace it in the audit log.
     """
-    for capability, goal, args in [
-        ("coding", "write me some code", {}),
-        ("code.analyze", "analyze this", {}),
-        ("code.edit", "edit this file", {}),
-        ("code.report", "give me a quality report", {}),
-    ]:
-        result = adapter.execute(capability=capability, goal=goal, arguments=args)
-        assert "backend" in result.data, (
-            f"ExecutionResult.data must always contain 'backend' key. "
-            f"capability='{capability}', data={result.data}"
-        )
+    import json
+    from unittest.mock import MagicMock, patch
+    from tests.fake_provider import FakeProvider
+
+    req_json = json.dumps({
+        "project_name": "test", "language": "python",
+        "explicit_requirements": [], "inferred_requirements": [],
+    })
+    plan_json = json.dumps({"files": [{"path": "x.py", "content": "x=1\n"}]})
+    fake = FakeProvider([req_json, plan_json])
+    mock_mgr = MagicMock()
+    mock_mgr.chat.side_effect = fake.chat
+
+    with patch("ai.registry.build_provider_manager", return_value=mock_mgr):
+        for capability, goal, args in [
+            ("coding", "write me some code", {"repository_path": str(tmp_path)}),
+            ("code.analyze", "analyze this", {"repository_path": str(tmp_path)}),
+            ("code.edit", "edit this file", {"repository_path": str(tmp_path)}),
+            ("code.report", "give me a quality report", {"repository_path": str(tmp_path)}),
+        ]:
+            result = adapter.execute(capability=capability, goal=goal, arguments=args)
+            assert "backend" in result.data, (
+                f"ExecutionResult.data must always contain 'backend' key. "
+                f"capability='{capability}', data={result.data}"
+            )

@@ -82,14 +82,20 @@ class TestEngine:
         valid = engine.validate_after_change("src/main.py", "new_content")
     """
 
-    def __init__(self, repository_path: Path):
+    def __init__(self, repository_path: Path, workspace_walker=None):
         """
         Initialize the Test Engine.
 
         Args:
             repository_path: Path to the repository
+            workspace_walker: Walker instance for repository discovery
         """
         self.repository_path = Path(repository_path).resolve()
+        if workspace_walker is None:
+            from .workspace_walker import WorkspaceFileWalker
+            self.workspace_walker = WorkspaceFileWalker(repository_path=self.repository_path)
+        else:
+            self.workspace_walker = workspace_walker
 
     def run_all_tests(self) -> dict[str, Any]:
         """
@@ -99,7 +105,7 @@ class TestEngine:
             Dictionary with test results
         """
         # Find all test files
-        test_files = list(self.repository_path.rglob("test_*.py"))
+        test_files = self.workspace_walker.walk("test_*.py").files
 
         all_results = []
         total_duration = 0.0
