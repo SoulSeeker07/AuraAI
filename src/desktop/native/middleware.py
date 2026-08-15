@@ -415,7 +415,7 @@ class NativePipeline:
 
         if isinstance(error, NativeError):
             return NativeResult(
-                status=ResultStatus.FAILED,
+                status=ResultStatus.FAILURE,
                 error=error,
                 capability=context.capability,
                 manager=context.manager_name,
@@ -424,7 +424,7 @@ class NativePipeline:
             )
         else:
             return NativeResult(
-                status=ResultStatus.FAILED,
+                status=ResultStatus.FAILURE,
                 error=NativeError(str(error), capability=context.capability),
                 capability=context.capability,
                 manager=context.manager_name,

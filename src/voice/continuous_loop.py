@@ -10,6 +10,7 @@ suppression boundaries.
 
 import asyncio
 import logging
+import threading
 import time
 from enum import Enum, auto
 from typing import Any
@@ -43,15 +44,16 @@ def _safe_print(text: str, stream=None) -> None:
 
 class VoiceState(Enum):
     """Explicit lifecycle states for the voice interaction loop."""
-    IDLE = auto()          # Waiting for the wake word (via VoiceManager)
-    WAKE_DETECTED = auto() # Wake word confirmed; preparing audio capture
-    LISTENING = auto()     # Capturing user speech via the microphone
-    TRANSCRIBING = auto()  # Speech ended; STT engine decoding audio
-    UNDERSTANDING = auto() # Routing transcript to existing NLU
-    EXECUTING = auto()     # Running local deterministic tools
-    AI_RESPONSE = auto()   # Generating conversational replies
-    SPEAKING = auto()      # Piper TTS is actively playing audio
-    COOLDOWN = auto()      # Settling period before explicit buffer flush
+    IDLE = auto()               # Waiting for the wake word (via VoiceManager)
+    WAKE_DETECTED = auto()      # Wake word confirmed; preparing audio capture
+    LISTENING = auto()          # Capturing user speech via the microphone
+    TRANSCRIBING = auto()       # Speech ended; STT engine decoding audio
+    UNDERSTANDING = auto()      # Routing transcript to existing NLU
+    EXECUTING = auto()          # Running local deterministic tools
+    AI_RESPONSE = auto()        # Generating conversational replies
+    SPEAKING = auto()           # Piper TTS is actively playing audio
+    COOLDOWN = auto()           # Settling period before explicit buffer flush
+    FOLLOW_UP_LISTENING = auto()# 3.5s conversational follow-up window (single mic)
 
 
 class ContinuousVoiceLoop:
@@ -99,6 +101,12 @@ class ContinuousVoiceLoop:
         self.turn_count = 0
         self.history: list[dict[str, Any]] = []
         self.on_stop: Any | None = None
+        self._lock = threading.RLock()
+        self._standby_watchdog: threading.Timer | None = None
+        self._followup_timer: threading.Timer | None = None
+        self._command_timeout: threading.Timer | None = None
+        self._pending_standby: bool = False
+        self._turn_telemetry: dict[str, float] = {}
 
         logger.info("[ContinuousVoiceLoop] INITIALIZING")
         self._set_state(VoiceState.IDLE)
@@ -106,6 +114,24 @@ class ContinuousVoiceLoop:
     def _set_state(self, new_state: VoiceState):
         logger.info(f"[ContinuousVoiceLoop] State: {new_state.name}")
         self.state = new_state
+
+    def _on_command_timeout(self):
+        """Timeout if user says wake word but doesn't speak a command within 5s."""
+        with self._lock:
+            self._command_timeout = None
+            if self.state in (VoiceState.WAKE_DETECTED, VoiceState.LISTENING) and self._running:
+                logger.info("[ContinuousVoiceLoop] Command listening timeout (5s silence). Returning to wake-word standby.")
+                self._return_to_listening_or_idle()
+
+    def _on_standby_watchdog_timeout(self):
+        """Watchdog to guarantee wake-listener re-arms if TTS completion callback fails to fire."""
+        with self._lock:
+            self._standby_watchdog = None
+            if self.state == VoiceState.SPEAKING:
+                logger.warning(
+                    "[ContinuousVoiceLoop] Standby TTS completion watchdog timeout (8s) fired — forcing wake-word re-arm"
+                )
+                self._return_to_listening_or_idle()
 
     def start(self) -> bool:
         """Start the continuous voice loop lifecycle."""
@@ -133,6 +159,7 @@ class ContinuousVoiceLoop:
                 logger.error("ContinuousVoiceLoop failed to enter wake-word listening")
                 return False
             logger.info("[ContinuousVoiceLoop] WAITING_FOR_WAKE")
+            _safe_print("\n🟢 Aura is waiting for wake word... (Say 'Aura' or 'Hey Aura')\n")
         else:
             logger.info("Wake word disabled by .env, skipping wake word and activating STT immediately")
             self._set_state(VoiceState.WAKE_DETECTED)
@@ -146,6 +173,17 @@ class ContinuousVoiceLoop:
         """Stop the continuous voice loop cleanly."""
         logger.info("[ContinuousVoiceLoop] State: STOP_REQUESTED")
         self._running = False
+        with self._lock:
+            if self._standby_watchdog is not None:
+                self._standby_watchdog.cancel()
+                self._standby_watchdog = None
+            if self._followup_timer is not None:
+                self._followup_timer.cancel()
+                self._followup_timer = None
+            if self._command_timeout is not None:
+                self._command_timeout.cancel()
+                self._command_timeout = None
+
         self.voice_manager.stop()
         logger.info("[VOICE] Shutdown: PASS")
         logger.info("[MIC] Stream released: PASS")
@@ -162,19 +200,56 @@ class ContinuousVoiceLoop:
     # ------------------------------------------------------------------------
 
     def trigger_wake_detected(self, wake_word: str = "Aura"):
-        if self.state == VoiceState.IDLE and self._running:
+        with self._lock:
+            if self._followup_timer is not None:
+                self._followup_timer.cancel()
+                self._followup_timer = None
+            if self._command_timeout is not None:
+                self._command_timeout.cancel()
+                self._command_timeout = None
+            self._command_timeout = threading.Timer(5.0, self._on_command_timeout)
+            self._command_timeout.daemon = True
+            self._command_timeout.start()
+        self._turn_telemetry = {"T0_wake": time.time(), "T1_earcon": time.time()}
+
+        if (
+            self.state in (
+                VoiceState.IDLE,
+                VoiceState.COOLDOWN,
+                VoiceState.FOLLOW_UP_LISTENING,
+                VoiceState.SPEAKING,
+                VoiceState.UNDERSTANDING,
+                VoiceState.EXECUTING,
+                VoiceState.AI_RESPONSE,
+            )
+            or not self._running
+        ):
+            if self.state == VoiceState.SPEAKING:
+                logger.info("[ContinuousVoiceLoop] Barge-in: interrupting TTS on wake word")
+                self.voice_manager.tts_manager.stop()
+            elif self.state in (VoiceState.UNDERSTANDING, VoiceState.EXECUTING, VoiceState.AI_RESPONSE):
+                logger.info(f"[ContinuousVoiceLoop] Interrupting {self.state.name} on wake word")
+                self.voice_manager.tts_manager.stop()
+
             self._set_state(VoiceState.WAKE_DETECTED)
-            # Typically, audio capture triggers immediately
-            _safe_print("\n\n🎧 Wake word detected! Aura is listening for your command...\n")
+            _safe_print("\n🎧 Aura is listening for your command...\n")
             self.trigger_listening()
             logger.info("[VoiceManager] STT_ACTIVE")
 
     def trigger_listening(self):
-        if self.state == VoiceState.WAKE_DETECTED:
+        if self.state in (VoiceState.WAKE_DETECTED, VoiceState.FOLLOW_UP_LISTENING):
             self._set_state(VoiceState.LISTENING)
 
     def _return_to_listening_or_idle(self):
         """Helper to return to correct state based on wake word setting."""
+        with self._lock:
+            if self._command_timeout is not None:
+                self._command_timeout.cancel()
+                self._command_timeout = None
+            if self._followup_timer is not None:
+                self._followup_timer.cancel()
+                self._followup_timer = None
+
         import os
         enable_wake_word = os.getenv("ENABLE_WAKE_WORD", "true").lower() == "true"
         if not enable_wake_word and self._running:
@@ -184,11 +259,10 @@ class ContinuousVoiceLoop:
         else:
             self._set_state(VoiceState.IDLE)
             # Re-arm the wake-word detector so the mic doesn't go silent.
-            # Without this, after a hallucination filter hit or error the system
-            # would freeze at IDLE with no active listening.
             if self._running:
                 if self.voice_manager.activate():
                     logger.info("[ContinuousVoiceLoop] Wake-word listener re-armed after returning to IDLE")
+                    _safe_print("\n🟢 Aura is waiting for wake word... (Say 'Aura' or 'Hey Aura')\n")
                 else:
                     logger.warning("[ContinuousVoiceLoop] Failed to re-arm wake-word listener")
 
@@ -219,12 +293,19 @@ class ContinuousVoiceLoop:
         "turn off listening",
         "quit listening",
         "quit voice",
+        "quit",
+        "exit",
+        "stop",
     }
 
     def trigger_transcription_ready(self, transcript: str):
         clean_t = transcript.strip().lower()
         clean_t_punct = clean_t.rstrip(".,!?")
         hallucinations = [
+            "spoken conversational commands and desktop assistant requests in english.",
+            "spoken conversational commands and desktop assistant requests in english",
+            "aura is an ai desktop voice assistant.",
+            "aura is an ai desktop voice assistant",
             "i'll see you next time.",
             "i'll see you next time",
             "i'll see you in the next video.",
@@ -237,12 +318,48 @@ class ContinuousVoiceLoop:
             "bye",
             "you",
         ]
-        if not transcript.strip() or clean_t in hallucinations:
-            # Empty transcription, return to correct state
+        hallucination_substrings = (
+            "spoken conversational commands",
+            "desktop assistant requests",
+            "thanks for watching",
+            "thank you for watching",
+            "like and subscribe",
+            "subscribe to my channel",
+            "see you next time",
+            "see you in the next video",
+            "subtitles by",
+            "translated by",
+            "amara.org",
+        )
+        if (
+            not transcript.strip()
+            or clean_t in hallucinations
+            or clean_t_punct in hallucinations
+            or any(sub in clean_t for sub in hallucination_substrings)
+        ):
+            # Empty transcription or hallucinated prompt echo, return to correct state
             self._return_to_listening_or_idle()
             return
 
-        if self.state in (VoiceState.LISTENING, VoiceState.WAKE_DETECTED, VoiceState.TRANSCRIBING) or not self._running:
+        with self._lock:
+            if self._command_timeout is not None:
+                self._command_timeout.cancel()
+                self._command_timeout = None
+            if self._followup_timer is not None:
+                self._followup_timer.cancel()
+                self._followup_timer = None
+        self._turn_telemetry["T4_stt"] = time.time()
+
+        if (
+            self.state in (
+                VoiceState.LISTENING,
+                VoiceState.WAKE_DETECTED,
+                VoiceState.TRANSCRIBING,
+                VoiceState.FOLLOW_UP_LISTENING,
+                VoiceState.IDLE,
+            )
+            or not self._running
+        ):
             # 1. Check for voice pause / standby commands (mic stays open, returns to wake-word idle)
             if clean_t_punct in self.VOICE_PAUSE_PHRASES or any(
                 clean_t_punct.startswith(p)
@@ -252,14 +369,28 @@ class ContinuousVoiceLoop:
                 _safe_print(f"\r\033[K\nYou > {transcript}\n")
                 logger.info(f"[ContinuousVoiceLoop] Spoken voice pause/standby command detected: '{transcript}'")
                 _safe_print("\n😴 Aura is on standby. Say 'Aura' to wake me up.\n")
+                self._pending_standby = True
                 spoken_pause = "Going on standby. Say Aura when you need me."
                 self._set_state(VoiceState.SPEAKING)
+
+                # Start 8.0s watchdog to guarantee recovery if TTS callback fails
+                with self._lock:
+                    if self._standby_watchdog is not None:
+                        self._standby_watchdog.cancel()
+                    self._standby_watchdog = threading.Timer(8.0, self._on_standby_watchdog_timeout)
+                    self._standby_watchdog.daemon = True
+                    self._standby_watchdog.start()
+
                 try:
                     self.voice_manager.speak(spoken_pause)
                 except Exception as e:
                     logger.debug(f"[ContinuousVoiceLoop] Standby TTS error: {e}")
-                self._set_state(VoiceState.IDLE)
-                self._return_to_listening_or_idle()
+                    with self._lock:
+                        if self._standby_watchdog is not None:
+                            self._standby_watchdog.cancel()
+                            self._standby_watchdog = None
+                    self._pending_standby = False
+                    self._return_to_listening_or_idle()
                 return
 
             # 2. Check for voice hard stop / shutdown commands (mic stream closes, back to CLI)
@@ -286,6 +417,17 @@ class ContinuousVoiceLoop:
             self._process_transcript(transcript)
 
     def trigger_tts_completed(self):
+        # Cancel active standby watchdog timer
+        with self._lock:
+            if self._standby_watchdog is not None:
+                self._standby_watchdog.cancel()
+                self._standby_watchdog = None
+
+        if self._pending_standby:
+            self._pending_standby = False
+            self._return_to_listening_or_idle()
+            return
+
         if self.state == VoiceState.SPEAKING:
             self._set_state(VoiceState.COOLDOWN)
             self._handle_cooldown()
@@ -299,16 +441,11 @@ class ContinuousVoiceLoop:
         self.trigger_wake_detected(wake_word)
 
     def _on_stt_result(self, context: VoiceContext):
-        if context.transcript:
-            self.trigger_transcription_ready(context.transcript)
+        self.trigger_transcription_ready(context.transcript or "")
 
     def _on_stt_partial(self, context: VoiceContext):
         """Render live transcription to terminal with ANSI colors."""
         if context.confirmed_transcript or context.tentative_transcript:
-            # Clear line and print
-            # \033[K clears to end of line
-            # \033[2m dims the tentative text
-            # \033[0m resets formatting
             confirmed = context.confirmed_transcript
             tentative = context.tentative_transcript
             
@@ -335,48 +472,20 @@ class ContinuousVoiceLoop:
         logger.error(f"[ContinuousVoiceLoop] Voice error: {error}")
         import sys
         _safe_print(f"\n⚠️ [Voice System Warning] {error}\n", stream=sys.stderr)
-        if self.state == VoiceState.SPEAKING:
-             self.trigger_tts_completed()
-        else:
-             self._return_to_listening_or_idle()
+        self._return_to_listening_or_idle()
 
     # ------------------------------------------------------------------------
     # Internal Handoffs
     # ------------------------------------------------------------------------
 
     def _process_transcript(self, transcript: str):
-        """
-        Hand the finalized voice transcript off to AuraCore and speak the response.
-
-        Design notes
-        ------------
-        * We run on a *background audio thread* (called from the STT callback),
-          NOT on the main asyncio event loop.
-        * The main event loop is busy blocking in ``input()`` inside CLIClient.run(),
-          so we MUST NOT schedule work onto it with run_coroutine_threadsafe – that
-          coroutine would sit in the queue forever and fut.result() would time out
-          after 60 s, silently swallowing the call.
-        * Instead we create a *fresh* event loop owned by this thread via
-          ``asyncio.run()``.  This is safe because aura_core.process_request is
-          stateless with respect to which loop it runs on.
-        * We deliberately mirror the text path in CLIClient._send_chat_message:
-          ``aura_core.process_request(transcript)`` → Groq → spoken response.
-          PersonalOSRuntime.execute_goal routes through ExecutionCoordinator (tool
-          actions), which never reaches the Groq LLM for conversational utterances.
-        """
+        """Hand the finalized voice transcript off to AuraCore and speak the response."""
         self._set_state(VoiceState.UNDERSTANDING)
+        self._turn_telemetry["T5_reasoning_start"] = time.time()
         logger.info(
             f"[ContinuousVoiceLoop Turn #{self.turn_count}] Processing transcript: '{transcript}'"
         )
 
-        # AuraCore must be injected before the first utterance via:
-        #   personal_os.voice_loop._aura_core = self.aura_core   (CLIClient)
-        # We deliberately do NOT attempt any import-based fallback because
-        # main.py puts both "src/" and "." on sys.path, so any import of
-        # "src.core.orchestration..." vs "core.orchestration..." resolves to
-        # *different* module objects — which would create a second
-        # PersonalOSRuntime singleton, a second ContinuousVoiceLoop, and a
-        # second VoiceManager, re-initialising half the ML stack mid-turn.
         aura_core = getattr(self, "_aura_core", None) or self._global_aura_core
         if aura_core is None:
             logger.error(
@@ -396,21 +505,24 @@ class ContinuousVoiceLoop:
         success = False
 
         try:
-            # Mirror CLIClient._send_chat_message exactly.
-            # asyncio.run() creates a fresh loop on this background thread –
-            # no interference with the main loop's blocking input() call.
             aura_core.add_to_conversation("user", transcript)
             _safe_print("\n🤔 Aura is thinking...\n")
 
             response: str = asyncio.run(aura_core.process_request(transcript))
+            self._turn_telemetry["T6_response_ready"] = time.time()
 
             aura_core.add_to_conversation("assistant", response)
             _safe_print(f"\nAura > {response}\n")
             spoken_summary = response
             success = True
+
+            t0 = self._turn_telemetry.get("T0_wake", self._turn_telemetry["T5_reasoning_start"])
+            t6 = self._turn_telemetry["T6_response_ready"]
+            reasoning_ms = (t6 - self._turn_telemetry["T5_reasoning_start"]) * 1000
+            total_ms = (t6 - t0) * 1000
             logger.info(
-                f"[ContinuousVoiceLoop Turn #{self.turn_count}] "
-                f"Response ready ({len(response)} chars)"
+                f"[ContinuousVoiceLoop Turn #{self.turn_count}] Response ready ({len(response)} chars) | "
+                f"Core: {reasoning_ms:.1f}ms | Total from trigger: {total_ms:.1f}ms"
             )
         except Exception as e:
             logger.error(
@@ -423,6 +535,11 @@ class ContinuousVoiceLoop:
         if not spoken_summary:
             spoken_summary = "Sorry, I couldn't process that."
 
+        # If user interrupted while thinking / executing, discard old response and allow new turn to proceed
+        if self.state not in (VoiceState.UNDERSTANDING, VoiceState.EXECUTING):
+            logger.info("[ContinuousVoiceLoop] Response discarded — turn was interrupted by wake word during thinking")
+            return
+
         self.history.append({
             "turn": self.turn_count,
             "transcript": transcript,
@@ -431,16 +548,27 @@ class ContinuousVoiceLoop:
         })
 
         self._set_state(VoiceState.SPEAKING)
+        self._turn_telemetry["T7_tts_start"] = time.time()
 
         if self._running:
-            # VoiceManager speaks the response; its on_tts_complete callback will
-            # call trigger_tts_completed() to advance the state machine.
             self.voice_manager.speak(spoken_summary)
-            
+
+    def _on_followup_timeout(self):
+        """Follow-up window (5s) expired without user speech — return to wake-word standby."""
+        with self._lock:
+            self._followup_timer = None
+            if self.state == VoiceState.FOLLOW_UP_LISTENING and self._running:
+                logger.info("[ContinuousVoiceLoop] Follow-up window expired (silence). Returning to wake-word standby.")
+                if self.voice_manager.activate():
+                    logger.info("[MIC] Recovery: PASS")
+                    logger.info("[WAKE] Listener resumed: PASS")
+                    _safe_print("\n🟢 Aura is waiting for wake word... (Say 'Aura' or 'Hey Aura')\n")
+                self._set_state(VoiceState.IDLE)
+
     def _handle_cooldown(self):
-        """Brief settling period before flushing mic buffer and returning to IDLE."""
+        """Brief settling period before entering follow-up listening or wake-standby."""
         if self._running:
-            time.sleep(0.5)  # Extended cooldown to ensure hardware echo suppression
+            time.sleep(0.3)  # Brief settling to avoid hardware echo
             import os
             enable_wake_word = os.getenv("ENABLE_WAKE_WORD", "true").lower() == "true"
             
@@ -450,12 +578,26 @@ class ContinuousVoiceLoop:
                 self.trigger_listening()
                 self.voice_manager._start_active_listening()
             else:
-                if self.voice_manager.activate():
-                    logger.info("[MIC] Recovery: PASS")
-                    logger.info("[WAKE] Listener resumed: PASS")
-                    self._set_state(VoiceState.IDLE)
-                else:
-                    logger.error("[ContinuousVoiceLoop] Failed to restore wake-word listening")
-                    self._set_state(VoiceState.IDLE)
+                # Enter 5.0s follow-up listening mode (single mic stream ownership)
+                self._turn_telemetry["T9_follow_up"] = time.time()
+                self._set_state(VoiceState.FOLLOW_UP_LISTENING)
+                logger.info("[ContinuousVoiceLoop] Entering 5.0s follow-up listening window...")
+
+                # Play gentle audible double-pip cue for follow-up window
+                try:
+                    from .earcon_player import EarconPlayer
+                    EarconPlayer.play_followup_chime()
+                except Exception:
+                    pass
+
+                _safe_print("\n👂 Aura is listening for follow-up (5.0s)... (Speak directly without wake word)\n")
+                self.voice_manager._start_active_listening()
+                
+                with self._lock:
+                    if self._followup_timer is not None:
+                        self._followup_timer.cancel()
+                    self._followup_timer = threading.Timer(5.0, self._on_followup_timeout)
+                    self._followup_timer.daemon = True
+                    self._followup_timer.start()
         else:
             self._set_state(VoiceState.IDLE)

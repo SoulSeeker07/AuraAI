@@ -6,6 +6,7 @@ Coordinates all voice components: wake word, STT, VAD, TTS, and interruption han
 """
 
 import logging
+import os
 import threading
 import time
 from collections.abc import Callable
@@ -112,19 +113,27 @@ class VoiceManager:
         if settings is None:
             settings = {}
 
+        provider_env = os.getenv("STT_PROVIDER", STTProvider.GOOGLE.value).lower()
+        if provider_env in ("faster_whisper", "local", "whisper"):
+            stt_prov = STTProvider.FASTER_WHISPER.value
+        else:
+            stt_prov = STTProvider.GOOGLE.value
+
+        stt_lang = os.getenv("STT_LANGUAGE", "en-in")
+
         defaults = {
             "vad_mode": VADMode.BOTH.value,
-            "silence_threshold": 1.0,
-            "silence_duration": 0.8,
+            "silence_threshold": 1.4,
+            "silence_duration": 1.4,
             "energy_threshold": 0.005,
             "wake_word_provider": WakeWordProvider.AURA.value,
             "wake_word_sensitivity": 0.5,
             "wake_word_phrases": ["aura", "hey aura"],
             "stt_settings": {
-                "provider": STTProvider.FASTER_WHISPER.value,
-                "language": "en",
+                "provider": stt_prov,
+                "language": stt_lang,
                 "sample_rate": 16000,
-                "model_size": "base",
+                "model_size": "small",
                 "verbose": False,
                 "chunk_size": 20,
                 "processing_delay_ms": 50,
@@ -239,14 +248,14 @@ class VoiceManager:
             if self.state == ConversationState.WAKE_LISTENING:
                 return True
 
-            # If actively speaking or processing, do not interrupt in-flight turn
-            if self.state in (ConversationState.SPEAKING, ConversationState.THINKING, ConversationState.EXECUTING):
-                logger.warning(f"Cannot activate wake-word while active in state: {self.state.value}")
+            # If actively speaking, do not interrupt in-flight TTS playback
+            if self.state == ConversationState.SPEAKING:
+                logger.warning(f"Cannot activate wake-word while speaking in state: {self.state.value}")
                 return False
 
-            # Safe recovery from completed, paused, interrupted, error, or dormant states
+            # Safe recovery from completed, thinking, paused, interrupted, error, or dormant states
             if self.state != ConversationState.IDLE:
-                logger.info(f"Voice system recovering to IDLE from safe state: {self.state.value}")
+                logger.info(f"Voice system recovering to IDLE from state: {self.state.value}")
                 self._update_state(ConversationState.IDLE)
 
             try:
@@ -296,8 +305,13 @@ class VoiceManager:
         """
         with self._lock:
             try:
-                # Process wake word detection
-                if self.state == ConversationState.WAKE_LISTENING:
+                # Process wake word detection during WAKE_LISTENING, SPEAKING, THINKING, or EXECUTING (barge-in / thinking interruption)
+                if self.state in (
+                    ConversationState.WAKE_LISTENING,
+                    ConversationState.SPEAKING,
+                    ConversationState.THINKING,
+                    ConversationState.EXECUTING,
+                ):
                     self.wake_word.process_audio(audio_data, sample_rate)
 
                 # Process VAD
@@ -312,12 +326,12 @@ class VoiceManager:
                 if self.state == ConversationState.ACTIVE_LISTENING:
                     self.stt_manager.process_audio(audio_data)
 
-                    # Timeout check: if user didn't start speaking for 8 seconds after wake word
+                    # Timeout check: if user didn't start speaking for 5.0 seconds after wake word
                     if (
                         not self._speech_started_in_turn
-                        and (time.time() - self._active_listening_start_time > 8.0)
+                        and (time.time() - self._active_listening_start_time > 5.0)
                     ):
-                        logger.info("[VoiceManager] Active listening timed out waiting for speech")
+                        logger.info("[VoiceManager] Active listening timed out waiting for speech (5.0s)")
                         self._finalize_stt()
 
                 # Check for user interruption
@@ -336,6 +350,18 @@ class VoiceManager:
     def _on_wake_word_detected(self, wake_word: str) -> None:
         """Handle wake word detection."""
         logger.info(f"[WAKE] Wake detected: PASS ({wake_word})")
+
+        # Barge-in / Interruption: if currently speaking or thinking, halt immediately
+        if self.state in (ConversationState.SPEAKING, ConversationState.THINKING, ConversationState.EXECUTING):
+            logger.info(f"[VoiceManager] Interruption triggered during {self.state.name}! Halting current action.")
+            self.tts_manager.stop()
+
+        # Play immediate non-blocking audio earcon chime feedback
+        try:
+            from .earcon_player import EarconPlayer
+            EarconPlayer.play_wake_chime()
+        except Exception:
+            pass
 
         if self.on_wake_word_detected:
             self.on_wake_word_detected(wake_word)
@@ -390,15 +416,12 @@ class VoiceManager:
     def _on_speech_end(self) -> None:
         """Called when speech ends (from VAD)."""
         logger.debug("Speech end detected")
-
         if self.state == ConversationState.ACTIVE_LISTENING:
-            # Only finalize if speech actually started during this active listening turn.
-            # This prevents pre-speech silence (e.g. the pause right after saying the wake word)
-            # from cutting off listening before the user has even started their command.
-            if self._speech_started_in_turn:
-                self._finalize_stt()
-            else:
-                logger.debug("Ignoring silence before command speech has started")
+            # If user hasn't started speaking their command yet and less than 1.0s has passed since wake trigger, ignore wake-word tail
+            if not self._speech_started_in_turn and (time.time() - self._active_listening_start_time < 1.0):
+                logger.debug("Ignoring speech end right after wake trigger before command speech")
+                return
+            self._finalize_stt()
 
     def _finalize_stt(self) -> None:
         """Finalize STT and transition to thinking state."""
@@ -411,22 +434,19 @@ class VoiceManager:
                 transcript = ""
 
             # Create voice context
-            context = VoiceContext(transcript=transcript)
-            context.processing_time_ms = 100.0  # Placeholder
+            context = VoiceContext(
+                transcript=transcript,
+                confidence=1.0 if transcript else 0.0,
+                duration=time.time() - self._active_listening_start_time,
+            )
             context.provider = self.stt_manager.settings.provider.value
 
-            logger.info(f"Final transcript: {transcript}")
-
-            # Transition to thinking
-            self._update_state(ConversationState.THINKING)
-            if self.session:
-                self.session.update_state(ConversationState.THINKING)
+            with self._lock:
+                self._update_state(ConversationState.THINKING)
+                if self.session:
+                    self.session.update_state(ConversationState.THINKING)
 
             logger.info("[STT] Transcription: PASS")
-
-            # Suppress the microphone before coordinator/TTS work begins.
-            self.audio_manager.stop_recording()
-            logger.info("[MIC] Suppression: PASS")
             self.stt_manager.reset()
 
             if self.on_stt_result:
@@ -439,7 +459,7 @@ class VoiceManager:
 
     def speak(self, text: str) -> bool:
         """
-        Start speaking text.
+        Start speaking text with live barge-in support.
 
         Args:
             text: Text to speak
@@ -448,8 +468,6 @@ class VoiceManager:
             True if successful
         """
         try:
-            self.audio_manager.stop_recording()
-
             # Add text to TTS (lazy initialization happens inside add_text if needed)
             if not self.tts_manager.add_text(text):
                 logger.error("Failed to add text to TTS")
@@ -460,10 +478,14 @@ class VoiceManager:
                 logger.error("Failed to start speaking")
                 return False
 
-            # Update state
+            # Update state to SPEAKING
             self._update_state(ConversationState.SPEAKING)
             if self.session:
                 self.session.update_state(ConversationState.SPEAKING)
+
+            # Ensure mic recording is active during speech so user saying 'Aura' interrupts immediately
+            if not self.audio_manager.is_recording:
+                self.audio_manager.start_recording(self.process_audio)
 
             logger.info(f"[TTS] Piper playback: PASS ({text})")
 

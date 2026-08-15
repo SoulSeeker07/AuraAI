@@ -92,10 +92,10 @@ A milestone may ship across one or more releases.
 | Milestone | Release | Phase | Status |
 | :--- | :--- | :--- | :--- |
 | M01-M10 | `v0.1.0`-`v0.10.0` | Phase 0 — Foundation | `COMPLETE` |
-| M11–M16 | `v0.11.0`–`v0.19.0` | Phase 0 — Foundation | `COMPLETE` (see notes) |
+| M11–M16 | `v0.11.0`–`v0.19.0` | Phase 0 — Foundation | `COMPLETE` |
 | M17 | `v0.20.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
 | M18 | `v0.21.0` | Phase 1 — Shared Intelligence | `IN PROGRESS` |
-| M19 | `v0.22.0` | Phase 2 — Capability Foundation | `PLANNED` |
+| M19 | `v0.22.0` | Phase 2 — Capability Foundation | `READY` |
 | M20 | `v0.23.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
 | M21 | `v0.24.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
 | M22 | `v0.25.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
@@ -104,9 +104,9 @@ A milestone may ship across one or more releases.
 | M25 | `v0.28.0` | Phase 5 — Autonomy | `PLANNED` |
 | M26 | `v0.29.0` | Phase 5 — Autonomy | `PLANNED` |
 | M27 | `v0.30.0` | Phase 6 — Autonomous Engineering | `PLANNED` |
-| M28 | `v1.0.0` | Phase 7 — Aura OS | `PLANNED` |
-| M29 | `v1.1.0` | Phase 8 — Natural Interaction | `PLANNED` |
-| M30 | `v1.2.0` | Phase 9 — Aura GUI | `PLANNED` |
+| M28 | `v1.0.0` | Phase 7 — Aura OS (Native Desktop Engine) | `OPERATIONAL (Foundation Live)` |
+| M29 | `v1.1.0` | Phase 8 — Natural Interaction (Continuous Voice) | `OPERATIONAL (Foundation Live)` |
+| M30 | `v1.2.0` | Phase 9 — Aura GUI (Command Center) | `PLANNED` |
 
 ---
 
@@ -1592,18 +1592,18 @@ M30   Aura Command Center           ← requires M28
 
 ```text
 Phase 0 — Foundation (M01–M16)          ████████████████████  16/16  COMPLETE
-Phase 1 — Shared Intelligence (M17–M18) ████░░░░░░░░░░░░░░░░   0/2   IN PROGRESS
-Phase 2 — Capability Foundation (M19)   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 1 — Shared Intelligence (M17–M18) ██████████░░░░░░░░░░   1/2   IN PROGRESS (M17 COMPLETE, M18 ACTIVE)
+Phase 2 — Capability Foundation (M19)   ░░░░░░░░░░░░░░░░░░░░   0/1   READY
 Phase 3 — Intelligence Expansion        ░░░░░░░░░░░░░░░░░░░░   0/3   PLANNED
 Phase 4 — External Capabilities (M23)   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
 Phase 5 — Autonomy (M24–M26)            ░░░░░░░░░░░░░░░░░░░░   0/3   PLANNED
 Phase 6 — Autonomous Engineering (M27)  ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 7 — Aura OS (M28)                 ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 8 — Natural Interaction (M29)     ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 7 — Aura OS (M28)                 ████████████████████   1/1   OPERATIONAL (Foundation Live)
+Phase 8 — Natural Interaction (M29)     ████████████████████   1/1   OPERATIONAL (Foundation Live)
 Phase 9 — Aura GUI (M30)                ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
 ```
 
-**Overall:** 16 / 30 complete. Next action: complete M17 acceptance criteria, then begin M18 providers.
+**Overall:** 19 / 30 foundational subsystems active. Next critical milestones: M18 (World Model) and M19 (Capability Runtime).
 
 ---
 
@@ -1611,20 +1611,17 @@ Phase 9 — Aura GUI (M30)                ░░░░░░░░░░░░�
 
 | Priority | Milestone | Status | Hard Blocker |
 | :--- | :--- | :--- | :--- |
-| 1 | **M17** — Cognitive Memory | `IN PROGRESS` | None |
-| 2 | **M18** — World Model | `IN PROGRESS` | M17 (MemoryProvider only) |
-| 3 | **M19** — Capability & Tool Runtime | `PLANNED` | M17 + M18 complete |
-| 4 | **M20** — Coding Intelligence 2.0 | `PLANNED` | M19 |
-| 5 | **M21** — Research Intelligence 2.0 | `PLANNED` | M19 |
-| 6 | **M22** — Browser Intelligence | `PLANNED` | M19 |
-| 7 | **M25** — Expert Systems | `PLANNED` | M19 + M20 + M21 |
-| 8 | **M23** — MCP Ecosystem | `PLANNED` | M20 + M21 + M22 |
-| 9 | **M24** — Event Runtime | `PLANNED` | M23 |
-| 10 | **M26** — Personal OS | `PLANNED` | M23 |
-| 11 | **M27** — Autonomous Engineering | `PLANNED` | M24 + M25 + M26 |
-| 12 | **M28** — Aura OS | `PLANNED` | M27 |
-| 13 | **M29** — Natural Interaction | `PLANNED` | M28 |
-| 14 | **M30** — Aura GUI | `PLANNED` | M28 |
+| 1 | **M18** — World Model (Workspace & System Graph) | `IN PROGRESS` | None |
+| 2 | **M19** — Capability & Tool Runtime | `READY` | M18 integration |
+| 3 | **M20** — Autonomous Coding Agent | `PLANNED` | M19 |
+| 4 | **M21** — Autonomous Research Agent | `PLANNED` | M19 |
+| 5 | **M22** — Browser Intelligence (Playwright) | `PLANNED` | M19 |
+| 6 | **M23** — MCP Ecosystem | `PLANNED` | M20 + M21 + M22 |
+| 7 | **M25** — Professional Expert Systems | `PLANNED` | M19 + M20 + M21 |
+| 8 | **M24** — Event Runtime & Autonomy | `PLANNED` | M23 |
+| 9 | **M26** — Personal OS Proactive Automation | `PLANNED` | M23 |
+| 10 | **M27** — Autonomous Engineering Loop | `PLANNED` | M24 + M25 + M26 |
+| 11 | **M30** — Aura GUI Command Center & Vision | `PLANNED` | M28 |
 
 ---
 

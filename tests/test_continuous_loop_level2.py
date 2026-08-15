@@ -94,8 +94,10 @@ class TestContinuousVoiceLoopLevel2(unittest.TestCase):
         self.assertTrue(self.loop.history[0]["success"])
         self.assertEqual(self.loop.history[0]["transcript"], "open calculator")
 
-        # 3. Mock TTS Complete -> Cooldown -> IDLE
+        # 3. Mock TTS Complete -> Cooldown -> FOLLOW_UP_LISTENING -> timeout -> IDLE
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state.name, "FOLLOW_UP_LISTENING")
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state.name, "IDLE")
 
         # --- Turn 2 ---
@@ -126,6 +128,8 @@ class TestContinuousVoiceLoopLevel2(unittest.TestCase):
 
         # 3. Mock TTS Complete
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state.name, "FOLLOW_UP_LISTENING")
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state.name, "IDLE")
 
         # Stop

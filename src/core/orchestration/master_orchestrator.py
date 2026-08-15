@@ -584,14 +584,28 @@ class MasterOrchestrator:
                     except Exception:
                         pass
 
-                if pref_val:
+                is_query = any(
+                    goal_text.lower().strip().startswith(p)
+                    for p in ("what is", "whats", "what's", "tell me", "do you remember", "recall", "which is")
+                )
+                if pref_val and not is_query:
                     import re
-                    new_goal = re.sub(r"\bmy\s+(?:favorite\s+|preferred\s+)?(?:editor|ide)\b", pref_val, goal_text, flags=re.IGNORECASE)
+                    new_goal = re.sub(
+                        r"\bmy\s+(?:favorite\s+|preferred\s+)?(?:editor|ide)\b",
+                        pref_val,
+                        goal_text,
+                        flags=re.IGNORECASE,
+                    )
                     if new_goal != goal_text:
-                        logger.info(f"[MasterOrchestrator] Resolved preference '{goal_text}' -> '{new_goal}' (slot={pref_slot}, val={pref_val})")
+                        logger.info(
+                            f"[MasterOrchestrator] Resolved preference '{goal_text}' -> '{new_goal}' (slot={pref_slot}, val={pref_val})"
+                        )
                         goal_text = new_goal
                         session.goal = new_goal
-                        session.metrics["preference_resolved"] = {"slot": pref_slot, "value": pref_val}
+                        session.metrics["preference_resolved"] = {
+                            "slot": pref_slot,
+                            "value": pref_val,
+                        }
         except Exception as pref_err:
             logger.debug(f"Preference resolution skipped: {pref_err}")
 

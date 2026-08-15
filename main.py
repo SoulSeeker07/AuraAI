@@ -1,8 +1,13 @@
 import argparse
 import asyncio
 import io
+import os
 import sys
 from pathlib import Path
+
+# Silence harmless third-party library warnings in CLI
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Configure sys.path FIRST before any core imports
 PROJECT_ROOT = Path(__file__).resolve().parent

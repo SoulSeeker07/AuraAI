@@ -398,8 +398,13 @@ class PiperTTSEngine(TTSEngine):
         if not self.is_active or not self._stream or not self.voice or not self.player:
             return False
 
-        text = " ".join(self._stream)
+        from .tts_text_cleaner import clean_for_tts
+
+        raw_text = " ".join(self._stream)
         self._stream.clear()
+        text = clean_for_tts(raw_text)
+        if not text:
+            return False
 
         with self._lock:
             self._active_generation_id += 1
@@ -497,9 +502,15 @@ class EdgeTTSEngine(TTSEngine):
             if not self._is_playing:
                 self._is_playing = True
 
+                from .tts_text_cleaner import clean_for_tts
+
                 voice_name = self.settings.voice or "en-US-AriaNeural"
-                text_to_speak = " ".join(self._stream)
+                raw_text = " ".join(self._stream)
                 self._stream.clear()
+                text_to_speak = clean_for_tts(raw_text)
+                if not text_to_speak:
+                    self._is_playing = False
+                    return False
 
                 communicate = edge_tts.Communicate(
                     text_to_speak,

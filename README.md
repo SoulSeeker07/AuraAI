@@ -4,44 +4,44 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.19.0--cognitive--architecture-green.svg)](RELEASE.md)
-[![Platform Progress](https://img.shields.io/badge/milestones-26%2F26%20Integrated-green.svg)](roadmap.md)
-[![Architecture Status](https://img.shields.io/badge/cognitive--architecture-aca--active-blue.svg)](docs/AURA_ARCHITECTURE_CONNECTION.md)
+[![Platform Version](https://img.shields.io/badge/version-v0.21.0--continuous--voice-green.svg)](RELEASE.md)
+[![Platform Progress](https://img.shields.io/badge/milestones-Phase%200%2B1%20Operational-green.svg)](roadmap.md)
+[![Architecture Status](https://img.shields.io/badge/cognitive--architecture-active-blue.svg)](docs/AURA_ARCHITECTURE_CONNECTION.md)
 [![Runtime Acceptance](https://img.shields.io/badge/runtime--acceptance-verified-brightgreen.svg)](docs/RUNTIME_ACCEPTANCE.md)
-[![Build Status](https://img.shields.io/badge/tests-111%2F111%20passed-brightgreen.svg)](docs/engineering.md)
+[![Build Status](https://img.shields.io/badge/tests-89%2F89%20passed-brightgreen.svg)](docs/engineering.md)
 
-Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies perception, decision-making, planning, execution, reflection, and learning into a single coordinated system.
+Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies voice perception, natural language decision-making, planning, desktop OS automation, execution, reflection, and long-term memory into a single coordinated system.
 
-> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the Native Desktop Engine, browser tasks by Playwright, research by Gemini, and software engineering by Antigravity CLI.
->
-> *Note: All 26 core architecture milestones (M1–M26) are fully integrated into the unified `PersonalOSRuntime` pipeline. Platform focus has now transitioned to **Phase 6 — Hardening & Real-World Validation**.*
-
-Read the [Architecture Connection](docs/AURA_ARCHITECTURE_CONNECTION.md) for how everything is wired, the [Architecture Audit](docs/AURA_ARCHITECTURE_AUDIT.md) for what's connected vs. missing, and the [Platform Architecture Constitution](docs/ARCHITECTURE_FREEZE.md) for frozen APIs.
+> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the Native Desktop Engine (Win32), continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), research by Gemini/Wikipedia/DuckDuckGo, and software engineering by the Engineering Engine.
 
 ---
 
 ## 🚀 Development Status
 
 ```text
-Current Development
-├── M17 Cognitive Memory — IN PROGRESS
-└── M18 World Model — IN PROGRESS
+Operational Subsystems (Live on Physical System)
+├── Continuous Voice Loop — OPERATIONAL (AuraWake + Multi-Accent Google STT / Whisper + Piper TTS + Barge-in)
+├── Native Desktop Engine — OPERATIONAL (Win32 window manager, 2-tier app resolver, Start Menu, Antigravity IDE)
+├── Cognitive Pipeline — OPERATIONAL (MasterOrchestrator 7-stage request reasoning pipeline + Groq LLM)
+└── Long-Term Memory — OPERATIONAL (SQLite fact store, dynamic slot filling, conversational fact recall)
 
-Next Critical Milestones
-├── M19 Capability & Tool Runtime
-├── M20 Coding Intelligence 2.0
-├── M21 Research Intelligence 2.0
-└── M22 Browser Intelligence
+Active Critical Path
+├── M17 Cognitive Memory — COMPLETE
+├── M18 World Model (Workspace & System Graph) — IN PROGRESS
+├── M19 Capability & Tool Runtime — READY
+├── M20 Autonomous Coding Agent — PLANNED
+├── M21 Autonomous Research Agent — PLANNED
+└── M22 Browser Intelligence (Playwright) — PLANNED
 
 Future Platform Milestones
 ├── M23 MCP Ecosystem
-├── M24 Event Runtime
+├── M24 Event Runtime & Autonomy
 ├── M25 Expert Systems
 ├── M26 Personal OS
 ├── M27 Autonomous Engineering
-├── M28 Aura OS
-├── M29 Natural Interaction
-└── M30 Aura GUI
+├── M28 Aura OS Core
+├── M29 Natural Interaction 2.0
+└── M30 Aura GUI & Multimodal Screen Perception
 ```
 
 ---
@@ -202,14 +202,12 @@ The table below outlines what is **physically wired to live system backends** ve
 
 | Component / Capability | Implementation Status | Real Physical Wiring Details | Fallback / Policy Behavior |
 | :--- | :--- | :--- | :--- |
-| **NLU & Perception** | 🟢 **REAL WIRED** | `NLUEngine` text & STT transcript normalization, `difflib` vocabulary matching, `EntityExtractor`, `AmbiguityDetector` with active workspace state checkpoint resolution. | Low confidence or unresolvable multi-target intents (`"open the file"`) halt as `CLARIFICATION_REQUIRED`. |
-| **Playwright Browser Engine** | 🟢 **REAL WIRED** | Real Chromium browser, live DOM inspection (`inspect_form`, `extract_table`, `select_table_row`, `next_page`), multi-tab context tracking, zero OS shell launcher (`webbrowser.open`) leakage. | Operates 100% inside Playwright `BrowserContext`. |
-| **Desktop Native Engine** | 🟢 **REAL WIRED** | Real Win32 APIs (`FindWindow`, `SetForegroundWindow`, `os.startfile`, `pyautogui.write`, `pyperclip.copy`, `pyperclip.paste`) for Notepad, Calc, Shell. | In headless non-GUI environments without window handles, logs fallback observations (`"⚠ Simulated key press..."`). |
-| **Execution Coordinator & Self-Healing** | 🟢 **REAL WIRED** | Step execution loop, physical failure classification (`TRANSIENT` vs `BARRIER` vs `UNKNOWN`), live DOM re-observation, alternative target recovery, HWND focus re-activation. | Security barriers (CAPTCHA / login prompt) immediately halt as honest `BLOCKED` (0 retries). Unrecoverable errors halt as honest `FAILED`. |
-| **Goal Verification** | 🟢 **REAL WIRED** | `GoalVerifier` performing independent post-execution state verification (checking live URLs, element text content, window handles, and file disk persistence). | Rejects step success if independent state verification fails. |
-| **Continuous Voice Loop (M20)** | 🟢 **REAL WIRED** | Live audio input capture, speech-to-text transcript processing, continuous multi-turn listening resumption, microphone suppression during TTS. | Handles STT transcription noise via `NLUEngine` STT normalization. |
-| **Event Runtime & Autonomy (M24)** | 🟢 **REAL WIRED** | Async event loop, in-process `asyncio.Queue`, `TriggerRegistry` disk persistence (`storage/triggers.json`), worker task isolation, `ExecutionPolicy` risk evaluation, `ExecutionCoordinator` routing, and full 16-step restart lifecycle recovery. | Unauthorized high-risk triggers halt as `BLOCKED`. Deduplicated triggers skip execution. Persistent state reloads upon restart. |
-| **Professional Expert Systems (M25.1)** | 🟢 **REAL WIRED** | `DomainExpertRegistry` discovery mechanism, `BaseExpertSystem` error isolation, 4 specialized domain experts (`SoftwareEngineeringExpert`, `NetworkDiagnosticsExpert`, `CybersecurityAuditExpert`, `FinancialAnalysisExpert`) generating `DomainActionProposal`s. | Reasoning proposes; physical execution strictly routes through `ExecutionPolicy` → `ExecutionCoordinator` → `GoalVerifier`. |
+| **Continuous Voice Loop & Speech** | 🟢 **REAL WIRED** | `AuraWakeDetector` (real-time mic energy/spectral wake detection), `GoogleSTTEngine` (`en-in` with `FasterWhisper` offline fallback + 4-layer anti-hallucination defense), `PiperTTS` (chunked local playback with `EdgeTTS` fallback), 5.0s conversational follow-up window, and Alexa-style barge-in & thinking interruption. | Degrades gracefully to Faster-Whisper on network drop, Edge-TTS on local Piper missing, and silence rejection on background noise. |
+| **Desktop Native Engine** | 🟢 **REAL WIRED** | Real Win32 APIs (`FindWindow`, `SetForegroundWindow`, `ShowWindow`, `os.startfile`, `pyautogui`, `pyperclip`) + 2-Tier App Resolver (Fast-path aliases + fuzzy matching), Start Menu (`VK_LWIN`) toggle, Antigravity IDE focus, and WhatsApp UWP/web fallback. | In non-GUI/headless mode, safely logs simulated observation; returns clear honest error if app is missing. |
+| **Long-Term Memory** | 🟢 **REAL WIRED** | SQLite persistent fact store (`Memory.db`), dynamic slot extraction, category-based indexing, and natural conversational fact recall (*"Your name is Sreekanta"*). | Falls back to active working memory if query fact is not in database. |
+| **Cognitive Pipeline** | 🟢 **REAL WIRED** | 7-stage `MasterOrchestrator` (Stage 1 Memory Recall $\rightarrow$ Stage 2 Decision Engine $\rightarrow$ Stage 3 Task Decomposition $\rightarrow$ Stage 4 Supervisor Delegation $\rightarrow$ Stage 5 Backend Dispatch $\rightarrow$ Stage 6 Result Fusion $\rightarrow$ Stage 7 Memory Write) connected to Groq LLM. | Low confidence or unresolvable multi-target intents halt as honest `CLARIFICATION_REQUIRED`. |
+| **Research Engine** | 🟡 **SCAFFOLDED** | Wikipedia provider, DuckDuckGo scraper, Trust-level scoring, conflict resolution, and citation generators built and unit-tested. | Ready for full autonomous multi-step web research integration in M21. |
+| **Engineering & AST Engine** | 🟡 **SCAFFOLDED** | `EngineeringManager`, `CodeEditor` (with backups & rollback), `ASTManager` syntax validator, and code analyzers operational. | Deterministic code editing active; full LLM multi-file generation scheduled for M20. |
 
 ---
 

@@ -1440,6 +1440,8 @@ class CLIClient:
                 user_input = input("\nYou > ").strip()
 
                 if not user_input:
+                    if self.voice_listening:
+                        print("  [🎤 Voice listening is ON — say 'Aura' or type a command ('Stop Listening' / 'quit')]")
                     continue
 
                 if user_input.lower() == "quit":

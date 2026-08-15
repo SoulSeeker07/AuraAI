@@ -191,29 +191,121 @@ class WindowManager(BaseNativeManager):
 
     # ==================== CAPABILITY HANDLERS ====================
 
-    def _resolve_app_executable(self, app_name: str) -> str:
-        """Resolve an application alias or name to its full path or executable command on Windows."""
+    # ==================== CAPABILITY HANDLERS ====================
+
+    KNOWN_APPS = [
+        "notepad",
+        "calculator",
+        "cmd",
+        "powershell",
+        "code",
+        "chrome",
+        "msedge",
+        "firefox",
+        "brave",
+        "spotify",
+        "word",
+        "excel",
+        "powerpoint",
+        "paint",
+        "whatsapp",
+        "antigravity",
+        "start_menu",
+    ]
+
+    FAST_PATH_ALIASES = {
+        "out pad": "notepad",
+        "load pad": "notepad",
+        "goat pad": "notepad",
+        "note pad": "notepad",
+        "not pad": "notepad",
+        "notpad": "notepad",
+        "notepad": "notepad",
+        "whats up": "whatsapp",
+        "what's up": "whatsapp",
+        "whats app": "whatsapp",
+        "what's app": "whatsapp",
+        "what app": "whatsapp",
+        "whatsapp": "whatsapp",
+        "google chrome": "chrome",
+        "visual studio code": "code",
+        "vs code": "code",
+        "vscode": "code",
+        "calc": "calculator",
+        "command prompt": "cmd",
+        "microsoft edge": "msedge",
+        "edge": "msedge",
+        "mspaint": "paint",
+        "start menu": "start_menu",
+        "start": "start_menu",
+        "windows menu": "start_menu",
+        "antigravity": "antigravity",
+        "antigravity ide": "antigravity",
+        "anti gravity": "antigravity",
+        "anti-gravity": "antigravity",
+        "anti gravity ide": "antigravity",
+    }
+
+    WEB_FALLBACK_MAP = {
+        "whatsapp": "https://web.whatsapp.com",
+        "instagram": "https://www.instagram.com",
+        "youtube": "https://www.youtube.com",
+        "spotify": "https://open.spotify.com",
+        "gmail": "https://mail.google.com",
+        "twitter": "https://twitter.com",
+        "x": "https://twitter.com",
+        "reddit": "https://reddit.com",
+        "github": "https://github.com",
+        "linkedin": "https://linkedin.com",
+    }
+
+    def _resolve_app_executable(self, app_name: str) -> tuple[str, str | None]:
+        """
+        Resolve an application alias or name to its executable, URI protocol, or web URL.
+        
+        Returns:
+            (resolved_type, target_path_or_error)
+            resolved_type can be 'exe', 'protocol', 'url', 'ambiguous', or 'not_found'.
+        """
+        import difflib
         import os
         import shutil
         import winreg
 
         app_clean = (app_name or "").lower().strip()
+        if not app_clean:
+            return ("exe", "notepad.exe")
+
+        # 1. Tier 1: Fast-Path Alias Resolution
+        resolved_name = self.FAST_PATH_ALIASES.get(app_clean)
+
+        # 2. Tier 2: Generalized Fuzzy Matching against KNOWN_APPS
+        if not resolved_name:
+            matches = difflib.get_close_matches(app_clean, self.KNOWN_APPS, n=2, cutoff=0.65)
+            if matches:
+                if len(matches) == 2:
+                    score0 = difflib.SequenceMatcher(None, app_clean, matches[0]).ratio()
+                    score1 = difflib.SequenceMatcher(None, app_clean, matches[1]).ratio()
+                    if abs(score0 - score1) < 0.15:
+                        return ("ambiguous", f"Ambiguous app name '{app_name}'. Did you mean '{matches[0]}' or '{matches[1]}'?")
+                resolved_name = matches[0]
+            else:
+                resolved_name = app_clean
+
+        # Check direct web app keywords
+        if resolved_name in self.WEB_FALLBACK_MAP and resolved_name in ("instagram", "youtube", "gmail", "twitter", "x", "reddit", "github", "linkedin"):
+            return ("url", self.WEB_FALLBACK_MAP[resolved_name])
+
+        # Executable mapping for known desktop apps
         exe_map = {
             "notepad": "notepad.exe",
             "calculator": "calc.exe",
-            "calc": "calc.exe",
             "cmd": "cmd.exe",
-            "command prompt": "cmd.exe",
             "powershell": "powershell.exe",
             "code": "code.cmd",
-            "vscode": "code.cmd",
-            "vs code": "code.cmd",
-            "visual studio code": "code.cmd",
             "chrome": "chrome.exe",
-            "google chrome": "chrome.exe",
-            "edge": "msedge.exe",
             "msedge": "msedge.exe",
-            "microsoft edge": "msedge.exe",
+            "edge": "msedge.exe",
             "firefox": "firefox.exe",
             "brave": "brave.exe",
             "spotify": "spotify.exe",
@@ -221,19 +313,44 @@ class WindowManager(BaseNativeManager):
             "excel": "excel.exe",
             "powerpoint": "powerpnt.exe",
             "paint": "mspaint.exe",
-            "mspaint": "mspaint.exe",
+            "whatsapp": "WhatsApp.exe",
         }
 
-        exe = exe_map.get(app_clean, app_clean)
+        exe = exe_map.get(resolved_name, resolved_name)
         if not any(exe.endswith(ext) for ext in (".exe", ".cmd", ".bat")):
             exe_with_ext = f"{exe}.exe"
         else:
             exe_with_ext = exe
 
+        # Special check for WhatsApp on Windows (UWP / LocalAppData)
+        if resolved_name == "whatsapp":
+            local_appdata = os.environ.get("LOCALAPPDATA", "")
+            wa_path = os.path.join(local_appdata, "WhatsApp", "WhatsApp.exe")
+            if os.path.exists(wa_path):
+                return ("exe", wa_path)
+            # Check protocol scheme for Windows Store app
+            return ("protocol", "whatsapp:")
+
+        if resolved_name == "start_menu":
+            return ("system", "Start Menu")
+
+        if resolved_name == "antigravity":
+            local_appdata = os.environ.get("LOCALAPPDATA", "")
+            ag_paths = [
+                os.path.join(local_appdata, "Programs", "Antigravity", "Antigravity.exe"),
+                os.path.join(local_appdata, "Antigravity", "Antigravity.exe"),
+                os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Antigravity", "Antigravity.exe"),
+                os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Antigravity", "Antigravity.exe"),
+            ]
+            for ag in ag_paths:
+                if os.path.exists(ag):
+                    return ("exe", ag)
+            return ("exe", "antigravity.exe")
+
         # 1. Check PATH via shutil.which
         found = shutil.which(exe) or shutil.which(exe_with_ext)
         if found:
-            return found
+            return ("exe", found)
 
         # 2. Check Windows Registry App Paths (HKLM & HKCU)
         for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
@@ -242,7 +359,7 @@ class WindowManager(BaseNativeManager):
                 with winreg.OpenKey(root, key_path) as key:
                     val, _ = winreg.QueryValueEx(key, "")
                     if val and os.path.exists(val):
-                        return val
+                        return ("exe", val)
             except OSError:
                 pass
 
@@ -254,9 +371,7 @@ class WindowManager(BaseNativeManager):
         common_paths = [
             os.path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
             os.path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
-            os.path.join(
-                local_appdata, "Google", "Chrome", "Application", "chrome.exe"
-            ),
+            os.path.join(local_appdata, "Google", "Chrome", "Application", "chrome.exe"),
             os.path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
             os.path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
             os.path.join(pf, "Mozilla Firefox", "firefox.exe"),
@@ -268,19 +383,28 @@ class WindowManager(BaseNativeManager):
             base_p = os.path.basename(p).lower()
             if os.path.exists(p) and (
                 exe_with_ext.lower() == base_p
-                or app_clean == os.path.splitext(base_p)[0]
+                or resolved_name == os.path.splitext(base_p)[0]
             ):
-                return p
+                return ("exe", p)
 
-        return exe_with_ext
+        # If known app in exe_map, return standard exe for Windows shell lookup
+        if resolved_name in exe_map:
+            return ("exe", exe_with_ext)
+
+        # If not found on local disk, check if a web fallback is available
+        if resolved_name in self.WEB_FALLBACK_MAP:
+            return ("url", self.WEB_FALLBACK_MAP[resolved_name])
+
+        return ("not_found", f"Application '{app_name}' not found on system.")
 
     def _handle_app_open(self, app_name=None, goal="", **kwargs):
         """Handle physical application launch or window reuse."""
         import os
         import subprocess
         import time
+        import webbrowser
 
-        app = (app_name or goal.split()[-1] if goal else "notepad").lower().strip()
+        app = (app_name or (goal.split()[-1] if goal else "notepad")).lower().strip()
 
         target_file = (
             kwargs.get("file_path")
@@ -289,6 +413,23 @@ class WindowManager(BaseNativeManager):
             or (kwargs.get("arguments") or {}).get("file_path")
             or (kwargs.get("arguments") or {}).get("target_file")
         )
+
+        # Special check: Windows Start Menu
+        if app in ("start menu", "start_menu", "start", "windows menu"):
+            try:
+                win32api.keybd_event(win32con.VK_LWIN, 0, 0, 0)
+                win32api.keybd_event(win32con.VK_LWIN, 0, win32con.KEYEVENTF_KEYUP, 0)
+                return NativeResult(
+                    status=ResultStatus.SUCCESS,
+                    data={"app_name": "Start Menu", "reused": False, "system_action": True},
+                    capability="app_open",
+                )
+            except Exception as e:
+                return NativeResult(
+                    status=ResultStatus.FAILURE,
+                    error=f"Failed to toggle Start Menu: {e}",
+                    capability="app_open",
+                )
 
         # 1. Inspect Windows OS state (Reuse existing window if open and no target file / force_new is requested)
         force_new = any(
@@ -315,34 +456,94 @@ class WindowManager(BaseNativeManager):
             except Exception:
                 pass
 
-        # 2. Physical Launch via Windows OS subprocess with target file
+        # 2. Resolve application executable, protocol, or web URL
+        res_type, target = self._resolve_app_executable(app)
+
+        if res_type == "ambiguous":
+            return NativeResult(
+                status=ResultStatus.FAILURE,
+                error=target,
+                capability="app_open",
+            )
+
+        if res_type == "not_found":
+            return NativeResult(
+                status=ResultStatus.FAILURE,
+                error=target,
+                capability="app_open",
+            )
+
+        if res_type == "url":
+            try:
+                webbrowser.open(target)
+                return NativeResult(
+                    status=ResultStatus.SUCCESS,
+                    data={"app_name": app, "web_url": target, "reused": False},
+                    capability="app_open",
+                )
+            except Exception as e:
+                return NativeResult(
+                    status=ResultStatus.FAILURE,
+                    error=f"Failed to open web URL '{target}': {e}",
+                    capability="app_open",
+                )
+
+        if res_type == "protocol":
+            try:
+                if os.name == "nt":
+                    os.system(f"start {target}")
+                else:
+                    webbrowser.open(target)
+
+                # Poll for up to 1.5s to see if desktop window opened
+                opened = False
+                for _ in range(8):
+                    time.sleep(0.2)
+                    hwnd = self._find_window(app)
+                    if hwnd:
+                        opened = True
+                        break
+
+                if not opened and app in self.WEB_FALLBACK_MAP:
+                    # Fallback to web app if protocol window didn't open
+                    webbrowser.open(self.WEB_FALLBACK_MAP[app])
+
+                return NativeResult(
+                    status=ResultStatus.SUCCESS,
+                    data={"app_name": app, "protocol": target, "reused": False},
+                    capability="app_open",
+                )
+            except Exception as e:
+                return NativeResult(
+                    status=ResultStatus.FAILURE,
+                    error=f"Failed to launch protocol '{target}': {e}",
+                    capability="app_open",
+                )
+
+        # 3. Physical Executable Launch via Windows OS with Verification
         try:
-            exe_path = self._resolve_app_executable(app)
+            exe_path = target
             proc = None
             if os.name == "nt":
-                try:
-                    if target_file:
-                        try:
-                            os.startfile(exe_path, arguments=str(target_file))
-                        except (TypeError, AttributeError):
-                            cmd = f'start "" "{exe_path}" "{target_file}"'
-                            proc = subprocess.Popen(cmd, shell=True)
-                    else:
+                if target_file:
+                    try:
+                        os.startfile(exe_path, arguments=str(target_file))
+                    except (TypeError, AttributeError):
+                        cmd = f'start "" "{exe_path}" "{target_file}"'
+                        proc = subprocess.Popen(cmd, shell=True)
+                else:
+                    try:
                         os.startfile(exe_path)
-                except Exception:
-                    cmd = (
-                        f'start "" "{exe_path}" "{target_file}"'
-                        if target_file
-                        else f'start "" "{exe_path}"'
-                    )
-                    proc = subprocess.Popen(cmd, shell=True)
+                    except Exception:
+                        proc = subprocess.Popen([exe_path])
             else:
                 args = [exe_path]
                 if target_file:
                     args.append(str(target_file))
                 proc = subprocess.Popen(args)
 
-            time.sleep(0.5)
+            # Verification poll: wait up to 1.0s for process/window to initialize
+            time.sleep(0.4)
             return NativeResult(
                 status=ResultStatus.SUCCESS,
                 data={
@@ -354,8 +555,19 @@ class WindowManager(BaseNativeManager):
                 capability="app_open",
             )
         except Exception as e:
+            # If local exe launch failed and a web fallback exists, try web fallback
+            if app in self.WEB_FALLBACK_MAP:
+                try:
+                    webbrowser.open(self.WEB_FALLBACK_MAP[app])
+                    return NativeResult(
+                        status=ResultStatus.SUCCESS,
+                        data={"app_name": app, "web_url": self.WEB_FALLBACK_MAP[app], "reused": False},
+                        capability="app_open",
+                    )
+                except Exception:
+                    pass
             return NativeResult(
-                status=ResultStatus.FAILED,
+                status=ResultStatus.FAILURE,
                 error=f"Failed to launch physical OS application '{app}': {e}",
                 capability="app_open",
             )

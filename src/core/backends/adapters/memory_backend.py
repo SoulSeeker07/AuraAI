@@ -84,14 +84,12 @@ class MemoryBackend(BaseBackendAdapter):
                             facts.append(fact)
             obs = []
             if facts:
-                obs.append(f"Found remembered facts: {facts}")
                 direct_answers = []
                 for f in facts:
                     direct_answers.append(
                         f"Your {f.key.replace('_', ' ')} is {f.value}."
                     )
-                if direct_answers:
-                    obs.append("\n".join(direct_answers))
+                obs.append("\n".join(direct_answers))
             else:
                 obs.append(
                     "I couldn't find any facts matching that query in my memory."
@@ -115,11 +113,11 @@ class MemoryBackend(BaseBackendAdapter):
         for fact in facts:
             mem.upsert_fact(fact.category, fact.key, fact.value)
 
-        obs = (
-            [f"Successfully remembered facts: {facts}"]
-            if facts
-            else ["Successfully executed memory operation."]
-        )
+        if facts:
+            saved = [f"{f.key.replace('_', ' ')}: {f.value}" for f in facts]
+            obs = [f"I remembered: {', '.join(saved)}."]
+        else:
+            obs = ["I noted that."]
 
         return ExecutionResult(
             success=True,

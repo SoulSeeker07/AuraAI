@@ -196,6 +196,29 @@ class AuraCore:
         self._init_llm()
         self._initialize_components()
         self._init_executive_brain()
+        self._prewarm_voice_and_models_async()
+
+    def _prewarm_voice_and_models_async(self):
+        """Asynchronously pre-warm Voice ML models in background without blocking startup."""
+        import threading
+
+        def _warm():
+            try:
+                # 1. Pre-warm FasterWhisper STT
+                from src.voice.stt_manager import STTManager, STTSettings, STTProvider
+                stt = STTManager(STTSettings(provider=STTProvider.FASTER_WHISPER, model_size="small"))
+                stt.initialize()
+
+                # 2. Pre-warm Piper TTS
+                from src.voice.tts_manager import TTSManager, TTSSettings, TTSSpeaker
+                tts = TTSManager(TTSSettings(speaker=TTSSpeaker.PIPER))
+                tts.initialize()
+
+                logger.info("[AuraCore] Voice ML models pre-warmed successfully in background")
+            except Exception as e:
+                logger.debug(f"[AuraCore] Background ML pre-warm info: {e}")
+
+        threading.Thread(target=_warm, daemon=True, name="AuraModelPrewarmer").start()
 
     def _init_llm(self):
         """Initialize the Groq LLM client."""
@@ -527,6 +550,43 @@ class AuraCore:
                 )
 
                 return SystemKnowledgeResolver.resolve(user_goal)
+
+            # Vision Screen Queries (What's on my screen?, Describe screen, etc.)
+            if intent_type in ("vision", "screen_vision"):
+                try:
+                    import asyncio
+                    import re
+                    from src.vision.vision_manager import VisionManager
+
+                    def _capture_screen_context():
+                        vm = VisionManager()
+                        return vm.capture_and_analyze()
+
+                    vis_ctx = await asyncio.to_thread(_capture_screen_context)
+                    screen_text = (vis_ctx.extracted_text or "").strip()
+                    active_window = vis_ctx.metadata.get("active_window", "Desktop")
+
+                    # Best-effort privacy sanitization for sensitive credentials/tokens/card numbers
+                    if screen_text:
+                        screen_text = re.sub(r"\b(?:\d[ -]*?){13,16}\b", "[REDACTED_CARD]", screen_text)
+                        screen_text = re.sub(
+                            r"(?:api[_-]?key|secret|token|password)[\s:=]+['\"]?([a-zA-Z0-9_\-\.]{8,})['\"]?",
+                            "[REDACTED_SECRET]",
+                            screen_text,
+                            flags=re.IGNORECASE,
+                        )
+
+                    prompt = (
+                        f"The user asked: '{user_goal}'.\n\n"
+                        f"Visual Perception Data from Screen:\n"
+                        f"- Active Focused Window: {active_window}\n"
+                        f"- Visible Screen OCR Content:\n{screen_text[:3000] if screen_text else 'No text or application content visible on screen.'}\n\n"
+                        f"Please provide a concise, direct, helpful summary of what is currently on the user's screen based on the visual perception data."
+                    )
+                    return await self.get_ai_response(prompt)
+                except Exception as vis_exc:
+                    logger.warning(f"Vision screen capture failed: {vis_exc}")
+                    return f"I tried to inspect your screen, but encountered an error: {vis_exc}"
 
             # Conversational Chat Queries (greetings, general chat)
             if (

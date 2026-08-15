@@ -216,6 +216,7 @@ class PromptBuilder:
         lines.append(
             "\nUniversal Agent Directives:\n"
             "  • Universal Intent Understanding — handle natural language, short/long commands, voice speech, and multi-step sentences.\n"
+            "  • Voice Response Policy — for voice actions respond with 1 direct, natural sentence; for status in 1–2 sentences; for complex queries summarize crisply.\n"
             "  • Media Control — understand play, pause, resume, next, previous, seek, volume, and contextual media navigation.\n"
             "  • Reviews & Comments — inspect user comments/reviews, extract positive/negative themes, and identify common complaints.\n"
             "  • E-Commerce Shopping & Filtering — extract constraints (price caps, specs, RAM, brand), filter products, compare side-by-side, and manage cart/checkout workflows.\n"

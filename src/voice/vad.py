@@ -37,12 +37,12 @@ class VoiceActivityDetector:
     def __init__(
         self,
         mode: VADMode = VADMode.BOTH,
-        silence_threshold: float = 1.0,
+        silence_threshold: float = 0.5,
         energy_threshold: float = 0.005,
         window_size_ms: int = 30,
         min_speech_duration: float = 0.3,
         max_speech_duration: float = 30.0,
-        silence_duration: float = 0.8,
+        silence_duration: float = 0.5,
     ):
         """
         Initialize VAD detector.

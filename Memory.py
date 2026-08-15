@@ -343,13 +343,28 @@ class Memory:
 
         # 1. Extract profile/name facts
         name_match = re.search(
-            r"\b(?:my name is|i am|i'm)\s+([A-Z][A-Za-z0-9 _.-]{1,40})$",
+            r"\b(?:my name is|call me|my full name is|i am called)\s+([A-Za-z0-9 _.-]{2,40})$",
             cleaned,
             re.IGNORECASE,
         )
-        if name_match and not any(
-            word in lower for word in ("learning", "studying", "building", "working")
-        ):
+        if not name_match:
+            iam_match = re.search(
+                r"\b(?:i am|i'm)\s+([A-Z][a-z]{1,20}(?:\s+[A-Z][a-z]{1,20})?)$",
+                cleaned,
+            )
+            if iam_match:
+                candidate = iam_match.group(1).strip()
+                cand_lower = candidate.lower()
+                non_names = {
+                    "good", "fine", "okay", "ok", "great", "happy", "sad", "tired", "hungry",
+                    "at bed", "at home", "at work", "here", "there", "back", "doing", "going",
+                    "trying", "sorry", "not", "feeling", "a developer", "an engineer", "ready",
+                    "busy", "alive", "well", "sick", "bored", "late", "early", "sleeping", "learning"
+                }
+                if cand_lower not in non_names and not any(cand_lower.startswith(w) for w in ["a ", "an ", "the ", "at ", "in ", "on ", "to "]):
+                    name_match = iam_match
+
+        if name_match:
             facts.append(
                 MemoryFact(
                     MemoryCategory.PROFILE.value, "name", name_match.group(1).strip()

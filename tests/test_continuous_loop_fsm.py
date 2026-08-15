@@ -33,8 +33,6 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
     def test_basic_turn_flow(self):
-        # The FSM is built so we don't even need to call `start()` to inject events,
-        # but calling start ensures _running is True (required for some transitions).
         self.loop.start()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
@@ -44,36 +42,56 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
 
         # 2. Transcription ready
         self.loop.trigger_transcription_ready("open calculator")
-        # trigger_transcription_ready internally synchronously calls _process_transcript,
-        # which evaluates the map, sends it to EXECUTING (since it matches "calculator"),
-        # and then ends at SPEAKING (waiting for TTS).
         self.assertEqual(self.loop.state, VoiceState.SPEAKING)
 
-        # 3. TTS Completes
+        # 3. TTS Completes -> enters 3.5s follow-up listening mode
         self.loop.trigger_tts_completed()
-        # _handle_cooldown completes and returns to IDLE
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+
+        # 4. Timeout occurs with silence -> returns to IDLE (wake standby)
+        self.loop._on_followup_timeout()
+        self.assertEqual(self.loop.state, VoiceState.IDLE)
+
+    def test_followup_direct_speech_without_wake_word(self):
+        """Verify user can speak follow-up command directly during FOLLOW_UP_LISTENING without saying 'Aura'."""
+        self.loop.start()
+
+        # Turn 1: Wake -> "open calculator" -> Speak -> Follow-up
+        self.loop.trigger_wake_detected("Aura")
+        self.loop.trigger_transcription_ready("open calculator")
+        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
+        self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+
+        # Turn 2: Direct speech during follow-up window (NO wake word)
+        self.loop.trigger_transcription_ready("now open notepad")
+        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
+        self.assertEqual(self.loop.turn_count, 2)
+        self.assertEqual(self.loop.history[1]["transcript"], "now open notepad")
+
+        # Complete Turn 2
+        self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
     def test_conversational_routing(self):
         self.loop.start()
 
-        # Transcript that does NOT match the static map should route to AI_RESPONSE
-        # Wait, the current logic triggers SPEAKING directly after evaluating the map.
-        # Let's verify the intermediate states by mocking _process_transcript if needed,
-        # but the synchronous implementation runs through them.
         self.loop.trigger_wake_detected("Aura")
         self.loop.trigger_transcription_ready("what is the weather")
 
-        # It routes to AI_RESPONSE internally, then SPEAKING
         self.assertEqual(self.loop.state, VoiceState.SPEAKING)
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
     def test_m21_regression_duplicate_tasks(self):
         """
         Regression Test Target:
-        Verify Turn 1 completes, enters IDLE, waits, Turn 2 completes, enters IDLE,
-        and `Stop Listening` cleanly releases microphone without orphan tasks.
+        Verify Turn 1 completes, enters FOLLOW_UP_LISTENING, timeout to IDLE,
+        Turn 2 completes, and Stop Listening cleanly releases microphone.
         """
         self.loop.start()
 
@@ -85,11 +103,9 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.assertEqual(self.loop.state, VoiceState.SPEAKING)
 
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
-
-        # simulate wait
-        import time
-        time.sleep(0.1)
 
         # --- TURN 2 ---
         self.loop.trigger_wake_detected("Aura")
@@ -99,6 +115,8 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.assertEqual(self.loop.state, VoiceState.SPEAKING)
 
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
         # --- STOP ---
@@ -107,21 +125,20 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.assertFalse(self.loop._running)
         self.mock_voice_manager.stop.assert_called_once()
         
-        # Ensure only 2 turns were fully recorded
         self.assertEqual(self.loop.turn_count, 2)
         self.assertEqual(self.loop.history[0]["transcript"], "open calculator")
         self.assertEqual(self.loop.history[1]["transcript"], "open notepad")
 
-    def test_negative_wake_while_speaking(self):
-        """SPEAKING + wake_detected -> ignored -> remains SPEAKING"""
+    def test_barge_in_wake_while_speaking(self):
+        """SPEAKING + wake_detected -> interrupts TTS and transitions to LISTENING (Barge-in)."""
         self.loop.start()
         self.loop.trigger_wake_detected("Aura")
         self.loop.trigger_transcription_ready("open calculator")
         self.assertEqual(self.loop.state, VoiceState.SPEAKING)
 
-        # Inject wake word while speaking
+        # Inject wake word while speaking -> should barge in
         self.loop.trigger_wake_detected("Aura")
-        self.assertEqual(self.loop.state, VoiceState.SPEAKING) # Should be ignored
+        self.assertEqual(self.loop.state, VoiceState.LISTENING)
 
     def test_negative_duplicate_wake(self):
         """WAKE_DETECTED + wake_detected -> ignored"""
@@ -174,7 +191,7 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
             self.assertFalse(loop._running)
 
     def test_spoken_pause_listening_phrase(self):
-        """Verify saying 'go to sleep' speaks standby message and returns to IDLE while keeping loop running."""
+        """Verify saying 'go to sleep' speaks standby message, enters SPEAKING, and transitions to IDLE upon TTS completion."""
         self.loop.start()
         self.assertTrue(self.loop._running)
 
@@ -182,10 +199,14 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.loop.trigger_wake_detected("Aura")
         self.loop.trigger_transcription_ready("Go to sleep.")
 
-        # Loop should remain running in IDLE (wake-word listening active)
+        # Loop speaks standby message (state is SPEAKING while audio plays)
         self.assertTrue(self.loop._running)
-        self.assertEqual(self.loop.state, VoiceState.IDLE)
+        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
         self.mock_voice_manager.speak.assert_called_with("Going on standby. Say Aura when you need me.")
+
+        # TTS finishes -> triggers completed callback -> transitions to IDLE / wake-word listening
+        self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.IDLE)
 
     def test_spoken_stop_listening_phrase(self):
         """Verify saying 'Stop listening' gracefully speaks farewell, halts loop, and calls on_stop."""
@@ -218,8 +239,10 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.assertTrue(self.loop._running)
         self.mock_aura_core.process_request.assert_called_with("Cancel my download.")
 
-        # Complete turn back to IDLE
+        # Complete turn
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
         # 2. "Pause the music" should NOT trigger standby
@@ -228,8 +251,10 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.assertEqual(self.loop.state, VoiceState.SPEAKING)
         self.assertTrue(self.loop._running)
 
-        # Complete turn back to IDLE
+        # Complete turn
         self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+        self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
         # 3. "Stop the timer" should NOT trigger hard stop

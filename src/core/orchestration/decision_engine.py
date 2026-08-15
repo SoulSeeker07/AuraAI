@@ -13,6 +13,7 @@ class IntentType(str, Enum):
 
     SYSTEM_QUERY = "system_query"
     CHAT = "chat"
+    VISION = "vision"
     DESKTOP_ACTION = "desktop_action"
     CODING = "coding"
     RESEARCH = "research"
@@ -244,11 +245,18 @@ class DecisionEngine:
             ]
         )
 
+        # Check if the utterance is a standalone application name (e.g. "Google Chrome", "Notepad", "WhatsApp")
+        clean_goal_name = goal_lower.strip(". ,!?:;")
+        is_standalone_app = clean_goal_name in app_names or any(
+            clean_goal_name == f"open {a}" or clean_goal_name == f"launch {a}" for a in app_names
+        )
+
         is_window_control = (
-            has_app_verb and has_app_name and not has_web_target
-        ) or any(
-            w in goal_lower
-            for w in [
+            is_standalone_app
+            or (has_app_verb and has_app_name and not has_web_target)
+            or any(
+                w in goal_lower
+                for w in [
                 "bring to front",
                 "bring chrome",
                 "bring edge",
@@ -271,7 +279,7 @@ class DecisionEngine:
                 "activate",
                 "launch chrome",
                 "launch edge",
-            ]
+            ])
         )
 
         is_desktop = is_window_control or any(
@@ -488,6 +496,24 @@ class DecisionEngine:
             ]
         )
 
+        is_vision_query = any(
+            w in goal_lower
+            for w in [
+                "what's on my screen",
+                "what is on my screen",
+                "whats on my screen",
+                "see my screen",
+                "read my screen",
+                "look at my screen",
+                "on my screen",
+                "take a screenshot",
+                "capture screen",
+                "describe screen",
+                "what is visible on screen",
+                "read the screen",
+            ]
+        )
+
         intent_capability = ""
         if is_session_summary:
             intent = IntentType.SESSION
@@ -498,6 +524,9 @@ class DecisionEngine:
         elif is_memory_recall:
             intent = IntentType.MEMORY
             intent_capability = "memory_read"
+        elif is_vision_query:
+            intent = IntentType.VISION
+            intent_capability = "screen_vision"
         elif is_system_query:
             intent = IntentType.SYSTEM_QUERY
         elif is_coding:
@@ -526,6 +555,7 @@ class DecisionEngine:
         needs_planner = not (
             can_from_sys
             or intent == IntentType.CHAT
+            or intent == IntentType.VISION
             or (intent == IntentType.SESSION and intent_capability == "session_summary")
         )
         # Q4: Which planner?
@@ -539,6 +569,8 @@ class DecisionEngine:
             planner = "desktop"
         elif intent == IntentType.MEMORY:
             planner = "memory"
+        elif intent == IntentType.VISION:
+            planner = "none"
         else:
             planner = "desktop"
         # Q5: Requires cloud/external backend or local engine?

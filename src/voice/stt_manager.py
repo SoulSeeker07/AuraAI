@@ -58,7 +58,7 @@ class STTSettings:
         provider: "STTProvider | str" = STTProvider.FASTER_WHISPER,
         language: str = "en",
         sample_rate: int = 16000,
-        model_size: str = "tiny",
+        model_size: str = "small",
         verbose: bool = False,
         chunk_size: int = 20,
         processing_delay_ms: float = 50,
@@ -210,6 +210,11 @@ class LocalAgreementStabilizer:
             n += 1
         return n
 
+DESKTOP_VOCABULARY_PROMPT: str = (
+    "Spoken conversational commands and desktop assistant requests in English."
+)
+
+
 class FasterWhisperSTTEngine(STTEngine):
 
     """faster-whisper STT — local, offline, no API key required.
@@ -326,6 +331,7 @@ class FasterWhisperSTTEngine(STTEngine):
             segments, _ = self.model.transcribe(
                 audio_np,
                 language=lang,
+                initial_prompt=DESKTOP_VOCABULARY_PROMPT,
                 beam_size=1,
                 best_of=1,
                 temperature=0.0,
@@ -346,7 +352,8 @@ class FasterWhisperSTTEngine(STTEngine):
         except Exception as e:
             logger.error(f"Partial transcribe failed: {e}")
         finally:
-            self._partial_in_flight.release()
+            if self._partial_in_flight.locked():
+                self._partial_in_flight.release()
 
     def finalize(self) -> str:
         """Transcribe all buffered audio and return full transcript."""
@@ -363,9 +370,26 @@ class FasterWhisperSTTEngine(STTEngine):
             segments, _info = self.model.transcribe(
                 audio_np,
                 language=lang,
+                initial_prompt=DESKTOP_VOCABULARY_PROMPT,
                 beam_size=5,
+                temperature=0.0,
+                condition_on_previous_text=False,
+                log_prob_threshold=None,
+                no_speech_threshold=0.85,
+                repetition_penalty=1.2,
             )
-            text = " ".join(s.text.strip() for s in segments).strip()
+            valid_segments = [
+                s.text.strip() for s in segments
+                if s.text.strip() and getattr(s, 'compression_ratio', 1.0) <= 2.4
+            ]
+            text = " ".join(valid_segments).strip()
+            # Sanitize prompt echo hallucination on low energy silence
+            if (
+                text.lower().rstrip(".,!?") == DESKTOP_VOCABULARY_PROMPT.lower().rstrip(".,!?")
+                or "spoken conversational commands" in text.lower()
+            ):
+                text = ""
+
             duration = self._total_duration
 
             if text:
@@ -575,6 +599,124 @@ class VoskSTTEngine(STTEngine):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  GoogleSTTEngine (Google Speech Recognition — en-in / multi-accent cloud)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class GoogleSTTEngine(STTEngine):
+    """
+    Google Web Speech Recognition engine via speech_recognition library.
+    Provides Alexa/Siri-grade accuracy on Indian English ('en-in') accents
+    with automatic fallback to local faster-whisper when offline.
+    """
+
+    def __init__(self, settings: STTSettings):
+        super().__init__(settings)
+        self.recognizer = None
+        self._audio_buffer: list[bytes] = []
+        self._fallback_engine: FasterWhisperSTTEngine | None = None
+
+    def initialize(self) -> bool:
+        try:
+            import speech_recognition as sr
+
+            self.recognizer = sr.Recognizer()
+            self._audio_buffer.clear()
+            self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+            self._fallback_engine.initialize()
+            self.is_active = True
+            logger.info(f"Google STT initialized (language: {self.settings.language})")
+            return True
+        except ImportError:
+            logger.warning("speech_recognition not installed — falling back to faster-whisper")
+            self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+            success = self._fallback_engine.initialize()
+            self.is_active = success
+            return success
+        except Exception as e:
+            logger.error(f"Error initializing Google STT: {e}")
+            return False
+
+    def process_chunk(self, audio_data: bytes) -> str:
+        if not self.is_active:
+            return ""
+        self._audio_buffer.append(audio_data)
+        self._total_duration += len(audio_data) / self.settings.sample_rate / 2
+        return ""
+
+    def finalize(self) -> str:
+        if not self.is_active or not self._audio_buffer:
+            return ""
+
+        raw = b"".join(self._audio_buffer)
+        duration = self._total_duration
+
+        # Energy gate: if raw audio RMS is below speech threshold, discard as silence
+        try:
+            import numpy as np
+            audio_np = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+            rms = float(np.sqrt(np.mean(audio_np ** 2)))
+            if rms < 0.003 or len(audio_np) < int(self.settings.sample_rate * 0.3):
+                logger.debug(f"[Google STT] Energy below speech gate (RMS={rms:.5f}) — clean silence")
+                return ""
+        except Exception:
+            pass
+
+        # 1. Try Google Web Speech recognition (fast, high-accuracy multi-accent)
+        try:
+            import speech_recognition as sr
+
+            audio_data = sr.AudioData(
+                raw,
+                sample_rate=self.settings.sample_rate,
+                sample_width=2,  # 16-bit PCM
+            )
+            lang = self.settings.language or "en-in"
+            if lang == "en":
+                lang = "en-in"
+
+            text = self.recognizer.recognize_google(audio_data, language=lang)
+            text = (text or "").strip()
+            if text:
+                logger.info(f"[Google STT] Transcribed: '{text}' (lang: {lang})")
+                self._emit_final(text, duration)
+                return text
+
+        except Exception as e:
+            # Check if this is an UnknownValueError (silence/no speech) vs network error
+            err_type = type(e).__name__
+            if err_type == "UnknownValueError":
+                logger.debug("[Google STT] No speech detected in audio (clean silence)")
+                return ""
+            logger.debug(f"[Google STT] Online recognize error ({e}) — checking fallback")
+
+        # 2. Local FasterWhisper Fallback (ONLY if online service threw RequestError/Network error)
+        if self._fallback_engine and self._fallback_engine.is_active:
+            self._fallback_engine._audio_buffer = list(self._audio_buffer)
+            self._fallback_engine._total_duration = duration
+            fallback_text = self._fallback_engine.finalize()
+            if fallback_text:
+                logger.info(f"[FasterWhisper Fallback] Transcribed: '{fallback_text}'")
+                return fallback_text
+
+        return ""
+
+    def reset(self) -> None:
+        self._audio_buffer.clear()
+        self._total_duration = 0.0
+        if self._fallback_engine:
+            self._fallback_engine.reset()
+        logger.debug("Google STT reset")
+
+    def get_status(self) -> dict[str, Any]:
+        return {
+            "provider": STTProvider.GOOGLE.value,
+            "is_active": self.is_active,
+            "language": self.settings.language,
+            "sample_rate": self.settings.sample_rate,
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  DeepgramSTTEngine  (cloud — optional)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -640,7 +782,9 @@ class STTManager:
 
         try:
             p = self.settings.provider
-            if p == STTProvider.FASTER_WHISPER:
+            if p == STTProvider.GOOGLE:
+                self.engine = GoogleSTTEngine(self.settings)
+            elif p == STTProvider.FASTER_WHISPER:
                 self.engine = FasterWhisperSTTEngine(self.settings)
             elif p == STTProvider.WHISPER:
                 self.engine = WhisperSTTEngine(self.settings)

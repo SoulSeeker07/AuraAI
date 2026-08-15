@@ -31,6 +31,11 @@ class AuraWakeDetector(WakeWordEngine):
         # Buffer to hold rolling audio
         self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
         
+        # 80Hz High-pass filter coefficients for anti-hum & DC removal
+        from scipy import signal
+        self.hp_b, self.hp_a = signal.butter(2, 80.0 / (self.sample_rate / 2), btype='high')
+        self.min_rms_energy = 0.0035  # Minimum energy required before evaluating wake word
+        
         # Mel Spectrogram parameters matching training
         self.mel_transform = torchaudio.transforms.MelSpectrogram(
             sample_rate=self.sample_rate,
@@ -44,6 +49,7 @@ class AuraWakeDetector(WakeWordEngine):
         self.frames_since_trigger = 0
 
         # Failure & Throttling tracking
+        self.consecutive_hits = 0
         self.consecutive_failures = 0
         self.last_print_time = 0.0
         self.print_interval_s = 0.3
@@ -57,6 +63,7 @@ class AuraWakeDetector(WakeWordEngine):
                 providers=['CPUExecutionProvider']
             )
             self.input_name = self.ort_session.get_inputs()[0].name
+            self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
             
             logger.info("Aura Wake Word model initialized successfully.")
             return True
@@ -71,16 +78,13 @@ class AuraWakeDetector(WakeWordEngine):
             return False
             
         try:
-            # ALWAYS update the audio buffer first!
             # Convert raw bytes (16-bit PCM) to float32 numpy array
             chunk_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
             
-            # Resample if necessary (VoiceManager usually provides 16kHz)
-            if sample_rate != self.sample_rate:
-                pass
-                
             chunk_len = len(chunk_np)
-            
+            if chunk_len == 0:
+                return False
+
             # Roll buffer and append new chunk
             self.audio_buffer = np.roll(self.audio_buffer, -chunk_len)
             self.audio_buffer[-chunk_len:] = chunk_np
@@ -90,52 +94,72 @@ class AuraWakeDetector(WakeWordEngine):
                 self.cooldown_frames -= 1
                 return False
             
-            # 1. Compute Mel Spectrogram using PyTorch
-            waveform = torch.from_numpy(self.audio_buffer).unsqueeze(0)  # Shape: (1, 32000)
+            # 1. Clean audio buffer: Remove DC offset and apply 80Hz High-Pass filter
+            from scipy import signal
+            clean_buf = self.audio_buffer - np.mean(self.audio_buffer)
+            clean_buf = signal.lfilter(self.hp_b, self.hp_a, clean_buf).astype(np.float32)
+
+            # 2. Energy Pre-Gate: If ambient sound is below human vocal threshold (RMS < min_rms_energy),
+            # force score to 0.0 to prevent DC hum / low-frequency room rumble from inflating score
+            rms_energy = float(np.sqrt(np.mean(clean_buf**2)))
+            if rms_energy < self.min_rms_energy:
+                self.last_probability = 0.0
+                self.consecutive_hits = 0
+                self.consecutive_failures = 0
+                return False
+
+            # 3. Compute Mel Spectrogram using PyTorch
+            waveform = torch.from_numpy(clean_buf).unsqueeze(0)  # Shape: (1, 32000)
             mel_spec = self.mel_transform(waveform)
-            log_mel_spec = torch.log(mel_spec + 1e-9).unsqueeze(0) # Shape: (1, 1, 40, 201)
-            
-            # 2. Run ONNX Inference
+            log_mel_spec = torch.log(mel_spec + 1e-9).unsqueeze(0)  # Shape: (1, 1, 40, 201)
+
+            # 4. Run ONNX Inference
             ort_inputs = {self.input_name: log_mel_spec.numpy()}
             ort_outs = self.ort_session.run(None, ort_inputs)
-            
-            # 3. Apply Sigmoid to logit
+
+            # 5. Apply Sigmoid to logit
             logit = ort_outs[0][0][0]
             probability = float(1.0 / (1.0 + np.exp(-logit)))
             self.last_probability = probability
-            
-            # 4. Check against threshold
+
+            # 6. Check against calibrated threshold (0.60 default with 2-frame persistence)
             import os
-            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.55))
-            
+            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.60))
+
             now = time.monotonic()
             if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
                 self.last_print_time = now
-                logger.debug(f"[AuraWakeDetector] Debug Score: {probability:.4f}")
+                logger.debug(f"[AuraWakeDetector] Debug Score: {probability:.4f} (RMS: {rms_energy:.4f})")
                 try:
-                    sys.stdout.write(f"\r🎤 Live Score: {probability:.4f}    ")
+                    sys.stdout.write(f"\r🎤 Live Score: {probability:.4f} (RMS: {rms_energy:.4f})    ")
                     sys.stdout.flush()
                 except Exception:
                     pass
-                
+
             if probability >= threshold:
-                try:
-                    sys.stdout.write("\r" + " " * 30 + "\r") # Clear the line
-                    sys.stdout.flush()
-                except Exception:
-                    pass
-                logger.info(f"[AuraWakeDetector] Wake word detected! (Prob: {probability:.3f} | Threshold: {threshold})")
-                
-                # Prevent double-triggering for 2 seconds
-                self.cooldown_frames = int(self.sample_rate / chunk_len * 2.0)
-                
-                # Trigger callback
-                if self.on_wake_word_detected:
-                    self.on_wake_word_detected("Hey Aura")
-                    
-                self.consecutive_failures = 0
-                return True
-                
+                self.consecutive_hits += 1
+                if self.consecutive_hits >= 2:
+                    try:
+                        sys.stdout.write("\r" + " " * 45 + "\r")  # Clear the line
+                        sys.stdout.flush()
+                    except Exception:
+                        pass
+                    logger.info(f"[AuraWakeDetector] Wake word detected! (Prob: {probability:.3f} | Threshold: {threshold})")
+
+                    # Prevent double-triggering and reset buffer for next cycle
+                    self.cooldown_frames = int(self.sample_rate / chunk_len * 2.0)
+                    self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
+                    self.consecutive_hits = 0
+
+                    # Trigger callback
+                    if self.on_wake_word_detected:
+                        self.on_wake_word_detected("Hey Aura")
+
+                    self.consecutive_failures = 0
+                    return True
+            else:
+                self.consecutive_hits = 0
+
             self.consecutive_failures = 0
             return False
 

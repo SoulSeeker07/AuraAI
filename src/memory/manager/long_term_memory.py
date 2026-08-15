@@ -58,7 +58,14 @@ class LongTermMemory:
         collection_name: str = "aura_long_term",
         embed_model: str = "all-MiniLM-L6-v2",
     ):
-        self.embedder = SentenceTransformer(embed_model)
+        try:
+            self.embedder = SentenceTransformer(embed_model, local_files_only=True)
+        except Exception as e:
+            logger.warning(
+                f"[LongTermMemory] Local embedding model '{embed_model}' not found in cache or offline: {e}. "
+                "Disabling semantic embedding recall gracefully to eliminate network lookup freezes during turns."
+            )
+            self.embedder = None
         self.client = chromadb.PersistentClient(path=persist_dir)
         self.collection = self.client.get_or_create_collection(collection_name)
         self.provider_manager = provider_manager
@@ -105,6 +112,10 @@ class LongTermMemory:
         Persist a policy-approved fact to Chroma.
         Called only by MemoryManager._consolidate() after apply_policy() approves.
         """
+        if not self.embedder:
+            logger.debug("[LTM] Skipping semantic store (embedder unavailable)")
+            return
+
         vec = self.embedder.encode(fact).tolist()
         self.collection.add(
             ids=[str(uuid.uuid4())],
@@ -125,7 +136,7 @@ class LongTermMemory:
         Semantic search over stored facts, re-ranked by a blend of
         similarity, recency, and importance.
         """
-        if self.collection.count() == 0:
+        if not self.embedder or self.collection.count() == 0:
             return []
 
         vec = self.embedder.encode(query).tolist()
