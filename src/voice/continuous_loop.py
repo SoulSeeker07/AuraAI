@@ -20,6 +20,27 @@ from .voice_manager import VoiceManager
 logger = logging.getLogger(__name__)
 
 
+def _safe_print(text: str, stream=None) -> None:
+    """Helper to safely write to stdout/stderr without failing on encoding errors."""
+    import sys
+    target = stream or sys.stdout
+    try:
+        target.write(text)
+        target.flush()
+    except UnicodeEncodeError:
+        try:
+            target.buffer.write(text.encode("utf-8", errors="replace"))
+            target.buffer.flush()
+        except Exception:
+            try:
+                target.write(text.encode("ascii", errors="replace").decode("ascii"))
+                target.flush()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 class VoiceState(Enum):
     """Explicit lifecycle states for the voice interaction loop."""
     IDLE = auto()          # Waiting for the wake word (via VoiceManager)
@@ -40,15 +61,27 @@ class ContinuousVoiceLoop:
     existing CoreRouter/ExecutionCoordinator without bypassing them.
     """
 
+    _global_aura_core: Any | None = None
+
+    @classmethod
+    def set_global_aura_core(cls, aura_core: Any) -> None:
+        """Register active AuraCore singleton globally across all voice loops."""
+        cls._global_aura_core = aura_core
+
     def __init__(
         self,
         voice_manager: VoiceManager | None = None,
         coordinator: Any | None = None,
         nlu_engine: Any | None = None,
+        aura_core: Any | None = None,
     ):
         self.voice_manager = voice_manager or VoiceManager()
         self.coordinator = coordinator
         self.nlu_engine = nlu_engine
+        # AuraCore reference – used by _process_transcript to reach the Groq path
+        # (same as the text CLI path). Set here, injected via instance attribute,
+        # or resolved from ContinuousVoiceLoop._global_aura_core.
+        self._aura_core = aura_core or self._global_aura_core
         
         self._running = False
         self._loop_task: asyncio.Task | None = None
@@ -65,6 +98,7 @@ class ContinuousVoiceLoop:
         # Turn history / stats
         self.turn_count = 0
         self.history: list[dict[str, Any]] = []
+        self.on_stop: Any | None = None
 
         logger.info("[ContinuousVoiceLoop] INITIALIZING")
         self._set_state(VoiceState.IDLE)
@@ -78,11 +112,6 @@ class ContinuousVoiceLoop:
         if self._running:
             logger.warning("ContinuousVoiceLoop already running")
             return True
-
-        try:
-            self.main_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            self.main_loop = None
 
         logger.info("[ContinuousVoiceLoop] START_REQUESTED")
         self._running = True
@@ -122,6 +151,11 @@ class ContinuousVoiceLoop:
         logger.info("[MIC] Stream released: PASS")
         logger.info("[ContinuousVoiceLoop] State: STOPPED")
         self._set_state(VoiceState.IDLE)
+        if callable(getattr(self, "on_stop", None)):
+            try:
+                self.on_stop()
+            except Exception as e:
+                logger.debug(f"[ContinuousVoiceLoop] on_stop callback error: {e}")
 
     # ------------------------------------------------------------------------
     # State Machine Event Injections (For Testing & Hardware Callbacks)
@@ -131,9 +165,7 @@ class ContinuousVoiceLoop:
         if self.state == VoiceState.IDLE and self._running:
             self._set_state(VoiceState.WAKE_DETECTED)
             # Typically, audio capture triggers immediately
-            import sys
-            sys.stdout.write("\n\n🎧 Wake word detected! Aura is listening for your command...\n")
-            sys.stdout.flush()
+            _safe_print("\n\n🎧 Wake word detected! Aura is listening for your command...\n")
             self.trigger_listening()
             logger.info("[VoiceManager] STT_ACTIVE")
 
@@ -151,58 +183,107 @@ class ContinuousVoiceLoop:
             self.voice_manager._start_active_listening()
         else:
             self._set_state(VoiceState.IDLE)
+            # Re-arm the wake-word detector so the mic doesn't go silent.
+            # Without this, after a hallucination filter hit or error the system
+            # would freeze at IDLE with no active listening.
+            if self._running:
+                if self.voice_manager.activate():
+                    logger.info("[ContinuousVoiceLoop] Wake-word listener re-armed after returning to IDLE")
+                else:
+                    logger.warning("[ContinuousVoiceLoop] Failed to re-arm wake-word listener")
+
+    VOICE_PAUSE_PHRASES = {
+        "go to sleep",
+        "go to sleep now",
+        "standby",
+        "stand by",
+        "never mind",
+        "nevermind",
+        "cancel",
+        "pause",
+        "hold on",
+        "sleep",
+    }
+
+    VOICE_STOP_PHRASES = {
+        "stop listening",
+        "stop voice",
+        "stop listening now",
+        "stop voice listening",
+        "disable voice",
+        "disable voice listening",
+        "stop listening to me",
+        "exit voice",
+        "mute voice",
+        "turn off voice",
+        "turn off listening",
+        "quit listening",
+        "quit voice",
+    }
 
     def trigger_transcription_ready(self, transcript: str):
-        if self.state in (VoiceState.LISTENING, VoiceState.WAKE_DETECTED, VoiceState.TRANSCRIBING):
-            clean_t = transcript.strip().lower()
-            hallucinations = [
-                "i'll see you next time.",
-                "i'll see you next time",
-                "i'll see you in the next video.",
-                "i'll see you in the next video",
-                "thank you.",
-                "thank you",
-                "thanks for watching.",
-                "thanks for watching",
-                "bye.",
-                "bye",
-                "you",
-            ]
-            if not transcript.strip() or clean_t in hallucinations:
-                # Empty transcription, return to correct state
+        clean_t = transcript.strip().lower()
+        clean_t_punct = clean_t.rstrip(".,!?")
+        hallucinations = [
+            "i'll see you next time.",
+            "i'll see you next time",
+            "i'll see you in the next video.",
+            "i'll see you in the next video",
+            "thank you.",
+            "thank you",
+            "thanks for watching.",
+            "thanks for watching",
+            "bye.",
+            "bye",
+            "you",
+        ]
+        if not transcript.strip() or clean_t in hallucinations:
+            # Empty transcription, return to correct state
+            self._return_to_listening_or_idle()
+            return
+
+        if self.state in (VoiceState.LISTENING, VoiceState.WAKE_DETECTED, VoiceState.TRANSCRIBING) or not self._running:
+            # 1. Check for voice pause / standby commands (mic stays open, returns to wake-word idle)
+            if clean_t_punct in self.VOICE_PAUSE_PHRASES or any(
+                clean_t_punct.startswith(p)
+                for p in ("go to sleep", "never mind", "nevermind", "stand by", "standby")
+            ):
+                self._set_state(VoiceState.TRANSCRIBING)
+                _safe_print(f"\r\033[K\nYou > {transcript}\n")
+                logger.info(f"[ContinuousVoiceLoop] Spoken voice pause/standby command detected: '{transcript}'")
+                _safe_print("\n😴 Aura is on standby. Say 'Aura' to wake me up.\n")
+                spoken_pause = "Going on standby. Say Aura when you need me."
+                self._set_state(VoiceState.SPEAKING)
+                try:
+                    self.voice_manager.speak(spoken_pause)
+                except Exception as e:
+                    logger.debug(f"[ContinuousVoiceLoop] Standby TTS error: {e}")
+                self._set_state(VoiceState.IDLE)
                 self._return_to_listening_or_idle()
                 return
-                
+
+            # 2. Check for voice hard stop / shutdown commands (mic stream closes, back to CLI)
+            if clean_t_punct in self.VOICE_STOP_PHRASES or any(
+                clean_t_punct.startswith(p)
+                for p in ("stop listening", "stop voice", "quit listening", "disable voice", "turn off voice", "turn off listening")
+            ):
+                self._set_state(VoiceState.TRANSCRIBING)
+                _safe_print(f"\r\033[K\nYou > {transcript}\n")
+                logger.info(f"[ContinuousVoiceLoop] Spoken voice stop command detected: '{transcript}'")
+                _safe_print("\n👋 Voice listening stopped. Type 'start listening' to resume.\n")
+                spoken_farewell = "Stopping voice listening. Type start listening to resume."
+                self._set_state(VoiceState.SPEAKING)
+                try:
+                    self.voice_manager.speak(spoken_farewell)
+                except Exception as e:
+                    logger.debug(f"[ContinuousVoiceLoop] Farewell TTS error: {e}")
+                self.stop()
+                return
+
             self._set_state(VoiceState.TRANSCRIBING)
-            import sys
-            sys.stdout.write(f"\n🗣️ You said: '{transcript}'\n")
-            sys.stdout.flush()
+            _safe_print(f"\r\033[K\nYou > {transcript}\n")  # Clear partial line, show final
             self.turn_count += 1
             self._process_transcript(transcript)
-        elif not self._running:
-             clean_t = transcript.strip().lower()
-             hallucinations = [
-                 "i'll see you next time.",
-                 "i'll see you next time",
-                 "i'll see you in the next video.",
-                 "i'll see you in the next video",
-                 "thank you.",
-                 "thank you",
-                 "thanks for watching.",
-                 "thanks for watching",
-                 "bye.",
-                 "bye",
-                 "you",
-             ]
-             if not transcript.strip() or clean_t in hallucinations:
-                 self._return_to_listening_or_idle()
-                 return
-             self._set_state(VoiceState.TRANSCRIBING)
-             import sys
-             sys.stdout.write(f"\n🗣️ You said: '{transcript}'\n")
-             sys.stdout.flush()
-             self.turn_count += 1
-             self._process_transcript(transcript)
 
     def trigger_tts_completed(self):
         if self.state == VoiceState.SPEAKING:
@@ -223,7 +304,6 @@ class ContinuousVoiceLoop:
 
     def _on_stt_partial(self, context: VoiceContext):
         """Render live transcription to terminal with ANSI colors."""
-        import sys
         if context.confirmed_transcript or context.tentative_transcript:
             # Clear line and print
             # \033[K clears to end of line
@@ -232,17 +312,18 @@ class ContinuousVoiceLoop:
             confirmed = context.confirmed_transcript
             tentative = context.tentative_transcript
             
-            output = "\r\033[K🗣️ You said: '"
+            output = "\r\033[K🎤 You > "
             if confirmed:
                 output += confirmed
                 if tentative:
                     output += " "
             if tentative:
                 output += f"\033[2m{tentative}\033[0m"
-            output += "'..."
-            
-            sys.stdout.write(output)
-            sys.stdout.flush()
+            _safe_print(output, end="", flush=True)
+
+    def _on_state_change(self, new_state: Any) -> None:
+        """Callback when underlying VoiceManager state changes."""
+        logger.debug(f"[ContinuousVoiceLoop] VoiceManager state changed to: {new_state}")
 
     def _on_tts_complete(self) -> None:
         """Callback when TTS finishes speaking response."""
@@ -252,6 +333,8 @@ class ContinuousVoiceLoop:
     def _on_voice_error(self, error: str) -> None:
         """Callback on voice system error."""
         logger.error(f"[ContinuousVoiceLoop] Voice error: {error}")
+        import sys
+        _safe_print(f"\n⚠️ [Voice System Warning] {error}\n", stream=sys.stderr)
         if self.state == VoiceState.SPEAKING:
              self.trigger_tts_completed()
         else:
@@ -262,60 +345,96 @@ class ContinuousVoiceLoop:
     # ------------------------------------------------------------------------
 
     def _process_transcript(self, transcript: str):
+        """
+        Hand the finalized voice transcript off to AuraCore and speak the response.
+
+        Design notes
+        ------------
+        * We run on a *background audio thread* (called from the STT callback),
+          NOT on the main asyncio event loop.
+        * The main event loop is busy blocking in ``input()`` inside CLIClient.run(),
+          so we MUST NOT schedule work onto it with run_coroutine_threadsafe – that
+          coroutine would sit in the queue forever and fut.result() would time out
+          after 60 s, silently swallowing the call.
+        * Instead we create a *fresh* event loop owned by this thread via
+          ``asyncio.run()``.  This is safe because aura_core.process_request is
+          stateless with respect to which loop it runs on.
+        * We deliberately mirror the text path in CLIClient._send_chat_message:
+          ``aura_core.process_request(transcript)`` → Groq → spoken response.
+          PersonalOSRuntime.execute_goal routes through ExecutionCoordinator (tool
+          actions), which never reaches the Groq LLM for conversational utterances.
+        """
         self._set_state(VoiceState.UNDERSTANDING)
-        logger.info(f"[ContinuousVoiceLoop Turn #{self.turn_count}] Processing transcript: '{transcript}'")
-        
-        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
-        os_runtime = PersonalOSRuntime.get_instance()
-        
+        logger.info(
+            f"[ContinuousVoiceLoop Turn #{self.turn_count}] Processing transcript: '{transcript}'"
+        )
+
+        # AuraCore must be injected before the first utterance via:
+        #   personal_os.voice_loop._aura_core = self.aura_core   (CLIClient)
+        # We deliberately do NOT attempt any import-based fallback because
+        # main.py puts both "src/" and "." on sys.path, so any import of
+        # "src.core.orchestration..." vs "core.orchestration..." resolves to
+        # *different* module objects — which would create a second
+        # PersonalOSRuntime singleton, a second ContinuousVoiceLoop, and a
+        # second VoiceManager, re-initialising half the ML stack mid-turn.
+        aura_core = getattr(self, "_aura_core", None) or self._global_aura_core
+        if aura_core is None:
+            logger.error(
+                "[ContinuousVoiceLoop] _aura_core is None — voice command cannot reach Groq. "
+                "Ensure CLIClient sets personal_os.voice_loop._aura_core before start()."
+            )
+            _safe_print(
+                "\n⚠️ [Voice] Not connected to reasoning engine. "
+                "Please stop and restart listening.\n"
+            )
+            self._return_to_listening_or_idle()
+            return
+
         self._set_state(VoiceState.EXECUTING)
-        
-        report = None
+
+        spoken_summary: str | None = None
+        success = False
+
         try:
-            # Use the captured main_loop if available and running
-            loop = getattr(self, "main_loop", None)
-            
-            if not loop or not loop.is_running():
-                try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    loop = None
+            # Mirror CLIClient._send_chat_message exactly.
+            # asyncio.run() creates a fresh loop on this background thread –
+            # no interference with the main loop's blocking input() call.
+            aura_core.add_to_conversation("user", transcript)
+            _safe_print("\n🤔 Aura is thinking...\n")
 
-            if loop and loop.is_running():
-                fut = asyncio.run_coroutine_threadsafe(
-                    os_runtime.execute_goal(transcript, input_type="voice"), loop
-                )
-                report = fut.result(timeout=60)
-            else:
-                logger.warning("[ContinuousVoiceLoop] Falling back to asyncio.run (no running loop found)")
-                report = asyncio.run(os_runtime.execute_goal(transcript, input_type="voice"))
+            response: str = asyncio.run(aura_core.process_request(transcript))
+
+            aura_core.add_to_conversation("assistant", response)
+            _safe_print(f"\nAura > {response}\n")
+            spoken_summary = response
+            success = True
+            logger.info(
+                f"[ContinuousVoiceLoop Turn #{self.turn_count}] "
+                f"Response ready ({len(response)} chars)"
+            )
         except Exception as e:
-            logger.error(f"[ContinuousVoiceLoop] Coordination error: {e}")
-                
-        success = getattr(report, "success", True) if report else False
-        spoken_summary = getattr(report, "spoken_summary", None)
-        
-        if not spoken_summary:
-            if success:
-                spoken_summary = f"Done processing: {transcript}."
-            else:
-                spoken_summary = f"Sorry, {transcript} could not be completed successfully."
+            logger.error(
+                f"[ContinuousVoiceLoop] aura_core.process_request failed: {e}",
+                exc_info=True,
+            )
+            spoken_summary = f"Sorry, I ran into a problem: {e}"
+            success = False
 
-        turn_fact = {
+        if not spoken_summary:
+            spoken_summary = "Sorry, I couldn't process that."
+
+        self.history.append({
             "turn": self.turn_count,
             "transcript": transcript,
             "success": success,
             "spoken_summary": spoken_summary,
-            "report": report,
-        }
-        self.history.append(turn_fact)
-        
+        })
+
         self._set_state(VoiceState.SPEAKING)
-        
-        # If running, we send to actual VoiceManager. If just state-testing, we skip actual TTS.
+
         if self._running:
-            # We assume VoiceManager handles the underlying hardware speak task,
-            # which will eventually trigger on_tts_complete and call trigger_tts_completed()
+            # VoiceManager speaks the response; its on_tts_complete callback will
+            # call trigger_tts_completed() to advance the state machine.
             self.voice_manager.speak(spoken_summary)
             
     def _handle_cooldown(self):

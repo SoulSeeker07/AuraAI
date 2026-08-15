@@ -46,6 +46,18 @@ class CLIClient:
             "normal"  # 'normal', 'developer', 'debug', 'benchmark', 'trace'
         )
 
+        # Wire aura_core into PersonalOSRuntime's voice loop so continuous voice can reach Groq
+        try:
+            from voice.continuous_loop import ContinuousVoiceLoop
+            ContinuousVoiceLoop.set_global_aura_core(self.aura_core)
+            from core.orchestration.personal_os_runtime import PersonalOSRuntime
+            personal_os = PersonalOSRuntime.get_instance()
+            if hasattr(personal_os, "voice_loop") and personal_os.voice_loop:
+                personal_os.voice_loop._aura_core = self.aura_core
+                personal_os.voice_loop.on_stop = lambda: setattr(self, "voice_listening", False)
+        except Exception as e:
+            logger.debug(f"Could not wire aura_core to voice_loop on init: {e}")
+
     def print_banner(self):
         """Print the AuraAI banner."""
         print("\n" + "=" * 60)
@@ -786,11 +798,12 @@ class CLIClient:
                 print("  Use 'Stop Listening' to disable.")
 
                 try:
-                    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                    from core.orchestration.personal_os_runtime import PersonalOSRuntime
 
                     # Get PersonalOSRuntime and start its voice loop
                     personal_os = PersonalOSRuntime.get_instance()
                     if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                        personal_os.voice_loop._aura_core = self.aura_core
                         success = personal_os.voice_loop.start()
                         if success:
                             print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
@@ -823,7 +836,7 @@ class CLIClient:
                 print("\n✓ Stopping voice listening...")
 
                 try:
-                    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                    from core.orchestration.personal_os_runtime import PersonalOSRuntime
 
                     # Get PersonalOSRuntime and stop its voice loop
                     personal_os = PersonalOSRuntime.get_instance()
@@ -850,11 +863,12 @@ class CLIClient:
                 print("  Use 'Stop Listening' to disable.")
 
                 try:
-                    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                    from core.orchestration.personal_os_runtime import PersonalOSRuntime
 
                     # Get PersonalOSRuntime and start its voice loop
                     personal_os = PersonalOSRuntime.get_instance()
                     if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                        personal_os.voice_loop._aura_core = self.aura_core
                         success = personal_os.voice_loop.start()
                         if success:
                             print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
@@ -970,7 +984,7 @@ class CLIClient:
         if self.aura_core.voice_enabled and should_speak:
             try:
                 import re
-                from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                from core.orchestration.personal_os_runtime import PersonalOSRuntime
                 personal_os = PersonalOSRuntime.get_instance()
                 
                 # Check if voice components are available
@@ -1305,9 +1319,11 @@ class CLIClient:
                     print("  Waiting for wake word: Aura")
                     print("  Use 'Stop Listening' to disable.")
                     try:
-                        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                        from core.orchestration.personal_os_runtime import PersonalOSRuntime
                         personal_os = PersonalOSRuntime.get_instance()
                         if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                            personal_os.voice_loop._aura_core = self.aura_core
+                            personal_os.voice_loop.on_stop = lambda: setattr(self, "voice_listening", False)
                             success = personal_os.voice_loop.start()
                             if success:
                                 print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
@@ -1330,7 +1346,7 @@ class CLIClient:
                         return
                     print("\n✓ Stopping voice listening...")
                     try:
-                        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                        from core.orchestration.personal_os_runtime import PersonalOSRuntime
                         personal_os = PersonalOSRuntime.get_instance()
                         if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
                             personal_os.voice_loop.stop()
@@ -1360,9 +1376,12 @@ class CLIClient:
                     print("  Waiting for wake word: Aura")
                     print("  Use 'Stop Listening' to disable.")
                     try:
-                        from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+                        from core.orchestration.personal_os_runtime import PersonalOSRuntime
                         personal_os = PersonalOSRuntime.get_instance()
                         if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                            # Inject AuraCore so voice transcripts go through the
+                            # same Groq path as typed messages.
+                            personal_os.voice_loop._aura_core = self.aura_core
                             success = personal_os.voice_loop.start()
                             if success:
                                 print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")

@@ -42,11 +42,29 @@ class ResultMerger:
             for obs in session.observations
             if obs.content and obs.obs_type == "system"
         ]
+        user_facing_sys_obs = []
+        for obs in session.observations:
+            if obs.obs_type == "system" and obs.content:
+                # Filter out raw internal orchestration state prefixes from user-facing text
+                if any(
+                    obs.content.startswith(p)
+                    for p in (
+                        "Pre-execution Decision:",
+                        "Session started",
+                        "DecisionEngine evaluated",
+                    )
+                ):
+                    continue
+                # Translate capability errors into clean user-friendly phrasing
+                if "no backend available for capability" in obs.content.lower():
+                    user_facing_sys_obs.append("I don't know how to perform that specific desktop action yet.")
+                else:
+                    user_facing_sys_obs.append(obs.content)
 
         if not success:
-            obs_texts = sys_obs + task_obs
+            obs_texts = task_obs if task_obs else (user_facing_sys_obs if user_facing_sys_obs else ["I was unable to complete that action."])
         else:
-            obs_texts = task_obs if task_obs else sys_obs
+            obs_texts = task_obs if task_obs else user_facing_sys_obs
         artifacts_dict = [art.to_dict() for art in session.artifacts]
 
         avg_confidence = (

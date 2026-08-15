@@ -81,10 +81,30 @@ class ResearchDecision:
         "road map",
         "upgrade",
         "new feature",
-        # Deep knowledge
+        # Deep knowledge / factual question patterns
         "explain",
-        "how",
         "how does",
+        "how do",
+        "how to",
+        "how can",
+        "how it works",
+        "how tall",
+        "how many",
+        "how much",
+        "how long",
+        "how far",
+        "how old",
+        "how fast",
+        "how big",
+        "how deep",
+        "how high",
+        "how heavy",
+        "how often",
+        "how is",
+        "how was",
+        "how were",
+        "how will",
+        "how would",
         "overview",
         "summary",
         "analysis",
@@ -104,7 +124,6 @@ class ResearchDecision:
         "service",
         "platform",
         "technology",
-        "technology",
         "ai",
         "machine learning",
         "deep learning",
@@ -119,6 +138,28 @@ class ResearchDecision:
         "forecast",
     }
 
+    # Conversational greeting phrases that should never trigger research
+    CONVERSATIONAL_GREETINGS = {
+        "hello",
+        "hi",
+        "hey",
+        "how are you",
+        "how are you doing",
+        "how do you do",
+        "how's it going",
+        "how is it going",
+        "how have you been",
+        "how is your day",
+        "how's your day",
+        "how are things",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "what's up",
+        "whats up",
+        "nice to meet you",
+    }
+
     def analyze(self, query: str) -> tuple[bool, str, SearchMode]:
         """
         Analyze a query and determine if research is needed.
@@ -129,10 +170,44 @@ class ResearchDecision:
         Returns:
             Tuple of (needs_research, reason, search_mode)
         """
-        normalized = query.lower()
+        import re
+        normalized = query.lower().strip()
+        clean_query = re.sub(r"[^a-z0-9\s']", " ", normalized)
+        clean_query = " ".join(clean_query.split())
 
         logger.info(f"[ResearchDecision] Analyzing query: {query}")
         logger.info(f"[ResearchDecision] Normalized: {normalized}")
+
+        # Check for conversational greetings first
+        greeting_phrases = (
+            "hello",
+            "hi",
+            "hey",
+            "how are you",
+            "how are you doing",
+            "how do you do",
+            "how's it going",
+            "how is it going",
+            "hows it going",
+            "how have you been",
+            "how is your day",
+            "how's your day",
+            "hows your day",
+            "how are things",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "what's up",
+            "whats up",
+        )
+        if clean_query in self.CONVERSATIONAL_GREETINGS or any(
+            clean_query.startswith(g) for g in ("hello", "hi ", "hey ", "how are you", "how's it going", "how is it going", "good morning", "good evening")
+        ) or any(
+            g in clean_query for g in ("how are you", "how is it going", "hows it going", "how are things", "how have you been", "how is your day", "hows your day")
+        ):
+            if not any(k in clean_query for k in ("stock", "price", "market", "weather", "news", "versus", "compare", "tall", "many", "much", "old", "far", "fast", "deep")):
+                logger.info("[ResearchDecision] NO RESEARCH - Conversational greeting")
+                return False, "Conversational greeting", SearchMode.STANDARD
 
         # Check for always-research intents
         if normalized in self.ALWAYS_RESEARCH_INTENTS:

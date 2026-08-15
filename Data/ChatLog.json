@@ -1,362 +1,362 @@
 [
   {
     "role": "user",
-    "content": "The code above has an IndentationError. Please:\n1. Fix the indentation issue\n2. Generate ONLY the fixed Python code (no markdown markers, no explanations)\n\nThe docstring MUST be indented inside the function.",
-    "topic": "Code Above Indentationerror",
-    "timestamp": "2026-08-14T20:57:01.510560"
+    "content": "Good.",
+    "topic": "Good",
+    "timestamp": "2026-08-15T12:07:56.939384"
   },
   {
     "role": "assistant",
-    "content": "def greet(name):\n\"\"\"Return a greeting string.\"\"\"\nreturn f\"Hello, {name}!\"\nif __name__ == \"__main__\":\nprint(greet(\"World\"))",
-    "topic": "Code Above Indentationerror",
-    "timestamp": "2026-08-14T20:57:01.510560"
+    "content": "Glad to hear it! Let me know if there’s anything else I can help with.",
+    "topic": "Good",
+    "timestamp": "2026-08-15T12:07:56.939384"
+  },
+  {
+    "role": "user",
+    "content": "Good.",
+    "topic": "desktop",
+    "timestamp": "2026-08-15T12:08:05.458718"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "desktop",
+    "timestamp": "2026-08-15T12:08:05.458718"
+  },
+  {
+    "role": "user",
+    "content": "Good.",
+    "topic": "Good",
+    "timestamp": "2026-08-15T12:08:06.101467"
+  },
+  {
+    "role": "assistant",
+    "content": "Glad you’re feeling good! Anything you’d like to chat about or need help with?",
+    "topic": "Good",
+    "timestamp": "2026-08-15T12:08:06.101467"
+  },
+  {
+    "role": "user",
+    "content": "Good.",
+    "topic": "Good",
+    "timestamp": "2026-08-15T12:08:06.112316"
+  },
+  {
+    "role": "assistant",
+    "content": "Glad you’re feeling good! Anything you’d like to chat about or need help with?",
+    "topic": "Good",
+    "timestamp": "2026-08-15T12:08:06.112316"
+  },
+  {
+    "role": "user",
+    "content": "Exit",
+    "topic": "desktop",
+    "timestamp": "2026-08-15T12:08:16.272875"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "topic": "desktop",
+    "timestamp": "2026-08-15T12:08:16.272875"
+  },
+  {
+    "role": "user",
+    "content": "Exit",
+    "topic": "Exit",
+    "timestamp": "2026-08-15T12:08:16.915320"
+  },
+  {
+    "role": "assistant",
+    "content": "Alright, take care! If you need anything later, just let me know.",
+    "topic": "Exit",
+    "timestamp": "2026-08-15T12:08:16.915320"
+  },
+  {
+    "role": "user",
+    "content": "Exit",
+    "topic": "Exit",
+    "timestamp": "2026-08-15T12:08:16.925466"
+  },
+  {
+    "role": "assistant",
+    "content": "Alright, take care! If you need anything later, just let me know.",
+    "topic": "Exit",
+    "timestamp": "2026-08-15T12:08:16.925466"
+  },
+  {
+    "role": "user",
+    "content": "def factorial(n):\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)\n\n# Test it\nresult = factorial(5)\nprint(f\"Factorial of 5 is {result}\")\n\nDoes this code have any errors?",
+    "topic": "Factorial Return Return",
+    "timestamp": "2026-08-15T12:10:59.109222"
+  },
+  {
+    "role": "assistant",
+    "content": "Your function is syntactically correct and will produce the expected result for non‑negative integers:\n```python\ndef factorial(n):\nif n == 0:\nreturn 1\nreturn n * factorial(n - 1)\n# Test it\nresult = factorial(5)\nprint(f\"Factorial of 5 is {result}\")   # → Factorial of 5 is 120\n```\n**What works well**\n* The base case (`n == 0`) correctly returns 1, which stops the recursion.\n* The recursive step (`n * factorial(n‑1)`) correctly builds the factorial product.\n* The test prints the right value (`120`).\n**Potential improvements / edge‑case handling**\n| Issue | Why it matters | Simple fix |\n|-------|----------------|------------|\n| **Negative inputs** | `factorial(-1)` will recurse forever until Python hits its recursion limit (`RecursionError`). | Add a guard: <br>`if n < 0: raise ValueError(\"n must be non‑negative\")` |\n| **Non‑integer inputs** | Passing a float or other type will raise a `TypeError` when the multiplication is attempted. | Validate the type: <br>`if not isinstance(n, int): raise TypeError(\"n must be an integer\")` |\n| **Large `n`** | Python’s recursion depth default is ~1000. `factorial(2000)` will hit `RecursionError`. | Use an iterative version or `functools.lru_cache` with a loop, or increase recursion limit with `sys.setrecursionlimit`, though the iterative approach is usually safer. |\n| **Performance** | Recursion adds overhead for each call. | Iterative version: <br>`def factorial(n):\\n    if n < 0:\\n        raise ValueError(...)\\n    result = 1\\n    for i in range(2, n+1):\\n        result *= i\\n    return result` |\n**A compact, robust version**\n```python\ndef factorial(n: int) -> int:\n\"\"\"Return n! for a non‑negative integer n.\"\"\"\nif not isinstance(n, int):\nraise TypeError(\"n must be an integer\")\nif n < 0:\nraise ValueError(\"n must be non‑negative\")\nresult = 1\nfor i in range(2, n + 1):\nresult *= i\nreturn result\n```\nThis version handles invalid inputs gracefully and works for arbitrarily large `n` (limited only by memory, not recursion depth). If you prefer to keep the recursive style for educational purposes, just add the negative‑number check.",
+    "topic": "Factorial Return Return",
+    "timestamp": "2026-08-15T12:10:59.109222"
+  },
+  {
+    "role": "user",
+    "content": "def factorial(n):\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)\n\n# Test it\nresult = factorial(5)\nprint(f\"Factorial of 5 is {result}\")\n\nDoes this code have any errors?",
+    "topic": "Factorial Return Return",
+    "timestamp": "2026-08-15T12:10:59.122032"
+  },
+  {
+    "role": "assistant",
+    "content": "Your function is syntactically correct and will produce the expected result for non‑negative integers:\n```python\ndef factorial(n):\nif n == 0:\nreturn 1\nreturn n * factorial(n - 1)\n# Test it\nresult = factorial(5)\nprint(f\"Factorial of 5 is {result}\")   # → Factorial of 5 is 120\n```\n**What works well**\n* The base case (`n == 0`) correctly returns 1, which stops the recursion.\n* The recursive step (`n * factorial(n‑1)`) correctly builds the factorial product.\n* The test prints the right value (`120`).\n**Potential improvements / edge‑case handling**\n| Issue | Why it matters | Simple fix |\n|-------|----------------|------------|\n| **Negative inputs** | `factorial(-1)` will recurse forever until Python hits its recursion limit (`RecursionError`). | Add a guard: <br>`if n < 0: raise ValueError(\"n must be non‑negative\")` |\n| **Non‑integer inputs** | Passing a float or other type will raise a `TypeError` when the multiplication is attempted. | Validate the type: <br>`if not isinstance(n, int): raise TypeError(\"n must be an integer\")` |\n| **Large `n`** | Python’s recursion depth default is ~1000. `factorial(2000)` will hit `RecursionError`. | Use an iterative version or `functools.lru_cache` with a loop, or increase recursion limit with `sys.setrecursionlimit`, though the iterative approach is usually safer. |\n| **Performance** | Recursion adds overhead for each call. | Iterative version: <br>`def factorial(n):\\n    if n < 0:\\n        raise ValueError(...)\\n    result = 1\\n    for i in range(2, n+1):\\n        result *= i\\n    return result` |\n**A compact, robust version**\n```python\ndef factorial(n: int) -> int:\n\"\"\"Return n! for a non‑negative integer n.\"\"\"\nif not isinstance(n, int):\nraise TypeError(\"n must be an integer\")\nif n < 0:\nraise ValueError(\"n must be non‑negative\")\nresult = 1\nfor i in range(2, n + 1):\nresult *= i\nreturn result\n```\nThis version handles invalid inputs gracefully and works for arbitrarily large `n` (limited only by memory, not recursion depth). If you prefer to keep the recursive style for educational purposes, just add the negative‑number check.",
+    "topic": "Factorial Return Return",
+    "timestamp": "2026-08-15T12:10:59.122032"
+  },
+  {
+    "role": "user",
+    "content": "Please fix any errors in the factorial code above",
+    "topic": "Please Errors Factorial",
+    "timestamp": "2026-08-15T12:11:00.674961"
+  },
+  {
+    "role": "assistant",
+    "content": "Here’s a clean, ready‑to‑run version that fixes the indentation issue and adds a few safety checks (negative numbers, non‑integers). I kept the recursive style because it’s simple to read, but you can switch to the iterative version if you prefer.\n```python\ndef factorial(n: int) -> int:\n\"\"\"\nCompute n! (factorial) for a non‑negative integer n.\nRaises\n------\nTypeError  : if n is not an integer\nValueError : if n is negative\n\"\"\"\n# ---- input validation -------------------------------------------------\nif not isinstance(n, int):\nraise TypeError(\"factorial() argument must be an integer\")\nif n < 0:\nraise ValueError(\"factorial() not defined for negative integers\")\n# ---- base case ---------------------------------------------------------\nif n == 0:\nreturn 1\n# ---- recursive step ----------------------------------------------------\nreturn n * factorial(n - 1)\n# ----- simple test ---------------------------------------------------------\nif __name__ == \"__main__\":\nresult = factorial(5)\nprint(f\"Factorial of 5 is {result}\")   # → Factorial of 5 is 120\n```\n### Why the changes?\n| Change | Reason |\n|--------|--------|\n| Proper indentation (4 spaces) | Python relies on indentation to define blocks. The original snippet had no indentation, which would raise an `IndentationError`. |\n| Type hint `-> int` and docstring | Improves readability and helps tools like VS Code’s IntelliSense (your favorite editor) give you better suggestions. |\n| Input validation (`isinstance`, `n < 0`) | Prevents infinite recursion for negative numbers and gives a clear error for non‑integers. |\n| `if __name__ == \"__main__\":` guard | Allows the module to be imported elsewhere without automatically running the test code. |\nIf you ever need to compute factorials for very large `n` (e.g., > 1000), consider using an **iterative** implementation to avoid hitting Python’s recursion limit. Let me know if you’d like that version or any other tweaks!",
+    "topic": "Please Errors Factorial",
+    "timestamp": "2026-08-15T12:11:00.674961"
+  },
+  {
+    "role": "user",
+    "content": "Please fix any errors in the factorial code above",
+    "topic": "Please Errors Factorial",
+    "timestamp": "2026-08-15T12:11:00.683918"
+  },
+  {
+    "role": "assistant",
+    "content": "Here’s a clean, ready‑to‑run version that fixes the indentation issue and adds a few safety checks (negative numbers, non‑integers). I kept the recursive style because it’s simple to read, but you can switch to the iterative version if you prefer.\n```python\ndef factorial(n: int) -> int:\n\"\"\"\nCompute n! (factorial) for a non‑negative integer n.\nRaises\n------\nTypeError  : if n is not an integer\nValueError : if n is negative\n\"\"\"\n# ---- input validation -------------------------------------------------\nif not isinstance(n, int):\nraise TypeError(\"factorial() argument must be an integer\")\nif n < 0:\nraise ValueError(\"factorial() not defined for negative integers\")\n# ---- base case ---------------------------------------------------------\nif n == 0:\nreturn 1\n# ---- recursive step ----------------------------------------------------\nreturn n * factorial(n - 1)\n# ----- simple test ---------------------------------------------------------\nif __name__ == \"__main__\":\nresult = factorial(5)\nprint(f\"Factorial of 5 is {result}\")   # → Factorial of 5 is 120\n```\n### Why the changes?\n| Change | Reason |\n|--------|--------|\n| Proper indentation (4 spaces) | Python relies on indentation to define blocks. The original snippet had no indentation, which would raise an `IndentationError`. |\n| Type hint `-> int` and docstring | Improves readability and helps tools like VS Code’s IntelliSense (your favorite editor) give you better suggestions. |\n| Input validation (`isinstance`, `n < 0`) | Prevents infinite recursion for negative numbers and gives a clear error for non‑integers. |\n| `if __name__ == \"__main__\":` guard | Allows the module to be imported elsewhere without automatically running the test code. |\nIf you ever need to compute factorials for very large `n` (e.g., > 1000), consider using an **iterative** implementation to avoid hitting Python’s recursion limit. Let me know if you’d like that version or any other tweaks!",
+    "topic": "Please Errors Factorial",
+    "timestamp": "2026-08-15T12:11:00.683918"
+  },
+  {
+    "role": "user",
+    "content": "Please write a Python function to calculate the sum of numbers in a list.\nInclude a test case. Add a common bug that beginners make.\n\nGenerate the complete code including a main block.",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:05.110894"
+  },
+  {
+    "role": "assistant",
+    "content": "Below is a **complete, runnable script** that defines a function to sum the values in a list, includes a simple test case, and a `main` block.\nI’ve deliberately introduced a **common beginner‑level bug** (using the wrong variable inside the loop) so you can see how it manifests and fix it later.\n```python\n# sum_list.py\ndef sum_list(numbers):\n\"\"\"\nReturn the sum of all numeric values in *numbers*.\nNOTE: This implementation contains a typical beginner mistake\n(see the comment inside the loop).  It will raise a TypeError\nwhen run – that’s intentional for the exercise.\n\"\"\"\ntotal = 0\nfor num in numbers:\n# ---------------------------------------------------------\n# BUG: we add the whole list (`numbers`) instead of the\n# current element (`num`).  The correct line would be:\n#     total += num\n# ---------------------------------------------------------\ntotal += numbers          # <-- intentional bug\nreturn total\ndef main():\n# ------------------- test case -------------------\ndata = [1, 2, 3, 4, 5]\nprint(f\"Summing {data} ...\")\ntry:\nresult = sum_list(data",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:05.110894"
+  },
+  {
+    "role": "user",
+    "content": "Please write a Python function to calculate the sum of numbers in a list.\nInclude a test case. Add a common bug that beginners make.\n\nGenerate the complete code including a main block.",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:05.123207"
+  },
+  {
+    "role": "assistant",
+    "content": "Below is a **complete, runnable script** that defines a function to sum the values in a list, includes a simple test case, and a `main` block.\nI’ve deliberately introduced a **common beginner‑level bug** (using the wrong variable inside the loop) so you can see how it manifests and fix it later.\n```python\n# sum_list.py\ndef sum_list(numbers):\n\"\"\"\nReturn the sum of all numeric values in *numbers*.\nNOTE: This implementation contains a typical beginner mistake\n(see the comment inside the loop).  It will raise a TypeError\nwhen run – that’s intentional for the exercise.\n\"\"\"\ntotal = 0\nfor num in numbers:\n# ---------------------------------------------------------\n# BUG: we add the whole list (`numbers`) instead of the\n# current element (`num`).  The correct line would be:\n#     total += num\n# ---------------------------------------------------------\ntotal += numbers          # <-- intentional bug\nreturn total\ndef main():\n# ------------------- test case -------------------\ndata = [1, 2, 3, 4, 5]\nprint(f\"Summing {data} ...\")\ntry:\nresult = sum_list(data",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:05.123207"
+  },
+  {
+    "role": "user",
+    "content": "I ran the code above and got an error. Please:\n1. Identify the bug\n2. Fix it\n3. Generate the corrected code with comments explaining the fix\n\nOnly provide the fixed code, no explanations.",
+    "topic": "Code Above Error",
+    "timestamp": "2026-08-15T12:11:31.174183"
+  },
+  {
+    "role": "assistant",
+    "content": "```python\n# sum_list_fixed.py\ndef sum_list(numbers):\n\"\"\"\nReturn the sum of all numeric values in *numbers*.\n\"\"\"\ntotal = 0\nfor num in numbers:\n# Fixed bug: add the current element (num) instead of the whole list (numbers)\ntotal += num\nreturn total\ndef main():\n# ------------------- test case -------------------\ndata = [1, 2, 3, 4, 5]\nprint(f\"Summing {data} ...\")\nresult = sum_list(data)\nprint(f\"Result: {result}\")  # Expected output: 15\nif __name__ == \"__main__\":\nmain()\n```",
+    "topic": "Code Above Error",
+    "timestamp": "2026-08-15T12:11:31.174183"
+  },
+  {
+    "role": "user",
+    "content": "I ran the code above and got an error. Please:\n1. Identify the bug\n2. Fix it\n3. Generate the corrected code with comments explaining the fix\n\nOnly provide the fixed code, no explanations.",
+    "topic": "Code Above Error",
+    "timestamp": "2026-08-15T12:11:31.186226"
+  },
+  {
+    "role": "assistant",
+    "content": "```python\n# sum_list_fixed.py\ndef sum_list(numbers):\n\"\"\"\nReturn the sum of all numeric values in *numbers*.\n\"\"\"\ntotal = 0\nfor num in numbers:\n# Fixed bug: add the current element (num) instead of the whole list (numbers)\ntotal += num\nreturn total\ndef main():\n# ------------------- test case -------------------\ndata = [1, 2, 3, 4, 5]\nprint(f\"Summing {data} ...\")\nresult = sum_list(data)\nprint(f\"Result: {result}\")  # Expected output: 15\nif __name__ == \"__main__\":\nmain()\n```",
+    "topic": "Code Above Error",
+    "timestamp": "2026-08-15T12:11:31.186226"
+  },
+  {
+    "role": "user",
+    "content": "Please write a Python function with a common IndentationError.\nMake sure the function body is indented properly but the docstring is NOT indented.\n\nGenerate complete runnable code including a test.",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:40.767716"
+  },
+  {
+    "role": "assistant",
+    "content": "```python\ndef add_numbers(a, b):\n\"\"\"Return the sum of a and b.\"\"\"\n# The function body is correctly indented,\n# but the docstring is not indented, which triggers an IndentationError.\nreturn a + b\ndef main():\n# Simple test case\nx, y = 3, 7\nprint(f\"Adding {x} and {y} gives:\", add_numbers(x, y))\nif __name__ == \"__main__\":\nmain()\n```",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:40.767716"
+  },
+  {
+    "role": "user",
+    "content": "Please write a Python function with a common IndentationError.\nMake sure the function body is indented properly but the docstring is NOT indented.\n\nGenerate complete runnable code including a test.",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:40.774572"
+  },
+  {
+    "role": "assistant",
+    "content": "```python\ndef add_numbers(a, b):\n\"\"\"Return the sum of a and b.\"\"\"\n# The function body is correctly indented,\n# but the docstring is not indented, which triggers an IndentationError.\nreturn a + b\ndef main():\n# Simple test case\nx, y = 3, 7\nprint(f\"Adding {x} and {y} gives:\", add_numbers(x, y))\nif __name__ == \"__main__\":\nmain()\n```",
+    "topic": "Please Write Python",
+    "timestamp": "2026-08-15T12:11:40.774572"
   },
   {
     "role": "user",
     "content": "The code above has an IndentationError. Please:\n1. Fix the indentation issue\n2. Generate ONLY the fixed Python code (no markdown markers, no explanations)\n\nThe docstring MUST be indented inside the function.",
     "topic": "Code Above Indentationerror",
-    "timestamp": "2026-08-14T20:57:01.559975"
+    "timestamp": "2026-08-15T12:11:57.726550"
   },
   {
     "role": "assistant",
-    "content": "def greet(name):\n\"\"\"Return a greeting string.\"\"\"\nreturn f\"Hello, {name}!\"\nif __name__ == \"__main__\":\nprint(greet(\"World\"))",
+    "content": "def add_numbers(a, b):\n\"\"\"Return the sum of a and b.\"\"\"\n# The function body is correctly indented,\n# and the docstring is now indented as well.\nreturn a + b\ndef main():\n# Simple test case\nx, y = 3, 7\nprint(f\"Adding {x} and {y} gives:\", add_numbers(x, y))\nif __name__ == \"__main__\":\nmain()",
     "topic": "Code Above Indentationerror",
-    "timestamp": "2026-08-14T20:57:01.559975"
+    "timestamp": "2026-08-15T12:11:57.726550"
+  },
+  {
+    "role": "user",
+    "content": "The code above has an IndentationError. Please:\n1. Fix the indentation issue\n2. Generate ONLY the fixed Python code (no markdown markers, no explanations)\n\nThe docstring MUST be indented inside the function.",
+    "topic": "Code Above Indentationerror",
+    "timestamp": "2026-08-15T12:11:57.739909"
+  },
+  {
+    "role": "assistant",
+    "content": "def add_numbers(a, b):\n\"\"\"Return the sum of a and b.\"\"\"\n# The function body is correctly indented,\n# and the docstring is now indented as well.\nreturn a + b\ndef main():\n# Simple test case\nx, y = 3, 7\nprint(f\"Adding {x} and {y} gives:\", add_numbers(x, y))\nif __name__ == \"__main__\":\nmain()",
+    "topic": "Code Above Indentationerror",
+    "timestamp": "2026-08-15T12:11:57.739909"
   },
   {
     "role": "user",
     "content": "Write a Python function for Fibonacci",
     "topic": "Write Python Function",
-    "timestamp": "2026-08-14T20:57:10.706283"
+    "timestamp": "2026-08-15T12:12:10.226717"
   },
   {
     "role": "assistant",
-    "content": "def fibonacci(n):\n\"\"\"\nReturn the nth Fibonacci number (0-indexed).\nRaises ValueError for negative inputs.\n\"\"\"\nif n < 0:\nraise ValueError(\"n must be non-negative\")\na, b = 0, 1\nfor _ in range(n):\na, b = b, a + b\nreturn a\nif __name__ == \"__main__\":\n# Test cases\nfor i in range(10):\nprint(f\"Fibonacci({i}) = {fibonacci(i)}\")",
+    "content": "def fibonacci(n):\n\"\"\"\nReturn the nth Fibonacci number using an iterative approach.\nfibonacci(0) -> 0\nfibonacci(1) -> 1\n\"\"\"\nif n < 0:\nraise ValueError(\"n must be a non‑negative integer\")\na, b = 0, 1\nfor _ in range(n):\na, b = b, a + b\nreturn a\ndef main():\n# Test cases\nfor i in range(10):\nprint(f\"Fibonacci({i}) = {fibonacci(i)}\")\nif __name__ == \"__main__\":\nmain()",
     "topic": "Write Python Function",
-    "timestamp": "2026-08-14T20:57:10.706283"
+    "timestamp": "2026-08-15T12:12:10.226717"
   },
   {
     "role": "user",
     "content": "Write a Python function for Fibonacci",
     "topic": "Write Python Function",
-    "timestamp": "2026-08-14T20:57:10.760238"
+    "timestamp": "2026-08-15T12:12:10.239985"
   },
   {
     "role": "assistant",
-    "content": "def fibonacci(n):\n\"\"\"\nReturn the nth Fibonacci number (0-indexed).\nRaises ValueError for negative inputs.\n\"\"\"\nif n < 0:\nraise ValueError(\"n must be non-negative\")\na, b = 0, 1\nfor _ in range(n):\na, b = b, a + b\nreturn a\nif __name__ == \"__main__\":\n# Test cases\nfor i in range(10):\nprint(f\"Fibonacci({i}) = {fibonacci(i)}\")",
+    "content": "def fibonacci(n):\n\"\"\"\nReturn the nth Fibonacci number using an iterative approach.\nfibonacci(0) -> 0\nfibonacci(1) -> 1\n\"\"\"\nif n < 0:\nraise ValueError(\"n must be a non‑negative integer\")\na, b = 0, 1\nfor _ in range(n):\na, b = b, a + b\nreturn a\ndef main():\n# Test cases\nfor i in range(10):\nprint(f\"Fibonacci({i}) = {fibonacci(i)}\")\nif __name__ == \"__main__\":\nmain()",
     "topic": "Write Python Function",
-    "timestamp": "2026-08-14T20:57:10.760238"
+    "timestamp": "2026-08-15T12:12:10.239985"
   },
   {
     "role": "user",
     "content": "Let's discuss networking.",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:23.720510"
+    "timestamp": "2026-08-15T12:12:17.411572"
   },
   {
     "role": "assistant",
     "content": "Sure! What would you like to know?",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:23.720510"
+    "timestamp": "2026-08-15T12:12:17.411572"
   },
   {
     "role": "user",
     "content": "What protocol elects DR and BDR?",
     "topic": "Networking",
-    "timestamp": "2026-08-14T20:57:23.803022"
+    "timestamp": "2026-08-15T12:12:17.419769"
   },
   {
     "role": "assistant",
     "content": "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
     "topic": "Networking",
-    "timestamp": "2026-08-14T20:57:23.803022"
+    "timestamp": "2026-08-15T12:12:17.419769"
   },
   {
     "role": "user",
     "content": "Switch topic.",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:23.920988"
+    "timestamp": "2026-08-15T12:12:17.435572"
   },
   {
     "role": "assistant",
     "content": "What's next?",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:23.920988"
+    "timestamp": "2026-08-15T12:12:17.435572"
   },
   {
     "role": "user",
     "content": "Let's discuss Python.",
     "topic": "Python",
-    "timestamp": "2026-08-14T20:57:24.003554"
+    "timestamp": "2026-08-15T12:12:17.451352"
   },
   {
     "role": "assistant",
     "content": "Great choice! Python is versatile.",
     "topic": "Python",
-    "timestamp": "2026-08-14T20:57:24.003554"
+    "timestamp": "2026-08-15T12:12:17.451352"
   },
   {
     "role": "user",
     "content": "Let's discuss networking.",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:24.465726"
+    "timestamp": "2026-08-15T12:12:17.547235"
   },
   {
     "role": "assistant",
     "content": "Sure!",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:24.465726"
+    "timestamp": "2026-08-15T12:12:17.547235"
   },
   {
     "role": "user",
     "content": "Question 1",
     "topic": "Networking",
-    "timestamp": "2026-08-14T20:57:24.536077"
+    "timestamp": "2026-08-15T12:12:17.559474"
   },
   {
     "role": "assistant",
     "content": "Answer 1",
     "topic": "Networking",
-    "timestamp": "2026-08-14T20:57:24.536077"
+    "timestamp": "2026-08-15T12:12:17.559474"
   },
   {
     "role": "user",
     "content": "Switch topic.",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:24.594071"
+    "timestamp": "2026-08-15T12:12:17.569736"
   },
   {
     "role": "assistant",
     "content": "What's next?",
     "topic": "General",
-    "timestamp": "2026-08-14T20:57:24.594071"
+    "timestamp": "2026-08-15T12:12:17.569736"
   },
   {
     "role": "user",
     "content": "Let's discuss Python.",
     "topic": "Python",
-    "timestamp": "2026-08-14T20:57:24.670178"
+    "timestamp": "2026-08-15T12:12:17.579830"
   },
   {
     "role": "assistant",
     "content": "Great!",
     "topic": "Python",
-    "timestamp": "2026-08-14T20:57:24.670178"
+    "timestamp": "2026-08-15T12:12:17.579830"
   },
   {
     "role": "user",
-    "content": "hi",
+    "content": "That's for iPhone 17",
     "topic": "desktop",
-    "timestamp": "2026-08-14T23:19:16.507896"
+    "timestamp": "2026-08-15T12:33:15.395043"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "content": "Result success=False. No backend available for capability 'unknown_action'",
     "topic": "desktop",
-    "timestamp": "2026-08-14T23:19:16.507896"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:19:18.451852"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! 👋\nHow can I help you today? (Maybe over a slice of pizza while coding in VS Code?)",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:19:18.451852"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:19:18.462989"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! 👋\nHow can I help you today? (Maybe over a slice of pizza while coding in VS Code?)",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:19:18.462989"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T23:20:28.819980"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T23:20:28.819980"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:20:29.987373"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:20:29.987373"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:20:29.999786"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:20:29.999786"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T23:24:47.209029"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T23:24:47.209029"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:24:48.338776"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:24:48.338776"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:24:48.348499"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-14T23:24:48.348499"
-  },
-  {
-    "role": "user",
-    "content": "speak hello",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T23:24:54.394460"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-14T23:24:54.394460"
-  },
-  {
-    "role": "user",
-    "content": "speak hello",
-    "topic": "Speak Hello",
-    "timestamp": "2026-08-14T23:24:55.086785"
-  },
-  {
-    "role": "assistant",
-    "content": "Hello!",
-    "topic": "Speak Hello",
-    "timestamp": "2026-08-14T23:24:55.086785"
-  },
-  {
-    "role": "user",
-    "content": "speak hello",
-    "topic": "Speak Hello",
-    "timestamp": "2026-08-14T23:24:55.098970"
-  },
-  {
-    "role": "assistant",
-    "content": "Hello!",
-    "topic": "Speak Hello",
-    "timestamp": "2026-08-14T23:24:55.098970"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T00:06:38.591797"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T00:06:38.591797"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:06:40.170037"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:06:40.170037"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:06:40.182237"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:06:40.182237"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T00:17:32.605954"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T00:17:32.605954"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:17:33.724045"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:17:33.724045"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:17:33.728115"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi Sreekanta! How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-15T00:17:33.728115"
+    "timestamp": "2026-08-15T12:33:15.395043"
   }
 ]

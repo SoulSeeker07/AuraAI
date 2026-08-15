@@ -11,10 +11,16 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ...planning.action_plan import ActionPlan
 
-from desktop.native.desktop_execution_engine import (
-    DesktopExecutionEngine,
-    get_desktop_execution_engine,
-)
+try:
+    from desktop.native.desktop_execution_engine import (
+        DesktopExecutionEngine,
+        get_desktop_execution_engine,
+    )
+except (ImportError, ModuleNotFoundError):
+    from src.desktop.native.desktop_execution_engine import (
+        DesktopExecutionEngine,
+        get_desktop_execution_engine,
+    )
 
 try:
     from ...planning.execution_result import ExecutionResult

@@ -6,6 +6,7 @@ Main orchestrator for research operations.
 
 import json
 import logging
+import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -249,6 +250,7 @@ class ResearchEngine:
         """
         query = query_obj.query_text
         mode = query_obj.mode or self.config.default_mode
+        start_time = time.time()
 
         if metrics_collector:
             metrics_collector.start_timer("search")
@@ -483,6 +485,7 @@ class ResearchEngine:
         logger.info(f"{'='*70}\n")
 
         # Add Research Trace block (final comprehensive summary)
+        duration = time.time() - start_time
         self._log_research_trace(
             query, iteration, should_continue, reasoning_result, final_context, duration
         )

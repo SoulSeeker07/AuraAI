@@ -4,7 +4,7 @@ Verifies pure FSM transitions without hardware dependencies.
 """
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 import sys
 from pathlib import Path
 
@@ -21,8 +21,13 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.mock_voice_manager = MagicMock()
         self.mock_voice_manager.start.return_value = True
         self.mock_voice_manager.activate.return_value = True
+        self.mock_voice_manager.tts_manager = MagicMock()
+
+        self.mock_aura_core = MagicMock()
+        self.mock_aura_core.process_request = AsyncMock(return_value="Mock response")
 
         self.loop = ContinuousVoiceLoop(voice_manager=self.mock_voice_manager)
+        self.loop._aura_core = self.mock_aura_core
 
     def test_initial_state(self):
         self.assertEqual(self.loop.state, VoiceState.IDLE)
@@ -167,6 +172,71 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
             loop.stop()
             self.assertEqual(loop.state, VoiceState.IDLE)
             self.assertFalse(loop._running)
+
+    def test_spoken_pause_listening_phrase(self):
+        """Verify saying 'go to sleep' speaks standby message and returns to IDLE while keeping loop running."""
+        self.loop.start()
+        self.assertTrue(self.loop._running)
+
+        # Wake -> Speak 'go to sleep'
+        self.loop.trigger_wake_detected("Aura")
+        self.loop.trigger_transcription_ready("Go to sleep.")
+
+        # Loop should remain running in IDLE (wake-word listening active)
+        self.assertTrue(self.loop._running)
+        self.assertEqual(self.loop.state, VoiceState.IDLE)
+        self.mock_voice_manager.speak.assert_called_with("Going on standby. Say Aura when you need me.")
+
+    def test_spoken_stop_listening_phrase(self):
+        """Verify saying 'Stop listening' gracefully speaks farewell, halts loop, and calls on_stop."""
+        self.loop.start()
+        self.assertTrue(self.loop._running)
+
+        mock_on_stop = MagicMock()
+        self.loop.on_stop = mock_on_stop
+
+        # Wake -> Speak 'Stop listening'
+        self.loop.trigger_wake_detected("Aura")
+        self.loop.trigger_transcription_ready("Stop listening.")
+
+        # Loop should now be stopped
+        self.assertFalse(self.loop._running)
+        self.assertEqual(self.loop.state, VoiceState.IDLE)
+        mock_on_stop.assert_called_once()
+        self.mock_voice_manager.speak.assert_called_with("Stopping voice listening. Type start listening to resume.")
+
+    def test_spoken_commands_no_false_positive_collisions(self):
+        """Verify multi-word commands like 'cancel my download' or 'stop the timer' pass through to execution."""
+        self.loop.start()
+        self.assertTrue(self.loop._running)
+
+        # 1. "Cancel my download" should NOT trigger standby — should process transcript normally
+        self.loop.trigger_wake_detected("Aura")
+        self.loop.trigger_transcription_ready("Cancel my download.")
+        # Reaches SPEAKING because _process_transcript executes normally
+        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
+        self.assertTrue(self.loop._running)
+        self.mock_aura_core.process_request.assert_called_with("Cancel my download.")
+
+        # Complete turn back to IDLE
+        self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.IDLE)
+
+        # 2. "Pause the music" should NOT trigger standby
+        self.loop.trigger_wake_detected("Aura")
+        self.loop.trigger_transcription_ready("Pause the music.")
+        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
+        self.assertTrue(self.loop._running)
+
+        # Complete turn back to IDLE
+        self.loop.trigger_tts_completed()
+        self.assertEqual(self.loop.state, VoiceState.IDLE)
+
+        # 3. "Stop the timer" should NOT trigger hard stop
+        self.loop.trigger_wake_detected("Aura")
+        self.loop.trigger_transcription_ready("Stop the timer.")
+        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
+        self.assertTrue(self.loop._running)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

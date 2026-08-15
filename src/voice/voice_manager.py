@@ -7,6 +7,7 @@ Coordinates all voice components: wake word, STT, VAD, TTS, and interruption han
 
 import logging
 import threading
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -58,7 +59,7 @@ class VoiceManager:
         # State tracking
         self.state = ConversationState.IDLE
         self.session = None
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         # Components
         self.audio_manager = AudioManager()
@@ -66,6 +67,7 @@ class VoiceManager:
             mode=VADMode(self.settings["vad_mode"]),
             silence_threshold=self.settings["silence_threshold"],
             energy_threshold=self.settings["energy_threshold"],
+            silence_duration=self.settings.get("silence_duration", 0.8),
         )
         self.wake_word = WakeWordManager(
             provider=WakeWordProvider(self.settings["wake_word_provider"]),
@@ -99,6 +101,10 @@ class VoiceManager:
         # Setup callbacks
         self._setup_callbacks()
 
+        # Turn state tracking
+        self._speech_started_in_turn = False
+        self._active_listening_start_time = 0.0
+
         logger.info("Voice Manager initialized")
 
     def _default_settings(self, settings: dict[str, Any] | None) -> dict[str, Any]:
@@ -109,7 +115,8 @@ class VoiceManager:
         defaults = {
             "vad_mode": VADMode.BOTH.value,
             "silence_threshold": 1.0,
-            "energy_threshold": 0.01,
+            "silence_duration": 0.8,
+            "energy_threshold": 0.005,
             "wake_word_provider": WakeWordProvider.AURA.value,
             "wake_word_sensitivity": 0.5,
             "wake_word_phrases": ["aura", "hey aura"],
@@ -117,7 +124,7 @@ class VoiceManager:
                 "provider": STTProvider.FASTER_WHISPER.value,
                 "language": "en",
                 "sample_rate": 16000,
-                "model_size": "tiny",
+                "model_size": "base",
                 "verbose": False,
                 "chunk_size": 20,
                 "processing_delay_ms": 50,
@@ -149,6 +156,7 @@ class VoiceManager:
 
         # Wake word callbacks
         self.wake_word.on_wake_word_detected = self._on_wake_word_detected
+        self.wake_word.on_error = self._on_wake_word_error
 
         # STT callbacks
         if getattr(self.stt_manager, "engine", None):
@@ -231,9 +239,15 @@ class VoiceManager:
             if self.state == ConversationState.WAKE_LISTENING:
                 return True
 
-            if self.state != ConversationState.IDLE:
-                logger.warning(f"Voice system not in IDLE state, current: {self.state}")
+            # If actively speaking or processing, do not interrupt in-flight turn
+            if self.state in (ConversationState.SPEAKING, ConversationState.THINKING, ConversationState.EXECUTING):
+                logger.warning(f"Cannot activate wake-word while active in state: {self.state.value}")
                 return False
+
+            # Safe recovery from completed, paused, interrupted, error, or dormant states
+            if self.state != ConversationState.IDLE:
+                logger.info(f"Voice system recovering to IDLE from safe state: {self.state.value}")
+                self._update_state(ConversationState.IDLE)
 
             try:
                 if not self.wake_word.activate():
@@ -298,6 +312,14 @@ class VoiceManager:
                 if self.state == ConversationState.ACTIVE_LISTENING:
                     self.stt_manager.process_audio(audio_data)
 
+                    # Timeout check: if user didn't start speaking for 8 seconds after wake word
+                    if (
+                        not self._speech_started_in_turn
+                        and (time.time() - self._active_listening_start_time > 8.0)
+                    ):
+                        logger.info("[VoiceManager] Active listening timed out waiting for speech")
+                        self._finalize_stt()
+
                 # Check for user interruption
                 if self.barge_in_handler.check_for_interrupt():
                     logger.info("User interrupt detected")
@@ -321,6 +343,12 @@ class VoiceManager:
         # Start active listening
         self._start_active_listening()
 
+    def _on_wake_word_error(self, error: str) -> None:
+        """Handle wake word engine error."""
+        logger.error(f"[VoiceManager] Wake word error: {error}")
+        if self.on_error:
+            self.on_error(error)
+
     def _start_active_listening(self) -> None:
         """Start active listening for commands."""
         try:
@@ -332,6 +360,12 @@ class VoiceManager:
             if not self._ensure_input_recording():
                 logger.error("Failed to start audio recording")
                 return
+
+            # Reset VAD and STT buffer so wake word audio/silence isn't treated as the command
+            self.vad.reset()
+            self.stt_manager.reset()
+            self._speech_started_in_turn = False
+            self._active_listening_start_time = time.time()
 
             # Initialize session
             self.session = ConversationSession()
@@ -350,13 +384,21 @@ class VoiceManager:
     def _on_speech_start(self) -> None:
         """Called when speech starts (from VAD)."""
         logger.debug("Speech start detected")
+        if self.state == ConversationState.ACTIVE_LISTENING:
+            self._speech_started_in_turn = True
 
     def _on_speech_end(self) -> None:
         """Called when speech ends (from VAD)."""
         logger.debug("Speech end detected")
 
         if self.state == ConversationState.ACTIVE_LISTENING:
-            self._finalize_stt()
+            # Only finalize if speech actually started during this active listening turn.
+            # This prevents pre-speech silence (e.g. the pause right after saying the wake word)
+            # from cutting off listening before the user has even started their command.
+            if self._speech_started_in_turn:
+                self._finalize_stt()
+            else:
+                logger.debug("Ignoring silence before command speech has started")
 
     def _finalize_stt(self) -> None:
         """Finalize STT and transition to thinking state."""

@@ -237,16 +237,43 @@ class FasterWhisperSTTEngine(STTEngine):
         try:
             from faster_whisper import WhisperModel
 
-            compute_type = "int8"   # safe for all CPU configs
+            # Try CUDA first — dramatically faster (0.3–0.8s vs 3–5s per utterance).
+            # Fall back to CPU int8 if CUDA / CTranslate2 GPU support is absent.
+            device, compute_type = "cpu", "int8"
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    device, compute_type = "cuda", "float16"
+                    logger.info(
+                        f"CUDA detected ({torch.cuda.get_device_name(0)}) — "
+                        "using GPU for Whisper STT"
+                    )
+            except Exception as _cuda_err:
+                logger.debug(f"CUDA check failed, staying on CPU: {_cuda_err}")
+
             logger.info(
                 f"Loading faster-whisper model: {self.settings.model_size} "
-                f"(device=cpu, compute_type={compute_type})"
+                f"(device={device}, compute_type={compute_type})"
             )
-            self.model = WhisperModel(
-                self.settings.model_size,
-                device="cpu",
-                compute_type=compute_type,
-            )
+            try:
+                self.model = WhisperModel(
+                    self.settings.model_size,
+                    device=device,
+                    compute_type=compute_type,
+                )
+            except Exception as _gpu_err:
+                if device == "cuda":
+                    logger.warning(
+                        f"CUDA Whisper load failed ({_gpu_err}), falling back to CPU int8"
+                    )
+                    self.model = WhisperModel(
+                        self.settings.model_size,
+                        device="cpu",
+                        compute_type="int8",
+                    )
+                else:
+                    raise
+
             self.is_active = True
             logger.info("faster-whisper STT initialized")
             return True

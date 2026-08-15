@@ -34,9 +34,12 @@ class TestContinuousVoiceLoopLevel2(unittest.TestCase):
         self.mock_voice_manager.start.return_value = True
         self.mock_voice_manager.activate.return_value = True
 
-        # Inject mock voice manager into the loop
+        # Inject mock voice manager and mock aura core into the loop
         self.loop = self.os_runtime.voice_loop
         self.loop.voice_manager = self.mock_voice_manager
+        self.mock_aura_core = MagicMock()
+        self.mock_aura_core.process_request.return_value = "Mock response"
+        self.loop._aura_core = self.mock_aura_core
 
         # Clear history for clean test
         self.loop.history = []
@@ -62,6 +65,11 @@ class TestContinuousVoiceLoopLevel2(unittest.TestCase):
             data={}
         )
         mock_coordinate.return_value = mock_result
+
+        async def mock_process(t):
+            await self.os_runtime.execute_goal(t, input_type="voice")
+            return "Calculator opened"
+        self.mock_aura_core.process_request.side_effect = mock_process
 
         # Start the FSM
         self.loop.start()

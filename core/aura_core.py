@@ -564,9 +564,22 @@ class AuraCore:
                     )
                     return await self.get_ai_response(synth_goal)
                 
-                return "\n".join(result.observations) if result.observations else str(result.data)
+                filtered_obs = []
+                for obs in (result.observations or []):
+                    if "pre-execution decision:" in obs.lower():
+                        continue
+                    if "no backend available for capability" in obs.lower():
+                        filtered_obs.append("I don't know how to perform that specific action on your desktop yet.")
+                    else:
+                        filtered_obs.append(obs)
+                if filtered_obs:
+                    return "\n".join(filtered_obs)
+                elif result.success:
+                    return "Action completed successfully."
+                else:
+                    return "I was unable to complete that action."
             else:
-                return f"Execution ({result.planner}): {'Success' if result.success else 'Failed'}"
+                return f"Action completed successfully." if result.success else "I was unable to complete that action."
         except Exception as e:
             logger.error(
                 f"MasterOrchestrator pipeline execution failed: {e}", exc_info=True
@@ -814,7 +827,12 @@ class AuraCore:
 
             # Create ConversationEngine
             from ai.provider_manager import ProviderManager
-            from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+            from core.orchestration.personal_os_runtime import PersonalOSRuntime
+            try:
+                from voice.continuous_loop import ContinuousVoiceLoop
+                ContinuousVoiceLoop.set_global_aura_core(self)
+            except Exception:
+                pass
 
             # Build provider manager
             from src.ai.groq_provider import (  # adjust path if it lives elsewhere
@@ -823,6 +841,8 @@ class AuraCore:
             from src.brain.conversation_engine import ConversationEngine
 
             personal_os_runtime = PersonalOSRuntime.get_instance()
+            if hasattr(personal_os_runtime, "voice_loop") and personal_os_runtime.voice_loop:
+                personal_os_runtime.voice_loop._aura_core = self
             memory_manager = personal_os_runtime.memory_manager
 
             provider_manager = personal_os_runtime.provider_manager
@@ -1762,7 +1782,7 @@ MasterOrchestrator
         
         # M2: Trigger explicit session close for short-term memory consolidation
         try:
-            from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+            from core.orchestration.personal_os_runtime import PersonalOSRuntime
             runtime = PersonalOSRuntime.get_instance()
             if hasattr(runtime, "memory_manager") and runtime.memory_manager:
                 runtime.memory_manager.close_session(wait_for_consolidation=True)

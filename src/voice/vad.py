@@ -38,11 +38,11 @@ class VoiceActivityDetector:
         self,
         mode: VADMode = VADMode.BOTH,
         silence_threshold: float = 1.0,
-        energy_threshold: float = 0.01,
+        energy_threshold: float = 0.005,
         window_size_ms: int = 30,
         min_speech_duration: float = 0.3,
         max_speech_duration: float = 30.0,
-        silence_duration: float = 0.5,
+        silence_duration: float = 0.8,
     ):
         """
         Initialize VAD detector.
@@ -139,7 +139,7 @@ class VoiceActivityDetector:
 
         if self.current_energy > dynamic_threshold:
             self.state = VADState.SPEECH_START
-            self.speech_start_time = 0.0
+            self.speech_start_time = timestamp()   # Fix: was 0.0, causing ~1.78B-second garbage duration
             self.silence_timer = 0.0
             self.silence_buffer.clear()
 
@@ -157,7 +157,21 @@ class VoiceActivityDetector:
         # Check for speech end conditions
         should_end = False
 
-        dynamic_threshold = max(self.energy_threshold, self.noise_floor * 1.5)
+        # Use hysteresis: lower threshold while speech is ongoing so soft syllables don't trigger silence
+        dynamic_threshold = max(self.energy_threshold * 0.7, self.noise_floor * 1.5)
+
+        # Hard ceiling: force end if max_speech_duration exceeded.
+        # Previously max_speech_duration was stored but never enforced, so
+        # a VAD session could run indefinitely (observed: ~94 seconds).
+        if self.speech_start_time is not None:
+            elapsed = timestamp() - self.speech_start_time
+            if elapsed >= self.max_speech_duration:
+                logger.warning(
+                    f"[VAD] max_speech_duration ({self.max_speech_duration}s) exceeded "
+                    f"after {elapsed:.1f}s — forcing speech end"
+                )
+                self._trigger_speech_end(audio)
+                return VADState.SPEECH_END, self.current_energy
 
         if self.mode == VADMode.SILENCE_THRESHOLD:
             should_end = self._check_silence(audio)
@@ -179,10 +193,14 @@ class VoiceActivityDetector:
             if self.silence_timer >= self.silence_duration:
                 self._trigger_speech_end(audio)
                 return VADState.SPEECH_END, self.current_energy
+        else:
+            # Reset on genuine signal so only *continuous* silence counts.
+            # Without this reset, silence accumulates across active speech frames.
+            self.silence_timer = 0.0
 
         speech_duration = 0.0
         if self.speech_start_time is not None:
-            speech_duration = timestamp() - self.speech_start_time
+            speech_duration = timestamp() - self.speech_start_time  # now correct
 
         if self.on_speech_detected:
             self.on_speech_detected(speech_duration)

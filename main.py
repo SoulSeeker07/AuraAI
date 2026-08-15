@@ -21,11 +21,18 @@ if str(PROJECT_ROOT / "scripts") not in sys.path:
     sys.path.insert(2, str(PROJECT_ROOT / "scripts"))
 
 
-# Configure stdout to UTF-8
-try:
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-except Exception:
-    pass  # If reconfiguration fails, keep the default
+# Configure stdout and stderr to UTF-8 before any logging or core imports
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 from clients.cli_client import CLIClient
 from clients.gui_client import GUIClient

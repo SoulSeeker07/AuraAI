@@ -1,4 +1,6 @@
 import logging
+import sys
+import time
 import numpy as np
 import onnxruntime as ort
 import torch
@@ -13,6 +15,8 @@ class AuraWakeDetector(WakeWordEngine):
     """
     Aura's custom local wake word detector powered by ONNX Runtime.
     """
+
+    MAX_CONSECUTIVE_FAILURES = 5
 
     def __init__(self, model_path: str, sensitivity: float = 0.5, phrase_list: list[str] | None = None):
         super().__init__(sensitivity=sensitivity, phrase_list=phrase_list)
@@ -39,6 +43,11 @@ class AuraWakeDetector(WakeWordEngine):
         self.cooldown_frames = 0
         self.frames_since_trigger = 0
 
+        # Failure & Throttling tracking
+        self.consecutive_failures = 0
+        self.last_print_time = 0.0
+        self.print_interval_s = 0.3
+
     def initialize(self) -> bool:
         try:
             logger.info(f"Loading ONNX model from {self.model_path}...")
@@ -52,7 +61,7 @@ class AuraWakeDetector(WakeWordEngine):
             logger.info("Aura Wake Word model initialized successfully.")
             return True
         except Exception as e:
-            logger.error(f"Failed to initialize ONNX model: {e}")
+            logger.exception(f"Failed to initialize ONNX model: {e}")
             if self.on_error:
                 self.on_error(f"Failed to initialize ONNX model: {e}")
             return False
@@ -81,9 +90,6 @@ class AuraWakeDetector(WakeWordEngine):
                 self.cooldown_frames -= 1
                 return False
             
-            # Only run inference every N chunks to save CPU if desired, 
-            # but modern CPUs can run this ONNX model instantly.
-            
             # 1. Compute Mel Spectrogram using PyTorch
             waveform = torch.from_numpy(self.audio_buffer).unsqueeze(0)  # Shape: (1, 32000)
             mel_spec = self.mel_transform(waveform)
@@ -100,18 +106,24 @@ class AuraWakeDetector(WakeWordEngine):
             
             # 4. Check against threshold
             import os
-            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.60))
+            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.55))
             
-            if probability > 0.10:
+            now = time.monotonic()
+            if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
+                self.last_print_time = now
                 logger.debug(f"[AuraWakeDetector] Debug Score: {probability:.4f}")
-                import sys
-                sys.stdout.write(f"\r🎤 Live Score: {probability:.4f}    ")
-                sys.stdout.flush()
+                try:
+                    sys.stdout.write(f"\r🎤 Live Score: {probability:.4f}    ")
+                    sys.stdout.flush()
+                except Exception:
+                    pass
                 
             if probability >= threshold:
-                import sys
-                sys.stdout.write("\r" + " " * 30 + "\r") # Clear the line
-                sys.stdout.flush()
+                try:
+                    sys.stdout.write("\r" + " " * 30 + "\r") # Clear the line
+                    sys.stdout.flush()
+                except Exception:
+                    pass
                 logger.info(f"[AuraWakeDetector] Wake word detected! (Prob: {probability:.3f} | Threshold: {threshold})")
                 
                 # Prevent double-triggering for 2 seconds
@@ -121,12 +133,18 @@ class AuraWakeDetector(WakeWordEngine):
                 if self.on_wake_word_detected:
                     self.on_wake_word_detected("Hey Aura")
                     
+                self.consecutive_failures = 0
                 return True
                 
+            self.consecutive_failures = 0
             return False
 
         except Exception as e:
-            logger.error(f"Error processing audio in AuraWakeDetector: {e}")
+            self.consecutive_failures += 1
+            logger.exception(f"[AuraWakeDetector] Error processing audio (failure {self.consecutive_failures}/{self.MAX_CONSECUTIVE_FAILURES}): {e}")
+            if self.consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
+                if self.on_error:
+                    self.on_error(f"AuraWakeDetector reached {self.consecutive_failures} consecutive failures: {e}")
             return False
 
     def is_active(self) -> bool:
