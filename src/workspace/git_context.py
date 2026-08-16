@@ -1,12 +1,20 @@
 """
 Git Context
+Location: src/workspace/git_context.py
 
-Provides git repository information and status.
+Provides git repository information and status with TTL-cached queries.
+Features:
+- Get repository info (branch, remote, commit hash, dirty status)
+- Get modified files and uncommitted changes
+- Get recent commits and git diffs
+- Thread-safe, non-blocking asynchronous APIs with 30s TTL caching
 """
 
+import asyncio
 import logging
 import subprocess
-from datetime import datetime
+import threading
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .models import GitRepository
@@ -26,14 +34,15 @@ class GitContext:
     - Get git diff for specific files
     """
 
-    def __init__(self):
-        """Initialize git context"""
+    def __init__(self, cache_ttl_seconds: int = 30):
+        """Initialize git context with valid timedelta TTL and thread-safe lock."""
         self._cache: dict = {}
-        self._cache_ttl = 30  # Cache for 30 seconds
+        self._cache_ttl = timedelta(seconds=cache_ttl_seconds)
+        self._lock = threading.Lock()
 
-    async def get_git_repo(self, path: str | None = None) -> GitRepository | None:
+    def get_git_repo_sync(self, path: str | None = None) -> GitRepository | None:
         """
-        Get git repository information for a path.
+        Synchronously get git repository information for a path.
 
         Args:
             path: Path to git repository. If None, uses current directory.
@@ -42,18 +51,18 @@ class GitContext:
             GitRepository object or None if not in git repo
         """
         try:
-            # Use cache if available
-            cache_key = path or str(Path.cwd().resolve())
-            if cache_key in self._cache:
-                cached_result, cached_time = self._cache[cache_key]
-                if datetime.now() - cached_time < self._cache_ttl:
-                    return cached_result
-
             # Determine path
             if path:
                 repo_path = Path(path).resolve()
             else:
                 repo_path = Path.cwd().resolve()
+
+            cache_key = str(repo_path)
+            with self._lock:
+                if cache_key in self._cache:
+                    cached_result, cached_time = self._cache[cache_key]
+                    if datetime.now() - cached_time < self._cache_ttl:
+                        return cached_result
 
             # Check if it's a git repository
             if not self._is_git_repo(repo_path):
@@ -98,11 +107,11 @@ class GitContext:
                     text=True,
                     timeout=5,
                 )
-                repo.commit_hash = commit_result.stdout.strip()[:7]
+                repo.commit_hash = commit_result.stdout.strip()
             except Exception as e:
                 logger.debug(f"Failed to get commit hash: {e}")
 
-            # Get modified files
+            # Get modified files count & status
             try:
                 status_result = subprocess.run(
                     ["git", "status", "--porcelain"],
@@ -111,203 +120,80 @@ class GitContext:
                     text=True,
                     timeout=5,
                 )
-
-                repo.modified_files = []
-                for line in status_result.stdout.strip().split("\n"):
-                    if line:
-                        parts = line.strip().split()
-                        if len(parts) >= 2:
-                            repo.modified_files.append(parts[1])
-                repo.uncommitted_changes = len(repo.modified_files)
-                repo.is_dirty = len(repo.modified_files) > 0
+                lines = [l for l in status_result.stdout.strip().split("\n") if l]
+                repo.uncommitted_changes = len(lines)
+                repo.modified_files = [l[3:].strip() for l in lines]
             except Exception as e:
                 logger.debug(f"Failed to get modified files: {e}")
-                repo.is_dirty = False
 
-            # Cache the result
-            self._cache[cache_key] = (repo, datetime.now())
-            logger.debug(f"Git repository detected: {repo.branch} at {repo_path}")
-
+            # Cache the result under lock
+            with self._lock:
+                self._cache[cache_key] = (repo, datetime.now())
             return repo
 
         except Exception as e:
-            logger.error(f"Failed to get git repository: {e}")
+            logger.error(f"Failed to get git repo info: {e}")
             return None
 
-    async def get_modified_files(self, path: str | None = None) -> list[str]:
-        """
-        Get list of modified files in repository.
+    async def get_git_repo(self, path: str | None = None) -> GitRepository | None:
+        """Asynchronously get git repository information without blocking."""
+        return await asyncio.to_thread(self.get_git_repo_sync, path)
 
-        Args:
-            path: Path to repository. If None, uses current directory.
-
-        Returns:
-            List of modified file paths
-        """
-        try:
-            repo = await self.get_git_repo(path)
-            if repo:
-                return repo.modified_files
-            return []
-        except Exception as e:
-            logger.error(f"Failed to get modified files: {e}")
-            return []
-
-    async def get_uncommitted_changes(self, path: str | None = None) -> int:
-        """
-        Get count of uncommitted changes.
-
-        Args:
-            path: Path to repository. If None, uses current directory.
-
-        Returns:
-            Number of uncommitted changes
-        """
-        try:
-            repo = await self.get_git_repo(path)
-            if repo:
-                return repo.uncommitted_changes
-            return 0
-        except Exception as e:
-            logger.error(f"Failed to get uncommitted changes: {e}")
-            return 0
-
-    async def get_recent_commits(
+    def get_recent_commits_sync(
         self, path: str | None = None, count: int = 5
     ) -> list[dict]:
-        """
-        Get recent commit history.
-
-        Args:
-            path: Path to repository. If None, uses current directory.
-            count: Number of commits to retrieve.
-
-        Returns:
-            List of commit dictionaries
-        """
+        """Synchronously retrieve recent commits."""
         try:
-            # Use cache
-            cache_key = f"{path}:{count}" if path else f"cwd:{count}"
-            if cache_key in self._cache:
-                cached_result, cached_time = self._cache[cache_key]
-                if datetime.now() - cached_time < self._cache_ttl:
-                    return cached_result
-
-            # Determine path
             if path:
                 repo_path = Path(path).resolve()
             else:
                 repo_path = Path.cwd().resolve()
 
-            # Check if it's a git repository
+            cache_key = f"{repo_path}:{count}"
+            with self._lock:
+                if cache_key in self._cache:
+                    cached_result, cached_time = self._cache[cache_key]
+                    if datetime.now() - cached_time < self._cache_ttl:
+                        return cached_result
+
             if not self._is_git_repo(repo_path):
                 return []
 
-            # Get recent commits
-            try:
-                result = subprocess.run(
-                    ["git", "log", "--oneline", "-n", str(count)],
-                    cwd=str(repo_path),
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
+            result = subprocess.run(
+                ["git", "log", "--oneline", "-n", str(count)],
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
 
-                commits = []
-                for line in result.stdout.strip().split("\n"):
-                    if line:
-                        # Format: "hash message"
-                        parts = line.strip().split(maxsplit=1)
-                        commit_hash = parts[0][:7]
-                        commit_message = parts[1] if len(parts) > 1 else ""
+            commits = []
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    parts = line.strip().split(maxsplit=1)
+                    commit_hash = parts[0][:7]
+                    commit_message = parts[1] if len(parts) > 1 else ""
+                    commits.append({"hash": commit_hash, "message": commit_message})
 
-                        commits.append({"hash": commit_hash, "message": commit_message})
-
-                # Cache the result
+            with self._lock:
                 self._cache[cache_key] = (commits, datetime.now())
-                return commits
-
-            except Exception as e:
-                logger.debug(f"Failed to get recent commits: {e}")
-                return []
+            return commits
 
         except Exception as e:
             logger.error(f"Failed to get recent commits: {e}")
             return []
 
-    async def get_current_branch(self, path: str | None = None) -> str | None:
-        """
-        Get current branch name.
-
-        Args:
-            path: Path to repository. If None, uses current directory.
-
-        Returns:
-            Branch name or None
-        """
-        try:
-            repo = await self.get_git_repo(path)
-            if repo:
-                return repo.branch
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get current branch: {e}")
-            return None
-
-    async def get_remote_url(self, path: str | None = None) -> str | None:
-        """
-        Get remote repository URL.
-
-        Args:
-            path: Path to repository. If None, uses current directory.
-
-        Returns:
-            Remote URL or None
-        """
-        try:
-            repo = await self.get_git_repo(path)
-            if repo:
-                return repo.remote_url
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get remote URL: {e}")
-            return None
-
-    async def get_commit_hash(self, path: str | None = None) -> str | None:
-        """
-        Get current commit hash.
-
-        Args:
-            path: Path to repository. If None, uses current directory.
-
-        Returns:
-            Commit hash or None
-        """
-        try:
-            repo = await self.get_git_repo(path)
-            if repo:
-                return repo.commit_hash
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get commit hash: {e}")
-            return None
+    async def get_recent_commits(
+        self, path: str | None = None, count: int = 5
+    ) -> list[dict]:
+        """Asynchronously retrieve recent commits."""
+        return await asyncio.to_thread(self.get_recent_commits_sync, path, count)
 
     def _is_git_repo(self, path: Path) -> bool:
-        """
-        Check if a path is a git repository.
-
-        Args:
-            path: Path to check
-
-        Returns:
-            True if it's a git repository
-        """
+        """Check if a path is a git repository."""
         try:
-            # Check for .git directory
             if (path / ".git").exists() and (path / ".git").is_dir():
                 return True
-
-            # Try to run git rev-parse
             result = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
                 cwd=str(path),
@@ -315,36 +201,41 @@ class GitContext:
                 text=True,
                 timeout=5,
             )
-
             return result.returncode == 0
-
         except Exception:
             return False
 
+    async def get_current_branch(self, path: str | None = None) -> str | None:
+        """Get current branch name."""
+        repo = await self.get_git_repo(path)
+        return repo.branch if repo else None
+
+    async def get_uncommitted_changes(self, path: str | None = None) -> int:
+        """Get count of uncommitted changes."""
+        repo = await self.get_git_repo(path)
+        return repo.uncommitted_changes if repo else 0
+
+    async def get_remote_url(self, path: str | None = None) -> str | None:
+        """Get remote repository URL."""
+        repo = await self.get_git_repo(path)
+        return repo.remote_url if repo else None
+
+    async def get_commit_hash(self, path: str | None = None) -> str | None:
+        """Get current commit hash."""
+        repo = await self.get_git_repo(path)
+        return repo.commit_hash if repo else None
+
     async def get_repo_name(self, path: str | None = None) -> str | None:
-        """
-        Get repository name from path.
-
-        Args:
-            path: Path to repository. If None, uses current directory.
-
-        Returns:
-            Repository name or None
-        """
-        try:
-            repo = await self.get_git_repo(path)
-            if repo:
-                return repo.repo_name
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get repo name: {e}")
-            return None
+        """Get repository name from path."""
+        repo = await self.get_git_repo(path)
+        return repo.repo_name if repo else None
 
     def clear_cache(self):
-        """Clear the git context cache"""
-        self._cache.clear()
+        """Clear the git context cache."""
+        with self._lock:
+            self._cache.clear()
         logger.debug("Git context cache cleared")
 
     def cleanup(self):
-        """Clean up resources"""
+        """Clean up resources."""
         self.clear_cache()

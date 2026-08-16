@@ -94,9 +94,9 @@ A milestone may ship across one or more releases.
 | M01-M10 | `v0.1.0`-`v0.10.0` | Phase 0 — Foundation | `COMPLETE` |
 | M11–M16 | `v0.11.0`–`v0.19.0` | Phase 0 — Foundation | `COMPLETE` |
 | M17 | `v0.20.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
-| M18 | `v0.21.0` | Phase 1 — Shared Intelligence | `IN PROGRESS` |
+| M18 | `v0.21.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
 | M19 | `v0.22.0` | Phase 2 — Capability Foundation | `READY` |
-| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
+| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion (Coding Agent) | `IN PROGRESS` |
 | M21 | `v0.24.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
 | M22 | `v0.25.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
 | M23 | `v0.26.0` | Phase 4 — External Capabilities | `PLANNED` |
@@ -905,7 +905,7 @@ Verification
 
 ### M20 — Coding Intelligence 2.0
 
-**Status:** `PLANNED`
+**Status:** `IN PROGRESS`
 **Priority:** 🔴 High
 
 Coding now has access to Memory + World Model + Capability Registry.
@@ -923,18 +923,32 @@ Understand architecture and dependencies
        ↓
 Recall previous decisions (Memory)
        ↓
-Plan change
+Plan change (Antigravity agy delegation)
        ↓
-Generate patch
+Authorize write (WorkspacePolicy gate)
+       ↓
+Generate patch & edit files (CodeEditor)
        ↓
 Run tests (Capability Registry)
        ↓
 Evaluate result
        ↓
-Repair loop if tests fail
+Repair loop if tests fail (BugRepair)
        ↓
 Verify and finalize
 ```
+
+**Implemented:**
+- `M20.1` — **AST & Dependency Analysis**: `src/engineering/ast_manager.py`, `symbol_graph.py`, `dependency_graph.py`
+- `M20.2` — **File Editing with Backup & Rollback**: `src/engineering/code_editor.py`. Physical byte-for-byte backup and rollback wired to `.aura_backup` state to guarantee atomic restoration.
+- `M20.3` — **Antigravity Agent Delegation**: `AntigravityCodingBridge` (`src/engineering/antigravity_bridge.py`) routing code generation/editing/debugging through the Antigravity `agy` CLI (`--mode plan`) with `WorkspacePolicy.authorize_write()` as the sole write gate
+- `M20.4 / M20.4a` — **Repo-walk Cap**: Bounded file exploration and project budgeting to prevent token/memory exhaustion
+- `M20.4b` — **.gitignore-aware Walking**: Dynamic `.gitignore` parsing to skip non-project artifacts/caches
+- `M20.5` — **World Model Integration (Coding Backend Wiring)**: Multi-domain `query_multi()` async dispatch, thread pool executor isolation with graceful decay, singleton lifecycle management, and explicit symbol resolution (`not_found` sentinel).
+- `M20.6` — **Automated Repair Loop**: `src/engineering/test_engine.py` and `bug_repair.py`. Exit code parsing (0: pass, 1: fail, 2/5: collection error), scoped test execution via `validate_after_change()`, and exhaustion-based rollback using M20.2 physical backups.
+
+**Remaining for COMPLETE:**
+- Full integration with M18 World Model live workspace context and active IDE tabs
 
 **Acceptance criteria:**
 - Aura produces a correct code change for a specified task using project context
@@ -946,7 +960,7 @@ Verify and finalize
 **Existing foundations:** `src/agents/coding_agent.py`, `src/agents/coding/`,
 `src/engineering/`, `src/brain/execution_map_generator.py`
 
-**Depends on:** M19
+**Depends on:** M18, M19
 **Enables:** M27 (Autonomous Engineering)
 
 ---

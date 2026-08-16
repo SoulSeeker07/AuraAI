@@ -143,6 +143,14 @@ class STTEngine(ABC):
         self._final_callback = final
         self._error_callback = error
 
+    def load_buffer(self, audio_chunks: list[bytes], duration: float = 0.0) -> None:
+        """Load audio buffer for cross-engine fallback handoff."""
+        self.reset()
+        for chunk in audio_chunks:
+            self.process_chunk(chunk)
+        if duration > 0:
+            self._total_duration = duration
+
     def _emit_partial(self, confirmed: str, tentative: str) -> None:
         if self._partial_callback:
             self._partial_callback(confirmed, tentative)
@@ -354,6 +362,13 @@ class FasterWhisperSTTEngine(STTEngine):
         finally:
             if self._partial_in_flight.locked():
                 self._partial_in_flight.release()
+
+    def load_buffer(self, audio_chunks: list[bytes], duration: float = 0.0) -> None:
+        """Load raw audio buffer directly for fast offline fallback execution."""
+        self._audio_buffer = list(audio_chunks)
+        self._total_duration = duration if duration > 0 else (
+            sum(len(b) for b in audio_chunks) / (self.settings.sample_rate * 2)
+        )
 
     def finalize(self) -> str:
         """Transcribe all buffered audio and return full transcript."""
@@ -602,11 +617,21 @@ class VoskSTTEngine(STTEngine):
 #  GoogleSTTEngine (Google Speech Recognition — en-in / multi-accent cloud)
 # ─────────────────────────────────────────────────────────────────────────────
 
+class CircuitBreakerState(Enum):
+    """Circuit breaker states for cloud speech endpoints."""
+    CLOSED = "closed"        # Normal operation — Google STT primary
+    OPEN = "open"            # Tripped — Bypass Google, route directly to local FasterWhisper
+    HALF_OPEN = "half_open"  # Probing — Test 1 request to check if Google has recovered
+
+
 class GoogleSTTEngine(STTEngine):
     """
     Google Web Speech Recognition engine via speech_recognition library.
     Provides Alexa/Siri-grade accuracy on Indian English ('en-in') accents
-    with automatic fallback to local faster-whisper when offline.
+    with:
+      1. Optional hybrid streaming partials via local FasterWhisper decoder.
+      2. Thread-safe circuit-breaker failure tracker with automatic cooldown recovery.
+      3. Polymorphic load_buffer fallback handoff.
     """
 
     def __init__(self, settings: STTSettings):
@@ -614,21 +639,51 @@ class GoogleSTTEngine(STTEngine):
         self.recognizer = None
         self._audio_buffer: list[bytes] = []
         self._fallback_engine: FasterWhisperSTTEngine | None = None
+        
+        # Thread-safe Circuit Breaker state (persists across reset() calls)
+        self._circuit_lock = threading.Lock()
+        self._consecutive_failures: int = 0
+        self._failure_threshold: int = 3
+        self._circuit_cooldown_s: float = 60.0
+        self._last_failure_time: float = 0.0
+        self._circuit_state: CircuitBreakerState = CircuitBreakerState.CLOSED
+
+        # Hybrid partials flag (defaults to False to avoid continuous CPU Whisper load during cloud STT)
+        self.enable_hybrid_partials: bool = os.getenv("ENABLE_HYBRID_STT", "false").lower() == "true"
 
     def initialize(self) -> bool:
         try:
+            if self.settings.sample_rate != 16000:
+                logger.warning(
+                    f"[STT] Sample rate configured to {self.settings.sample_rate}Hz. "
+                    "Expected 16000Hz (16kHz 16-bit mono PCM). Verify audio input device configuration."
+                )
+
             import speech_recognition as sr
 
             self.recognizer = sr.Recognizer()
             self._audio_buffer.clear()
+            
+            # Initialize local fallback engine
             self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+            if self.enable_hybrid_partials:
+                self._fallback_engine.set_callbacks(
+                    partial=self._emit_partial,
+                    final=lambda text, dur: None,
+                    error=self._emit_error,
+                )
             self._fallback_engine.initialize()
+            
             self.is_active = True
-            logger.info(f"Google STT initialized (language: {self.settings.language})")
+            logger.info(
+                f"Google STT initialized (hybrid_partials={self.enable_hybrid_partials}, "
+                f"language: {self.settings.language})"
+            )
             return True
         except ImportError:
             logger.warning("speech_recognition not installed — falling back to faster-whisper")
             self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+            self._fallback_engine.set_callbacks(self._emit_partial, self._emit_final, self._emit_error)
             success = self._fallback_engine.initialize()
             self.is_active = success
             return success
@@ -637,13 +692,20 @@ class GoogleSTTEngine(STTEngine):
             return False
 
     def process_chunk(self, audio_data: bytes) -> str:
+        """Buffer audio chunk and optionally feed hybrid local stabilizer for streaming partials."""
         if not self.is_active:
             return ""
         self._audio_buffer.append(audio_data)
-        self._total_duration += len(audio_data) / self.settings.sample_rate / 2
+        self._total_duration += len(audio_data) / (self.settings.sample_rate * 2)
+
+        # Hybrid Track: Feed local faster-whisper stabilizer ONLY if explicitly enabled
+        if self.enable_hybrid_partials and self._fallback_engine and self._fallback_engine.is_active:
+            self._fallback_engine.process_chunk(audio_data)
+
         return ""
 
     def finalize(self) -> str:
+        """Finalize transcription using Google Web Speech with thread-safe Circuit Breaker."""
         if not self.is_active or not self._audio_buffer:
             return ""
 
@@ -660,6 +722,28 @@ class GoogleSTTEngine(STTEngine):
                 return ""
         except Exception:
             pass
+
+        # Thread-safe Circuit Breaker evaluation (releases lock immediately before fallback decode)
+        now = time.time()
+        bypass_to_fallback = False
+        with self._circuit_lock:
+            if self._circuit_state == CircuitBreakerState.OPEN:
+                if now - self._last_failure_time > self._circuit_cooldown_s:
+                    logger.info("[Google STT Circuit Breaker] Cooldown elapsed — entering HALF_OPEN probe state")
+                    self._circuit_state = CircuitBreakerState.HALF_OPEN
+                else:
+                    remaining = self._circuit_cooldown_s - (now - self._last_failure_time)
+                    logger.info(
+                        f"[Google STT Circuit Breaker] Circuit is OPEN ({remaining:.1f}s cooldown remaining) — "
+                        "bypassing cloud, routing immediately to FasterWhisper"
+                    )
+                    bypass_to_fallback = True
+
+        if bypass_to_fallback:
+            if self._fallback_engine and self._fallback_engine.is_active:
+                self._fallback_engine.load_buffer(self._audio_buffer, duration)
+                return self._fallback_engine.finalize()
+            return ""
 
         # 1. Try Google Web Speech recognition (fast, high-accuracy multi-accent)
         try:
@@ -678,21 +762,45 @@ class GoogleSTTEngine(STTEngine):
             text = (text or "").strip()
             if text:
                 logger.info(f"[Google STT] Transcribed: '{text}' (lang: {lang})")
+                
+                # Successful request — thread-safely reset failure tracking
+                with self._circuit_lock:
+                    if self._circuit_state != CircuitBreakerState.CLOSED:
+                        logger.info("[Google STT Circuit Breaker] Cloud endpoint recovered — circuit CLOSED")
+                    self._consecutive_failures = 0
+                    self._circuit_state = CircuitBreakerState.CLOSED
+                
                 self._emit_final(text, duration)
                 return text
 
+        except sr.UnknownValueError:
+            # Clean silence or unparseable audio — do NOT treat as network failure
+            logger.debug("[Google STT] No speech detected in audio (clean silence)")
+            return ""
+        except sr.RequestError as e:
+            # ONLY genuine network / API errors trip the circuit breaker
+            with self._circuit_lock:
+                self._consecutive_failures += 1
+                self._last_failure_time = time.time()
+                logger.warning(
+                    f"[Google STT] Online recognition network error ({e}) — "
+                    f"consecutive failures: {self._consecutive_failures}/{self._failure_threshold}"
+                )
+                
+                if self._consecutive_failures >= self._failure_threshold:
+                    self._circuit_state = CircuitBreakerState.OPEN
+                    logger.warning(
+                        f"[Google STT Circuit Breaker] TRIPPED to OPEN state! "
+                        f"Will bypass cloud requests for {self._circuit_cooldown_s}s"
+                    )
         except Exception as e:
-            # Check if this is an UnknownValueError (silence/no speech) vs network error
-            err_type = type(e).__name__
-            if err_type == "UnknownValueError":
-                logger.debug("[Google STT] No speech detected in audio (clean silence)")
-                return ""
-            logger.debug(f"[Google STT] Online recognize error ({e}) — checking fallback")
+            # Other unexpected exceptions (code bug, TypeError, etc.) — do NOT trip breaker
+            logger.error(f"[Google STT] Unexpected recognition error ({type(e).__name__}: {e})", exc_info=True)
+            self._emit_error(str(e))
 
-        # 2. Local FasterWhisper Fallback (ONLY if online service threw RequestError/Network error)
+        # 2. Local FasterWhisper Fallback
         if self._fallback_engine and self._fallback_engine.is_active:
-            self._fallback_engine._audio_buffer = list(self._audio_buffer)
-            self._fallback_engine._total_duration = duration
+            self._fallback_engine.load_buffer(self._audio_buffer, duration)
             fallback_text = self._fallback_engine.finalize()
             if fallback_text:
                 logger.info(f"[FasterWhisper Fallback] Transcribed: '{fallback_text}'")
@@ -701,18 +809,25 @@ class GoogleSTTEngine(STTEngine):
         return ""
 
     def reset(self) -> None:
+        """Reset per-utterance audio buffers. Circuit breaker state is intentionally preserved."""
         self._audio_buffer.clear()
         self._total_duration = 0.0
         if self._fallback_engine:
             self._fallback_engine.reset()
-        logger.debug("Google STT reset")
+        logger.debug("Google STT reset (circuit breaker state preserved)")
 
     def get_status(self) -> dict[str, Any]:
+        with self._circuit_lock:
+            state_val = self._circuit_state.value
+            failures = self._consecutive_failures
         return {
             "provider": STTProvider.GOOGLE.value,
             "is_active": self.is_active,
             "language": self.settings.language,
             "sample_rate": self.settings.sample_rate,
+            "hybrid_partials_enabled": self.enable_hybrid_partials,
+            "circuit_state": state_val,
+            "consecutive_failures": failures,
         }
 
 

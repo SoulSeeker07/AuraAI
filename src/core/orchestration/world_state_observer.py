@@ -3,12 +3,14 @@ World State Observer (Real-Time Perception Engine)
 Location: src/core/orchestration/world_state_observer.py
 
 Performs real-time physical observations across Desktop, Browser, System, and Storage
-domains after every single action step to drive the closed-loop perception engine.
+domains after every action step to drive the closed-loop perception engine.
+Captures snapshots with diffs and automatically logs events to the WorldTimeline.
 """
 
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from .world_snapshot import WorldSnapshotProvider
@@ -36,15 +38,16 @@ class WorldStateObserver:
         self, domain: str = "all", browser_adapter: Any | None = None
     ) -> dict[str, Any]:
         """
-        Asynchronously capture real-time physical world snapshot across specified domain.
+        Asynchronously capture real-time physical world snapshot and diff across specified domain.
         """
-        snap = self.snapshot_provider.snapshot()
-        import time
+        # snapshot_with_diff automatically records diff into WorldTimeline
+        snap, diff = self.snapshot_provider.snapshot_with_diff()
 
         obs: dict[str, Any] = {
             "focused_window": snap.focused_window_title,
             "running_processes_count": len(snap.running_processes),
             "timestamp": getattr(snap, "timestamp", time.time()),
+            "diff_summary": diff.summary() if diff else "",
         }
 
         # Browser perception
@@ -69,10 +72,13 @@ class WorldStateObserver:
         return obs
 
     def observe_sync(self, domain: str = "all") -> dict[str, Any]:
-        """Synchronous observation snapshot."""
-        snap = self.snapshot_provider.snapshot()
+        """
+        Synchronous observation snapshot and diff.
+        """
+        snap, diff = self.snapshot_provider.snapshot_with_diff()
         return {
             "focused_window": snap.focused_window_title,
             "running_processes_count": len(snap.running_processes),
             "timestamp": snap.timestamp,
+            "diff_summary": diff.summary() if diff else "",
         }

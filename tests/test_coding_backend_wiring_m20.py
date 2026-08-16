@@ -318,11 +318,12 @@ class TestDebugAgy:
 
     def test_debug_routed_from_goal_text(self, tmp_path):
         """'debug why X crashes' in goal text alone routes to _execute_debug."""
-        fix_ops = [{"file_path": "app.py", "new_content": "# fixed\n"}]
+        (tmp_path / "project").mkdir()
+        fix_ops = [{"file_path": "project/app.py", "new_content": "# fixed\n"}]
         agy = FakeAgyClient(responses=[{"edit_operations": fix_ops}])
         adapter = _make_adapter(agy)
 
-        (tmp_path / "app.py").write_text("# original\n", encoding="utf-8")
+        (tmp_path / "project" / "app.py").write_text("# original\n", encoding="utf-8")
 
         result = adapter.execute(
             capability="coding",

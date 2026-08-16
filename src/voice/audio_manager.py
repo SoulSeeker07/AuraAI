@@ -240,6 +240,27 @@ class AudioManager:
             self._input_callback = callback
             self._is_recording = True
 
+            # Pre-flight physical device sample rate check
+            # NOTE: On Windows (MME/WASAPI shared), the Windows Audio Engine handles software
+            # resampling (e.g. 44.1k/48k -> 16k) transparently. Warning rather than hard-failing
+            # allows standard Windows audio drivers to open smoothly without crashing.
+            try:
+                dev_info = sd.query_devices(input_device.device_id, 'input')
+                native_rate = dev_info.get('default_samplerate')
+                if native_rate and int(native_rate) != sample_rate:
+                    logger.info(
+                        f"[AudioManager] Microphone physical default rate is {int(native_rate)}Hz; "
+                        f"PortAudio driver will resample to {sample_rate}Hz."
+                    )
+                sd.check_input_settings(
+                    device=input_device.device_id,
+                    channels=channels,
+                    dtype='int16',
+                    samplerate=sample_rate,
+                )
+            except Exception as _check_err:
+                logger.warning(f"[AudioManager] Audio device pre-flight check warning: {_check_err}")
+
             # Start recording
             if not self.input_stream:
                 self.input_stream = sd.InputStream(

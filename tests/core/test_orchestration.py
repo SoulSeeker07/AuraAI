@@ -83,7 +83,7 @@ def test_backend_registry_discovery(clean_registries):
     assert "desktop_engine" in names
     assert "groq" in names
     assert "gemini" in names
-    assert "Antigravity CLI" in names
+    assert "Coding Backend (EngineeringManager)" in names
 
 
 def test_capability_based_routing(clean_registries):
@@ -92,7 +92,7 @@ def test_capability_based_routing(clean_registries):
     # Route coding capability
     code_backend = b_reg.select_best_backend("code.refactor")
     assert code_backend is not None
-    assert code_backend.name == "Antigravity CLI"
+    assert code_backend.name == "Coding Backend (EngineeringManager)"
 
     # Route fast reasoning capability
     fast_backend = b_reg.select_best_backend("chat.fast")

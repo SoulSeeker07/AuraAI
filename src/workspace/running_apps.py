@@ -1,20 +1,22 @@
 """
 Running Applications Monitor
+Location: src/workspace/running_apps.py
 
 Monitors running applications on the system.
-
 Features:
-- List all running applications
-- Identify foreground (active) application
+- List all running non-system applications
+- Accurately identify foreground application by delegating to ActiveWindowMonitor
 - Filter by app type (editor, browser, etc.)
-- Track app names and process names
+- Provides both synchronous and non-blocking asynchronous APIs
 """
 
+import asyncio
 import logging
 from typing import Optional
 
 import psutil
 
+from .active_window import ActiveWindowMonitor
 from .models import RunningApplication
 
 logger = logging.getLogger(__name__)
@@ -26,12 +28,12 @@ class RunningAppsMonitor:
 
     Provides:
     - List of all running applications
-    - Current foreground application
+    - Current foreground application (via ActiveWindowMonitor)
     - App type filtering
     - Process information
     """
 
-    # System processes to exclude
+    # System processes to exclude from user application lists
     SYSTEM_PROCESSES = {
         "System",
         "System Idle Process",
@@ -41,7 +43,6 @@ class RunningAppsMonitor:
         "alg",
         "csrss",
         "smss",
-        "csrss",
         "wininit",
         "services",
         "lsass",
@@ -63,17 +64,9 @@ class RunningAppsMonitor:
         "sppsvc",
         "wuauserv",
         "audiodg",
-        "csrss",
-        "smss",
-        "wininit",
-        "services",
-        "lsass",
-        "lsass",
-        "wininit",
-        "services",
     }
 
-    # App name mappings for better UX
+    # App name mappings for UX display
     APP_MAPPINGS = {
         "code": "VS Code",
         "cursor": "Cursor",
@@ -115,7 +108,6 @@ class RunningAppsMonitor:
         "vmware.exe": "VMware",
     }
 
-    # Common editors
     EDITOR_APPS = {
         "vscode",
         "cursor",
@@ -128,251 +120,162 @@ class RunningAppsMonitor:
         "visual_studio_code",
     }
 
-    # Common browsers
     BROWSER_APPS = {"chrome", "edge", "firefox", "brave", "safari"}
 
-    def __init__(self, update_interval: int = 5):
+    def __init__(self, update_interval: int = 5, window_monitor: ActiveWindowMonitor | None = None):
         """
         Initialize running apps monitor.
 
         Args:
             update_interval: Seconds between updates
+            window_monitor: Optional ActiveWindowMonitor instance
         """
         self.update_interval = update_interval
+        self.window_monitor = window_monitor or ActiveWindowMonitor()
         self._running_apps: list[RunningApplication] = []
         self._last_foreground_app: str | None = None
         self._foreground_pid: int | None = None
         self._running = False
-        self._thread: Optional = None
 
-        logger.info(
-            f"Running apps monitor initialized (update_interval={update_interval}s)"
-        )
-
-    async def get_running_apps(self) -> list[RunningApplication]:
+    def get_running_apps_sync(self) -> list[RunningApplication]:
         """
-        Get list of running applications.
+        Synchronously get list of running applications with foreground status marked.
 
         Returns:
             List of RunningApplication objects
         """
         try:
-            apps = self._get_all_processes()
+            # Query true OS foreground window
+            active_win = self.window_monitor.get_active_window_sync()
+            fg_pid = None
+            fg_title = ""
+            if active_win:
+                # Find PID if available or window title
+                fg_title = active_win.title
+                self._last_foreground_app = active_win.app_name
+
+            apps: list[RunningApplication] = []
+            for proc in psutil.process_iter(["pid", "name", "exe"]):
+                try:
+                    proc_name = proc.info.get("name") or ""
+                    if proc_name in self.SYSTEM_PROCESSES or proc_name.lower() in self.SYSTEM_PROCESSES:
+                        continue
+
+                    exe_path = proc.info.get("exe") or ""
+                    if not exe_path and not proc_name:
+                        continue
+
+                    clean_name = self._extract_process_name(exe_path or proc_name)
+                    pid = proc.info.get("pid")
+                    
+                    is_fg = False
+                    window_title = ""
+                    if active_win and active_win.process_name and (
+                        active_win.process_name.lower() == proc_name.lower()
+                        or (pid and getattr(active_win, "rect", None) and pid == self._get_pid_from_hwnd(active_win.window_id))
+                    ):
+                        is_fg = True
+                        window_title = fg_title
+
+                    app = RunningApplication(
+                        name=clean_name,
+                        process_name=proc_name.replace(".exe", "").lower(),
+                        window_title=window_title,
+                        is_foreground=is_fg,
+                        pid=pid,
+                    )
+                    apps.append(app)
+
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+
             self._running_apps = apps
-
-            # Set foreground app
-            if self._foreground_pid:
-                foreground_app = self._get_app_by_pid(self._foreground_pid)
-                if foreground_app:
-                    foreground_app.is_foreground = True
-
             return self._running_apps
 
         except Exception as e:
             logger.error(f"Failed to get running apps: {e}")
             return self._running_apps
 
-    def _get_all_processes(self) -> list[RunningApplication]:
-        """
-        Get all non-system processes.
-
-        Returns:
-            List of RunningApplication objects
-        """
-        apps = []
-
+    def _get_pid_from_hwnd(self, hwnd: int | None) -> int | None:
+        """Helper to extract PID from window handle if available."""
+        if not hwnd:
+            return None
         try:
-            for proc in psutil.process_iter(["pid", "name", "exe"]):
-                try:
-                    # Skip system processes
-                    proc_name = proc.info["name"]
-                    if proc_name in self.SYSTEM_PROCESSES:
-                        continue
-
-                    exe_path = proc.info["exe"]
-                    if not exe_path:
-                        continue
-
-                    # Extract process name from path
-                    process_name = self._extract_process_name(exe_path)
-
-                    # Create app object
-                    app = RunningApplication(
-                        name=process_name,
-                        process_name=proc_name,
-                        window_title=self._get_window_title(proc_name),
-                        is_foreground=False,
-                    )
-
-                    apps.append(app)
-
-                except (
-                    psutil.NoSuchProcess,
-                    psutil.AccessDenied,
-                    psutil.ZombieProcess,
-                ):
-                    continue
-
-        except Exception as e:
-            logger.error(f"Error iterating processes: {e}")
-
-        return apps
-
-    def _get_app_by_pid(self, pid: int) -> RunningApplication | None:
-        """
-        Get application by PID.
-
-        Args:
-            pid: Process ID
-
-        Returns:
-            RunningApplication or None
-        """
-        for app in self._running_apps:
-            if app.pid == pid:
-                return app
-        return None
-
-    def _extract_process_name(self, exe_path: str) -> str:
-        """
-        Extract clean process name from executable path.
-
-        Args:
-            exe_path: Full path to executable
-
-        Returns:
-            Clean process name
-        """
-        # Get basename
-        basename = exe_path.split("\\")[-1].split("/")[-1]
-
-        # Check mappings
-        basename_lower = basename.lower()
-        if basename_lower in self.APP_MAPPINGS:
-            return self.APP_MAPPINGS[basename_lower]
-
-        # Clean up the name
-        return basename.replace(".exe", "")
-
-    def _get_window_title(self, process_name: str) -> str:
-        """
-        Get window title for a process.
-
-        Args:
-            process_name: Process name
-
-        Returns:
-            Window title or empty string
-        """
-        try:
-            # For now, return empty string (would need Windows API to get window titles)
-            return ""
+            import ctypes
+            pid = ctypes.c_uint(0)
+            ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            return pid.value
         except Exception:
-            return ""
+            return None
+
+    async def get_running_apps(self) -> list[RunningApplication]:
+        """
+        Asynchronously get list of running applications without blocking the event loop.
+        """
+        return await asyncio.to_thread(self.get_running_apps_sync)
+
+    def get_foreground_app_sync(self) -> RunningApplication | None:
+        """
+        Synchronously get the currently foreground application.
+        """
+        active_win = self.window_monitor.get_active_window_sync()
+        if not active_win:
+            return None
+
+        self._last_foreground_app = active_win.app_name
+        return RunningApplication(
+            name=active_win.app_name,
+            process_name=active_win.process_name.replace(".exe", "").lower(),
+            window_title=active_win.title,
+            is_foreground=True,
+        )
 
     async def get_foreground_app(self) -> RunningApplication | None:
         """
-        Get the currently foreground application.
-
-        Returns:
-            RunningApplication for foreground app or None
+        Asynchronously get the currently foreground application without blocking.
         """
-        try:
-            # Set current foreground PID
-            self._foreground_pid = psutil.Process().ppid()
+        return await asyncio.to_thread(self.get_foreground_app_sync)
 
-            # Get all apps
-            apps = await self.get_running_apps()
-
-            # Find foreground app
-            for app in apps:
-                if app.pid == self._foreground_pid:
-                    self._last_foreground_app = app.name
-                    return app
-
-            return None
-
-        except Exception as e:
-            logger.error(f"Failed to get foreground app: {e}")
-            return None
+    def _extract_process_name(self, exe_path: str) -> str:
+        """Extract clean application name from executable path or name."""
+        basename = exe_path.split("\\")[-1].split("/")[-1]
+        basename_lower = basename.lower()
+        if basename_lower in self.APP_MAPPINGS:
+            return self.APP_MAPPINGS[basename_lower]
+        return basename.replace(".exe", "")
 
     async def get_app_by_name(self, name: str) -> RunningApplication | None:
-        """
-        Get application by name.
-
-        Args:
-            name: Application name
-
-        Returns:
-            RunningApplication or None
-        """
-        try:
-            apps = await self.get_running_apps()
-            for app in apps:
-                if app.name.lower() == name.lower():
-                    return app
-            return None
-
-        except Exception as e:
-            logger.error(f"Failed to get app by name: {e}")
-            return None
+        """Get application by name."""
+        apps = await self.get_running_apps()
+        for app in apps:
+            if app.name.lower() == name.lower() or app.process_name.lower() == name.lower():
+                return app
+        return None
 
     async def get_editor_apps(self) -> list[RunningApplication]:
-        """
-        Get all running editor applications.
-
-        Returns:
-            List of editor applications
-        """
-        try:
-            apps = await self.get_running_apps()
-            return [app for app in apps if app.is_editor]
-
-        except Exception as e:
-            logger.error(f"Failed to get editor apps: {e}")
-            return []
+        """Get all running editor applications."""
+        apps = await self.get_running_apps()
+        return [app for app in apps if app.is_editor]
 
     async def get_browser_apps(self) -> list[RunningApplication]:
-        """
-        Get all running browser applications.
-
-        Returns:
-            List of browser applications
-        """
-        try:
-            apps = await self.get_running_apps()
-            return [app for app in apps if app.is_browser]
-
-        except Exception as e:
-            logger.error(f"Failed to get browser apps: {e}")
-            return []
+        """Get all running browser applications."""
+        apps = await self.get_running_apps()
+        return [app for app in apps if app.is_browser]
 
     def get_foreground_app_name(self) -> str | None:
-        """
-        Get name of foreground application.
-
-        Returns:
-            Foreground app name or None
-        """
+        """Get name of last known foreground application."""
         return self._last_foreground_app
 
     def start_monitoring(self):
-        """Start monitoring running apps"""
-        if self._running:
-            return
-
+        """Start monitoring running apps."""
         self._running = True
-        # Monitoring is event-based, no background thread needed
-
-        logger.info("Running apps monitoring started")
 
     def stop_monitoring(self):
-        """Stop monitoring running apps"""
+        """Stop monitoring running apps."""
         self._running = False
-        logger.info("Running apps monitoring stopped")
 
     def cleanup(self):
-        """Clean up resources"""
+        """Clean up resources."""
         self.stop_monitoring()
         self._running_apps = []
         self._last_foreground_app = None

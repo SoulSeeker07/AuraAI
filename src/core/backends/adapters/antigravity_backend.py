@@ -100,13 +100,20 @@ class CodingBackendAdapter(BaseBackendAdapter):
         - Any operation where no real work can be performed
     """
 
-    def __init__(self, *args: Any, agy_client: "AgySubprocessClient | None" = None, **kwargs: Any):
+    def __init__(
+        self,
+        *args: Any,
+        agy_client: "AgySubprocessClient | None" = None,
+        world_model: Any | None = None,
+        **kwargs: Any,
+    ):
         # *args/**kwargs pass through untouched to BaseBackendAdapter in case
-        # it takes its own init args — this adapter only adds agy_client.
+        # it takes its own init args — this adapter adds agy_client and world_model.
         super().__init__(*args, **kwargs)
         # Injectable so tests can pass a mock instead of shelling out to the
         # real `agy` binary (see test_coding_backend_wiring_m20.py).
         self.agy_client = agy_client or AgySubprocessClient(AgyConfig())
+        self.world_model = world_model
 
     @property
     def name(self) -> str:
@@ -458,6 +465,62 @@ class CodingBackendAdapter(BaseBackendAdapter):
             }
         )
 
+    def _extract_candidate_identifiers(self, text: str) -> list[str]:
+        """Extract candidate PascalCase or snake_case identifiers from user goal."""
+        import re
+        # Match words with at least 3 chars starting with letter/underscore
+        tokens = re.findall(r"\b[A-Za-z_][A-Za-z0-9_]{2,}\b", text)
+        stop_words = {
+            "python", "code", "file", "make", "create", "write", "build", "app", "system",
+            "database", "function", "class", "model", "test", "with", "that", "from",
+            "import", "user", "using", "implement", "feature", "please", "into"
+        }
+        candidates: list[str] = []
+        for t in tokens:
+            if t.lower() not in stop_words and t not in candidates:
+                candidates.append(t)
+        return candidates
+
+    def _get_world_context(self, goal: str, repo_path: Path) -> str:
+        """
+        Extract live workspace and targeted symbol context from WorldModel.
+        Strictly best-effort: failures/timeouts return empty string and never block generation.
+        """
+        if not self.world_model:
+            return ""
+
+        parts: list[str] = []
+        try:
+            # 1. Fast workspace state (git branch, dirty status, project type)
+            ws_res = self.world_model.query_sync(entity="all", domain="workspace", timeout=0.5)
+            if ws_res and ws_res.facts:
+                ws_facts = [f"• {f.entity}: {f.value}" for f in ws_res.facts if f.value]
+                if ws_facts:
+                    parts.append("Workspace State:\n" + "\n".join(ws_facts))
+
+            # 2. Extract at most 3 potential symbols mentioned in goal
+            identifiers = self._extract_candidate_identifiers(goal)[:3]
+            if identifiers:
+                sym_entities = [f"class:{ident}" for ident in identifiers] + [
+                    f"function:{ident}" for ident in identifiers
+                ]
+                sym_res_list = self.world_model.query_multi_sync(
+                    entities=sym_entities, domain="symbol", timeout=0.8
+                )
+                found_symbols = []
+                for res in sym_res_list:
+                    for f in res.facts:
+                        if f.value and f.value != "not_found":
+                            found_symbols.append(f"• {f.entity} located in `{f.value}`")
+
+                if found_symbols:
+                    parts.append("Referenced Symbols:\n" + "\n".join(found_symbols))
+
+        except Exception as e:
+            logger.debug("WorldModel context enrichment skipped: %s", e)
+
+        return "\n\n".join(parts)
+
     def _get_code_generation_plan(
         self, goal, req_model, repo_path, provider_mgr, CodeGenerationPlan, ChatMessage, ChatRequest
     ):
@@ -472,9 +535,13 @@ class CodingBackendAdapter(BaseBackendAdapter):
         """
         import json as _json
 
+        world_context = self._get_world_context(goal, repo_path)
+        context_block = f"\n\nLive System Context:\n{world_context}\n" if world_context else ""
+
         agy_goal = (
             f"Goal: {goal}\n"
-            f"Requirements: {_json.dumps(req_model.model_dump())}\n\n"
+            f"Requirements: {_json.dumps(req_model.model_dump())}"
+            f"{context_block}\n\n"
             "Put new projects in their own subdirectory (e.g., `calculator_app/app.py`), never directly in the repository root. "
             "Return ONLY a JSON object matching this schema, no markdown, "
             "no preamble: "

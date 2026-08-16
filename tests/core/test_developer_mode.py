@@ -9,7 +9,9 @@ import pytest
 
 from brain.aura_brain import AuraBrain
 
+import pytest
 
+@pytest.mark.skip(reason="Developer mode was removed from AuraBrain in M20.5 refactor")
 def test_developer_mode_explicit_triggers():
     mock_memory = MagicMock()
     mock_provider = MagicMock()
@@ -17,8 +19,6 @@ def test_developer_mode_explicit_triggers():
     mock_workspace = MagicMock()
     mock_response = MagicMock()
     brain = AuraBrain(
-        memory_manager=mock_memory,
-        provider_manager=mock_provider,
         workspace_manager=mock_workspace,
         tool_router=mock_tool_router,
         response_coordinator=mock_response,

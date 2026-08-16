@@ -96,6 +96,79 @@ class WorldTimeline:
         self._logger.info(f"TimelineEvent [{event_type}]: {description}")
         return evt
 
+    def record_diff(
+        self,
+        diff: Any,
+        owner: str = ResourceOwner.AURA.value,
+        session_id: str = "",
+    ) -> list[TimelineEvent]:
+        """
+        Automatically convert a WorldDiff into individual chronological TimelineEvents.
+        """
+        recorded = []
+        if not diff:
+            return recorded
+
+        for proc in getattr(diff, "new_processes", []):
+            recorded.append(
+                self.record_event(
+                    event_type="process_start",
+                    description=f"Process started: {proc}",
+                    resource_id=proc,
+                    owner=owner,
+                    session_id=session_id,
+                )
+            )
+
+        for proc in getattr(diff, "closed_processes", []):
+            recorded.append(
+                self.record_event(
+                    event_type="process_close",
+                    description=f"Process closed: {proc}",
+                    resource_id=proc,
+                    owner=owner,
+                    session_id=session_id,
+                )
+            )
+
+        for tab in getattr(diff, "new_tabs", []):
+            recorded.append(
+                self.record_event(
+                    event_type="tab_open",
+                    description=f"Browser tab opened: {tab}",
+                    resource_id=tab,
+                    owner=owner,
+                    session_id=session_id,
+                )
+            )
+
+        for tab in getattr(diff, "closed_tabs", []):
+            recorded.append(
+                self.record_event(
+                    event_type="tab_close",
+                    description=f"Browser tab closed: {tab}",
+                    resource_id=tab,
+                    owner=owner,
+                    session_id=session_id,
+                )
+            )
+
+        if getattr(diff, "focused_window_changed", False):
+            prev = getattr(diff, "previous_focused", "")
+            curr = getattr(diff, "current_focused", "")
+            recorded.append(
+                self.record_event(
+                    event_type="window_focus",
+                    description=f"Window focus changed from '{prev}' to '{curr}'",
+                    resource_id=curr,
+                    owner=owner,
+                    session_id=session_id,
+                    metadata={"previous_focused": prev, "current_focused": curr},
+                )
+            )
+
+        return recorded
+
     def get_recent_events(
         self, minutes: int = 15, session_id: str | None = None
     ) -> list[TimelineEvent]:

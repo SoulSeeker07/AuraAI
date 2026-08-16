@@ -185,13 +185,14 @@ class BackendRegistry:
 
     def _register_default_adapters(self) -> None:
         """Register built-in backend adapters."""
+        from brain.world_model import WorldModel
         from .adapters.desktop_backend import DesktopEngineBackend
         from .adapters.memory_backend import MemoryBackend
 
         self.register(DesktopEngineBackend())
         self.register(DefaultNativeDesktopAdapter())
         self.register(DefaultGeminiResearchAdapter())
-        self.register(AntigravityBackendAdapter())
+        self.register(AntigravityBackendAdapter(world_model=WorldModel.get_instance()))
         self.register(PlaywrightBrowserAdapter(headless=False))
         self.register(MemoryBackend())
 

@@ -1,10 +1,12 @@
 """
 Active Window Monitor
+Location: src/workspace/active_window.py
 
-Monitors the currently active window and provides information about it.
-Uses Windows API to get window information.
+Monitors the currently active window and provides information about it using native Windows APIs.
+Provides both synchronous (get_active_window_sync) and non-blocking asynchronous (get_active_window) APIs.
 """
 
+import asyncio
 import ctypes
 import logging
 from ctypes import wintypes
@@ -17,6 +19,16 @@ from .models import ActiveWindow
 logger = logging.getLogger(__name__)
 
 
+class RECT(ctypes.Structure):
+    """Native Win32 RECT structure (16 bytes)."""
+    _fields_ = [
+        ("left", ctypes.c_long),
+        ("top", ctypes.c_long),
+        ("right", ctypes.c_long),
+        ("bottom", ctypes.c_long),
+    ]
+
+
 class ActiveWindowMonitor:
     """
     Monitor for the currently active window.
@@ -25,7 +37,7 @@ class ActiveWindowMonitor:
     - Window title
     - Application name
     - Process name
-    - Window dimensions
+    - Window dimensions (bounding box)
     """
 
     # Windows API constants
@@ -59,7 +71,7 @@ class ActiveWindowMonitor:
 
     # GetWindowRect function
     GetWindowRect = ctypes.windll.user32.GetWindowRect
-    GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(ctypes.c_int)]
+    GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(RECT)]
     GetWindowRect.restype = ctypes.c_int
 
     # OpenProcess function
@@ -87,12 +99,12 @@ class ActiveWindowMonitor:
         """Initialize active window monitor"""
         self._last_window: ActiveWindow | None = None
 
-    async def get_active_window(self) -> ActiveWindow | None:
+    def get_active_window_sync(self) -> ActiveWindow | None:
         """
-        Get the currently active window.
+        Synchronously get the currently active window.
 
         Returns:
-            ActiveWindow object or None if no window found
+            ActiveWindow object or None if no foreground window found
         """
         try:
             hwnd = self.GetForegroundWindow()
@@ -112,14 +124,12 @@ class ActiveWindowMonitor:
             window_title = title_buf.value if title_length > 0 else ""
 
             # Get window rectangle (dimensions)
-            rect = ctypes.c_int(4)
+            rect = RECT()
             self.GetWindowRect(hwnd, ctypes.byref(rect))
-            x, y, width, height = (
-                rect.value,
-                rect.value + 1,
-                rect.value + 2,
-                rect.value + 3,
-            )
+            x = int(rect.left)
+            y = int(rect.top)
+            width = int(max(0, rect.right - rect.left))
+            height = int(max(0, rect.bottom - rect.top))
 
             # Get process ID
             process_id = ctypes.c_uint(0)
@@ -142,12 +152,21 @@ class ActiveWindowMonitor:
             )
 
             self._last_window = active_window
-            logger.debug(f"Active window: {app_name} - {window_title}")
+            logger.debug(f"Active window: {app_name} - {window_title} (pid={pid})")
             return active_window
 
         except Exception as e:
             logger.error(f"Failed to get active window: {e}")
             return self._last_window
+
+    async def get_active_window(self) -> ActiveWindow | None:
+        """
+        Asynchronously get the currently active window without blocking the event loop.
+
+        Returns:
+            ActiveWindow object or None if no window found
+        """
+        return await asyncio.to_thread(self.get_active_window_sync)
 
     def _get_process_name(self, pid: int) -> str:
         """
@@ -218,13 +237,12 @@ class ActiveWindowMonitor:
         name = name.replace("_", " ").title()
         return name
 
-    async def get_last_window(self) -> ActiveWindow | None:
-        """
-        Get the last known active window.
+    def get_last_window_sync(self) -> ActiveWindow | None:
+        """Get the last known active window synchronously."""
+        return self._last_window
 
-        Returns:
-            Last known ActiveWindow or None
-        """
+    async def get_last_window(self) -> ActiveWindow | None:
+        """Get the last known active window."""
         return self._last_window
 
     async def is_window_in_workspace(self) -> bool:
@@ -241,5 +259,4 @@ class ActiveWindowMonitor:
 
     def cleanup(self):
         """Clean up resources"""
-        # No resources to clean up for this simple monitor
         pass

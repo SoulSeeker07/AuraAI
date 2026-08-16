@@ -91,7 +91,7 @@ class BugRepairLoop:
         )
     """
 
-    def __init__(self, repository_path: Path, test_engine, ast_manager):
+    def __init__(self, repository_path: Path, test_engine, ast_manager, code_editor=None):
         """
         Initialize the Bug Repair Loop.
 
@@ -99,10 +99,12 @@ class BugRepairLoop:
             repository_path: Path to the repository
             test_engine: Test engine for running tests
             ast_manager: AST manager for analyzing code
+            code_editor: Code editor for backups and rollback
         """
         self.repository_path = Path(repository_path).resolve()
         self.test_engine = test_engine
         self.ast_manager = ast_manager
+        self.code_editor = code_editor
         self.max_attempts = 3
 
     def repair_bug(
@@ -111,6 +113,7 @@ class BugRepairLoop:
         test_name: str,
         expected_output: Any = None,
         max_attempts: int | None = None,
+        target_file: str | None = None,
     ) -> BugRepairResult:
         """
         Repair a bug using test-driven approach.
@@ -120,6 +123,7 @@ class BugRepairLoop:
             test_name: Name of test to run
             expected_output: Expected test output
             max_attempts: Maximum number of attempts
+            target_file: The source file suspected of the bug
 
         Returns:
             BugRepairResult
@@ -129,10 +133,15 @@ class BugRepairLoop:
 
         attempts = []
         total_duration = 0.0
+        
+        backup_id = None
+        if self.code_editor and target_file:
+            backup_id = self.code_editor.create_backup(target_file)
 
         for attempt in range(1, self.max_attempts + 1):
             # Run test
             test_result = self._run_test(test_file, test_name)
+            test_result.attempt_number = attempt
             attempts.append(test_result)
             total_duration += test_result.duration
 
@@ -140,44 +149,56 @@ class BugRepairLoop:
                 return BugRepairResult(
                     success=True,
                     test_file=test_file,
-                    test_name=test_name,
                     attempts=attempts,
                     total_attempts=attempt,
                     total_duration=total_duration,
                     final_status="passed",
                     error=None,
                 )
-            elif test_result.status == "error":
+            elif test_result.status in ("failed", "error", "collection_error"):
                 # Analyze and try to fix
-                fix = self._analyze_and_fix(test_file, test_name)
-                attempts[-1].fix_applied = fix
-                total_duration += 0.1
-            else:
-                # Test failed, keep trying
-                pass
+                try:
+                    fix = self._analyze_and_fix(test_result, target_file)
+                    attempts[-1].fix_applied = fix
+                    total_duration += 0.1
+                except Exception as e:
+                    logger.error(f"Repair iteration failed: {e}")
+
+        # Exhaustion rollback
+        if self.code_editor and backup_id and target_file:
+            self.code_editor.restore_backup(backup_id)
 
         return BugRepairResult(
             success=False,
             test_file=test_file,
-            test_name=test_name,
             attempts=attempts,
-            total_attempts=attempt,
+            total_attempts=self.max_attempts,
             total_duration=total_duration,
             final_status="failed",
-            error="Max attempts reached without success",
+            error="Max attempts reached without success, rolled back.",
         )
 
     def _run_test(self, test_file: str, test_name: str) -> BugFixAttempt:
         """Run a single test."""
         try:
-            # Run the test
-            # Placeholder implementation
+            result = self.test_engine.run_tests(test_file)
+            
+            status = result.get("status", "error")
+            traceback = result.get("error")
+            
+            for r in result.get("results", []):
+                if not test_name or r.test_name == test_name:
+                    status = r.status
+                    traceback = r.traceback
+                    break
+                    
             return BugFixAttempt(
                 attempt_number=1,
                 test_file=test_file,
                 test_name=test_name,
-                status="passed",
-                duration=0.0,
+                status=status,
+                error_traceback=traceback,
+                duration=result.get("total_duration", 0.0),
             )
         except Exception as e:
             return BugFixAttempt(
@@ -189,11 +210,51 @@ class BugRepairLoop:
                 duration=0.0,
             )
 
-    def _analyze_and_fix(self, test_file: str, test_name: str) -> str:
+    def _analyze_and_fix(self, test_result: BugFixAttempt, target_file: str | None) -> str:
         """Analyze a test failure and apply a fix."""
-        # This would analyze the error traceback
-        # Placeholder implementation
-        return "Applied generic fix"
+        import re
+        failing_symbol = None
+        
+        # Simple heuristic: extract last function name from traceback
+        # Attempt to extract symbol context from WorldModel
+        # Note: This is a fragile best-effort heuristic. It will misfire on class methods, 
+        # decorated functions, or multi-frame tracebacks.
+        matches = re.findall(r"def (\w+)\(", test_result.error_traceback or "")
+        if matches:
+            failing_symbol = matches[-1]
+                
+        symbol_data = None
+        if failing_symbol:
+            try:
+                from brain.world_model import WorldModel
+                wm = WorldModel.get_instance()
+                
+                # Query World Model exactly as validated
+                symbol_data = wm.query_sync(entity=f"function:{failing_symbol}", domain="symbol")
+                if not symbol_data:
+                    symbol_data = wm.query_sync(entity=f"class:{failing_symbol}", domain="symbol")
+            except ImportError:
+                pass
+                
+        prompt = f"Fix the test failure in {target_file or test_result.test_file}.\n"
+        if test_result.error_traceback:
+            prompt += f"\nTraceback:\n{test_result.error_traceback}\n"
+            
+        if symbol_data:
+            prompt += f"\nSymbol Context from World Model:\n{symbol_data}\n"
+            
+        try:
+            # Delegate to code.debug via Antigravity bridge without fallback
+            from engineering.antigravity_bridge import AntigravityCodingBridge
+            bridge = AntigravityCodingBridge()
+            bridge.execute_capability(
+                capability="code.debug",
+                arguments={"description": prompt, "file_path": target_file or test_result.test_file}
+            )
+            return "Delegated to code.debug"
+        except Exception as e:
+            logger.error(f"Failed to delegate to code.debug: {e}")
+            raise e
 
     def repair_all_failed_tests(self) -> dict[str, Any]:
         """

@@ -17,7 +17,7 @@ try:
         get_desktop_execution_engine,
     )
 except (ImportError, ModuleNotFoundError):
-    from src.desktop.native.desktop_execution_engine import (
+    from desktop.native.desktop_execution_engine import (
         DesktopExecutionEngine,
         get_desktop_execution_engine,
     )

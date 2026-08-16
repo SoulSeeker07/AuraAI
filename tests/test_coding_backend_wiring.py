@@ -247,3 +247,104 @@ def test_coding_result_always_has_backend_field(adapter, tmp_path):
                 f"ExecutionResult.data must always contain 'backend' key. "
                 f"capability='{capability}', data={result.data}"
             )
+
+
+# ── M20.5: WorldModel Context Enrichment Tests ───────────────────────────────
+
+def test_coding_backend_enriches_agy_goal_with_world_context(tmp_path):
+    """
+    Verify CodingBackendAdapter injects live workspace and symbol facts into the agy goal prompt.
+    """
+    import json
+    from unittest.mock import MagicMock, patch
+    from core.backends.adapters.antigravity_backend import CodingBackendAdapter
+    from src.brain.providers.base import ProviderFact, QueryResult
+    from tests.fake_provider import FakeProvider
+
+    mock_wm = MagicMock()
+    mock_wm.query_sync.return_value = QueryResult(
+        entity="all",
+        facts=[
+            ProviderFact(domain="workspace", entity="git_branch", value="feature/auth"),
+            ProviderFact(domain="workspace", entity="project_type", value="python"),
+        ],
+    )
+    mock_wm.query_multi_sync.return_value = [
+        QueryResult(
+            entity="class:UserSession",
+            facts=[ProviderFact(domain="symbol", entity="class:UserSession", value="src/models/user.py")],
+        )
+    ]
+
+    mock_agy = MagicMock()
+    mock_agy.run_plan.return_value = MagicMock(
+        raw={"files": [{"path": "auth_app/handler.py", "content": "class AuthHandler: pass\n"}]},
+        elapsed_s=0.5,
+    )
+
+    adapter = CodingBackendAdapter(agy_client=mock_agy, world_model=mock_wm)
+
+    req_json = json.dumps({
+        "project_name": "auth_app", "language": "python",
+        "explicit_requirements": ["implement UserSession authentication"],
+        "inferred_requirements": [],
+    })
+    fake = FakeProvider([req_json])
+    mock_mgr = MagicMock()
+    mock_mgr.chat.side_effect = fake.chat
+
+    with patch("ai.registry.build_provider_manager", return_value=mock_mgr):
+        result = adapter.execute(
+            capability="code.generate",
+            goal="implement UserSession authentication handler",
+            arguments={"repository_path": str(tmp_path)},
+        )
+
+    assert result.success is True
+    # Verify agy was called with enriched context in its goal argument
+    mock_agy.run_plan.assert_called_once()
+    passed_goal = mock_agy.run_plan.call_args.kwargs.get("goal") or mock_agy.run_plan.call_args[1].get("goal")
+    assert "Live System Context:" in passed_goal
+    assert "git_branch: feature/auth" in passed_goal
+    assert "class:UserSession located in `src/models/user.py`" in passed_goal
+
+
+def test_coding_backend_context_enrichment_graceful_fallback(tmp_path):
+    """
+    Verify that if WorldModel throws or times out, generation proceeds completely unblocked.
+    """
+    import json
+    from unittest.mock import MagicMock, patch
+    from core.backends.adapters.antigravity_backend import CodingBackendAdapter
+    from tests.fake_provider import FakeProvider
+
+    failing_wm = MagicMock()
+    failing_wm.query_sync.side_effect = TimeoutError("Simulated query timeout")
+
+    mock_agy = MagicMock()
+    mock_agy.run_plan.return_value = MagicMock(
+        raw={"files": [{"path": "app/main.py", "content": "x = 1\n"}]},
+        elapsed_s=0.2,
+    )
+
+    adapter = CodingBackendAdapter(agy_client=mock_agy, world_model=failing_wm)
+
+    req_json = json.dumps({
+        "project_name": "app", "language": "python",
+        "explicit_requirements": [], "inferred_requirements": [],
+    })
+    fake = FakeProvider([req_json])
+    mock_mgr = MagicMock()
+    mock_mgr.chat.side_effect = fake.chat
+
+    with patch("ai.registry.build_provider_manager", return_value=mock_mgr):
+        result = adapter.execute(
+            capability="code.generate",
+            goal="create sample app",
+            arguments={"repository_path": str(tmp_path)},
+        )
+
+    assert result.success is True
+    mock_agy.run_plan.assert_called_once()
+    passed_goal = mock_agy.run_plan.call_args.kwargs.get("goal") or mock_agy.run_plan.call_args[1].get("goal")
+    assert "Live System Context:" not in passed_goal  # Degraded gracefully

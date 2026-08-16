@@ -139,6 +139,7 @@ class CodeEditor:
         self.symbol_graph = symbol_graph
         self.dependency_graph = dependency_graph
         self._backup_dir: Path | None = None
+        self._backup_mapping: dict[str, str] = {}
 
     def edit_file(
         self,
@@ -373,12 +374,46 @@ class CodeEditor:
         """
         return self._backup_dir
 
-    def restore_backup(self, backup_file: str) -> EditResult:
+    def create_backup(self, file_path: str) -> str:
+        """
+        Create a physical backup of a file.
+        
+        Note: Backup retention is deliberately deferred as an unbounded-growth tradeoff.
+        The `.aura_backup/` directory will grow indefinitely until explicitly cleaned up.
+
+        Args:
+            file_path: Path to the file relative to repository
+
+        Returns:
+            Backup ID string
+        """
+        if not self._backup_dir:
+            self._backup_dir = self.repository_path / ".aura_backup"
+            self._backup_dir.mkdir(exist_ok=True)
+
+        full_path = self.repository_path / file_path
+        if not full_path.exists():
+            return ""
+
+        import uuid
+        backup_id = f"{Path(file_path).name}_{uuid.uuid4().hex[:8]}.bak"
+        backup_path = self._backup_dir / backup_id
+
+        # Copy the file
+        import shutil
+        shutil.copy2(full_path, backup_path)
+
+        # Store mapping
+        self._backup_mapping[backup_id] = file_path
+
+        return backup_id
+
+    def restore_backup(self, backup_id: str) -> EditResult:
         """
         Restore a file from backup.
 
         Args:
-            backup_file: Path to backup file
+            backup_id: The ID returned by create_backup
 
         Returns:
             EditResult
@@ -386,45 +421,53 @@ class CodeEditor:
         if not self._backup_dir:
             return EditResult(
                 success=False,
-                file_path=backup_file,
+                file_path=backup_id,
                 old_content=None,
                 new_content="",
                 changes=[],
                 errors=["No backup directory found"],
             )
 
-        backup_path = self._backup_dir / backup_file
+        backup_path = self._backup_dir / backup_id
 
         if not backup_path.exists():
             return EditResult(
                 success=False,
-                file_path=backup_file,
+                file_path=backup_id,
                 old_content=None,
                 new_content="",
                 changes=[],
-                errors=[f"Backup not found: {backup_file}"],
+                errors=[f"Backup not found: {backup_id}"],
             )
 
         try:
             # Determine original file path
-            # This would need to track original paths
-            original_file = backup_file.replace(".aura_backup", "")
+            original_file = self._backup_mapping.get(backup_id)
+            if not original_file:
+                # Fallback if mapping is somehow lost
+                original_file = backup_id.rsplit("_", 1)[0]
 
-            # Restore content
+            full_path = self.repository_path / original_file
+            
+            # Read backup content for the EditResult
             content = backup_path.read_text(encoding="utf-8")
+            
+            # Restore content physically
+            import shutil
+            shutil.copy2(backup_path, full_path)
 
             return EditResult(
                 success=True,
                 file_path=original_file,
                 old_content=None,
                 new_content=content,
-                changes=["Restored from backup"],
+                changes=["Restored from physical backup"],
             )
         except Exception as e:
-            logger.error(f"Error restoring backup {backup_file}: {e}")
+            logger.error(f"Error restoring backup {backup_id}: {e}")
             return EditResult(
                 success=False,
-                file_path=backup_file,
+                file_path=backup_id,
                 old_content=None,
                 new_content="",
                 changes=[],
@@ -436,6 +479,7 @@ class CodeEditor:
         if self._backup_dir and self._backup_dir.exists():
             shutil.rmtree(self._backup_dir)
             self._backup_dir = None
+            self._backup_mapping.clear()
             logger.info("Backups cleaned up")
 
     def close(self):

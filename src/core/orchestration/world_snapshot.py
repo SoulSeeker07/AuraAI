@@ -2,30 +2,23 @@
 Desktop State Snapshot
 Location: src/core/orchestration/world_snapshot.py
 
-Lightweight pre-decomposition desktop state probe.
-
-Used by TaskDecomposer to skip tasks whose preconditions are already satisfied.
-For example: if Chrome is already running, skip the "Launch Chrome" subtask.
-
-Design:
-- Queries running Windows processes via psutil (if available)
-- Queries the focused window title via win32gui (if available)
-- Gracefully degrades if neither is available (returns an empty snapshot)
-
-This is a pre-M18 placeholder.
-Milestone 18 (World Model) will extend this into a full persistent world
-representation (tabs, files, project state, desktop layout, etc.).
-The interface is intentionally minimal so M18 can replace the implementation
-without changing how the decomposer consumes it.
+Lightweight desktop state snapshot and provider.
+Consolidates OS probes onto canonical ActiveWindowMonitor and RunningAppsMonitor.
+Thread-safe snapshotting with automatic WorldTimeline diff recording.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from browser.world_model import BrowserContext, BrowserStateProbe
+from workspace.active_window import ActiveWindowMonitor
+from workspace.running_apps import RunningAppsMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +44,9 @@ class DesktopStateSnapshot:
 
     # Whether this snapshot was populated from real OS data
     is_live: bool = False
+
+    # Timestamp of the snapshot capture
+    timestamp: float = field(default_factory=time.time)
 
     @property
     def browser_world(self) -> BrowserContext:
@@ -84,19 +80,31 @@ class DesktopStateSnapshot:
             "browser_context": self.browser_context.to_dict(),
             "browser_world": self.browser_context.to_dict(),
             "is_live": self.is_live,
+            "timestamp": self.timestamp,
         }
 
 
 class WorldSnapshotProvider:
     """
-    Provides a DesktopStateSnapshot by polling the OS and tracks state diffs.
+    Provides a DesktopStateSnapshot by polling the OS via canonical monitors
+    and tracks state diffs thread-safely.
     """
 
+    _lock = threading.RLock()
     _last_snapshot: DesktopStateSnapshot | None = None
+
+    def __init__(
+        self,
+        window_monitor: ActiveWindowMonitor | None = None,
+        apps_monitor: RunningAppsMonitor | None = None,
+    ):
+        self.window_monitor = window_monitor or ActiveWindowMonitor()
+        self.apps_monitor = apps_monitor or RunningAppsMonitor(window_monitor=self.window_monitor)
 
     def snapshot(self, playwright_engine: Any = None) -> DesktopStateSnapshot:
         """
-        Capture a snapshot of the current desktop state.
+        Synchronously capture a snapshot of the current desktop state.
+        Thread-safe against concurrent readers/writers.
         """
         processes = self._get_running_processes()
         focused = self._get_focused_window_title()
@@ -108,9 +116,11 @@ class WorldSnapshotProvider:
             focused_window_title=focused,
             browser_context=browser_ctx,
             is_live=is_live,
+            timestamp=time.time(),
         )
 
-        WorldSnapshotProvider._last_snapshot = snap
+        with WorldSnapshotProvider._lock:
+            WorldSnapshotProvider._last_snapshot = snap
 
         if is_live:
             logger.debug(
@@ -119,60 +129,53 @@ class WorldSnapshotProvider:
                 f"focused='{focused[:40]}'"
             )
         else:
-            logger.debug("WorldSnapshot: running in degraded mode (no psutil/win32gui)")
+            logger.debug("WorldSnapshot: running in degraded mode")
 
         return snap
+
+    async def snapshot_async(self, playwright_engine: Any = None) -> DesktopStateSnapshot:
+        """
+        Asynchronously capture a snapshot without blocking the event loop.
+        """
+        return await asyncio.to_thread(self.snapshot, playwright_engine)
 
     def snapshot_with_diff(
         self, playwright_engine: Any = None
     ) -> tuple[DesktopStateSnapshot, Any]:
         """
-        Capture a snapshot and compute the WorldDiff against the previous snapshot.
+        Capture a snapshot, compute WorldDiff against previous snapshot,
+        and automatically record the diff events into the WorldTimeline.
+        Lock is held only for brief pointer read/write operations; sensing executes unblocked.
         """
         from .world_diff import WorldDiffEngine
+        from .world_timeline import WorldTimeline
 
-        prev_snap = WorldSnapshotProvider._last_snapshot
+        with WorldSnapshotProvider._lock:
+            prev_snap = WorldSnapshotProvider._last_snapshot
+
+        # Sensing runs outside the lock, updating _last_snapshot under its own brief lock
         current_snap = self.snapshot(playwright_engine=playwright_engine)
         diff = WorldDiffEngine.compute_diff(prev_snap, current_snap)
+
+        # Automatically log diff into the chronological timeline
+        WorldTimeline.get_instance().record_diff(diff)
+
         return current_snap, diff
 
-    # ── Private OS probes ───────────────────────────────────────────────
-
     def _get_running_processes(self) -> list[str]:
-        """Get normalized list of running process names via psutil."""
+        """Get normalized list of running process names via canonical RunningAppsMonitor."""
         try:
-            import psutil  # type: ignore[import]
-
-            names: list[str] = []
-            for proc in psutil.process_iter(["name"]):
-                try:
-                    name = (
-                        (proc.info.get("name") or "")
-                        .lower()
-                        .replace(".exe", "")
-                        .strip()
-                    )
-                    if name:
-                        names.append(name)
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-            return names
-        except ImportError:
-            logger.debug("WorldSnapshot: psutil not available — process list empty")
-            return []
+            apps = self.apps_monitor.get_running_apps_sync()
+            return [app.process_name for app in apps if app.process_name]
         except Exception as e:
             logger.warning(f"WorldSnapshot: process probe failed: {e}")
             return []
 
     def _get_focused_window_title(self) -> str:
-        """Get the title of the currently focused window via win32gui."""
+        """Get the title of the currently focused window via canonical ActiveWindowMonitor."""
         try:
-            import win32gui  # type: ignore[import]
-
-            hwnd = win32gui.GetForegroundWindow()
-            return win32gui.GetWindowText(hwnd) or ""
-        except ImportError:
-            return ""
+            win = self.window_monitor.get_active_window_sync()
+            return win.title if win else ""
         except Exception as e:
             logger.debug(f"WorldSnapshot: focused window probe failed: {e}")
             return ""
