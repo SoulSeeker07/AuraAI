@@ -14,12 +14,12 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from src.workspace.workspace_walker import (
+from workspace.workspace_walker import (
     BoundaryEscapeError,
     WorkspaceSizeError,
     WorkspaceWalker,
 )
-from src.engineering.workspace_walker import WorkspaceFileWalker
+from engineering.workspace_walker import WorkspaceFileWalker
 
 
 @pytest.fixture

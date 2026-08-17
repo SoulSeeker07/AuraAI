@@ -23,6 +23,7 @@ from .display_manager import DisplayManager
 from .native_manager_registry import NativeManagerRegistry
 from .network_manager import NetworkManager
 from .power_manager import PowerManager
+from .uia_manager import UIAManager
 from .window_manager import WindowManager
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "AudioManager",
     "PowerManager",
     "NetworkManager",
+    "UIAManager",
 ]

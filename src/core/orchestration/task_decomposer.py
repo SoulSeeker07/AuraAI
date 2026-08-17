@@ -59,6 +59,35 @@ class TaskDecomposer:
 
     def decompose(self, goal: str, decision: Any | None = None) -> TaskGraph:
         graph = TaskGraph(goal=goal)
+        goal_trimmed = goal.strip()
+
+        # Direct Capability Dispatch: check if goal is an exact registered capability name
+        from core.capabilities.capability_registry import CapabilityRegistry
+        cap_obj = CapabilityRegistry.get_instance().get(goal_trimmed)
+        if cap_obj is not None:
+            role_map = {
+                "desktop": PlannerRole.DESKTOP,
+                "coding": PlannerRole.CODING,
+                "browser": PlannerRole.BROWSER,
+                "research": PlannerRole.RESEARCH,
+                "memory": PlannerRole.DESKTOP,
+            }
+            subtask = SubTask(
+                task_id="task_1",
+                title=f"Execute {cap_obj.name}",
+                required_role=role_map.get(cap_obj.domain, PlannerRole.DESKTOP),
+                capability=cap_obj.name,
+                description=f"Execute capability '{cap_obj.name}'",
+                parameters={"goal": goal},
+                dependencies=[],
+            )
+            graph.add_task(subtask)
+            self._compute_execution_levels(graph)
+            logger.info(
+                f"Direct capability dispatch: '{cap_obj.name}' mapped to role '{subtask.required_role.value}'"
+            )
+            return graph
+
         goal_lower = goal.lower()
 
         subtask_specs = self._analyze_goal_clauses(goal_lower, goal, decision)
@@ -74,8 +103,15 @@ class TaskDecomposer:
     def _analyze_goal_clauses(
         self, goal_lower: str, raw_goal: str, decision: Any | None = None
     ) -> list[SubTask]:
-        # Check if this is a multi-stage research + persistence + launch task, which shouldn't be split
-        is_multi_stage = (
+        is_browser_flow = (
+            any(u in goal_lower for u in ["https://", "http://", "www."])
+            or (
+                "navigate" in goal_lower
+                and any(k in goal_lower for k in ["click", "type", "extract", "fill", "submit", "button", "scrape"])
+            )
+        )
+        # Check if this is a multi-stage research + persistence + launch task or browser flow, which shouldn't be split
+        is_multi_stage = is_browser_flow or (
             any(
                 w in goal_lower
                 for w in ["research", "search web", "look up", "find papers"]
@@ -233,6 +269,7 @@ class TaskDecomposer:
                 decomposed_tasks = []
                 prev_task_id = None
                 task_counter = 1
+                last_app_name = None
                 for idx, clause in enumerate(valid_clauses):
                     clause_lower = clause.lower()
                     clause_tasks = self._analyze_goal_clauses_single(
@@ -243,11 +280,20 @@ class TaskDecomposer:
                         task_counter += 1
                         if prev_task_id:
                             t.dependencies = [prev_task_id]
+                        if t.parameters.get("app_name") and t.parameters.get("app_name") not in (
+                            "application",
+                            "keyboard",
+                            "desktop",
+                        ):
+                            last_app_name = t.parameters.get("app_name")
+                        elif last_app_name and t.capability.startswith("uia.") and not t.parameters.get("window_title"):
+                            t.parameters["window_title"] = last_app_name
                         prev_task_id = t.task_id
                         decomposed_tasks.append(t)
                 return decomposed_tasks
 
         return self._analyze_goal_clauses_single(goal_lower, raw_goal, decision)
+
 
     def _resolve_youtube_watch_url(self, query: str) -> str | None:
         """Fetch top YouTube video watch URL for a search query to autoplay the video."""
@@ -754,23 +800,24 @@ class TaskDecomposer:
                 ]
             )
         )
-        has_browser = (intent_val == "browser") or (
-            not intent_is_authoritative and any(
-                w in goal_lower
-                for w in [
-                    "browse",
-                    "web page",
-                    "navigate",
-                    "url",
-                    "instagram",
-                    "github",
-                    "linkedin",
-                    "youtube",
-                ]
-            )
+        has_browser = (intent_val == "browser") or any(
+            w in goal_lower
+            for w in [
+                "browse",
+                "web page",
+                "navigate",
+                "url",
+                "https://",
+                "http://",
+                "www.",
+                "instagram",
+                "github",
+                "linkedin",
+                "youtube",
+            ]
         )
 
-        if has_browser and intent_val != "desktop_action":
+        if has_browser:
             desktop_keywords = [
                 "vs code",
                 "vscode",
@@ -779,9 +826,12 @@ class TaskDecomposer:
                 "clipboard",
                 "mute",
                 "volume",
-                "press enter",
-                "type",
-                "press",
+                "calculator",
+                "calc",
+                "task manager",
+                "settings",
+                "cmd",
+                "powershell",
             ]
             has_desktop = any(w in goal_lower for w in desktop_keywords)
         else:
@@ -821,6 +871,12 @@ class TaskDecomposer:
                 r"\bwifi\b",
                 r"\bwi-fi\b",
                 r"\bbrightness\b",
+                r"\bclick\b",
+                r"\btoggle\b",
+                r"\bcheckbox\b",
+                r"\binspect\b",
+                r"\btree\b",
+                r"\bbutton\b",
             ]
             has_desktop = (intent_val == "desktop_action") or (
                 not intent_is_authoritative and any(
@@ -829,11 +885,18 @@ class TaskDecomposer:
             )
 
         if has_coding and has_desktop and not intent_is_authoritative:
-            # Prevent nouns like 'app' or 'calculator' from spuriously triggering desktop actions 
+            # Prevent nouns like 'app' or 'calculator' from spuriously triggering desktop actions
             # in coding clauses, unless there is a clear desktop action verb.
             desktop_verbs = ["open", "launch", "close", "minimize", "maximize", "restore", "type", "press", "hit"]
             if not any(v in goal_lower for v in desktop_verbs):
                 has_desktop = False
+
+        if has_coding and has_research and not intent_is_authoritative:
+            # Prevent nouns like 'python' or 'code' from spuriously triggering coding actions
+            # in research clauses, unless there is a clear coding action verb.
+            coding_verbs = ["write code", "fix", "refactor", "implement", "build", "debug", "create script", "write script"]
+            if not any(v in goal_lower for v in coding_verbs):
+                has_coding = False
 
         # Check for multi-stage research -> document -> persist -> open DAG
         if (
@@ -927,19 +990,101 @@ class TaskDecomposer:
         prev_id: str | None = None
 
         if has_research:
-            t_id = f"task_{task_counter}"
-            task_counter += 1
-            subtasks.append(
-                SubTask(
-                    task_id=t_id,
-                    title="Conduct Research & Gather Knowledge",
-                    required_role=PlannerRole.RESEARCH,
-                    capability="research",
-                    description=f"Gather information for: {raw_goal}",
-                    dependencies=[],
-                )
+            is_deep = any(
+                k in goal_lower
+                for k in [
+                    "deep research",
+                    "deeply research",
+                    "in-depth research",
+                    "investigate",
+                ]
             )
-            prev_id = t_id
+            is_pure_search = any(
+                k in goal_lower
+                for k in [
+                    "search web",
+                    "search for",
+                    "google for",
+                    "look up",
+                    "find articles",
+                    "find sources",
+                ]
+            ) and not any(
+                k in goal_lower
+                for k in [
+                    "synthesize",
+                    "summarize",
+                    "analyze",
+                    "and summarize",
+                    "and synthesize",
+                    "and report",
+                ]
+            )
+
+            if is_deep:
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Conduct Deep Autonomous Research",
+                        required_role=PlannerRole.RESEARCH,
+                        capability="research.deep_query",
+                        description=f"Deep research: {raw_goal}",
+                        parameters={"question": raw_goal},
+                        dependencies=[prev_id] if prev_id else [],
+                    )
+                )
+                prev_id = t_id
+            elif is_pure_search:
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Search Web Knowledge Sources",
+                        required_role=PlannerRole.RESEARCH,
+                        capability="research.search",
+                        description=f"Search web for: {raw_goal}",
+                        output_artifacts=["art_search_results"],
+                        parameters={"query": raw_goal},
+                        dependencies=[prev_id] if prev_id else [],
+                    )
+                )
+                prev_id = t_id
+            else:
+                # Multi-step Research DAG: search -> synthesize
+                t1_id = f"task_{task_counter}"
+                task_counter += 1
+                t2_id = f"task_{task_counter}"
+                task_counter += 1
+
+                subtasks.append(
+                    SubTask(
+                        task_id=t1_id,
+                        title="Query Research Evidence Sources",
+                        required_role=PlannerRole.RESEARCH,
+                        capability="research.search",
+                        description=f"Search web for: {raw_goal}",
+                        output_artifacts=["art_search_results"],
+                        parameters={"query": raw_goal},
+                        dependencies=[prev_id] if prev_id else [],
+                    )
+                )
+                subtasks.append(
+                    SubTask(
+                        task_id=t2_id,
+                        title="Synthesize Evidence & Citations",
+                        required_role=PlannerRole.RESEARCH,
+                        capability="research.synthesize",
+                        description=f"Synthesize research findings for: {raw_goal}",
+                        input_artifacts=["art_search_results"],
+                        parameters={"topic": raw_goal},
+                        dependencies=[t1_id],
+                    )
+                )
+                prev_id = t2_id
+
 
         if has_desktop:
             t_id = f"task_{task_counter}"
@@ -950,9 +1095,13 @@ class TaskDecomposer:
             app_target = "application"
             title_text = f"Execute desktop action: {raw_goal}"
 
-            params = {"app_name": app_target, "goal": raw_goal}
+            # 1. Check for UIA capability intents first
+            from desktop.planner.goal_parser import GoalParser
+
+            parsed_goal = GoalParser().parse(raw_goal)
             is_write_cmd = any(
-                k in goal_lower for k in ["type ", "type", "write text", "enter text", "input text"]
+                k in goal_lower
+                for k in ["type ", "type", "write text", "enter text", "input text"]
             ) or (
                 any(w in goal_lower for w in ["write ", "write"])
                 and not any(
@@ -968,7 +1117,23 @@ class TaskDecomposer:
                     ]
                 )
             )
-            if is_write_cmd:
+
+            if (
+                parsed_goal.explicit_capability
+                and parsed_goal.explicit_capability.startswith("uia.")
+            ):
+                cap = parsed_goal.explicit_capability
+                params = dict(parsed_goal.parameters)
+                params["goal"] = raw_goal
+                elem_name = (
+                    params.get("name")
+                    or params.get("window_title")
+                    or "element"
+                )
+                title_text = f"UI Action ({cap}): {elem_name}"
+                app_target = params.get("window_title") or "desktop"
+                params["app_name"] = app_target
+            elif is_write_cmd:
                 cap = "keyboard.type"
                 app_target = "keyboard"
                 text_to_type = raw_goal
@@ -1157,6 +1322,18 @@ class TaskDecomposer:
                     elif action_verb in ["focus", "activate", "switch to"]:
                         cap = "window.activate"
                         title_text = f"Focus window for: {app_target.title()}"
+                elif any(w in goal_lower for w in ["battery", "charging", "battery status", "power status"]):
+                    cap = "power.battery"
+                    app_target = "battery"
+                    title_text = "Check battery status"
+                elif any(w in goal_lower for w in ["power plan", "power scheme"]):
+                    cap = "power.power_plan"
+                    app_target = "power"
+                    title_text = "Check power plan"
+                elif any(w in goal_lower for w in ["volume", "audio", "mute", "unmute"]):
+                    cap = "audio.volume"
+                    app_target = "audio"
+                    title_text = "Check audio volume"
                 else:
                     # Fallback: if no verb matches but a known app name is present, treat as open
                     known_apps = [
@@ -1216,10 +1393,6 @@ class TaskDecomposer:
         if (
             has_browser
             and not has_research
-            and not (
-                has_desktop
-                and any(k in goal_lower for k in ["type", "press", "write text", "hit"])
-            )
         ):
             site_name, target_url, query = self._resolve_browser_target(raw_goal)
 
@@ -1242,7 +1415,7 @@ class TaskDecomposer:
                     task_id=t1_id,
                     title="Ensure Browser Instance Active",
                     required_role=PlannerRole.BROWSER,
-                    capability="browser.ensure_open",
+                    capability="browser.open",
                     description="Launch or verify browser instance",
                     dependencies=[],
                     status="skipped" if is_chrome_open else "pending",
@@ -1268,57 +1441,122 @@ class TaskDecomposer:
                 )
             )
 
-            t3_id = f"task_{task_counter}"
-            task_counter += 1
-            subtasks.append(
-                SubTask(
-                    task_id=t3_id,
-                    title="Verify Authentication & Session",
-                    required_role=PlannerRole.BROWSER,
-                    capability="browser.check_auth",
-                    description="Check login state and user session",
-                    dependencies=[t2_id],
-                )
+            is_extract = any(
+                k in goal_lower
+                for k in ["extract", "scrape", "get text", "read page", "content"]
+            )
+            is_click = any(
+                k in goal_lower
+                for k in ["click", "press link", "follow link", "button"]
+            ) and not ("play" in goal_lower)
+            is_type = any(
+                k in goal_lower for k in ["type ", "fill ", "enter "]
             )
 
-            t4_id = f"task_{task_counter}"
-            task_counter += 1
-            subtasks.append(
-                SubTask(
-                    task_id=t4_id,
-                    title="Fulfill Page Goal",
-                    required_role=PlannerRole.BROWSER,
-                    capability="browser.navigate_goal",
-                    description=f"Fulfill page goal for: {raw_goal}",
-                    parameters={
-                        "url": target_url,
-                        "target_url": target_url,
-                        "site": site_name,
-                        "query": query,
-                        "goal": raw_goal,
-                    },
-                    dependencies=[t3_id],
-                )
-            )
-
-            if "play" in goal_lower:
-                t5_id = f"task_{task_counter}"
+            if is_extract:
+                t3_id = f"task_{task_counter}"
                 task_counter += 1
                 subtasks.append(
                     SubTask(
-                        task_id=t5_id,
-                        title="Play Video Media",
+                        task_id=t3_id,
+                        title="Extract Page Content",
                         required_role=PlannerRole.BROWSER,
-                        capability="media.play",
-                        description=f"Play top video result for: {query or raw_goal}",
-                        parameters={
-                            "query": query,
-                            "goal": raw_goal,
-                            "site": site_name,
-                        },
-                        dependencies=[t4_id],
+                        capability="browser.extract",
+                        description=f"Extract content from {target_url}",
+                        output_artifacts=["art_browser_content"],
+                        parameters={"url": target_url},
+                        dependencies=[t2_id],
                     )
                 )
+            elif is_click:
+                import re
+
+                m_sel = re.search(r"['\"]([^'\"]+)['\"]", raw_goal)
+                sel = m_sel.group(1) if m_sel else "button"
+                t3_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t3_id,
+                        title="Click DOM Element",
+                        required_role=PlannerRole.BROWSER,
+                        capability="browser.click",
+                        description=f"Click element '{sel}' on {target_url}",
+                        parameters={"selector": sel, "url": target_url},
+                        dependencies=[t2_id],
+                    )
+                )
+            elif is_type:
+                import re
+
+                quotes = re.findall(r"['\"]([^'\"]+)['\"]", raw_goal)
+                text = quotes[0] if quotes else "test"
+                sel = quotes[1] if len(quotes) > 1 else "input"
+                t3_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t3_id,
+                        title="Type Text Into DOM Element",
+                        required_role=PlannerRole.BROWSER,
+                        capability="browser.type",
+                        description=f"Type '{text}' into '{sel}' on {target_url}",
+                        parameters={"selector": sel, "text": text, "url": target_url},
+                        dependencies=[t2_id],
+                    )
+                )
+            else:
+                t3_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t3_id,
+                        title="Verify Authentication & Session",
+                        required_role=PlannerRole.BROWSER,
+                        capability="browser.check_auth",
+                        description="Check login state and user session",
+                        dependencies=[t2_id],
+                    )
+                )
+
+                t4_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t4_id,
+                        title="Fulfill Page Goal",
+                        required_role=PlannerRole.BROWSER,
+                        capability="browser.navigate_goal",
+                        description=f"Fulfill page goal for: {raw_goal}",
+                        parameters={
+                            "url": target_url,
+                            "target_url": target_url,
+                            "site": site_name,
+                            "query": query,
+                            "goal": raw_goal,
+                        },
+                        dependencies=[t3_id],
+                    )
+                )
+
+                if "play" in goal_lower:
+                    t5_id = f"task_{task_counter}"
+                    task_counter += 1
+                    subtasks.append(
+                        SubTask(
+                            task_id=t5_id,
+                            title="Play Video Media",
+                            required_role=PlannerRole.BROWSER,
+                            capability="media.play",
+                            description=f"Play top video result for: {query or raw_goal}",
+                            parameters={
+                                "query": query,
+                                "goal": raw_goal,
+                                "site": site_name,
+                            },
+                            dependencies=[t4_id],
+                        )
+                    )
 
         if has_coding or (not subtasks and intent_val == "coding"):
             t_id = f"task_{task_counter}"

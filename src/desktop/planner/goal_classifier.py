@@ -10,6 +10,43 @@ class GoalClassifier:
     """
 
     CATEGORY_KEYWORDS = {
+        "uia": [
+            "click button",
+            "press button",
+            "tap button",
+            "invoke button",
+            "click on",
+            "click the",
+            "click",
+            "type into",
+            "write into",
+            "type text",
+            "enter text",
+            "input text",
+            "fill text",
+            "toggle checkbox",
+            "toggle switch",
+            "check box",
+            "uncheck",
+            "inspect tree",
+            "ui tree",
+            "element tree",
+            "find element",
+            "locate element",
+            "search element",
+            "get value of",
+            "read value",
+            "read text from",
+            "get field",
+            "select option",
+            "select item",
+            "choose option",
+            "choose item",
+            "button",
+            "checkbox",
+            "textbox",
+            "input field",
+        ],
         "window": [
             "window",
             "focus",
@@ -22,7 +59,18 @@ class GoalClassifier:
         ],
         "clipboard": ["clipboard", "copy", "paste", "copied", "clear clipboard"],
         "display": ["display", "screen", "resolution", "brightness", "monitor"],
-        "audio": ["volume", "sound", "mute", "unmute", "audio", "speaker", "mic"],
+        "audio": [
+            "volume",
+            "sound",
+            "mute",
+            "unmute",
+            "audio",
+            "speaker",
+            "speakers",
+            "microphone",
+            "microphones",
+            "mic",
+        ],
         "power": [
             "battery",
             "power",
@@ -55,8 +103,14 @@ class GoalClassifier:
             Category name string (defaults to 'general')
         """
         lower_text = text.lower()
+        best_category = "general"
+        best_len = 0
+
         for category, keywords in self.CATEGORY_KEYWORDS.items():
             for kw in keywords:
                 if kw in lower_text:
-                    return category
-        return "general"
+                    if len(kw) > best_len:
+                        best_len = len(kw)
+                        best_category = category
+        return best_category
+

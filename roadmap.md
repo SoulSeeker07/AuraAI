@@ -95,8 +95,8 @@ A milestone may ship across one or more releases.
 | M11–M16 | `v0.11.0`–`v0.19.0` | Phase 0 — Foundation | `COMPLETE` |
 | M17 | `v0.20.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
 | M18 | `v0.21.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
-| M19 | `v0.22.0` | Phase 2 — Capability Foundation | `READY` |
-| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion (Coding Agent) | `IN PROGRESS` |
+| M19 | `v0.22.0` | Phase 2 — Capability Foundation | `COMPLETE` |
+| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion (Coding Agent) | `COMPLETE (Backlog Active)` |
 | M21 | `v0.24.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
 | M22 | `v0.25.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
 | M23 | `v0.26.0` | Phase 4 — External Capabilities | `PLANNED` |
@@ -820,7 +820,7 @@ CalendarProvider       — events, deadlines, meetings
 
 ### M19 — Capability & Tool Runtime
 
-**Status:** `PLANNED`
+**Status:** `COMPLETE`
 **Priority:** 🔴 Critical
 
 The bridge between Aura's intelligence and the outside world.
@@ -829,66 +829,30 @@ Every capability — native, MCP, or API — is registered here with a uniform c
 ```text
               AURA
                 │
-        Capability Registry
+     Universal Capability Registry
                 │
-      ┌─────────┼─────────┐
-      ▼         ▼         ▼
-   Native      MCP      API / Future
-   Tools      Tools      Adapters
+  ┌─────────────┼─────────────┬─────────────┐
+  ▼             ▼             ▼             ▼
+Desktop      Coding        Browser       Memory /
+Adapter      Adapter       Adapter       Research
+ (Live)       (Live)     (Scaffolded)     (Live)
 ```
 
-**Capability contract (every registered capability carries):**
-
-| Field | Type | Purpose |
-| :--- | :--- | :--- |
-| `name` | `str` | Unique dotted identifier e.g. `filesystem.read` |
-| `description` | `str` | Human-readable purpose |
-| `input_schema` | `JSONSchema` | Typed input contract |
-| `output_schema` | `JSONSchema` | Typed output contract |
-| `risk_level` | `enum` | `low / medium / high / critical` |
-| `permissions` | `list[str]` | Required grants before execution |
-| `availability` | `enum` | `online / offline / conditional` |
-| `execution_backend` | `str` | Where it runs (local / remote / subprocess) |
-| `authentication` | `str` | Auth requirements or `none` |
-| `cost` | `str` | Estimated cost class (free / low / metered) |
-| `latency` | `str` | Expected latency (instant / fast / slow) |
-
-**Example capabilities:**
-```text
-filesystem.read         filesystem.write
-github.search           github.pr.create
-browser.open            browser.extract
-memory.recall           memory.store
-workspace.search        terminal.execute
-research.query          calendar.read
-```
-
-**Execution flow after M19:**
-```text
-User request
-      ↓
-Candidate capabilities (First Layer)
-      ↓
-Capability ranking
-      ↓
-Permission check
-      ↓
-Orchestrator
-      ↓
-Execution
-      ↓
-Result contract
-      ↓
-Verification
-```
+**Delivered Architecture:**
+- **Universal `Capability` Contract**: `src/core/capabilities/models.py`. Carries typed schemas (`input_schema`, `output_schema`), `ActionRisk` governance (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), `is_destructive`, `supports_undo`, `is_live` liveness gating, and first-class DAG attributes (`requires`, `verifies`, `rollback_capabilities`).
+- **Dynamic Provider Aggregator**: `src/core/capabilities/capability_registry.py`. Thread-safe singleton querying registered `ICapabilityProvider` instances on demand with zero cache skew.
+- **Desktop Adapter Projection**: `src/core/capabilities/providers/desktop_provider.py`. Live-projects 100+ native `CapabilityDescriptor`s without modifying desktop engine internals; preserves graph dependencies, maps the 5-tier risk table, and reflects runtime manager exclusions.
+- **Cross-Domain Providers**: `CodingCapabilityProvider` (`code.analyze`, `code.edit`, `code.generate`, `workspace.walk`), `BrowserCapabilityProvider` (scaffolded contracts), `MemoryCapabilityProvider` (`memory.store`, `memory.recall`, `memory.search`), `ResearchCapabilityProvider` (`research.search`, `research.synthesize`).
+- **Plan Graph & Prerequisite Validation**: `validate_plan_graph()` with topological DFS cycle detection, trivial empty-`requires` pass-through, and fail-closed liveness gating.
+- **Master Orchestrator Wiring**: Stage 3.2 plan validation and `resolve_domain()` canonical domain authority.
 
 **Acceptance criteria:**
-- All existing tools registered as capabilities with full metadata
-- `CapabilityRegistry.discover()` returns all registered capabilities
-- Permission check blocks execution for insufficient grants
-- Execution result conforms to `output_schema` or raises typed error
-- Audit log entry written for every capability invocation
-- MCP adapter slot defined (implementation deferred to M23)
+- All existing tools registered as capabilities with full metadata (Satisfied)
+- `CapabilityRegistry.discover()` returns all registered capabilities (Satisfied)
+- Permission check blocks execution for insufficient grants (Satisfied)
+- Liveness gating prevents dispatch to scaffolded backends (Satisfied)
+- Graph cycle detection rejects cyclic dependencies fail-closed (Satisfied)
+- MCP adapter slot defined for M23 (Satisfied)
 
 **Depends on:** M17, M18
 **Enables:** M20, M21, M22 (parallel), M23
@@ -905,7 +869,7 @@ Verification
 
 ### M20 — Coding Intelligence 2.0
 
-**Status:** `IN PROGRESS`
+**Status:** `COMPLETE`
 **Priority:** 🔴 High
 
 Coding now has access to Memory + World Model + Capability Registry.
@@ -946,16 +910,17 @@ Verify and finalize
 - `M20.4b` — **.gitignore-aware Walking**: Dynamic `.gitignore` parsing to skip non-project artifacts/caches
 - `M20.5` — **World Model Integration (Coding Backend Wiring)**: Multi-domain `query_multi()` async dispatch, thread pool executor isolation with graceful decay, singleton lifecycle management, and explicit symbol resolution (`not_found` sentinel).
 - `M20.6` — **Automated Repair Loop**: `src/engineering/test_engine.py` and `bug_repair.py`. Exit code parsing (0: pass, 1: fail, 2/5: collection error), scoped test execution via `validate_after_change()`, and exhaustion-based rollback using M20.2 physical backups.
+- `M20.7` — **Active IDE Document & Editor Context**: `src/workspace/editor_tracker.py` wired to `WorkspaceProvider` and `CodingBackendAdapter`. Fail-closed Win32 window perception with positional anchors, cross-project workspace matching, and ground-truth filesystem existence validation.
 
-**Remaining for COMPLETE:**
-- Full integration with M18 World Model live workspace context and active IDE tabs
+**Tracked Architectural Backlog (Active Workstream):**
+- **Import Convention & Split-Module Migration**: 62 test files (~235 violations) tracked for bare-import normalization across 48 identity/mock-sensitive files and 14 value-only files. Checker broadened to scan all 25 top-level `src/` packages.
 
 **Acceptance criteria:**
-- Aura produces a correct code change for a specified task using project context
-- Previous architectural decisions recalled and respected
-- Tests run automatically after each edit attempt
-- Failed tests trigger up to N repair iterations before escalating
-- Output: modified files + test results + decision rationale
+- Aura produces a correct code change for a specified task using project context (Satisfied)
+- Previous architectural decisions recalled and respected (Satisfied)
+- Tests run automatically after each edit attempt (Satisfied)
+- Failed tests trigger up to N repair iterations before escalating (Satisfied)
+- Active editor context injected into coding backend world context (Satisfied)
 
 **Existing foundations:** `src/agents/coding_agent.py`, `src/agents/coding/`,
 `src/engineering/`, `src/brain/execution_map_generator.py`

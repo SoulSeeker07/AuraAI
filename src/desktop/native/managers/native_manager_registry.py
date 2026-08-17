@@ -124,20 +124,29 @@ class NativeManagerRegistry:
         discovered_classes.sort(key=lambda cls: getattr(cls, "PRIORITY", 100))
 
         registered_names: list[str] = []
+        excluded_managers: list[tuple[str, str]] = []
         for cls in discovered_classes:
+            mgr_name = getattr(cls, "NAME", cls.__name__.lower())
             try:
                 instance = cls()
                 self.register(instance)
                 registered_names.append(instance.name)
             except Exception as e:
+                excluded_managers.append((mgr_name, str(e)))
                 logger.error(
-                    f"Failed to instantiate/register manager class {cls.__name__}: {e}"
+                    f"Manager '{mgr_name}' ({cls.__name__}) failed discovery lifecycle and was EXCLUDED: {e}"
                 )
 
         self._auto_discovered = True
-        logger.info(
-            f"Auto-discovery complete. Registered {len(registered_names)} managers: {registered_names}"
-        )
+        if excluded_managers:
+            logger.warning(
+                f"Discovery summary: {len(registered_names)}/{len(discovered_classes)} native managers registered. "
+                f"EXCLUDED ({len(excluded_managers)}): {[name for name, _ in excluded_managers]}"
+            )
+        else:
+            logger.info(
+                f"Discovery summary: 100% healthy ({len(registered_names)}/{len(discovered_classes)} managers registered): {registered_names}"
+            )
         return registered_names
 
     def register(self, manager: Any) -> None:
@@ -160,7 +169,31 @@ class NativeManagerRegistry:
             try:
                 manager.initialize()
             except Exception as e:
-                logger.error(f"Manager '{name}' failed during initialize(): {e}")
+                raise NativeError(
+                    f"Manager '{name}' failed during initialize() and cannot be registered: {e}"
+                ) from e
+
+        # Lifecycle Stage 3.5: Register capabilities on manager
+        if hasattr(manager, "register_capabilities") and callable(
+            getattr(manager, "register_capabilities")
+        ):
+            try:
+                manager_caps = getattr(manager, "capabilities", [])
+                if callable(manager_caps):
+                    manager_caps = manager_caps()
+                if hasattr(manager, "get_capabilities"):
+                    already = set(manager.get_capabilities())
+                elif hasattr(manager, "_capabilities"):
+                    already = set(getattr(manager, "_capabilities", []))
+                else:
+                    already = set()
+                needed = [c for c in manager_caps if c not in already]
+                if needed:
+                    manager.register_capabilities(needed)
+            except Exception as e:
+                raise NativeError(
+                    f"Manager '{name}' failed during register_capabilities() and cannot be registered: {e}"
+                ) from e
 
         # Lifecycle Stage 4: Health Check
         if hasattr(manager, "health_check") and callable(

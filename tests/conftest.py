@@ -24,7 +24,7 @@ def cleanup_world_model():
     """
     yield
     try:
-        from src.brain.world_model import WorldModel
+        from brain.world_model import WorldModel
         WorldModel.reset_instance()
     except ImportError:
         pass

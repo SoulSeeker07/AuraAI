@@ -26,6 +26,7 @@ from .models import (
     TerminalType,
     WorkspaceState,
 )
+from .editor_tracker import EditorTracker
 from .workspace_manager import WorkspaceManager
 
 __all__ = [
@@ -42,6 +43,7 @@ __all__ = [
     "PlatformType",
     "ProjectType",
     "TerminalType",
+    "EditorTracker",
 ]
 
 __version__ = "1.0.0"

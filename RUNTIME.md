@@ -68,22 +68,22 @@ These backends are registered at startup and serve live requests:
 
 ## Coding Backend — Current Behavior (Post Foundation Pass)
 
-The coding backend (`CodingBackendAdapter`) now routes to `src/engineering/EngineeringManager`.
+The coding backend (`CodingBackendAdapter`) routes through `src/engineering/EngineeringManager` and `AntigravityCodingBridge` with live World Model perception.
 
-**What it does:**
+**What it does (M20 Complete):**
 ```text
-code.analyze → EngineeringManager.understand_code() / analyze_repository()
-code.edit    → EngineeringManager.code_editor.edit_file() (with backup + rollback)
-code.report  → EngineeringManager.get_quality_report()
+code.generate → Antigravity (agy plan) with Groq fallback + Live IDE/World Context + WorkspacePolicy
+code.analyze  → EngineeringManager.understand_code() / analyze_repository() (AST)
+code.edit     → EngineeringManager.code_editor.edit_file() (with backup + rollback)
+code.debug    → Antigravity workspace diagnosis + targeted BugRepair loop
+code.report   → EngineeringManager.get_quality_report()
 ```
 
-**What it does NOT do (deferred to M20):**
-```text
-LLM-guided code generation
-"Write me a function that..."  → returns honest NOT_IMPLEMENTED
-```
+**Context Perception:**
+- Injects live `Active Editor File` parsed fail-closed from visible editor windows (Antigravity IDE / VS Code) via `WorkspaceProvider` and `EditorTracker`.
+- Injects live git status, project root, and targeted symbol resolution from `WorldModel`.
 
-**Contract:** Never returns `success=True` unless a file was inspected, modified, or a real analysis was returned.
+**Contract:** Never returns `success=True` unless a file was inspected, generated, modified, or a real verified analysis was returned. Strict `WorkspacePolicy.authorize_write()` gate enforced on all file mutations.
 
 ---
 

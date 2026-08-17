@@ -156,12 +156,17 @@ class DesktopEngineBackend(BaseBackendAdapter):
             "set_volume",
             "bluetooth_control",
             "bluetooth.toggle",
-            "bluetooth.enable",
-            "bluetooth.disable",
-            "wifi_control",
-            "wifi.toggle",
-            "wifi.enable",
-            "wifi.disable",
+            "uia.find_element",
+            "uia.find_elements",
+            "uia.get_tree",
+            "uia.get_value",
+            "uia.wait_for_element",
+            "uia.click",
+            "uia.type_text",
+            "uia.invoke",
+            "uia.select_item",
+            "uia.toggle",
+            "uia.scroll",
         ]
         return list(self.engine.registry._capabilities.keys()) + extra_caps
 
@@ -937,7 +942,22 @@ class DesktopEngineBackend(BaseBackendAdapter):
             elif "activate" in capability:
                 verb = "focused"
 
-            if dev_mode:
+            if capability.startswith("uia."):
+                if capability == "uia.click":
+                    obs_text = f"✓ Clicked UI element: '{(res.data or {}).get('element_name', app_name)}'"
+                elif capability == "uia.type_text":
+                    obs_text = f"✓ Typed into UI element: '{(res.data or {}).get('element_name', app_name)}'"
+                elif capability == "uia.toggle":
+                    obs_text = f"✓ Toggled UI element: '{(res.data or {}).get('element_name', app_name)}'"
+                elif capability == "uia.find_element":
+                    obs_text = f"✓ Found UI element: '{(res.data or {}).get('element', {}).get('name', app_name)}'"
+                elif capability == "uia.get_tree":
+                    obs_text = f"✓ Inspected UI tree ({(res.data or {}).get('node_count', 0)} nodes)"
+                elif capability == "uia.get_value":
+                    obs_text = f"✓ Read value: '{(res.data or {}).get('value', '')}'"
+                else:
+                    obs_text = f"✓ Executed {capability} on {app_name}."
+            elif dev_mode:
                 hwnd_val = (
                     hex((res.verification or {}).get("hwnd", 0))
                     if isinstance(res.verification, dict)
@@ -953,11 +973,12 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 )
             else:
                 obs_text = f"✓ {app_name.title()} is {verb}."
+
         else:
-            v_err = (
+            v_err = res.error or (
                 (res.verification or {}).get("error")
                 if isinstance(res.verification, dict)
-                else res.error
+                else None
             )
             obs_text = (
                 f"❌ Execution failed for '{goal}': {v_err or 'OS verification failed'}"

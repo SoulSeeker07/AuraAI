@@ -145,7 +145,7 @@ class BaseNativeManager(ABC):
     @property
     def verification_layer(self) -> VerificationLayer:
         """
-        Get the verification layer for this manager.
+        Get verification layer for this manager.
 
         Returns:
             VerificationLayer instance with registered handlers.
@@ -303,7 +303,7 @@ class BaseNativeManager(ABC):
             >>> manager.can_handle('clipboard.copy')
             False
         """
-        return capability in self._capabilities
+        return capability in self.capabilities
 
     def verify(self, result: NativeResult) -> bool:
         """

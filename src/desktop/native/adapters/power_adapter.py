@@ -88,7 +88,14 @@ class WMIPowerAdapter(PowerAdapter):
     PRIORITY = 10
 
     def is_available(self) -> bool:
+        com_init = False
         try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+                com_init = True
+            except Exception:
+                pass
             import wmi
 
             c = wmi.WMI()
@@ -97,9 +104,23 @@ class WMIPowerAdapter(PowerAdapter):
         except Exception as e:
             logger.debug(f"WMIPowerAdapter not available: {e}")
             return False
+        finally:
+            if com_init:
+                try:
+                    import pythoncom
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
 
     def get_battery_status(self) -> dict[str, Any]:
+        com_init = False
         try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+                com_init = True
+            except Exception:
+                pass
             import wmi
 
             c = wmi.WMI()
@@ -118,6 +139,13 @@ class WMIPowerAdapter(PowerAdapter):
                 }
         except Exception as e:
             logger.debug(f"WMI battery status read failed: {e}")
+        finally:
+            if com_init:
+                try:
+                    import pythoncom
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
 
         # Fallback if no battery or desktop PC
         return {
@@ -136,7 +164,14 @@ class WMIPowerAdapter(PowerAdapter):
         }
 
     def get_power_plan(self) -> dict[str, Any]:
+        com_init = False
         try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+                com_init = True
+            except Exception:
+                pass
             import wmi
 
             c = wmi.WMI(namespace="root\\cimv2\\power")
@@ -150,6 +185,13 @@ class WMIPowerAdapter(PowerAdapter):
                 }
         except Exception as e:
             logger.debug(f"WMI power plan query failed: {e}")
+        finally:
+            if com_init:
+                try:
+                    import pythoncom
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
 
         return {"name": "Balanced", "guid": "", "backend": self.name}
 

@@ -867,9 +867,10 @@ class ClipboardManager(BaseNativeManager):
             finally:
                 win32clipboard.CloseClipboard()
         except Exception as e:
-            if hasattr(self, "_in_memory_text") and self._in_memory_text:
+            if hasattr(self, "_in_memory_text") and self._in_memory_text is not None:
                 return self._in_memory_text
-            raise ClipboardError(f"Failed to get text from clipboard: {e}")
+            logger.debug(f"Failed to get text from clipboard: {e}")
+            return ""
 
     def _set_text_to_clipboard(self, text: str) -> None:
         """Set text to clipboard using Win32 API, updating in-memory buffer as fallback."""

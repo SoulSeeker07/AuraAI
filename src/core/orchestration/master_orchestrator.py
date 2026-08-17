@@ -670,6 +670,62 @@ class MasterOrchestrator:
         # Stage 3: Task Graph Decomposition
         t2 = datetime.now().timestamp()
         task_graph = self.decomposer.decompose(goal_text, decision=decision)
+        if parameters:
+            if len(task_graph.subtasks) == 1:
+                # Single subtask / direct dispatch: caller parameters apply directly
+                single_subtask = next(iter(task_graph.subtasks.values()))
+                single_subtask.parameters.update(parameters)
+            else:
+                # Multi-subtask decomposition: scope parameters by task_id or capability to prevent cross-contamination
+                for st in task_graph.subtasks.values():
+                    if st.task_id in parameters and isinstance(parameters[st.task_id], dict):
+                        st.parameters.update(parameters[st.task_id])
+                    elif st.capability in parameters and isinstance(parameters[st.capability], dict):
+                        st.parameters.update(parameters[st.capability])
+
+        # Stage 3.2: Task Graph Validation via Universal Capability Registry (Fail-Closed)
+        from core.capabilities.capability_registry import CapabilityRegistry
+        cap_reg = CapabilityRegistry.get_instance()
+        plan_caps = [st.capability for st in task_graph.subtasks.values()]
+        validation_res = cap_reg.validate_plan_graph(plan_caps, require_live=True)
+        if not validation_res.valid:
+            logger.error(
+                f"[MasterOrchestrator] Task graph validation FAILED (blocking execution): {validation_res.errors}"
+            )
+            for err in validation_res.errors:
+                session.add_observation(
+                    Observation(
+                        obs_type="system",
+                        source="CapabilityRegistry",
+                        confidence=0.0,
+                        content=f"❌ Plan validation error: {err}",
+                    )
+                )
+            for st in task_graph.subtasks.values():
+                st.status = "failed"
+
+            failed_result = ExecutionResult(
+                success=False,
+                planner="CapabilityRegistry",
+                goal=goal_text,
+                confidence=0.0,
+                data={
+                    "validation_errors": validation_res.errors,
+                    "unwired_capabilities": validation_res.unwired_capabilities,
+                    "missing_prerequisites": validation_res.missing_prerequisites,
+                },
+                observations=[f"Plan validation failed: {err}" for err in validation_res.errors],
+            )
+            session.metrics["decomposition_ms"] = round(
+                (datetime.now().timestamp() - t2) * 1000, 2
+            )
+            session.metrics["total_execution_time_seconds"] = datetime.now().timestamp() - start_t
+            session.metrics["subtasks_completed"] = 0
+            session.metrics["subtasks_total"] = len(task_graph.subtasks)
+            self._write_memory(session, failed_result)
+            self._last_result = failed_result
+            return failed_result
+
         session.metrics["decomposition_ms"] = round(
             (datetime.now().timestamp() - t2) * 1000, 2
         )
@@ -1051,7 +1107,12 @@ class MasterOrchestrator:
             subtask, decision, context
         )
 
-        backend = self.backend_registry.select_best_backend(subtask.capability)
+        from core.capabilities.capability_registry import CapabilityRegistry
+        resolved_domain = CapabilityRegistry.get_instance().resolve_domain(subtask.capability)
+        backend = self.backend_registry.select_best_backend(
+            capability=subtask.capability,
+            domain=resolved_domain,
+        )
         if not backend:
             return ExecutionResult(
                 success=False,

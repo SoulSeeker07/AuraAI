@@ -52,14 +52,23 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
 
     @property
     def name(self) -> str:
-        return "Playwright Browser Engine"
+        return "browser"
 
     @property
     def capabilities(self) -> list[str]:
         return [
             "browser",
+            "browser.open",
             "browser.ensure_open",
             "browser.navigate",
+            "browser.find_element",
+            "browser.click",
+            "browser.type",
+            "browser.submit",
+            "browser.extract",
+            "browser.observe",
+            "browser.close",
+            "browser.close_tabs",
             "browser.search",
             "browser.select_video",
             "browser.verify_video",
@@ -69,10 +78,6 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             "browser.check_auth",
             "browser.navigate_goal",
             "browser.scroll",
-            "browser.click",
-            "browser.type",
-            "browser.extract",
-            "browser.close_tabs",
             "browser.comments",
             "browser.reviews",
             "form.inspect",
@@ -176,32 +181,239 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
     async def _async_execute(
         self, capability: str, goal: str, arguments: dict[str, Any]
     ) -> ExecutionResult:
-        cap_clean = capability.lower().replace("@1", "")
+        cap_clean = capability.lower().replace("@1", "").strip()
+        start_t = asyncio.get_event_loop().time()
 
-        if cap_clean == "browser.ensure_open":
+        # ── 1. Open / Initialize Session ──────────────────────────────────────
+        if cap_clean in ("browser.open", "browser.ensure_open"):
             try:
-                if hasattr(self._engine, "start") and not getattr(
-                    self._engine, "is_active", False
-                ):
+                if not getattr(self._engine, "is_active", False):
                     await self._engine.start()
                 return ExecutionResult(
                     success=True,
                     planner="browser",
                     goal=goal,
-                    confidence=0.98,
-                    observations=["Browser engine initialized and ready."],
-                    data={"backend": self.name, "status": "active"},
+                    confidence=1.0,
+                    observations=["✓ Browser session initialized and ready."],
+                    data={"backend": self.name, "status": "active", "capability": cap_clean},
                 )
             except Exception as e:
-                logger.warning(f"browser.ensure_open error: {e}")
+                logger.warning(f"browser.open error: {e}")
                 return ExecutionResult(
-                    success=True,
+                    success=False,
                     planner="browser",
                     goal=goal,
-                    confidence=0.90,
-                    observations=["Browser instance verified."],
-                    data={"backend": self.name},
+                    confidence=0.0,
+                    observations=[f"❌ Failed to open browser session: {e}"],
+                    data={"backend": self.name, "error": str(e)},
                 )
+
+        # ── 2. Navigate URL ───────────────────────────────────────────────────
+        elif cap_clean in ("browser.navigate", "browser.navigate_goal", "browser"):
+            url = (
+                arguments.get("url")
+                or arguments.get("target_url")
+                or (
+                    arguments.get("content")
+                    if isinstance(arguments.get("content"), str)
+                    and arguments.get("content").startswith("http")
+                    else None
+                )
+            )
+            if not url:
+                raw_goal = str(goal).strip()
+                if raw_goal.startswith("http://") or raw_goal.startswith("https://"):
+                    url = raw_goal
+                else:
+                    url = "https://www.google.com"
+
+            res = await self._engine.navigate(url)
+            if not res.get("success", False):
+                err = res.get("error", "Navigation failed.")
+                return ExecutionResult(
+                    success=False,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.0,
+                    observations=[f"❌ Navigation to '{url}' failed: {err}"],
+                    data={"backend": self.name, "url": url, "error": err},
+                )
+
+            current_url = res.get("url", url)
+            title = res.get("title", "")
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=[f"✓ Navigated to {current_url} (Title: '{title}')."],
+                data={"backend": self.name, "url": current_url, "title": title, "result": res},
+            )
+
+        # ── 3. Find DOM Element ───────────────────────────────────────────────
+        elif cap_clean == "browser.find_element":
+            selector = arguments.get("selector") or arguments.get("target") or goal
+            res = await self._engine.find_element(selector)
+            if not res.get("success", False):
+                err = res.get("error", "Element not found.")
+                return ExecutionResult(
+                    success=False,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.0,
+                    observations=[f"❌ {err}"],
+                    data={"backend": self.name, "selector": selector, "error": err, "count": res.get("count", 0)},
+                )
+
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=[f"✓ Uniquely resolved DOM element '{selector}' (1 candidate matched)."],
+                data={"backend": self.name, "selector": selector, "count": 1},
+            )
+
+        # ── 4. Click DOM Element ──────────────────────────────────────────────
+        elif cap_clean == "browser.click":
+            selector = arguments.get("selector") or arguments.get("target") or goal
+            res = await self._engine.click(selector)
+            if not res.get("success", False):
+                err = res.get("error", "Click failed.")
+                return ExecutionResult(
+                    success=False,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.0,
+                    observations=[f"❌ Click failed: {err}"],
+                    data={"backend": self.name, "selector": selector, "error": err},
+                )
+
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=[f"✓ Clicked DOM element '{selector}'."],
+                data={"backend": self.name, "selector": selector, "action": "click"},
+            )
+
+        # ── 5. Type Text Into Element ─────────────────────────────────────────
+        elif cap_clean == "browser.type":
+            selector = arguments.get("selector") or arguments.get("target") or ""
+            text = arguments.get("text") or arguments.get("value") or ""
+            clear = arguments.get("clear", True)
+
+            res = await self._engine.type_text(selector, text, clear=clear)
+            if not res.get("success", False):
+                err = res.get("error", "Type failed.")
+                return ExecutionResult(
+                    success=False,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.0,
+                    observations=[f"❌ Type failed: {err}"],
+                    data={"backend": self.name, "selector": selector, "text": text, "error": err},
+                )
+
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=[f"✓ Typed '{text}' into DOM element '{selector}'."],
+                data={"backend": self.name, "selector": selector, "text": text, "action": "type_text"},
+            )
+
+        # ── 6. Submit Form ────────────────────────────────────────────────────
+        elif cap_clean in ("browser.submit", "form.submit"):
+            selector = arguments.get("selector")
+            res = await self._engine.submit(selector)
+            if not res.get("success", False):
+                err = res.get("error", "Submit failed.")
+                return ExecutionResult(
+                    success=False,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.0,
+                    observations=[f"❌ Submit failed: {err}"],
+                    data={"backend": self.name, "selector": selector, "error": err},
+                )
+
+            target_desc = f"on '{selector}'" if selector else "via active element"
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=[f"✓ Submitted web form {target_desc}."],
+                data={"backend": self.name, "selector": selector, "action": "submit"},
+            )
+
+        # ── 7. Extract Page Content ───────────────────────────────────────────
+        elif cap_clean in ("browser.extract", "table.extract"):
+            selector = arguments.get("selector")
+            fmt = arguments.get("format", "markdown")
+            res = await self._engine.extract_content(selector, format=fmt)
+            if not res.get("success", False):
+                err = res.get("error", "Content extraction failed.")
+                return ExecutionResult(
+                    success=False,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.0,
+                    observations=[f"❌ Content extraction failed: {err}"],
+                    data={"backend": self.name, "selector": selector, "error": err},
+                )
+
+            content = res.get("content", "")
+            title = res.get("title", "Page Content")
+            url = res.get("url", "")
+            length = res.get("length", len(content))
+
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                artifacts=[
+                    {
+                        "artifact_id": "art_browser_content",
+                        "artifact_type": "markdown",
+                        "content": content,
+                        "data": {"title": title, "url": url, "format": fmt},
+                    }
+                ],
+                observations=[f"✓ Extracted {length} characters of page content from '{url}'."],
+                data={"backend": self.name, "title": title, "url": url, "length": length, "content": content},
+            )
+
+        # ── 8. Observe Page State ─────────────────────────────────────────────
+        elif cap_clean == "browser.observe":
+            res = await self._engine.observe()
+            title = res.get("title", "Untitled")
+            url = res.get("url", "about:blank")
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=[f"✓ Browser observation: '{title}' ({url})"],
+                data={"backend": self.name, "title": title, "url": url, "result": res},
+            )
+
+        # ── 9. Close Browser Session ──────────────────────────────────────────
+        elif cap_clean in ("browser.close", "browser.close_tabs"):
+            await self._engine.close()
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=1.0,
+                observations=["✓ Closed browser session cleanly."],
+                data={"backend": self.name, "closed": True},
+            )
+
         elif cap_clean == "browser.check_auth":
             return ExecutionResult(
                 success=True,
@@ -210,133 +422,6 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 confidence=0.95,
                 observations=["Verified browser authentication context."],
                 data={"backend": self.name, "authenticated": True},
-            )
-        elif cap_clean == "browser.navigate_goal":
-            url = arguments.get("url") or arguments.get("target_url")
-            if not url:
-                raw_query = goal
-                for prefix in [
-                    "Fulfill page goal for:",
-                    "Navigate to target URL for:",
-                    "Fulfill page goal for",
-                    "Navigate to target URL for",
-                ]:
-                    if raw_query.lower().startswith(prefix.lower()):
-                        raw_query = raw_query[len(prefix) :].strip()
-
-                from browser.planner.site_registry import SiteRegistry
-
-                detected_site = None
-                for s in SiteRegistry.list_sites():
-                    if s in raw_query.lower():
-                        detected_site = s
-                        break
-                if detected_site:
-                    prof = SiteRegistry.get_site(detected_site)
-                    url = prof.base_url if prof else f"https://www.{detected_site}.com"
-                else:
-                    query = (
-                        raw_query.replace("Search", "").replace("search", "").strip()
-                    )
-                    url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-            res = await self._engine.navigate(url)
-            return ExecutionResult(
-                success=res.get("success", True),
-                planner="browser",
-                goal=goal,
-                confidence=0.95,
-                observations=[f"Fulfilled page goal at {url}"],
-                data={"backend": self.name, "result": res},
-            )
-        elif cap_clean == "browser.close_tabs":
-            try:
-                if hasattr(self._engine, "close_active_tab"):
-                    await self._engine.close_active_tab()
-                elif hasattr(self._engine, "close"):
-                    await self._engine.close()
-                return ExecutionResult(
-                    success=True,
-                    planner="browser",
-                    goal=goal,
-                    confidence=0.98,
-                    observations=["Closed active browser documentation tabs."],
-                    data={"backend": self.name, "closed": True},
-                )
-            except Exception as e:
-                return ExecutionResult(
-                    success=True,
-                    planner="browser",
-                    goal=goal,
-                    confidence=0.80,
-                    observations=[f"Closed browser tabs: {e}"],
-                    data={"backend": self.name},
-                )
-        goal_str = str(goal.get("goal") if isinstance(goal, dict) else (goal or ""))
-        cap_clean = capability.lower().strip()
-
-        if cap_clean in ["browser", "browser.navigate"]:
-            url = arguments.get("url") or arguments.get("target_url")
-            if not url:
-                from browser.planner.site_registry import SiteRegistry
-
-                detected_site = None
-                for s in SiteRegistry.list_sites():
-                    if s in goal_str.lower():
-                        detected_site = s
-                        break
-                if detected_site:
-                    prof = SiteRegistry.get_site(detected_site)
-                    url = prof.base_url if prof else f"https://www.{detected_site}.com"
-                else:
-                    url = "https://www.google.com"
-            res = await self._engine.navigate(url)
-            return ExecutionResult(
-                success=res.get("success", True),
-                planner="browser",
-                goal=goal,
-                confidence=0.95,
-                observations=[f"Navigated to {url}"],
-                data={"backend": self.name, "result": res},
-            )
-
-        elif cap_clean == "browser.search":
-            query = arguments.get("query", goal)
-            primary_selector = arguments.get("primary_selector")
-            selector = arguments.get("selector") or primary_selector
-
-            if primary_selector and "invalid" in primary_selector.lower() and not arguments.get("recovered"):
-                logger.warning(f"[PlaywrightBrowserAdapter] Primary DOM selector '{primary_selector}' failed to locate target input")
-                return ExecutionResult(
-                    success=False,
-                    planner="browser",
-                    goal=goal,
-                    confidence=0.0,
-                    observations=[f"❌ DOM Verification Failed: Primary selector '{primary_selector}' not found in active page DOM."],
-                    data={"backend": self.name, "primary_selector": primary_selector, "failed_selector": primary_selector},
-                )
-
-            current_url = getattr(self._engine._page, "url", "") if self._engine._page else ""
-            search_url = arguments.get("search_url") or (current_url if (current_url and current_url != "about:blank") else f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}")
-
-            if selector and self._engine._page and current_url and current_url != "about:blank":
-                fill_res = await self._engine.fill_form_field(field_label_or_name=selector, value=query)
-                res = {"success": fill_res.get("success", True)}
-            else:
-                res = await self._engine.navigate(search_url)
-
-            return ExecutionResult(
-                success=res.get("success", True),
-                planner="browser",
-                goal=goal,
-                confidence=0.92,
-                observations=[f"✓ Performed web search for '{query}' using recovered selector '{selector or '#search'}' — 18 candidates detected."],
-                data={
-                    "backend": self.name,
-                    "query": query,
-                    "results_count": 18,
-                    "recovered_selector": selector or "#search",
-                    "url": search_url,
-                },
             )
         elif cap_clean == "browser.select_video":
             query = arguments.get("query", goal)

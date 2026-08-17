@@ -150,7 +150,32 @@ class ActionVerifier:
                 verification["method"] = "window_close_signal_sent"
             return verification
 
+        # 4. UIA Element Action Verification (uia.click, uia.type_text, uia.toggle, etc.)
+        if cap.startswith("uia."):
+            if result and getattr(result, "data", None) and isinstance(result.data, dict):
+                if "verification_passed" in result.data:
+                    v_pass = bool(result.data.get("verification_passed"))
+                    verification["passed"] = v_pass
+                    verification["method"] = f"uia_element_state_{cap}"
+                    verification["checks"].append(
+                        {
+                            "name": "uia_state_mutation",
+                            "passed": v_pass,
+                            "pre_value": result.data.get("pre_value"),
+                            "post_value": result.data.get("post_value"),
+                        }
+                    )
+                    if not v_pass:
+                        verification["error"] = (
+                            f"UIA verification failed for '{cap}': element state remained unchanged"
+                        )
+                    return verification
+            verification["passed"] = result.success if result else True
+            verification["method"] = f"uia_action_{cap}"
+            return verification
+
         # Generic default pass for non-destructive read operations
         verification["passed"] = True
         verification["method"] = "generic_action_executed"
         return verification
+

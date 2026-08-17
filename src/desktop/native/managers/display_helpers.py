@@ -216,7 +216,14 @@ def get_display_brightness() -> dict[str, Any]:
     Returns:
         Dict with current_brightness, levels, and method.
     """
+    com_init = False
     try:
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+            com_init = True
+        except Exception:
+            pass
         import wmi
 
         c = wmi.WMI(namespace="wmi")
@@ -230,6 +237,13 @@ def get_display_brightness() -> dict[str, Any]:
             }
     except Exception as e:
         logger.debug(f"WMI brightness read failed/unsupported: {e}")
+    finally:
+        if com_init:
+            try:
+                import pythoncom
+                pythoncom.CoUninitialize()
+            except Exception:
+                pass
 
     # Software fallback
     return {
@@ -250,7 +264,14 @@ def set_display_brightness(level: int) -> dict[str, Any]:
         Dict with success status and level.
     """
     target_level = max(0, min(100, int(level)))
+    com_init = False
     try:
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+            com_init = True
+        except Exception:
+            pass
         import wmi
 
         c = wmi.WMI(namespace="wmi")
@@ -260,6 +281,13 @@ def set_display_brightness(level: int) -> dict[str, Any]:
             return {"success": True, "level": target_level, "method": "wmi"}
     except Exception as e:
         logger.warning(f"Could not set brightness via WMI: {e}")
+    finally:
+        if com_init:
+            try:
+                import pythoncom
+                pythoncom.CoUninitialize()
+            except Exception:
+                pass
 
     return {
         "success": False,

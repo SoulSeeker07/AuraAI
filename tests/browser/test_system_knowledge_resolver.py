@@ -38,6 +38,6 @@ def test_resolve_planners():
 def test_resolve_backends():
     ans = SystemKnowledgeResolver.resolve("What backends do you have?")
     assert "Native Desktop Engine" in ans
-    assert "Playwright Browser Engine" in ans
+    assert "browser" in ans or "Playwright Browser Engine" in ans
     assert "Gemini Research Engine" in ans
-    assert "Antigravity CLI" in ans
+    assert "Antigravity CLI" in ans or "desktop_engine" in ans

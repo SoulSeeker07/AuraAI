@@ -20,15 +20,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.brain.world_model import WorldModel, WorldState
-from src.core.orchestration.world_diff import WorldDiff
-from src.core.orchestration.world_snapshot import DesktopStateSnapshot, WorldSnapshotProvider
-from src.core.orchestration.world_state_observer import WorldStateObserver
-from src.core.orchestration.world_timeline import TimelineEvent, WorldTimeline
-from src.workspace.active_window import RECT, ActiveWindowMonitor
-from src.workspace.git_context import GitContext
-from src.workspace.models import ActiveWindow, GitRepository, RunningApplication
-from src.workspace.running_apps import RunningAppsMonitor
+from brain.world_model import WorldModel, WorldState
+from core.orchestration.world_diff import WorldDiff
+from core.orchestration.world_snapshot import DesktopStateSnapshot, WorldSnapshotProvider
+from core.orchestration.world_state_observer import WorldStateObserver
+from core.orchestration.world_timeline import TimelineEvent, WorldTimeline
+from workspace.active_window import RECT, ActiveWindowMonitor
+from workspace.git_context import GitContext
+from workspace.models import ActiveWindow, GitRepository, RunningApplication
+from workspace.running_apps import RunningAppsMonitor
 
 
 # ── 1. ActiveWindowMonitor Tests ─────────────────────────────────────────────

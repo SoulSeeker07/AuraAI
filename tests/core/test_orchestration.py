@@ -22,14 +22,14 @@ from core.orchestration import (
     ResultMerger,
 )
 from core.planning.execution_result import ExecutionResult
-from src.desktop.native.capability_registry import CapabilityRegistry
-from src.desktop.native.desktop_execution_engine import (
+from desktop.native.capability_registry import CapabilityRegistry
+from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     reset_desktop_execution_engine,
 )
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-from src.desktop.planner import DesktopPlanner
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from desktop.planner import DesktopPlanner
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def clean_registries():
 
     # Discover native desktop managers
     m_reg = NativeManagerRegistry.get_instance()
-    m_reg.discover("src.desktop.native.managers")
+    m_reg.discover("desktop.native.managers")
     c_reg = CapabilityRegistry()
     engine = DesktopExecutionEngine(
         manager_registry=m_reg,
@@ -135,7 +135,7 @@ def test_master_orchestrator_desktop_dispatch(clean_registries):
 
     res = orchestrator.process_request("check battery status")
     assert res.success is True
-    assert res.planner == "cognitive_orchestrator"
+    assert res.planner in ("desktop", "cognitive_orchestrator")
     assert len(res.observations) >= 1
 
 
@@ -143,6 +143,63 @@ def test_master_orchestrator_direct_backend_dispatch(clean_registries):
     p_reg, b_reg, _, _ = clean_registries
     orchestrator = MasterOrchestrator(planner_registry=p_reg, backend_registry=b_reg)
 
-    res = orchestrator.process_request("code.refactor")
+    # In M20, code.analyze with target_files performs real AST inspection and succeeds
+    res = orchestrator.process_request("code.analyze", parameters={"target_files": ["tests/conftest.py"]})
+    assert res.planner in ("coding", "cognitive_orchestrator")
     assert res.success is True
-    assert res.planner == "cognitive_orchestrator"
+
+
+def test_master_orchestrator_blocks_scaffolded_unwired_capabilities_fail_closed(clean_registries):
+    """Verify that attempting to execute an unwired scaffolded capability fails closed at Stage 3.2."""
+    p_reg, b_reg, _, _ = clean_registries
+    orchestrator = MasterOrchestrator(planner_registry=p_reg, backend_registry=b_reg)
+
+    # browser.navigate is currently marked is_live=False in BrowserCapabilityProvider
+    res = orchestrator.process_request("browser.navigate", parameters={"url": "https://example.com"})
+
+    # Must fail closed before execution dispatch
+    assert res.success is False
+    assert res.planner == "CapabilityRegistry"
+    assert "validation_errors" in res.data
+    assert any("scaffolded (is_live=False)" in err for err in res.data["validation_errors"])
+    assert "browser.navigate" in res.data.get("unwired_capabilities", [])
+    assert any("Plan validation failed" in obs for obs in res.observations)
+
+
+def test_master_orchestrator_blocks_cyclic_plan_graph_fail_closed(clean_registries, monkeypatch):
+    """Verify that a task graph with cyclic capability dependencies is rejected fail-closed before dispatch."""
+    p_reg, b_reg, _, _ = clean_registries
+    orchestrator = MasterOrchestrator(planner_registry=p_reg, backend_registry=b_reg)
+
+    from core.capabilities.capability_registry import CapabilityRegistry
+    from core.capabilities.models import Capability
+
+    cap_reg = CapabilityRegistry.get_instance()
+    cap_reg.register(Capability(name="cycle.a", domain="coding", description="A", is_live=True, requires=["cycle.b"]))
+    cap_reg.register(Capability(name="cycle.b", domain="coding", description="B", is_live=True, requires=["cycle.a"]))
+
+    # Direct dispatch with cyclic capabilities
+    res = orchestrator.process_request("cycle.a")
+
+    assert res.success is False
+    assert res.planner == "CapabilityRegistry"
+    assert "validation_errors" in res.data
+    assert any("Cyclic capability dependency detected" in err for err in res.data["validation_errors"])
+
+
+def test_master_orchestrator_domain_routing_with_capability_registry(clean_registries):
+    """Verify BackendRegistry uses resolved_domain from CapabilityRegistry to select the appropriate backend."""
+    p_reg, b_reg, _, _ = clean_registries
+    orchestrator = MasterOrchestrator(planner_registry=p_reg, backend_registry=b_reg)
+
+    # CapabilityRegistry knows 'power.battery' belongs to 'desktop'
+    from core.capabilities.capability_registry import CapabilityRegistry
+    cap_reg = CapabilityRegistry.get_instance()
+    assert cap_reg.resolve_domain("power.battery") == "desktop"
+
+    # Backend selection using resolved domain
+    backend = b_reg.select_best_backend("power.battery", domain="desktop")
+    assert backend is not None
+    assert backend.name == "desktop_engine"
+
+

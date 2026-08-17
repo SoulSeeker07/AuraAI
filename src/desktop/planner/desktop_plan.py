@@ -30,6 +30,11 @@ class DesktopPlan:
     def state(self) -> PlanState:
         return self.state_tracker.current_state
 
+    @property
+    def is_complete(self) -> bool:
+        return self.state in (PlanState.COMPLETED, PlanState.FAILED)
+
+
     def transition_to(self, new_state: PlanState) -> bool:
         """Transition plan to new state."""
         return self.state_tracker.transition_to(new_state)

@@ -331,6 +331,59 @@ class DesktopExecutionEngine:
         goal_lower = goal.lower()
 
         capability_keywords = {
+            "uia.click": [
+                "click button",
+                "press button",
+                "tap button",
+                "invoke button",
+                "click on",
+                "click the",
+                "click",
+            ],
+            "uia.type_text": [
+                "type text into",
+                "type into",
+                "write into",
+                "fill text",
+                "enter text into",
+                "input text",
+                "type in",
+            ],
+            "uia.toggle": [
+                "toggle checkbox",
+                "toggle switch",
+                "check box",
+                "uncheck",
+                "toggle",
+            ],
+            "uia.get_tree": [
+                "inspect tree",
+                "inspect ui tree",
+                "ui tree",
+                "element tree",
+                "dump tree",
+                "dump ui",
+            ],
+            "uia.find_element": [
+                "find element",
+                "locate element",
+                "search element",
+                "find button",
+                "locate button",
+            ],
+            "uia.get_value": [
+                "get value of",
+                "read value",
+                "read text from",
+                "get value",
+                "get text",
+            ],
+            "uia.select_item": [
+                "select option",
+                "select item",
+                "choose option",
+                "choose item",
+            ],
             "activate_window": [
                 "activate",
                 "focus",

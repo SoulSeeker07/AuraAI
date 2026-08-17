@@ -21,14 +21,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.brain.providers.base import IWorldProvider, ProviderFact, QueryResult
-from src.brain.providers.browser_provider import BrowserProvider
-from src.brain.providers.desktop_provider import DesktopProvider
-from src.brain.providers.memory_provider import MemoryProvider
-from src.brain.providers.symbol_provider import SymbolGraphProvider
-from src.brain.providers.workspace_provider import WorkspaceProvider
-from src.brain.world_model import WorldModel
-from src.workspace.models import ActiveWindow, GitRepository, RunningApplication
+from brain.providers.base import IWorldProvider, ProviderFact, QueryResult
+from brain.providers.browser_provider import BrowserProvider
+from brain.providers.desktop_provider import DesktopProvider
+from brain.providers.memory_provider import MemoryProvider
+from brain.providers.symbol_provider import SymbolGraphProvider
+from brain.providers.workspace_provider import WorkspaceProvider
+from brain.world_model import WorldModel
+from workspace.models import ActiveWindow, GitRepository, RunningApplication
 
 
 # ── 1. Domain Filtering Test ─────────────────────────────────────────────────

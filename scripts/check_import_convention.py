@@ -37,10 +37,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # Patterns that indicate a forbidden `src.*` import prefix.
-# NOTE: only the packages holding runtime singletons are guarded. If a new
-# package introduces module-split-sensitive singletons, add it here.
+# Any package under src/ must be imported directly without the `src.` prefix
+# to prevent split-singleton and dual-module class identity errors.
 FORBIDDEN_PATTERNS = [
-    re.compile(r"^\s*(?:from|import)\s+src\.(brain|core|experts|autonomy|voice|vision)\b"),
+    re.compile(r"^\s*(?:from|import)\s+src\.[a-zA-Z0-9_]+\b"),
 ]
 
 # Directories to scan (repo-root relative)

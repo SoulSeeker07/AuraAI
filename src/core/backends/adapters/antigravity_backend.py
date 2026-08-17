@@ -160,12 +160,23 @@ class CodingBackendAdapter(BaseBackendAdapter):
 
         goal_lower = goal.lower()
         edit_verbs = ["add", "modify", "update", "edit", "change", "refactor"]
-        if capability in ("code.edit", "code.modify", "code.refactor") or any(v in goal_lower for v in edit_verbs):
+
+        if capability in ("code.analyze", "workspace.walk", "code.inspect"):
+            operation = "analyze"
+        elif capability in ("code.edit", "code.modify", "code.refactor"):
             operation = "edit"
+        elif capability in ("code.generate", "code.create", "code.implement"):
+            operation = "generate"
+        elif capability in ("code.debug", "code.fix"):
+            operation = "debug"
+        elif capability == "code.test":
+            operation = "test"
         elif capability == "code.report":
             operation = "report"
-        elif capability == "code.execute" or "execute " in goal_lower or "run " in goal_lower:
+        elif capability == "code.execute":
             operation = "execute"
+        elif any(v in goal_lower for v in edit_verbs):
+            operation = "edit"
         elif "analyze" in goal_lower or "inspect" in goal_lower or "explain" in goal_lower:
             operation = "analyze"
         elif "test" in goal_lower:
@@ -174,6 +185,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
             operation = "debug"
         elif self._is_generation_request(goal, args):
             operation = "generate"
+        elif "execute " in goal_lower or "run " in goal_lower:
+            operation = "execute"
         else:
             if args.get("edit_operations") or args.get("new_content"):
                 operation = "edit"
@@ -246,7 +259,6 @@ class CodingBackendAdapter(BaseBackendAdapter):
     def _execute_run(
         self, goal: str, args: dict[str, Any], repo_path: Path
     ) -> ExecutionResult:
-        import os
         import subprocess
         
         script_path = args.get("file_path") or args.get("script") or "app.py"
@@ -322,7 +334,6 @@ class CodingBackendAdapter(BaseBackendAdapter):
     ) -> ExecutionResult:
         import os
         import json
-        from pathlib import Path
         from ai.registry import build_provider_manager
         from ai.models import ChatRequest, ChatMessage
         from .coding_models import RequirementModel, CodeGenerationPlan
@@ -451,8 +462,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
                 f"Generated files : {len(plan.files)}",
                 f"Syntax          : {'PASS' if syntax_passed else 'FAIL'}",
                 f"Imports         : {'PASS' if imports_passed else 'FAIL'}",
-                f"Tests           : NOT RUN",
-                f"Runtime         : NOT VERIFIED",
+                "Tests           : NOT RUN",
+                "Runtime         : NOT VERIFIED",
                 f"Repairs         : {repairs}",
                 ""
             ] + file_results,
@@ -491,12 +502,22 @@ class CodingBackendAdapter(BaseBackendAdapter):
 
         parts: list[str] = []
         try:
-            # 1. Fast workspace state (git branch, dirty status, project type)
+            # 1. Fast workspace state (git branch, dirty status, project type, active editor file)
             ws_res = self.world_model.query_sync(entity="all", domain="workspace", timeout=0.5)
             if ws_res and ws_res.facts:
-                ws_facts = [f"• {f.entity}: {f.value}" for f in ws_res.facts if f.value]
+                active_doc = next((f.value for f in ws_res.facts if f.entity == "active_file" and f.value), None)
+                ws_facts = [
+                    f"• {f.entity}: {f.value}"
+                    for f in ws_res.facts
+                    if f.value and f.entity != "active_file"
+                ]
+                context_lines = []
+                if active_doc:
+                    context_lines.append(f"Active Editor File: `{active_doc}`")
                 if ws_facts:
-                    parts.append("Workspace State:\n" + "\n".join(ws_facts))
+                    context_lines.append("Workspace State:\n" + "\n".join(ws_facts))
+                if context_lines:
+                    parts.append("\n\n".join(context_lines))
 
             # 2. Extract at most 3 potential symbols mentioned in goal
             identifiers = self._extract_candidate_identifiers(goal)[:3]

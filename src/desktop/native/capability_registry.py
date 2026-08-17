@@ -137,6 +137,9 @@ class CapabilityRegistry:
         # Service capabilities
         self._register_service_capabilities()
 
+        # UIA capabilities (first descriptors with real requires/verifies/rollback graph data)
+        self._register_uia_capabilities()
+
     def _register_window_capabilities(self) -> None:
         """Register window management capabilities"""
         self.register(
@@ -1373,6 +1376,225 @@ class CapabilityRegistry:
                 risk_level=RiskLevel.MODERATE,
                 requires_admin=True,
                 usage_examples=["Restart service", "Restart web server"],
+            )
+        )
+
+    def _register_uia_capabilities(self) -> None:
+        """Register UI Automation capabilities.
+
+        These are the first descriptors with populated requires/verifies/rollback_capabilities
+        DAG fields — multi-step operations like 'find element → click → verify state changed'
+        are natively sequential with real undo semantics.
+        """
+        # ── Read-Only Capabilities (LOW risk) ──
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.find_element",
+                description="Find a single UI element by control type, name, or automation ID",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.SAFE,
+                supports_undo=False,
+                tags=["uia", "accessibility", "element", "find"],
+                usage_examples=[
+                    "Find the Save button in Notepad",
+                    "Locate the text input field",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.find_elements",
+                description="Find all UI elements matching criteria in a window",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.SAFE,
+                supports_undo=False,
+                tags=["uia", "accessibility", "element", "find"],
+                usage_examples=[
+                    "List all buttons in the dialog",
+                    "Find all text fields in the form",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.get_tree",
+                description="Get depth-limited accessibility tree for a window",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.SAFE,
+                supports_undo=False,
+                tags=["uia", "accessibility", "tree"],
+                usage_examples=[
+                    "Show the UI structure of Notepad",
+                    "Get the element hierarchy",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.get_value",
+                description="Read the current value of a UI element",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.SAFE,
+                supports_undo=False,
+                requires=["uia.find_element"],
+                tags=["uia", "accessibility", "value", "read"],
+                usage_examples=[
+                    "Get the text in the search box",
+                    "Read the value of the slider",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.wait_for_element",
+                description="Wait for a UI element to appear within a timeout",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.LOW,
+                supports_undo=False,
+                timeout_seconds=30,
+                tags=["uia", "accessibility", "wait", "polling"],
+                usage_examples=[
+                    "Wait for the loading dialog to appear",
+                    "Wait for the save confirmation",
+                ],
+            )
+        )
+
+        # ── Interaction Capabilities (HIGH risk, requires_confirmation) ──
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.click",
+                description="Click a UI element",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.HIGH,
+                is_destructive=True,
+                requires_confirmation=True,
+                supports_undo=False,
+                requires=["uia.find_element"],
+                verifies=["uia.get_value"],
+                tags=["uia", "accessibility", "click", "interaction"],
+                usage_examples=[
+                    "Click the OK button",
+                    "Press the Submit button",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.type_text",
+                description="Clear existing content and type new text into a UI element (clear-then-type, not append)",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.HIGH,
+                is_destructive=True,
+                requires_confirmation=True,
+                supports_undo=True,
+                rollback_description="Clear the text field (undo typed content)",
+                requires=["uia.find_element"],
+                verifies=["uia.get_value"],
+                rollback_capabilities=["uia.type_text"],
+                tags=["uia", "accessibility", "type", "text", "interaction"],
+                usage_examples=[
+                    "Type 'Hello' into the search box",
+                    "Fill in the name field",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.invoke",
+                description="Invoke the default action on a UI element (button press, menu item activation)",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.HIGH,
+                is_destructive=True,
+                requires_confirmation=True,
+                supports_undo=False,
+                requires=["uia.find_element"],
+                verifies=["uia.get_value"],
+                tags=["uia", "accessibility", "invoke", "interaction"],
+                usage_examples=[
+                    "Press the Save button",
+                    "Activate the menu item",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.select_item",
+                description="Select a named item in a selection container (combo box, list view)",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.HIGH,
+                is_destructive=True,
+                requires_confirmation=True,
+                supports_undo=True,
+                rollback_description="Re-select previous item",
+                requires=["uia.find_element"],
+                verifies=["uia.get_value"],
+                rollback_capabilities=["uia.select_item"],
+                tags=["uia", "accessibility", "select", "interaction"],
+                usage_examples=[
+                    "Select 'English' from the language dropdown",
+                    "Choose the second list item",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
+                name="uia.toggle",
+                description="Toggle a toggleable UI element (checkbox, toggle button)",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.HIGH,
+                is_destructive=True,
+                requires_confirmation=True,
+                supports_undo=True,
+                rollback_description="Toggle element back to previous state",
+                requires=["uia.find_element"],
+                verifies=["uia.get_value"],
+                rollback_capabilities=["uia.toggle"],
+                tags=["uia", "accessibility", "toggle", "interaction"],
+                usage_examples=[
+                    "Check the 'Remember me' checkbox",
+                    "Toggle dark mode",
+                ],
             )
         )
 

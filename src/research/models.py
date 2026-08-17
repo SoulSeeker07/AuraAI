@@ -61,6 +61,15 @@ class ConflictResolution(Enum):
     PROMPT_USER = "prompt_user"
 
 
+# ── Canonical Quality & Gating Thresholds ────────────────────────────────────
+
+# Minimum confidence required to synthesize search evidence into a factual report.
+# Rationale: Rejects ungrounded hallucinations while accepting partially corroborated
+# multi-source findings (at least one credible corroborated source).
+MIN_SYNTHESIS_CONFIDENCE_THRESHOLD: float = 0.40
+
+
+
 @dataclass
 class Citation:
     """

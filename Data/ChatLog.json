@@ -1,362 +1,362 @@
 [
   {
     "role": "user",
-    "content": "Thank you very much for your time.",
+    "content": "check battery status",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:05:16.413876"
+    "timestamp": "2026-08-17T17:35:14.753672"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "content": "Result success=True. ✓ Battery is open.",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:05:16.413876"
+    "timestamp": "2026-08-17T17:35:14.753672"
   },
   {
     "role": "user",
-    "content": "Thank you very much for your time.",
-    "topic": "Thank Very Much",
-    "timestamp": "2026-08-15T18:05:18.078851"
+    "content": "code.analyze",
+    "topic": "coding",
+    "timestamp": "2026-08-17T17:36:08.160418"
   },
   {
     "role": "assistant",
-    "content": "You’re very welcome, Sreekanta! If you ever need anything else, just let me know. Happy coding!",
-    "topic": "Thank Very Much",
-    "timestamp": "2026-08-15T18:05:18.078851"
+    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
+    "topic": "coding",
+    "timestamp": "2026-08-17T17:36:08.160418"
   },
   {
     "role": "user",
-    "content": "Thank you very much for your time.",
-    "topic": "Thank Very Much",
-    "timestamp": "2026-08-15T18:05:18.093655"
+    "content": "browser.navigate",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T17:36:11.060772"
   },
   {
     "role": "assistant",
-    "content": "You’re very welcome, Sreekanta! If you ever need anything else, just let me know. Happy coding!",
-    "topic": "Thank Very Much",
-    "timestamp": "2026-08-15T18:05:18.093655"
+    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T17:36:11.060772"
   },
   {
     "role": "user",
-    "content": "Open Google Chrome.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:05:37.661943"
+    "content": "cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T17:36:13.112019"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:05:37.661943"
+    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T17:36:13.112019"
   },
   {
     "role": "user",
-    "content": "Open Notepad.",
+    "content": "check battery status",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:05:52.950632"
+    "timestamp": "2026-08-17T18:09:00.350966"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Notepad is open.",
+    "content": "Result success=True. ✓ Battery is open.",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:05:52.950632"
+    "timestamp": "2026-08-17T18:09:00.350966"
   },
   {
     "role": "user",
-    "content": "Spoken conversational commands and desktop assistant requests in English.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:26:48.766447"
+    "content": "code.analyze",
+    "topic": "coding",
+    "timestamp": "2026-08-17T18:09:51.532360"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. No backend available for capability 'unknown_action'",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:26:48.766447"
+    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
+    "topic": "coding",
+    "timestamp": "2026-08-17T18:09:51.532360"
   },
   {
     "role": "user",
-    "content": "open Google Chrome",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:26:56.179219"
+    "content": "browser.navigate",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:09:54.510029"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:26:56.179219"
+    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:09:54.510029"
   },
   {
     "role": "user",
-    "content": "open WhatsApp",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:27:17.536766"
+    "content": "cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:09:57.561256"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Whatsapp is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:27:17.536766"
+    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:09:57.561256"
   },
   {
     "role": "user",
-    "content": "open Notepad",
+    "content": "check battery status",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:27:24.974617"
+    "timestamp": "2026-08-17T18:13:18.964827"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Notepad is open.",
+    "content": "Result success=True. ✓ Battery is open.",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:27:24.974617"
+    "timestamp": "2026-08-17T18:13:18.964827"
   },
   {
     "role": "user",
-    "content": "open another Google Chrome",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:27:31.620250"
+    "content": "code.analyze",
+    "topic": "coding",
+    "timestamp": "2026-08-17T18:14:14.580852"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:27:31.620250"
+    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
+    "topic": "coding",
+    "timestamp": "2026-08-17T18:14:14.580852"
   },
   {
     "role": "user",
-    "content": "open Google Chrome",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:35:25.368686"
+    "content": "browser.navigate",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:14:17.883654"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:35:25.368686"
+    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:14:17.883654"
   },
   {
     "role": "user",
-    "content": "open Notepad",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:35:34.097331"
+    "content": "cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:14:21.308770"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Notepad is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:35:34.097331"
+    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T18:14:21.308770"
   },
   {
     "role": "user",
-    "content": "what is 15% of 850",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:35:40.159997"
+    "content": "research advancements in neuromorphic computing and synthesize findings",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:12:45.575869"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T18:35:40.159997"
+    "content": "Result success=False. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ❌ Failed to synthesize research for 'research advancements in neuromorphic computing and synthesize findings': Zero sources provided for synthesis. A preceding 'research.search' step is required.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:12:45.575869"
   },
   {
     "role": "user",
-    "content": "what is 15% of 850",
-    "topic": "What",
-    "timestamp": "2026-08-15T18:35:41.646919"
+    "content": "research advancements in neuromorphic computing and synthesize findings",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:15:11.932359"
   },
   {
     "role": "assistant",
-    "content": "15 % of 850 = 0.15 × 850 = 127.5.",
-    "topic": "What",
-    "timestamp": "2026-08-15T18:35:41.646919"
+    "content": "Result success=False. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:15:11.932359"
   },
   {
     "role": "user",
-    "content": "what is 15% of 850",
-    "topic": "What",
-    "timestamp": "2026-08-15T18:35:41.657309"
+    "content": "research advancements in neuromorphic computing and synthesize findings",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:16:24.502767"
   },
   {
     "role": "assistant",
-    "content": "15 % of 850 = 0.15 × 850 = 127.5.",
-    "topic": "What",
-    "timestamp": "2026-08-15T18:35:41.657309"
+    "content": "Result success=True. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ✓ Synthesized findings for 'research advancements in neuromorphic computing and synthesize findings' (Confidence: 95%):\n\nWomen in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen. This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossar...\n\nSources & Citations:\n- [Women in computing](https://en.wikipedia.org/wiki/Women_in_computing)\n- [Glossary of artificial intelligence](https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n- [Ethics of artificial intelligence](https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n- [Biomimetics](https://en.wikipedia.org/wiki/Biomimetics)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:16:24.502767"
   },
   {
     "role": "user",
-    "content": "what is my name",
-    "topic": "memory",
-    "timestamp": "2026-08-15T18:35:52.954020"
+    "content": "research advancements in neuromorphic computing and synthesize findings",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:16:57.377923"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. Found remembered facts: [MemoryFact(category='profile', key='name', value='Sreekanta')]; Your name is Sreekanta.",
-    "topic": "memory",
-    "timestamp": "2026-08-15T18:35:52.954020"
+    "content": "Result success=True. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ✓ Synthesized findings for 'research advancements in neuromorphic computing and synthesize findings' (Confidence: 95%):\n\nWomen in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen. This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossar...\n\nSources & Citations:\n- [Women in computing](https://en.wikipedia.org/wiki/Women_in_computing)\n- [Glossary of artificial intelligence](https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n- [Ethics of artificial intelligence](https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n- [Biomimetics](https://en.wikipedia.org/wiki/Biomimetics)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T20:16:57.377923"
   },
   {
     "role": "user",
-    "content": "Spoken conversational commands in English.",
+    "content": "check battery status",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:41:52.446078"
+    "timestamp": "2026-08-17T20:17:09.448087"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "content": "Result success=True. ✓ Battery is open.",
     "topic": "desktop",
-    "timestamp": "2026-08-15T18:41:52.446078"
+    "timestamp": "2026-08-17T20:17:09.448087"
   },
   {
     "role": "user",
-    "content": "Spoken conversational commands in English.",
-    "topic": "Spoken Conversational Commands",
-    "timestamp": "2026-08-15T18:41:55.517604"
+    "content": "code.analyze",
+    "topic": "coding",
+    "timestamp": "2026-08-17T20:18:02.594844"
   },
   {
     "role": "assistant",
-    "content": "Here are some natural‑sounding spoken commands you can use with a voice‑assistant (like Aura) in English.\nFeel free to adapt the wording to suit your style.\n---\n### 1. **General / System**\n| Command | What it does |\n|---|---|\n| “Hey Aura, open **VS Code**.” | Launches your favorite editor. |\n| “Hey Aura, close the current window.” | Closes the active application. |\n| “Hey Aura, switch to **Firefox**.” | Brings the browser to the front. |\n| “Hey Aura, increase the volume by 20 %.” | Raises system volume. |\n| “Hey Aura, set the screen brightness to 70 %.” | Adjusts display brightness. |\n| “Hey Aura, lock my computer.” | Locks the session. |\n### 2. **Productivity**\n| Command | What it does |\n|---|---|\n| “Hey Aura, create a new Python file called `analysis.py`.” | Opens a new file in VS Code with that name. |\n| “Hey Aura, run the current script.” | Executes the active Python file. |\n| “Hey Aura, show me my calendar for tomorrow.” | Displays upcoming events. |\n| “Hey Aura, set a reminder to review the PR at 3 PM.” | Creates a reminder. |\n| “Hey Aura, search Stack Overflow for *how to parse JSON in Python*.” | Opens a web search in Firefox. |\n### 3. **Information & Queries**\n| Command | What it does |\n|---|---|\n| “Hey Aura, what’s the weather like today?” | Gives current weather. |\n| “Hey Aura, how many calories are in a slice of pepperoni pizza?” | Provides nutrition info. |\n| “Hey Aura, define *decorator* in Python.” | Reads a short definition. |\n| “Hey Aura, what’s the latest version of VS Code?” | Checks for updates. |\n| “Hey Aura, translate *hello* to Spanish.” | Gives translation. |\n### 4. **Media & Entertainment**\n| Command | What it does |\n|---|---|\n| “Hey Aura, play some lo‑fi music.” | Starts a playlist. |\n| “Hey Aura, pause the video.” | Pauses playback. |\n| “Hey Aura, order a large pepperoni pizza.” | Initiates a food‑delivery order (if linked). |\n| “Hey Aura, show me the trailer for *Inception*.” | Opens a video in the browser. |\n### 5. **Navigation & Shortcuts**\n| Command | What it does |\n|---|---|\n| “Hey Aura, go to the next tab.” | Switches to the following browser tab. |\n| “Hey Aura, scroll down half a page.” | Scrolls the active window. |\n| “Hey Aura, find the word *async* in this document.” | Opens the search box in VS Code. |\n| “Hey Aura, copy that line.” | Performs a copy action. |\n| “Hey Aura, paste at the cursor.” | Pastes clipboard contents. |\n### 6. **Custom / Context‑aware**\n| Command | What it does |\n|---|---|\n| “Hey Aura, open the **Python** project I was working on yesterday.” | Launches the recent workspace. |\n| “Hey Aura, run the unit tests for *myapp*.” | Executes `pytest` or similar. |\n| “Hey Aura, summarize the last 10 emails from **team@example.com**.” | Reads and condenses recent messages. |\n| “Hey Aura, schedule a code‑review meeting for next Monday at 10 AM.” | Adds an event to your calendar. |\n---\n#### Tips for smoother voice interaction\n1. **Start with a wake word** (e.g., “Hey Aura”) so the assistant knows you’re speaking.\n2. **Be specific** about file names, apps, or actions to reduce ambiguity.\n3. **Use natural phrasing** – you don’t need to be overly formal; the assistant parses intent.\n4. **Combine actions** when possible: “Hey Aura, open VS Code and create a file named `demo.py`.”\n5. **Link services** (calendar, email, food delivery) to unlock richer commands.\nGive a few of these a try, and feel free to let me know which ones you’d",
-    "topic": "Spoken Conversational Commands",
-    "timestamp": "2026-08-15T18:41:55.517604"
+    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
+    "topic": "coding",
+    "timestamp": "2026-08-17T20:18:02.594844"
   },
   {
     "role": "user",
-    "content": "Spoken conversational commands in English.",
-    "topic": "Spoken Conversational Commands",
-    "timestamp": "2026-08-15T18:41:55.523706"
+    "content": "browser.navigate",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T20:18:05.669255"
   },
   {
     "role": "assistant",
-    "content": "Here are some natural‑sounding spoken commands you can use with a voice‑assistant (like Aura) in English.\nFeel free to adapt the wording to suit your style.\n---\n### 1. **General / System**\n| Command | What it does |\n|---|---|\n| “Hey Aura, open **VS Code**.” | Launches your favorite editor. |\n| “Hey Aura, close the current window.” | Closes the active application. |\n| “Hey Aura, switch to **Firefox**.” | Brings the browser to the front. |\n| “Hey Aura, increase the volume by 20 %.” | Raises system volume. |\n| “Hey Aura, set the screen brightness to 70 %.” | Adjusts display brightness. |\n| “Hey Aura, lock my computer.” | Locks the session. |\n### 2. **Productivity**\n| Command | What it does |\n|---|---|\n| “Hey Aura, create a new Python file called `analysis.py`.” | Opens a new file in VS Code with that name. |\n| “Hey Aura, run the current script.” | Executes the active Python file. |\n| “Hey Aura, show me my calendar for tomorrow.” | Displays upcoming events. |\n| “Hey Aura, set a reminder to review the PR at 3 PM.” | Creates a reminder. |\n| “Hey Aura, search Stack Overflow for *how to parse JSON in Python*.” | Opens a web search in Firefox. |\n### 3. **Information & Queries**\n| Command | What it does |\n|---|---|\n| “Hey Aura, what’s the weather like today?” | Gives current weather. |\n| “Hey Aura, how many calories are in a slice of pepperoni pizza?” | Provides nutrition info. |\n| “Hey Aura, define *decorator* in Python.” | Reads a short definition. |\n| “Hey Aura, what’s the latest version of VS Code?” | Checks for updates. |\n| “Hey Aura, translate *hello* to Spanish.” | Gives translation. |\n### 4. **Media & Entertainment**\n| Command | What it does |\n|---|---|\n| “Hey Aura, play some lo‑fi music.” | Starts a playlist. |\n| “Hey Aura, pause the video.” | Pauses playback. |\n| “Hey Aura, order a large pepperoni pizza.” | Initiates a food‑delivery order (if linked). |\n| “Hey Aura, show me the trailer for *Inception*.” | Opens a video in the browser. |\n### 5. **Navigation & Shortcuts**\n| Command | What it does |\n|---|---|\n| “Hey Aura, go to the next tab.” | Switches to the following browser tab. |\n| “Hey Aura, scroll down half a page.” | Scrolls the active window. |\n| “Hey Aura, find the word *async* in this document.” | Opens the search box in VS Code. |\n| “Hey Aura, copy that line.” | Performs a copy action. |\n| “Hey Aura, paste at the cursor.” | Pastes clipboard contents. |\n### 6. **Custom / Context‑aware**\n| Command | What it does |\n|---|---|\n| “Hey Aura, open the **Python** project I was working on yesterday.” | Launches the recent workspace. |\n| “Hey Aura, run the unit tests for *myapp*.” | Executes `pytest` or similar. |\n| “Hey Aura, summarize the last 10 emails from **team@example.com**.” | Reads and condenses recent messages. |\n| “Hey Aura, schedule a code‑review meeting for next Monday at 10 AM.” | Adds an event to your calendar. |\n---\n#### Tips for smoother voice interaction\n1. **Start with a wake word** (e.g., “Hey Aura”) so the assistant knows you’re speaking.\n2. **Be specific** about file names, apps, or actions to reduce ambiguity.\n3. **Use natural phrasing** – you don’t need to be overly formal; the assistant parses intent.\n4. **Combine actions** when possible: “Hey Aura, open VS Code and create a file named `demo.py`.”\n5. **Link services** (calendar, email, food delivery) to unlock richer commands.\nGive a few of these a try, and feel free to let me know which ones you’d",
-    "topic": "Spoken Conversational Commands",
-    "timestamp": "2026-08-15T18:41:55.523706"
+    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T20:18:05.669255"
   },
   {
     "role": "user",
-    "content": "what is my name",
-    "topic": "memory",
-    "timestamp": "2026-08-15T19:01:34.306048"
+    "content": "cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T20:18:08.875339"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. Your name is Sreekanta.",
-    "topic": "memory",
-    "timestamp": "2026-08-15T19:01:34.306048"
+    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T20:18:08.875339"
   },
   {
     "role": "user",
-    "content": "in details",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:01:56.419208"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T21:15:50.805350"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:01:56.419208"
+    "content": "Result success=False. Plan validation failed: Unknown capability in plan: 'browser.ensure_open'",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T21:15:50.805350"
   },
   {
     "role": "user",
-    "content": "in details",
-    "topic": "Details",
-    "timestamp": "2026-08-15T19:02:36.956993"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:16:34.334232"
   },
   {
     "role": "assistant",
-    "content": "Here’s what the current web snippet tells us about the **2027 Porsche Panamera GTS**:\n| Item | Detail from the article (or what can be reasonably inferred) |\n|------|---------------------------------------------------------------|\n| **Model name** | **Porsche Panamera GTS 2027** – marketed as the “New Brutal Panamera.” |\n| **Publication** | The story was published on **12 Aug 2026** (Mshale). |\n| **Focus of the piece** | The article is titled **“New Brutal Panamera In Details Go Train,”** suggesting it dives into the design, performance, and possibly the driving‑dynamics (the “Go Train” phrase hints at a focus on speed/acceleration). |\n| **Design cues** | The word *“Brutal”* implies a more aggressive, perhaps sharper exterior styling than previous Panamera models – likely larger air intakes, a more pronounced rear diffuser, and possibly blacked‑out trim. |\n| **Performance expectations** | While the snippet doesn’t list specs, the GTS badge traditionally sits between the standard Panamera and the Turbo‑S. For the 2027 iteration you can reasonably expect: <br>• **Engine** – a 4.0‑liter twin‑turbo V8 (or a newer hybrid‑assist version). <br>• **Power** – roughly **620 hp** (similar to the 2024‑2025 GTS). <br>• **0‑60 mph** – around **3.2 seconds**. <br>• **Top speed** – near **190 mph**. <br>These numbers are typical for a GTS model; the article likely confirms or updates them. |\n| **Interior & tech** | The “details” angle suggests coverage of the cabin – likely upgraded sport seats, a larger infotainment screen, and Porsche’s latest connectivity suite (which would integrate well with developers who love tools like VS Code). |\n| **Driving dynamics** | The “Go Train” phrase hints at a focus on acceleration and handling – possibly a revised chassis, adaptive suspension, and enhanced rear‑wheel steering. |\n| **Availability** | As a 2027 model, it would be slated for launch in late 2026 or early 2027, with pre‑orders opening shortly after the article’s release. |\n### What’s uncertain\n- The snippet does **not** give exact horsepower, torque, weight, or pricing figures.\n- We don’t have the full article text, so any specific interior feature list, colour‑palette options, or tech upgrades are educated guesses based on recent Porsche trends.\n- If Porsche introduced a hybrid‑electric variant for 2027, that isn’t confirmed in the snippet.\n### Bottom line\nThe **2027 Porsche Panamera GTS** is being positioned as a more aggressive, performance‑focused version of the Panamera line, with likely upgrades to power, styling, and chassis that emphasize “brutal” looks and “go‑train” speed. For the exact specifications, pricing, and feature list, you’d need to read the",
-    "topic": "Details",
-    "timestamp": "2026-08-15T19:02:36.956993"
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:16:34.334232"
   },
   {
     "role": "user",
-    "content": "in details",
-    "topic": "Details",
-    "timestamp": "2026-08-15T19:02:36.967120"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:17:16.617976"
   },
   {
     "role": "assistant",
-    "content": "Here’s what the current web snippet tells us about the **2027 Porsche Panamera GTS**:\n| Item | Detail from the article (or what can be reasonably inferred) |\n|------|---------------------------------------------------------------|\n| **Model name** | **Porsche Panamera GTS 2027** – marketed as the “New Brutal Panamera.” |\n| **Publication** | The story was published on **12 Aug 2026** (Mshale). |\n| **Focus of the piece** | The article is titled **“New Brutal Panamera In Details Go Train,”** suggesting it dives into the design, performance, and possibly the driving‑dynamics (the “Go Train” phrase hints at a focus on speed/acceleration). |\n| **Design cues** | The word *“Brutal”* implies a more aggressive, perhaps sharper exterior styling than previous Panamera models – likely larger air intakes, a more pronounced rear diffuser, and possibly blacked‑out trim. |\n| **Performance expectations** | While the snippet doesn’t list specs, the GTS badge traditionally sits between the standard Panamera and the Turbo‑S. For the 2027 iteration you can reasonably expect: <br>• **Engine** – a 4.0‑liter twin‑turbo V8 (or a newer hybrid‑assist version). <br>• **Power** – roughly **620 hp** (similar to the 2024‑2025 GTS). <br>• **0‑60 mph** – around **3.2 seconds**. <br>• **Top speed** – near **190 mph**. <br>These numbers are typical for a GTS model; the article likely confirms or updates them. |\n| **Interior & tech** | The “details” angle suggests coverage of the cabin – likely upgraded sport seats, a larger infotainment screen, and Porsche’s latest connectivity suite (which would integrate well with developers who love tools like VS Code). |\n| **Driving dynamics** | The “Go Train” phrase hints at a focus on acceleration and handling – possibly a revised chassis, adaptive suspension, and enhanced rear‑wheel steering. |\n| **Availability** | As a 2027 model, it would be slated for launch in late 2026 or early 2027, with pre‑orders opening shortly after the article’s release. |\n### What’s uncertain\n- The snippet does **not** give exact horsepower, torque, weight, or pricing figures.\n- We don’t have the full article text, so any specific interior feature list, colour‑palette options, or tech upgrades are educated guesses based on recent Porsche trends.\n- If Porsche introduced a hybrid‑electric variant for 2027, that isn’t confirmed in the snippet.\n### Bottom line\nThe **2027 Porsche Panamera GTS** is being positioned as a more aggressive, performance‑focused version of the Panamera line, with likely upgrades to power, styling, and chassis that emphasize “brutal” looks and “go‑train” speed. For the exact specifications, pricing, and feature list, you’d need to read the",
-    "topic": "Details",
-    "timestamp": "2026-08-15T19:02:36.967120"
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:17:16.617976"
   },
   {
     "role": "user",
-    "content": "in details",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:03:06.269271"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:18:02.169678"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 114 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:03:06.269271"
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:18:02.169678"
   },
   {
     "role": "user",
-    "content": "open Google Chrome",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:08.185657"
+    "content": "What capabilities do you have?",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T21:18:23.750009"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:08.185657"
+    "content": "Result success=False. Plan validation failed: Unknown capability in plan: 'system_info'",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-17T21:18:23.750009"
   },
   {
     "role": "user",
-    "content": "open Notepad",
+    "content": "What capabilities do you have?",
     "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:16.723400"
+    "timestamp": "2026-08-17T21:19:57.274979"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Notepad is open.",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 124 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
     "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:16.723400"
+    "timestamp": "2026-08-17T21:19:57.274979"
   },
   {
     "role": "user",
-    "content": "open WhatsApp",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:24.059621"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:20:09.262035"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Whatsapp is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:24.059621"
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:20:09.262035"
   },
   {
     "role": "user",
-    "content": "open file explorer",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:30.523682"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:20:26.082553"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ File Explorer is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:30.523682"
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:20:26.082553"
   },
   {
     "role": "user",
-    "content": "open vs code",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:37.030669"
+    "content": "navigate to https://example.com and extract page content",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:22:33.301297"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Vs Code is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:37.030669"
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:22:33.301297"
   },
   {
     "role": "user",
-    "content": "Open Start menu",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:43.463290"
+    "content": "research advancements in neuromorphic computing and synthesize findings",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:23:01.388826"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. ❌ Execution failed for 'Launch application: Start Menu (Open Start menu)': OS verification failed",
-    "topic": "desktop",
-    "timestamp": "2026-08-15T19:20:43.463290"
+    "content": "Result success=True. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ✓ Synthesized findings for 'research advancements in neuromorphic computing and synthesize findings' (Confidence: 95%):\n\nWomen in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen. This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossar...\n\nSources & Citations:\n- [Women in computing](https://en.wikipedia.org/wiki/Women_in_computing)\n- [Glossary of artificial intelligence](https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n- [Ethics of artificial intelligence](https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n- [Biomimetics](https://en.wikipedia.org/wiki/Biomimetics)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-17T21:23:01.388826"
   }
 ]

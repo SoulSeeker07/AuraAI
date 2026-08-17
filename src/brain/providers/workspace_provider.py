@@ -13,6 +13,7 @@ from concurrent.futures import Executor
 from pathlib import Path
 from typing import Any
 
+from workspace.editor_tracker import EditorTracker
 from workspace.git_context import GitContext
 from workspace.project_detector import ProjectDetector
 from workspace.workspace_walker import WorkspaceWalker
@@ -29,11 +30,13 @@ class WorkspaceProvider(IWorldProvider):
         root: Path | str | None = None,
         git_context: GitContext | None = None,
         project_detector: ProjectDetector | None = None,
+        editor_tracker: EditorTracker | None = None,
         executor: Executor | None = None,
     ):
         self.root: Path = Path(root).resolve() if root else Path.cwd().resolve()
         self.git_context = git_context or GitContext(cache_ttl_seconds=30)
         self.project_detector = project_detector or ProjectDetector()
+        self.editor_tracker = editor_tracker or EditorTracker(root=self.root)
         self.walker = WorkspaceWalker(root=self.root, respect_gitignore=True, max_files=1000)
         self._executor = executor
 
@@ -67,6 +70,17 @@ class WorkspaceProvider(IWorldProvider):
         except Exception:
             proj_type = "unknown"
 
+        # Active editor file query
+        try:
+            if self._executor:
+                active_editor = await loop.run_in_executor(
+                    self._executor, self.editor_tracker.get_active_editor_file_sync, self.root.name, self.root
+                )
+            else:
+                active_editor = self.editor_tracker.get_active_editor_file_sync(self.root.name, self.root)
+        except Exception:
+            active_editor = None
+
         return {
             "root": str(self.root),
             "project_type": proj_type,
@@ -74,6 +88,7 @@ class WorkspaceProvider(IWorldProvider):
             "uncommitted_changes": repo.uncommitted_changes if repo else 0,
             "modified_files": repo.modified_files if repo else [],
             "is_dirty": repo.is_dirty if repo else False,
+            "active_editor": active_editor or {},
         }
 
     async def query(self, entity: str) -> list[ProviderFact]:
@@ -81,6 +96,7 @@ class WorkspaceProvider(IWorldProvider):
         Query workspace domain for specific entities.
         
         Supported entity queries:
+          - "active_file" / "active_editor" / "active_document" / "open_file"
           - "git_branch" / "current_branch" / "branch"
           - "uncommitted_changes" / "dirty_files" / "is_dirty"
           - "project_type" / "project_info" / "root"
@@ -89,6 +105,17 @@ class WorkspaceProvider(IWorldProvider):
         facts: list[ProviderFact] = []
         entity_norm = entity.strip().lower()
         state = await self.get_state()
+
+        if entity_norm in ("active_file", "active_editor", "active_document", "open_file", "all"):
+            active_editor_data = state.get("active_editor") or {}
+            if active_editor_data and active_editor_data.get("relative_path"):
+                facts.append(
+                    ProviderFact(
+                        domain=self.domain,
+                        entity="active_file",
+                        value=active_editor_data.get("relative_path"),
+                    )
+                )
 
         if entity_norm in ("git_branch", "current_branch", "branch", "all"):
             facts.append(

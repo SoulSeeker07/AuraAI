@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import ipaddress
 import logging
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,93 @@ except ImportError:
     logger.warning(
         "Playwright is not installed. BrowserEngine will operate in fallback mode."
     )
+
+
+def validate_url_security(
+    url: str, allow_testing_schemes: bool = False
+) -> tuple[bool, str]:
+    """
+    Validate that a URL complies with safe navigation policies.
+    Enforces http(s) only and prevents SSRF by blocking loopback, RFC1918 private subnets,
+    and cloud metadata endpoints (169.254.169.254).
+    """
+    if not url or not str(url).strip():
+        return False, "URL cannot be empty."
+
+    url_str = str(url).strip()
+
+    # For testing fixtures (e.g. data: or file: in unit test suites)
+    if allow_testing_schemes and (
+        url_str.startswith("data:") or url_str.startswith("about:") or url_str.startswith("file://")
+    ):
+        return True, url_str
+
+    if not url_str.startswith(
+        ("http://", "https://", "file://", "data:", "javascript:", "about:", "chrome:")
+    ):
+        url_str = f"https://{url_str}"
+
+    try:
+        parsed = urlparse(url_str)
+    except Exception as e:
+        return False, f"Malformed URL '{url}': {e}"
+
+    scheme = (parsed.scheme or "").lower()
+    if scheme not in ("http", "https"):
+        return (
+            False,
+            f"Navigation blocked by security policy: Scheme '{scheme}' is prohibited. Only 'http://' and 'https://' are allowed.",
+        )
+
+    hostname = (parsed.hostname or "").lower().strip()
+    if not hostname:
+        return False, f"Navigation blocked: Missing host in URL '{url}'."
+
+    # Prohibit loopback hostnames
+    if hostname in (
+        "localhost",
+        "localhost.localdomain",
+        "ip6-localhost",
+        "ip6-loopback",
+    ):
+        return (
+            False,
+            f"Navigation blocked by security policy: Prohibited loopback target '{hostname}'.",
+        )
+
+    # Check IP addresses
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if str(ip) == "169.254.169.254":
+            return (
+                False,
+                "Navigation blocked by security policy: Cloud metadata endpoint '169.254.169.254' is strictly prohibited.",
+            )
+        if ip.is_loopback:
+            return (
+                False,
+                f"Navigation blocked by security policy: Loopback IP target '{hostname}' is prohibited.",
+            )
+        if ip.is_private:
+            return (
+                False,
+                f"Navigation blocked by security policy: Private/RFC1918 IP target '{hostname}' is prohibited.",
+            )
+        if ip.is_link_local:
+            return (
+                False,
+                f"Navigation blocked by security policy: Link-local IP target '{hostname}' is prohibited.",
+            )
+        if ip.is_reserved:
+            return (
+                False,
+                f"Navigation blocked by security policy: Reserved IP target '{hostname}' is prohibited.",
+            )
+    except ValueError:
+        # Standard domain name
+        pass
+
+    return True, url_str
 
 
 @dataclass
@@ -168,26 +257,39 @@ class BrowserEngine:
             logger.info("BrowserEngine closed.")
 
     async def navigate(
-        self, url: str, wait_until: str = "domcontentloaded", timeout_ms: int = 30000
+        self,
+        url: str,
+        wait_until: str = "domcontentloaded",
+        timeout_ms: int = 30000,
+        allow_testing_schemes: bool = False,
     ) -> dict[str, Any]:
-        """Navigate to target URL."""
-        if not url.startswith(("http://", "https://", "data:", "file://", "about:")):
-            url = f"https://{url}"
+        """Navigate to target URL with URL security validation."""
+        valid, validated_or_err = validate_url_security(
+            url, allow_testing_schemes=allow_testing_schemes
+        )
+        if not valid:
+            return {
+                "success": False,
+                "url": url,
+                "error": validated_or_err,
+            }
+
+        target_url = validated_or_err
 
         if not self.is_active:
             started = await self.start()
             if not started:
                 return {
                     "success": False,
-                    "url": url,
+                    "url": target_url,
                     "error": "Browser engine failed to start",
                 }
 
         if self._page:
             try:
-                actual_wait = "commit" if url.startswith("data:") else wait_until
+                actual_wait = "commit" if target_url.startswith("data:") else wait_until
                 response = await self._page.goto(
-                    url, wait_until=actual_wait, timeout=timeout_ms
+                    target_url, wait_until=actual_wait, timeout=timeout_ms
                 )
                 status = response.status if response else 200
                 title = await self._page.title()
@@ -199,143 +301,143 @@ class BrowserEngine:
                     "url": current_url,
                 }
             except Exception as e:
-                logger.error(f"Navigation error for {url}: {e}")
-                # Close the page before nulling the reference to avoid handle leak
+                logger.error(f"Navigation error for {target_url}: {e}")
+                # Close page on failure to avoid handle leak
                 if self._page and not self._page.is_closed():
                     try:
                         await self._page.close()
-                        logger.info("[BrowserEngine] Closed page after navigation failure")
                     except Exception:
                         pass
                 self._page = None
-                return {"success": False, "url": url, "error": str(e)}
+                return {"success": False, "url": target_url, "error": str(e)}
         else:
             # Fallback HTTP request representation
             return {
                 "success": True,
-                "url": url,
-                "title": f"Page at {url} (Fallback Mode)",
+                "url": target_url,
+                "title": f"Page at {target_url} (Fallback Mode)",
                 "status_code": 200,
             }
 
-    async def scroll_down(self, pixels: int = 500) -> dict[str, Any]:
-        """Scroll down by specified pixels."""
-        if self._page:
-            try:
-                await self._page.evaluate(f"window.scrollBy(0, {pixels});")
-                await asyncio.sleep(0.3)
-                scroll_y = await self._page.evaluate("window.scrollY")
-                return {
-                    "success": True,
-                    "action": "scroll_down",
-                    "pixels": pixels,
-                    "scroll_y": scroll_y,
-                }
-            except Exception as e:
-                logger.debug(f"scroll_down Playwright page evaluate failed: {e}")
-        return {
-            "success": True,
-            "action": "scroll_down",
-            "pixels": pixels,
-            "mode": "fallback",
-        }
+    async def find_element(
+        self, selector: str, timeout_ms: int = 5000
+    ) -> dict[str, Any]:
+        """
+        Strict DOM element finder.
+        Fails closed on 0 matches (zero elements found) or >1 matches (ambiguous selector).
+        Succeeds only when exactly 1 DOM element matches.
+        """
+        if not selector or not str(selector).strip():
+            return {
+                "success": False,
+                "count": 0,
+                "error": "DOM selector cannot be empty.",
+            }
 
-    async def scroll_up(self, pixels: int = 500) -> dict[str, Any]:
-        """Scroll up by specified pixels."""
-        if self._page:
-            await self._page.evaluate(f"window.scrollBy(0, -{pixels});")
-            await asyncio.sleep(0.3)
-            scroll_y = await self._page.evaluate("window.scrollY")
+        if not self.is_active or not self._page:
+            started = await self.start()
+            if not started or not self._page:
+                return {
+                    "success": False,
+                    "count": 0,
+                    "error": "Browser engine or active page is not running.",
+                }
+
+        try:
+            locator = self._page.locator(selector)
+            # Dynamic wait with timeout for element attachment
+            try:
+                await locator.first.wait_for(state="attached", timeout=timeout_ms)
+            except Exception:
+                pass
+
+            count = await locator.count()
+            if count == 0:
+                # Fallback check for exact/partial text locator
+                try:
+                    text_loc = self._page.get_by_text(selector, exact=False)
+                    text_cnt = await text_loc.count()
+                    if text_cnt == 1:
+                        return {
+                            "success": True,
+                            "count": 1,
+                            "selector": selector,
+                            "element": text_loc.first,
+                            "locator": text_loc.first,
+                        }
+                    elif text_cnt > 1:
+                        return {
+                            "success": False,
+                            "count": text_cnt,
+                            "selector": selector,
+                            "error": (
+                                f"Ambiguous DOM target: found {text_cnt} text-matching elements for '{selector}'. "
+                                f"Refine selector with CSS tag, ID (#id), data-testid, aria-label, or parent scope."
+                            ),
+                        }
+                except Exception:
+                    pass
+
+                return {
+                    "success": False,
+                    "count": 0,
+                    "selector": selector,
+                    "error": f"Zero DOM elements found matching selector '{selector}'. Refine CSS selector or specify tag/text/role.",
+                }
+
+            if count > 1:
+                return {
+                    "success": False,
+                    "count": count,
+                    "selector": selector,
+                    "error": (
+                        f"Ambiguous DOM target: found {count} matching elements for '{selector}'. "
+                        f"Refine selector with CSS tag, ID (#id), data-testid, aria-label, or parent scope."
+                    ),
+                }
+
             return {
                 "success": True,
-                "action": "scroll_up",
-                "pixels": pixels,
-                "scroll_y": scroll_y,
+                "count": 1,
+                "selector": selector,
+                "element": locator.first,
+                "locator": locator.first,
             }
-        return {
-            "success": True,
-            "action": "scroll_up",
-            "pixels": pixels,
-            "mode": "fallback",
-        }
 
-    async def scroll_to_bottom(self) -> dict[str, Any]:
-        """Scroll directly to the bottom of the page."""
-        if self._page:
-            await self._page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
-            await asyncio.sleep(0.5)
-            scroll_y = await self._page.evaluate("window.scrollY")
-            return {"success": True, "action": "scroll_to_bottom", "scroll_y": scroll_y}
-        return {"success": True, "action": "scroll_to_bottom", "mode": "fallback"}
+        except Exception as e:
+            return {
+                "success": False,
+                "count": 0,
+                "selector": selector,
+                "error": f"DOM resolution error for '{selector}': {str(e)}",
+            }
 
-    async def scroll_to_element(self, selector: str) -> dict[str, Any]:
-        """Scroll until element matching selector is in viewport."""
+    async def click(self, selector: str, timeout_ms: int = 5000) -> dict[str, Any]:
+        """Click an element by selector, failing closed on ambiguity."""
+        if not self._page and not self.is_active:
+            await self.start()
+
         if self._page:
+            res = await self.find_element(selector, timeout_ms=timeout_ms)
+            if not res["success"]:
+                return res
+
             try:
-                element = self._page.locator(selector).first
-                await element.scroll_into_view_if_needed(timeout=5000)
+                elem = res["element"]
+                await elem.click(timeout=timeout_ms)
                 return {
                     "success": True,
-                    "action": "scroll_to_element",
+                    "action": "click",
                     "selector": selector,
+                    "count": 1,
                 }
             except Exception as e:
                 return {
                     "success": False,
-                    "action": "scroll_to_element",
+                    "action": "click",
                     "selector": selector,
-                    "error": str(e),
+                    "error": f"Failed to click element '{selector}': {e}",
                 }
-        return {
-            "success": True,
-            "action": "scroll_to_element",
-            "selector": selector,
-            "mode": "fallback",
-        }
-
-    async def infinite_scroll(
-        self, max_scrolls: int = 5, pause_sec: float = 1.0
-    ) -> dict[str, Any]:
-        """Perform infinite scroll to dynamically load content."""
-        scroll_count = 0
-        last_height = 0
-        if self._page:
-            for i in range(max_scrolls):
-                last_height = await self._page.evaluate("document.body.scrollHeight")
-                await self._page.evaluate(
-                    "window.scrollTo(0, document.body.scrollHeight);"
-                )
-                await asyncio.sleep(pause_sec)
-                new_height = await self._page.evaluate("document.body.scrollHeight")
-                scroll_count += 1
-                if new_height == last_height:
-                    break
-            return {
-                "success": True,
-                "scrolls_completed": scroll_count,
-                "final_height": last_height,
-            }
-        return {"success": True, "scrolls_completed": max_scrolls, "mode": "fallback"}
-
-    async def click(self, selector: str, timeout_ms: int = 5000) -> dict[str, Any]:
-        """Click an element by selector or text content."""
-        if self._page:
-            try:
-                locator = self._page.locator(selector).first
-                await locator.click(timeout=timeout_ms)
-                return {"success": True, "action": "click", "selector": selector}
-            except Exception as e:
-                try:
-                    text_locator = self._page.get_by_text(selector, exact=False).first
-                    await text_locator.click(timeout=timeout_ms)
-                    return {"success": True, "action": "click_text", "text": selector}
-                except Exception as ex:
-                    return {
-                        "success": False,
-                        "action": "click",
-                        "selector": selector,
-                        "error": f"{e}; text_click: {ex}",
-                    }
         return {
             "success": True,
             "action": "click",
@@ -346,26 +448,34 @@ class BrowserEngine:
     async def type_text(
         self, selector: str, text: str, clear: bool = True, timeout_ms: int = 5000
     ) -> dict[str, Any]:
-        """Fill or type text into input field."""
+        """Fill or type text into input field, failing closed on ambiguity."""
+        if not self._page and not self.is_active:
+            await self.start()
+
         if self._page:
+            res = await self.find_element(selector, timeout_ms=timeout_ms)
+            if not res["success"]:
+                return res
+
             try:
-                locator = self._page.locator(selector).first
+                elem = res["element"]
                 if clear:
-                    await locator.fill(text, timeout=timeout_ms)
+                    await elem.fill(text, timeout=timeout_ms)
                 else:
-                    await locator.type(text, timeout=timeout_ms)
+                    await elem.type(text, timeout=timeout_ms)
                 return {
                     "success": True,
                     "action": "type_text",
                     "selector": selector,
                     "text": text,
+                    "count": 1,
                 }
             except Exception as e:
                 return {
                     "success": False,
                     "action": "type_text",
                     "selector": selector,
-                    "error": str(e),
+                    "error": f"Failed to type into element '{selector}': {e}",
                 }
         return {
             "success": True,
@@ -374,6 +484,106 @@ class BrowserEngine:
             "text": text,
             "mode": "fallback",
         }
+
+    async def submit(
+        self, selector: str | None = None, timeout_ms: int = 5000
+    ) -> dict[str, Any]:
+        """Submit a form or press Enter on the targeted element."""
+        if not self._page and not self.is_active:
+            await self.start()
+
+        if self._page:
+            if selector:
+                res = await self.find_element(selector, timeout_ms=timeout_ms)
+                if not res["success"]:
+                    return res
+                try:
+                    elem = res["element"]
+                    await elem.press("Enter")
+                    return {"success": True, "action": "submit", "selector": selector}
+                except Exception as e:
+                    return {
+                        "success": False,
+                        "action": "submit",
+                        "selector": selector,
+                        "error": str(e),
+                    }
+            else:
+                try:
+                    await self._page.keyboard.press("Enter")
+                    return {"success": True, "action": "submit"}
+                except Exception as e:
+                    return {"success": False, "action": "submit", "error": str(e)}
+        return {"success": True, "action": "submit", "mode": "fallback"}
+
+    async def extract_content(
+        self, selector: str | None = None, format: str = "markdown"
+    ) -> dict[str, Any]:
+        """Extract structured text or markdown from active page or selector."""
+        if not self._page and not self.is_active:
+            await self.start()
+
+        if self._page:
+            try:
+                if selector:
+                    res = await self.find_element(selector)
+                    if not res["success"]:
+                        return res
+                    text = await res["element"].inner_text()
+                else:
+                    text = await self._page.locator("body").inner_text()
+
+                title = await self._page.title()
+                url = self._page.url
+                formatted = (
+                    f"# {title}\n\n**Source**: {url}\n\n{text.strip()}"
+                    if format == "markdown"
+                    else text.strip()
+                )
+
+                return {
+                    "success": True,
+                    "title": title,
+                    "url": url,
+                    "format": format,
+                    "content": formatted,
+                    "length": len(formatted),
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "content": "",
+                    "error": f"Extraction error: {e}",
+                }
+        return {
+            "success": True,
+            "title": "Fallback Title",
+            "url": "https://fallback.internal",
+            "format": format,
+            "content": "Fallback extracted content",
+            "length": 25,
+            "mode": "fallback",
+        }
+
+    async def observe(self) -> dict[str, Any]:
+        """Capture page observation snapshot."""
+        if not self._page or not self.is_active:
+            return {
+                "is_active": False,
+                "title": "No Browser Session",
+                "url": "about:blank",
+            }
+        try:
+            title = await self._page.title()
+            url = self._page.url
+            return {
+                "is_active": True,
+                "title": title,
+                "url": url,
+                "viewport": self._page.viewport_size,
+            }
+        except Exception as e:
+            return {"is_active": False, "error": str(e)}
 
     async def press_key(self, key: str) -> dict[str, Any]:
         """Press a keyboard key (e.g. 'Enter', 'Tab', 'Escape')."""

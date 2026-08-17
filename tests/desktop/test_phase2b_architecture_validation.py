@@ -12,29 +12,31 @@ Formally validates that Phase 2B (Native Layer) meets all architectural standard
 import importlib
 import inspect
 import pkgutil
+from typing import Any
 
 import pytest
 
-from src.desktop.native.adapters.network_adapter import DummyNetworkAdapter
-from src.desktop.native.capability_registry import CapabilityRegistry, RiskLevel
-from src.desktop.native.desktop_execution_engine import (
+from desktop.native.adapters.network_adapter import DummyNetworkAdapter
+from desktop.native.capability_registry import CapabilityRegistry, RiskLevel
+from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     reset_desktop_execution_engine,
 )
-from src.desktop.native.managers.base_manager import BaseNativeManager
-from src.desktop.native.managers.native_manager_registry import (
+from desktop.native.managers.base_manager import BaseNativeManager
+from desktop.native.managers.native_manager_registry import (
     HealthStatus,
     NativeManagerRegistry,
 )
-from src.desktop.native.managers.network_manager import NetworkManager
+from desktop.native.managers.network_manager import NetworkManager
+from desktop.native.native_exceptions import NativeError
 
 
 @pytest.fixture
 def registry():
     NativeManagerRegistry.reset_instance()
     reg = NativeManagerRegistry.get_instance()
-    reg.discover("src.desktop.native.managers")
+    reg.discover("desktop.native.managers")
     yield reg
     NativeManagerRegistry.reset_instance()
 
@@ -199,3 +201,106 @@ def test_end_to_end_engine_orchestration(engine):
         assert res.manager == expected_manager
         assert res.metrics.get("total_duration_ms") is not None
         assert "passed" in res.verification
+
+
+# ==================== 6. Fail-Closed Manager Discovery & Registration ====================
+
+
+def test_fail_closed_manager_exclusion_during_discovery(monkeypatch, caplog):
+    """Verify discover() continues when a manager fails registration: excludes the broken one, registers healthy ones."""
+    import types
+
+    class BrokenManager(BaseNativeManager):
+        NAME = "broken_test_manager"
+        PRIORITY = 50
+
+        @property
+        def name(self) -> str:
+            return self.NAME
+
+        @property
+        def capabilities(self) -> list[str]:
+            return ["test.broken_cap"]
+
+        def register_capabilities(self, capabilities: list[str]) -> None:
+            raise RuntimeError("Deliberate registration failure in test")
+
+        def execute(self, capability: str, goal: str, args: dict) -> Any:
+            pass
+
+    class HealthyManager(BaseNativeManager):
+        NAME = "healthy_test_manager"
+        PRIORITY = 60
+
+        @property
+        def name(self) -> str:
+            return self.NAME
+
+        @property
+        def capabilities(self) -> list[str]:
+            return ["test.healthy_cap"]
+
+        def register_capabilities(self, capabilities: list[str]) -> None:
+            self._registered_caps = list(capabilities)
+
+        def execute(self, capability: str, goal: str, args: dict) -> Any:
+            return "healthy_result"
+
+    # Create synthetic module containing both test managers
+    synthetic_mod = types.ModuleType("desktop.native.managers.test_synthetic")
+    synthetic_mod.BrokenManager = BrokenManager
+    synthetic_mod.HealthyManager = HealthyManager
+
+    NativeManagerRegistry.reset_instance()
+    reg = NativeManagerRegistry.get_instance()
+
+    try:
+        # 1. Direct registration rejection: Attempting to register broken manager directly must raise NativeError
+        with pytest.raises(NativeError) as exc_info:
+            reg.register(BrokenManager())
+
+        assert "broken_test_manager" in str(exc_info.value)
+        assert "cannot be registered" in str(exc_info.value)
+
+        # 2. Mock discovery to include the synthetic module in walk_packages
+        orig_walk_packages = pkgutil.walk_packages
+        orig_import_module = importlib.import_module
+
+        def mock_walk_packages(path, prefix=""):
+            yield from orig_walk_packages(path, prefix=prefix)
+            # Yield our synthetic module as part of the package traversal
+            yield (None, f"{prefix}test_synthetic", False)
+
+        def mock_import_module(name, package=None):
+            if name.endswith(".test_synthetic") or name == "desktop.native.managers.test_synthetic":
+                return synthetic_mod
+            return orig_import_module(name, package=package)
+
+        monkeypatch.setattr(pkgutil, "walk_packages", mock_walk_packages)
+        monkeypatch.setattr(importlib, "import_module", mock_import_module)
+
+        # 3. Run discover() across the package
+        with caplog.at_level("WARNING"):
+            registered_names = reg.discover("desktop.native.managers")
+
+        # 4. Assert continue-on-failure discovery semantics:
+        # - BrokenManager was excluded
+        assert "broken_test_manager" not in registered_names
+        assert reg.get("broken_test_manager") is None
+        assert reg.resolve("test.broken_cap") is None
+
+        # - HealthyManager succeeded and is mapped
+        assert "healthy_test_manager" in registered_names
+        assert reg.get("healthy_test_manager") is not None
+        assert reg.resolve("test.healthy_cap") is reg.get("healthy_test_manager")
+
+        # - Real native managers were not aborted and registered cleanly
+        assert "window" in registered_names
+        assert "clipboard" in registered_names
+        assert "power" in registered_names
+
+        # 5. Assert diagnostic log summary accurately reported the exclusion
+        assert "EXCLUDED (1): ['broken_test_manager']" in caplog.text
+
+    finally:
+        NativeManagerRegistry.reset_instance()

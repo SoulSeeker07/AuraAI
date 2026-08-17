@@ -174,7 +174,14 @@ class WMINetworkAdapter(NetworkAdapter):
     PRIORITY = 10
 
     def is_available(self) -> bool:
+        com_init = False
         try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+                com_init = True
+            except Exception:
+                pass
             import wmi
 
             c = wmi.WMI()
@@ -182,10 +189,24 @@ class WMINetworkAdapter(NetworkAdapter):
         except Exception as e:
             logger.debug(f"WMINetworkAdapter not available: {e}")
             return False
+        finally:
+            if com_init:
+                try:
+                    import pythoncom
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
 
     def get_interfaces(self) -> list[dict[str, Any]]:
         interfaces = []
+        com_init = False
         try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+                com_init = True
+            except Exception:
+                pass
             import wmi
 
             c = wmi.WMI()
@@ -220,10 +241,24 @@ class WMINetworkAdapter(NetworkAdapter):
                 )
         except Exception as e:
             logger.warning(f"WMINetworkAdapter.get_interfaces failed: {e}")
+        finally:
+            if com_init:
+                try:
+                    import pythoncom
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
         return interfaces
 
     def get_default_interface(self) -> dict[str, Any]:
+        com_init = False
         try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+                com_init = True
+            except Exception:
+                pass
             import wmi
 
             c = wmi.WMI()
@@ -244,6 +279,13 @@ class WMINetworkAdapter(NetworkAdapter):
                     }
         except Exception as e:
             logger.debug(f"WMINetworkAdapter.get_default_interface error: {e}")
+        finally:
+            if com_init:
+                try:
+                    import pythoncom
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
 
         # Fallback to local IP via socket
         return PsutilNetworkAdapter().get_default_interface()

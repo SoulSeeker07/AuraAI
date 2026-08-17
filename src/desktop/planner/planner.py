@@ -310,6 +310,16 @@ class DesktopPlanner(BasePlanner):
             if res and res.success:
                 step.status = StepStatus.SUCCESS
                 step.result_data = res.data
+
+                # Inter-step parameter propagation (e.g. found element -> action & verification steps)
+                if isinstance(res.data, dict) and "element" in res.data:
+                    curr_idx = plan.steps.index(step)
+                    for later_step in plan.steps[curr_idx + 1 :]:
+                        if later_step.arguments is None:
+                            later_step.arguments = {}
+                        if "element" not in later_step.arguments or not later_step.arguments["element"]:
+                            later_step.arguments["element"] = res.data["element"]
+
                 self.monitor.on_step_finish(step, success=True)
                 self.event_bus.publish(
                     "StepCompleted",

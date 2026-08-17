@@ -188,9 +188,11 @@ class BackendRegistry:
         from brain.world_model import WorldModel
         from .adapters.desktop_backend import DesktopEngineBackend
         from .adapters.memory_backend import MemoryBackend
+        from .adapters.research_backend import ResearchEngineBackend
 
         self.register(DesktopEngineBackend())
         self.register(DefaultNativeDesktopAdapter())
+        self.register(ResearchEngineBackend())
         self.register(DefaultGeminiResearchAdapter())
         self.register(AntigravityBackendAdapter(world_model=WorldModel.get_instance()))
         self.register(PlaywrightBrowserAdapter(headless=False))
@@ -273,8 +275,23 @@ class BackendRegistry:
         m["latency_ms"] = 0.8 * m["latency_ms"] + 0.2 * latency_ms
 
     def get_backend(self, name: str) -> BaseBackendAdapter | None:
-        """Get backend adapter by name."""
-        return self._backends.get(name)
+        """Get backend adapter by name, with alias support."""
+        if name in self._backends:
+            return self._backends[name]
+        name_clean = name.lower().replace("_", " ").strip()
+        for k, v in self._backends.items():
+            if k.lower().replace("_", " ").strip() == name_clean:
+                return v
+        if name.lower() in (
+            "browser",
+            "browser_playwright",
+            "playwright_browser_engine",
+            "playwright browser engine",
+        ):
+            for k, v in self._backends.items():
+                if k.lower() in ("browser", "playwright browser engine", "browser_playwright"):
+                    return v
+        return None
 
     def list_all_capabilities(self) -> list[str]:
         """Get list of all capabilities across all registered backends."""
@@ -291,17 +308,30 @@ class BackendRegistry:
                 return cap_key
         return key
 
-    def find_backends_for_capability(self, capability: str) -> list[BaseBackendAdapter]:
-        """Find all backends supporting a specific capability."""
+    def find_backends_for_capability(
+        self, capability: str, domain: str | None = None
+    ) -> list[BaseBackendAdapter]:
+        """Find all backends supporting a specific capability or matching the resolved domain."""
         key = self._resolve_capability_key(capability)
         names = self._capability_map.get(key, [])
-        return [self._backends[n] for n in names if n in self._backends]
+        candidates = [self._backends[n] for n in names if n in self._backends]
 
-    def select_best_backend(self, capability: str) -> BaseBackendAdapter | None:
+        # Domain-based fallback / routing if key lookup yields no candidates
+        if not candidates and domain:
+            domain_key = domain.lower()
+            for b_name, b_inst in self._backends.items():
+                if b_name.lower() == domain_key or b_name.lower().startswith(domain_key):
+                    candidates.append(b_inst)
+
+        return candidates
+
+    def select_best_backend(
+        self, capability: str, domain: str | None = None
+    ) -> BaseBackendAdapter | None:
         """
-        Select the best healthy backend for a capability based on adaptive metrics and metadata.
+        Select the best healthy backend for a capability or resolved domain based on adaptive metrics.
         """
-        candidates = self.find_backends_for_capability(capability)
+        candidates = self.find_backends_for_capability(capability, domain=domain)
         if not candidates:
             return None
 

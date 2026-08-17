@@ -17,6 +17,7 @@ from .citation_builder import Citation
 from .content_fetcher import ContentFetcher
 from .metrics import MetricsCollector
 from .models import (
+    MIN_SYNTHESIS_CONFIDENCE_THRESHOLD,
     Document,
     Evidence,
     ResearchConfig,
@@ -1111,3 +1112,203 @@ class ResearchEngine:
         logger.info("Execution Time")
         logger.info(f"{duration:.2f} sec")
         logger.info(f"\n{'='*60}\n")
+
+    # ── Standalone Capability Endpoints (M21) ────────────────────────────────
+
+    def search(
+        self, query: str, max_results: int = 5, allow_mock: bool = True, **kwargs
+    ) -> tuple[list[SearchResult], dict[str, Any]]:
+        """
+        Execute a standalone search query.
+
+        Args:
+            query: Search query string
+            max_results: Maximum results to return
+            allow_mock: Whether to return deterministic mock results if no online provider is configured
+
+        Returns:
+            Tuple of (list of SearchResult, metadata dict with provider/offline details)
+        """
+        query_text = (query or "").strip()
+        if not query_text:
+            return [], {
+                "error": "Query cannot be empty.",
+                "offline_mode": False,
+                "provider": "none",
+                "count": 0,
+            }
+
+        # Check for active live providers
+        enabled_count = (
+            len(self.search_manager.enabled_providers) if self.search_manager else 0
+        )
+
+        if enabled_count > 0:
+            query_obj = SearchQuery(
+                query_text=query_text, max_results=max_results, mode=SearchMode.QUICK
+            )
+            raw_results = self.search_manager.search_all(query_text, query_obj=query_obj)
+            metadata = {
+                "offline_mode": False,
+                "is_mock": False,
+                "provider": "live",
+                "providers_active": [
+                    p.name for p in self.search_manager.enabled_providers
+                ],
+                "count": len(raw_results),
+            }
+            return raw_results[:max_results], metadata
+
+        # Fallback path if no online provider is configured
+        if allow_mock:
+            mock_results = self._generate_mock_search_results(query_text, max_results)
+            metadata = {
+                "offline_mode": True,
+                "is_mock": True,
+                "provider": "mock",
+                "count": len(mock_results),
+            }
+            return mock_results, metadata
+
+        return [], {
+            "error": "No online search provider configured or available.",
+            "offline_mode": False,
+            "provider": "none",
+            "count": 0,
+        }
+
+    def synthesize(
+        self, topic: str, sources: list[Any] | None = None, **kwargs
+    ) -> dict[str, Any]:
+        """
+        Synthesize multi-source research evidence into a structured answer with citations.
+
+        Fails closed if sources is empty or if overall synthesis confidence is below
+        MIN_SYNTHESIS_CONFIDENCE_THRESHOLD (0.40).
+
+        Args:
+            topic: Topic or user question
+            sources: List of SearchResult, Evidence, Document, or dict source items
+
+        Returns:
+            Dictionary containing summary, citations, confidence_score, and quality flags
+        """
+        topic_text = (topic or "").strip()
+        if not sources:
+            return {
+                "success": False,
+                "summary": "",
+                "citations": [],
+                "confidence_score": 0.0,
+                "error": "Zero sources provided for synthesis. A preceding 'research.search' step is required.",
+            }
+
+        # Convert dict or object sources into SearchResult list for uniform processing
+        normalized_results: list[SearchResult] = []
+        for idx, src in enumerate(sources):
+            if isinstance(src, SearchResult):
+                normalized_results.append(src)
+            elif isinstance(src, dict):
+                normalized_results.append(
+                    SearchResult(
+                        url=src.get("url", f"https://example.com/source/{idx+1}"),
+                        title=src.get("title", f"Source {idx+1}"),
+                        snippet=src.get("snippet") or src.get("fact") or src.get("content", ""),
+                        source=src.get("source", "knowledge_base"),
+                        score=float(src.get("score", 75.0)),
+                        trust_level=SourceTrustLevel.OFFICIAL
+                        if "official" in str(src.get("trust_level", "")).lower()
+                        else SourceTrustLevel.WIKIPEDIA,
+                    )
+                )
+            elif isinstance(src, Evidence):
+                normalized_results.append(
+                    SearchResult(
+                        url=src.url or f"https://example.com/evidence/{idx+1}",
+                        title=src.fact[:50],
+                        snippet=src.fact,
+                        source=src.source or "extracted_evidence",
+                        score=float(src.score * 20.0) if src.score <= 5 else float(src.score),
+                        trust_level=src.trust_level,
+                    )
+                )
+
+        if not normalized_results:
+            return {
+                "success": False,
+                "summary": "",
+                "citations": [],
+                "confidence_score": 0.0,
+                "error": "No valid search results could be extracted from provided sources.",
+            }
+
+        # Compute citations and summary
+        citations = self._create_citations(normalized_results)
+        summary = self._generate_summary(normalized_results)
+
+        # Average confidence from citations / sources
+        avg_score = (
+            sum(r.score for r in normalized_results) / (100.0 * len(normalized_results))
+            if normalized_results
+            else 0.0
+        )
+
+        if avg_score < MIN_SYNTHESIS_CONFIDENCE_THRESHOLD:
+            return {
+                "success": False,
+                "summary": summary,
+                "citations": [c.to_dict() if hasattr(c, "to_dict") else vars(c) for c in citations],
+                "confidence_score": avg_score,
+                "low_confidence": True,
+                "error": (
+                    f"Synthesis confidence {avg_score:.2f} is below minimum threshold "
+                    f"({MIN_SYNTHESIS_CONFIDENCE_THRESHOLD:.2f}). Sources may be unverified or conflicting."
+                ),
+            }
+
+        return {
+            "success": True,
+            "topic": topic_text,
+            "summary": summary,
+            "citations": [c.to_dict() if hasattr(c, "to_dict") else vars(c) for c in citations],
+            "confidence_score": avg_score,
+            "sources_count": len(normalized_results),
+        }
+
+    def deep_query(self, question: str, rounds: int = 3, **kwargs) -> ResearchReport:
+        """
+        Execute multi-round deep research loop on a question.
+
+        Args:
+            question: Question or objective
+            rounds: Maximum research rounds/iterations
+
+        Returns:
+            ResearchReport containing comprehensive findings
+        """
+        return self.research(query=question, mode=SearchMode.DEEP, max_iterations=rounds)
+
+    def _generate_mock_search_results(
+        self, query: str, max_results: int = 5
+    ) -> list[SearchResult]:
+        """
+        Generate deterministic mock search results for offline mode testing.
+        """
+        q = query.lower()
+        mock_results = []
+        for i in range(1, max_results + 1):
+            mock_results.append(
+                SearchResult(
+                    url=f"https://offline-knowledge.internal/docs/{i}",
+                    title=f"Knowledge Doc {i}: {query.title()}",
+                    snippet=(
+                        f"Detailed analysis regarding '{query}'. Findings indicate robust "
+                        f"performance and evidence backing key concepts on topic {i}."
+                    ),
+                    source="mock_offline_provider",
+                    score=85.0 - (i * 2.0),
+                    trust_level=SourceTrustLevel.OFFICIAL,
+                )
+            )
+        return mock_results
+
