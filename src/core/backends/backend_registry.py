@@ -189,6 +189,24 @@ class BackendRegistry:
         from .adapters.desktop_backend import DesktopEngineBackend
         from .adapters.memory_backend import MemoryBackend
         from .adapters.research_backend import ResearchEngineBackend
+        from .adapters.terminal_backend import TerminalBackendAdapter
+        from .adapters.input_backend import InputBackendAdapter
+        from .adapters.notification_backend import NotificationBackendAdapter
+        from .adapters.scheduler_backend import SchedulerBackendAdapter
+        from .adapters.screen_action_backend import ScreenActionBackendAdapter
+
+        from .adapters.email_backend import EmailBackendAdapter
+        from .adapters.calendar_backend import CalendarBackendAdapter
+        from .adapters.office_backend import OfficeBackendAdapter
+        from .adapters.docker_backend import DockerBackendAdapter
+        from .adapters.mcp_backend import MCPBackendAdapter
+
+        from .adapters.settings_backend import SettingsBackendAdapter
+        from .adapters.software_backend import SoftwareBackendAdapter
+        from .adapters.security_backend import SecurityBackendAdapter
+        from .adapters.vision_backend import VisionEngineBackend
+        from .adapters.voice_backend import VoiceEngineBackend
+        from .adapters.daemon_backend import DaemonEngineBackend
 
         self.register(DesktopEngineBackend())
         self.register(DefaultNativeDesktopAdapter())
@@ -197,6 +215,22 @@ class BackendRegistry:
         self.register(AntigravityBackendAdapter(world_model=WorldModel.get_instance()))
         self.register(PlaywrightBrowserAdapter(headless=False))
         self.register(MemoryBackend())
+        self.register(TerminalBackendAdapter())
+        self.register(InputBackendAdapter())
+        self.register(NotificationBackendAdapter())
+        self.register(SchedulerBackendAdapter())
+        self.register(ScreenActionBackendAdapter())
+        self.register(VisionEngineBackend())
+        self.register(VoiceEngineBackend())
+        self.register(DaemonEngineBackend())
+        self.register(EmailBackendAdapter())
+        self.register(CalendarBackendAdapter())
+        self.register(OfficeBackendAdapter())
+        self.register(DockerBackendAdapter())
+        self.register(MCPBackendAdapter())
+        self.register(SettingsBackendAdapter())
+        self.register(SoftwareBackendAdapter())
+        self.register(SecurityBackendAdapter())
 
     def load_capability_manifest(self, manifest_path: Path | None = None) -> None:
         """Load capability mapping manifest from config/capabilities.json or .yaml."""

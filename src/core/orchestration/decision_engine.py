@@ -14,6 +14,10 @@ class IntentType(str, Enum):
     SYSTEM_QUERY = "system_query"
     CHAT = "chat"
     VISION = "vision"
+    VOICE = "voice"
+    MULTIMODAL = "multimodal"
+    DAEMON = "daemon"
+    SCHEDULER = "scheduler"
     DESKTOP_ACTION = "desktop_action"
     CODING = "coding"
     RESEARCH = "research"
@@ -312,11 +316,37 @@ class DecisionEngine:
                 "vscode",
                 "vs code",
                 "visual studio code",
-                # Keyboard input
+                # Keyboard and input simulation
                 "type",
                 "press",
                 "hit",
                 "write",
+                "click",
+                "double click",
+                "right click",
+                "drag",
+                "scroll mouse",
+                "move mouse",
+                # Terminal and CLI
+                "run command",
+                "execute command",
+                "powershell",
+                "terminal",
+                "shell",
+                "cmd",
+                # Notifications and scheduler
+                "notify",
+                "notification",
+                "toast",
+                "alert",
+                "schedule",
+                "remind me",
+                "timer",
+                "cron",
+                # Screen action and computer use
+                "find on screen",
+                "click on screen",
+                "computer use",
                 # System radio / hardware controls
                 "bluetooth",
                 "wifi",
@@ -429,8 +459,12 @@ class DecisionEngine:
                 for w in [
                     "research",
                     "search web",
+                    "search for",
+                    "search the",
                     "look up",
                     "find papers",
+                    "find articles",
+                    "find sources",
                     "oauth2",
                     "release",
                     "conversion rate",
@@ -443,6 +477,7 @@ class DecisionEngine:
             )
             and not is_system_query
             and not is_definition
+            and not any(k in goal_lower for k in ["unit test", "fix bug", "refactor", "git commit", "code.edit"])
         )
         is_browser = not is_window_control and any(
             w in goal_lower
@@ -472,25 +507,8 @@ class DecisionEngine:
                 "chrome",
                 "browser",
                 "edge",
-                "firefox",
-                "next",
-                "previous",
-                "pause",
-                "resume",
-                "seek",
-                "skip",
-                "filter",
-                "comment",
-                "comments",
-                "review",
-                "reviews",
-                "checkout",
-                "compare",
-                "play",
-                "video",
-                "videos",
-                "song",
-                "songs",
+                "play video",
+                "play song",
                 "music",
                 "playlist",
             ]
@@ -511,6 +529,58 @@ class DecisionEngine:
                 "describe screen",
                 "what is visible on screen",
                 "read the screen",
+                "vision.capture",
+                "vision.describe",
+                "vision.ocr",
+                "vision.ground_element",
+            ]
+        )
+
+        is_voice_query = any(
+            w in goal_lower
+            for w in [
+                "voice.listen",
+                "voice.transcribe",
+                "voice.speak",
+                "voice.process_turn",
+                "speak out",
+                "speak text",
+                "say out loud",
+                "voice command",
+                "transcribe voice",
+                "transcribe speech",
+                "listen to speech",
+                "voice turn",
+            ]
+        )
+
+        is_daemon = any(
+            w in goal_lower
+            for w in [
+                "daemon.spawn",
+                "daemon.status",
+                "daemon.list",
+                "daemon.cancel",
+                "daemon.pause",
+                "daemon.resume",
+                "background task",
+                "run in background",
+                "spawn background",
+                "daemon task",
+            ]
+        )
+        is_scheduler = any(
+            w in goal_lower
+            for w in [
+                "scheduler.at",
+                "scheduler.cron",
+                "scheduler.interval",
+                "scheduler.cancel",
+                "schedule task",
+                "every 5 minutes",
+                "cron job",
+                "set a timer",
+                "remind me in",
             ]
         )
 
@@ -524,38 +594,83 @@ class DecisionEngine:
         elif is_memory_recall:
             intent = IntentType.MEMORY
             intent_capability = "memory_read"
+        elif is_daemon:
+            intent = IntentType.DAEMON
+            intent_capability = "daemon.spawn"
+        elif is_scheduler:
+            intent = IntentType.SCHEDULER
+            intent_capability = "scheduler.at"
         elif is_vision_query:
             intent = IntentType.VISION
-            intent_capability = "screen_vision"
+            intent_capability = "vision.describe"
+        elif is_voice_query:
+            intent = IntentType.VOICE
+            intent_capability = "voice.process_turn"
         elif is_system_query:
             intent = IntentType.SYSTEM_QUERY
+        elif is_research:
+            intent = IntentType.RESEARCH
         elif is_coding:
             intent = IntentType.CODING
         elif is_browser:
             intent = IntentType.BROWSER
         elif is_desktop:
             intent = IntentType.DESKTOP_ACTION
-        elif is_research:
-            intent = IntentType.RESEARCH
         else:
             intent = IntentType.CHAT
 
         # 2. Evaluate 5 Decision Questions
         # Q1: Can answer from memory?
+        ranked_mems = mem.get("ranked_cognitive_memories") or []
+        has_semantic_match = False
+        for m in ranked_mems:
+            if isinstance(m, dict) and m.get("type") == "semantic":
+                m_topic = str(m.get("topic", "")).lower()
+                m_content = str(m.get("content", "")).lower()
+                clean_words = [
+                    w
+                    for w in goal_lower.split()
+                    if len(w) > 3
+                    and w not in ["what", "when", "where", "tell", "about", "search", "research"]
+                ]
+                if any(w in m_topic or w in m_content for w in clean_words):
+                    has_semantic_match = True
+                    break
+
         can_from_mem = bool(
-            mem.get("recalled_memories")
-            and any(
-                w in goal_lower
-                for w in ["remember", "recall", "my name", "preferences"]
+            (
+                mem.get("recalled_memories")
+                and any(
+                    w in goal_lower
+                    for w in ["remember", "recall", "my name", "preferences"]
+                )
             )
-        ) or (intent == IntentType.MEMORY)
+            or (intent == IntentType.MEMORY)
+            or (
+                has_semantic_match
+                and any(
+                    w in goal_lower
+                    for w in [
+                        "what did we find",
+                        "what was",
+                        "recall research",
+                        "from memory",
+                        "from research",
+                        "earlier",
+                        "previously",
+                        "what is",
+                        "tell me about",
+                    ]
+                )
+            )
+        )
         # Q2: Can answer from system identity/state?
         can_from_sys = intent == IntentType.SYSTEM_QUERY or intent == IntentType.SESSION
         # Q3: Does this actually need a multi-step planner?
         needs_planner = not (
-            can_from_sys
+            can_from_mem
+            or can_from_sys
             or intent == IntentType.CHAT
-            or intent == IntentType.VISION
             or (intent == IntentType.SESSION and intent_capability == "session_summary")
         )
         # Q4: Which planner?
@@ -569,8 +684,8 @@ class DecisionEngine:
             planner = "desktop"
         elif intent == IntentType.MEMORY:
             planner = "memory"
-        elif intent == IntentType.VISION:
-            planner = "none"
+        elif intent in (IntentType.VISION, IntentType.VOICE, IntentType.MULTIMODAL, IntentType.DAEMON, IntentType.SCHEDULER):
+            planner = "desktop"
         else:
             planner = "desktop"
         # Q5: Requires cloud/external backend or local engine?
@@ -581,6 +696,11 @@ class DecisionEngine:
                 IntentType.BROWSER,
                 IntentType.CODING,
                 IntentType.MEMORY,
+                IntentType.VISION,
+                IntentType.VOICE,
+                IntentType.MULTIMODAL,
+                IntentType.DAEMON,
+                IntentType.SCHEDULER,
             ]
         ) and not (active_budget.local_only or active_budget.offline_mode)
 

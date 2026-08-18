@@ -71,6 +71,9 @@ class TaskDecomposer:
                 "browser": PlannerRole.BROWSER,
                 "research": PlannerRole.RESEARCH,
                 "memory": PlannerRole.DESKTOP,
+                "multimodal": PlannerRole.DESKTOP,
+                "vision": PlannerRole.DESKTOP,
+                "voice": PlannerRole.DESKTOP,
             }
             subtask = SubTask(
                 task_id="task_1",
@@ -772,8 +775,77 @@ class TaskDecomposer:
                 )
             ]
 
-        resolved_intents = {"coding", "browser", "desktop_action", "system_query", "chat", "research", "memory"}
+        resolved_intents = {"coding", "browser", "desktop_action", "system_query", "chat", "research", "memory", "vision", "voice", "multimodal", "daemon", "scheduler"}
         intent_is_authoritative = intent_val in resolved_intents
+
+        has_daemon = (intent_val == "daemon") or any(
+            w in goal_lower
+            for w in [
+                "daemon.spawn",
+                "daemon.status",
+                "daemon.list",
+                "daemon.cancel",
+                "daemon.pause",
+                "daemon.resume",
+                "background task",
+                "run in background",
+                "spawn background",
+                "daemon task",
+            ]
+        )
+        has_scheduler = (intent_val == "scheduler") or any(
+            w in goal_lower
+            for w in [
+                "scheduler.at",
+                "scheduler.cron",
+                "scheduler.interval",
+                "scheduler.cancel",
+                "schedule task",
+                "every 5 minutes",
+                "cron job",
+                "set a timer",
+                "remind me in",
+            ]
+        )
+
+        has_vision = (intent_val in ("vision", "multimodal")) or any(
+            w in goal_lower
+            for w in [
+                "what's on my screen",
+                "what is on my screen",
+                "whats on my screen",
+                "see my screen",
+                "read my screen",
+                "look at my screen",
+                "on my screen",
+                "take a screenshot",
+                "capture screen",
+                "describe screen",
+                "what is visible on screen",
+                "read the screen",
+                "vision.capture",
+                "vision.describe",
+                "vision.ocr",
+                "vision.ground_element",
+            ]
+        )
+        has_voice = (intent_val in ("voice", "multimodal")) or any(
+            w in goal_lower
+            for w in [
+                "voice.listen",
+                "voice.transcribe",
+                "voice.speak",
+                "voice.process_turn",
+                "speak out",
+                "speak text",
+                "say out loud",
+                "voice command",
+                "transcribe voice",
+                "transcribe speech",
+                "listen to speech",
+                "voice turn",
+            ]
+        )
 
         has_research = (intent_val == "research") or (
             not intent_is_authoritative and any(
@@ -897,6 +969,18 @@ class TaskDecomposer:
             coding_verbs = ["write code", "fix", "refactor", "implement", "build", "debug", "create script", "write script"]
             if not any(v in goal_lower for v in coding_verbs):
                 has_coding = False
+
+        if has_vision and not intent_is_authoritative:
+            # Prevent 'screen' or 'screenshot' from spuriously triggering app_open
+            desktop_verbs = ["open", "launch", "close", "minimize", "maximize", "restore", "type", "press", "hit"]
+            if not any(v in goal_lower for v in desktop_verbs):
+                has_desktop = False
+
+        if has_voice and not intent_is_authoritative:
+            # Prevent voice commands from spuriously triggering app_open
+            desktop_verbs = ["open", "launch", "close", "minimize", "maximize", "restore", "type", "press", "hit"]
+            if not any(v in goal_lower for v in desktop_verbs):
+                has_desktop = False
 
         # Check for multi-stage research -> document -> persist -> open DAG
         if (
@@ -1572,7 +1656,217 @@ class TaskDecomposer:
                     dependencies=deps,
                 )
             )
-        elif not subtasks:
+
+        # ── Multimodal (Vision & Voice) Subtask Generation ───────────────
+        if has_vision and not subtasks:
+            if "ocr" in goal_lower or "read" in goal_lower:
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Extract Text with OCR",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="vision.ocr",
+                        description=f"OCR screen perception for: {raw_goal}",
+                        parameters={"target_text": raw_goal},
+                        dependencies=[],
+                    )
+                )
+            elif "ground" in goal_lower or "find element" in goal_lower:
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Ground UI Element Coordinates",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="vision.ground_element",
+                        description=f"Ground UI element coordinates for: {raw_goal}",
+                        parameters={"description": raw_goal},
+                        dependencies=[],
+                    )
+                )
+            elif any(w in goal_lower for w in ["screenshot", "capture screen", "vision.capture"]):
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Capture Screen Frame",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="vision.capture",
+                        description=f"Capture screen frame: {raw_goal}",
+                        parameters={"capture_type": "full_screen"},
+                        dependencies=[],
+                    )
+                )
+            else:
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Perceive Desktop Visuals",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="vision.describe",
+                        description=f"Analyze visual desktop context for: {raw_goal}",
+                        parameters={"query": raw_goal},
+                        dependencies=[],
+                    )
+                )
+
+        if has_voice and not subtasks:
+            if any(w in goal_lower for w in ["speak", "say out"]):
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Synthesize Spoken Response",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="voice.speak",
+                        description=f"Speak response: {raw_goal}",
+                        parameters={"text": raw_goal},
+                        dependencies=[],
+                    )
+                )
+            elif any(w in goal_lower for w in ["listen", "record audio"]):
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Capture Microphone Audio",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="voice.listen",
+                        description=f"Capture audio input for: {raw_goal}",
+                        parameters={"duration_seconds": 3.0},
+                        dependencies=[],
+                    )
+                )
+            elif any(w in goal_lower for w in ["transcribe", "stt"]):
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Transcribe Voice Speech",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="voice.transcribe",
+                        description=f"Transcribe speech input: {raw_goal}",
+                        parameters={"audio_data": raw_goal},
+                        dependencies=[],
+                    )
+                )
+            else:
+                t_id = f"task_{task_counter}"
+                task_counter += 1
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Process Voice Interaction Turn",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="voice.process_turn",
+                        description=f"Process voice turn for: {raw_goal}",
+                        parameters={"audio_input": raw_goal},
+                        dependencies=[],
+                    )
+                )
+
+        if has_daemon and not subtasks:
+            t_id = f"task_{task_counter}"
+            task_counter += 1
+            if any(w in goal_lower for w in ["daemon.status", "status of job", "status of task", "job status", "check status", "task status"]):
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Query Daemon Job Status",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="daemon.status",
+                        description=f"Query daemon status for: {raw_goal}",
+                        parameters={"goal": raw_goal},
+                        dependencies=[],
+                    )
+                )
+            elif "list" in goal_lower:
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="List Daemon Jobs",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="daemon.list",
+                        description=f"List daemon jobs for: {raw_goal}",
+                        parameters={},
+                        dependencies=[],
+                    )
+                )
+            elif "cancel" in goal_lower:
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Cancel Daemon Job",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="daemon.cancel",
+                        description=f"Cancel daemon job for: {raw_goal}",
+                        parameters={"goal": raw_goal},
+                        dependencies=[],
+                    )
+                )
+            else:
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Spawn Autonomous Background Task",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="daemon.spawn",
+                        description=f"Spawn background task for: {raw_goal}",
+                        parameters={"goal": raw_goal, "name": raw_goal},
+                        dependencies=[],
+                    )
+                )
+
+        if has_scheduler and not subtasks:
+            t_id = f"task_{task_counter}"
+            task_counter += 1
+            if "cron" in goal_lower:
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Schedule Recurring Cron Task",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="scheduler.cron",
+                        description=f"Schedule cron job for: {raw_goal}",
+                        parameters={"action": raw_goal, "cron_expression": "* * * * *"},
+                        dependencies=[],
+                    )
+                )
+            elif "interval" in goal_lower or "every" in goal_lower:
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Schedule Recurring Interval Task",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="scheduler.interval",
+                        description=f"Schedule interval task for: {raw_goal}",
+                        parameters={"action": raw_goal, "interval_seconds": 60.0},
+                        dependencies=[],
+                    )
+                )
+            else:
+                subtasks.append(
+                    SubTask(
+                        task_id=t_id,
+                        title="Schedule One-Time Timer Task",
+                        required_role=PlannerRole.DESKTOP,
+                        capability="scheduler.at",
+                        description=f"Schedule timer task for: {raw_goal}",
+                        parameters={"action": raw_goal, "delay_seconds": 60.0},
+                        dependencies=[],
+                    )
+                )
+
+        if not subtasks:
             # Fallback for unrecognized action goals — default to DESKTOP action
             t_id = f"task_{task_counter}"
             subtasks.append(

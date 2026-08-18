@@ -96,16 +96,16 @@ A milestone may ship across one or more releases.
 | M17 | `v0.20.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
 | M18 | `v0.21.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
 | M19 | `v0.22.0` | Phase 2 — Capability Foundation | `COMPLETE` |
-| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion (Coding Agent) | `COMPLETE (Backlog Active)` |
-| M21 | `v0.24.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
-| M22 | `v0.25.0` | Phase 3 — Intelligence Expansion | `PLANNED` |
-| M23 | `v0.26.0` | Phase 4 — External Capabilities | `PLANNED` |
-| M24 | `v0.27.0` | Phase 5 — Autonomy | `PLANNED` |
-| M25 | `v0.28.0` | Phase 5 — Autonomy | `PLANNED` |
-| M26 | `v0.29.0` | Phase 5 — Autonomy | `PLANNED` |
-| M27 | `v0.30.0` | Phase 6 — Autonomous Engineering | `PLANNED` |
-| M28 | `v1.0.0` | Phase 7 — Aura OS (Native Desktop Engine) | `OPERATIONAL (Foundation Live)` |
-| M29 | `v1.1.0` | Phase 8 — Natural Interaction (Continuous Voice) | `OPERATIONAL (Foundation Live)` |
+| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion (Coding Agent) | `COMPLETE` |
+| M21 | `v0.25.0` | Phase 3 — Intelligence Expansion (Research Hardening) | `COMPLETE` |
+| M22 | `v0.26.0` | Phase 3 — Intelligence Expansion (Multimodal Hardening) | `COMPLETE` |
+| M23 | `v0.27.0` | Phase 4 — Autonomy & Persistent Daemon | `COMPLETE` |
+| M24 | `v0.28.0` | Phase 5 — Autonomy | `PLANNED` |
+| M25 | `v0.29.0` | Phase 5 — Autonomy | `PLANNED` |
+| M26 | `v0.30.0` | Phase 5 — Autonomy | `PLANNED` |
+| M27 | `v0.31.0` | Phase 6 — Autonomous Engineering | `PLANNED` |
+| M28 | `v1.0.0` | Phase 7 — Aura OS | `PLANNED` |
+| M29 | `v1.1.0` | Phase 8 — Natural Interaction | `PLANNED` |
 | M30 | `v1.2.0` | Phase 9 — Aura GUI (Command Center) | `PLANNED` |
 
 ---
@@ -118,15 +118,17 @@ A milestone may ship across one or more releases.
 > This section is the **Foundation Evidence Index** — an auditable record of what each milestone
 > built, what it solved, and what it enables. It is not a specification; it is a verification record.
 
-> **Architectural Health (post August 2026 audit):**
+> **Architectural Health (August 18, 2026 audit):**
 > ```text
-> Operational (wired, runs on live path):  ~40%
-> Scaffolded (code exists, not wired):     ~45%
+> Operational (wired, runs on live path):  ~45%
+> Scaffolded (code exists, not wired):     ~35%
 > Stub / minimal:                          ~10%
-> Missing entirely:                         ~5%
+> Missing entirely:                        ~10%
 > ```
 > This reflects the state of the full system (M01–M30 scope), not Phase 0 alone.
-> Phase 0 modules are largely complete; the percentage gap is in Phase 1–9 scaffolding.
+> Phase 0–2 modules are largely complete; M17–M20 delivered Cognitive Memory,
+> World Model, Capability Registry, and Coding Intelligence 2.0.
+> The percentage gap is in Phase 3–9 (M21–M30).
 > See [`RUNTIME.md`](RUNTIME.md) for the canonical live-path wiring map.
 
 ---
@@ -930,112 +932,108 @@ Verify and finalize
 
 ---
 
-### M21 — Research Intelligence 2.0
+### M21 — Research Intelligence & Knowledge Hardening
 
-**Status:** `PLANNED`
-**Priority:** 🔴 High
+**Status:** `COMPLETE`
+**Priority:** 🟢 Verified Live
 
-Research becomes contextual — Aura knows what it's researching *for* before
-it searches a single page.
+Research becomes contextual and evidence-grounded — live retrieval, factual claim binding, citation preservation through ResultMerger, zero-refetch cognitive memory direct recall, and SSRF destination protection.
 
 ```text
 Question
  ↓
-Research plan (informed by World Model + Memory)
+DecisionEngine + TaskDecomposer (research.search, research.synthesize)
  ↓
-Search (via Capability Registry)
+Multi-Provider Retrieval (Tavily, GitHub, Wikipedia)
  ↓
-Source collection and confidence scoring
+NetworkPolicyEngine (SSRF block on private/cloud metadata IPs)
  ↓
-Evidence extraction and cross-check
+Evidence Extraction & Citation Key Binding (claim_id <-> citation_key <-> source_url)
  ↓
-Synthesis
+ResultMerger (preserves citations into user response)
  ↓
-Project-specific recommendation
- ↓
-Store findings in Memory
+CognitiveMemory (Semantic Memory with provenance & zero-refetch recall)
 ```
 
-**Example:**
-> *"Research the best authentication architecture for Aura."*
-> Aura already knows: Aura's current architecture, language/framework,
-> existing dependencies, previous decisions, and security requirements.
-
 **Acceptance criteria:**
-- Research report includes project-specific recommendation section
-- Sources ranked by confidence and recency
-- Findings stored in Semantic Memory for future recall
-- Contradicting sources flagged explicitly
-- Long-running deep research loop runs at least 3 search rounds before synthesis
-
-**Existing foundations:** `src/research/` (18 modules), `src/brain/deep_research_manager.py`
+- Research findings bound to concrete claims and citation URLs (Satisfied)
+- Citations survive ResultMerger into final user response (Satisfied)
+- Findings stored in Semantic Memory for future recall (Satisfied)
+- Follow-up query fulfilled directly from memory with zero provider calls (Satisfied)
+- Network egress policy filters cloud metadata and private subnets (Satisfied)
 
 **Depends on:** M19
 **Enables:** M25 (Expert Systems foundation), M27
 
 ---
 
-### M22 — Browser Intelligence
+### M22 — Multimodal Voice & Vision Subsystems Hardening
 
-**Status:** `PLANNED`
-**Priority:** 🟠 High
+**Status:** `COMPLETE`
+**Priority:** 🟢 Verified Live
 
-Aura gets a full web interaction layer. All browser actions run through
-Capability Registry + Permission System + Verification.
-**No separate browser architecture — browser is a set of registered capabilities.**
+Multimodal perception and interaction on the live orchestrator path:
+- `VisionEngineBackend`: screen capture, OCR, visual desktop perception, and concrete UI coordinate space grounding.
+- `VoiceEngineBackend`: Google STT, FasterWhisper, Vosk fallback, Piper TTS, Edge-TTS, and deterministic offline degradation.
+- `DevicePrivacyEngine`: pre-acquisition fail-closed permission checks for mic, screen, and camera (denied permission => zero hardware capture attempt) with default-BLOCK on credential dialogs (KeePass, BitLocker, Windows Security).
+
+**Acceptance criteria:**
+- Speech and vision requests route through MasterOrchestrator to real backends (Satisfied)
+- UI element grounding returns concrete bounding boxes and screen coordinates (Satisfied)
+- Multi-engine voice fallback chain operates with deterministic offline error reporting (Satisfied)
+- Denied device permissions halt acquisition before hardware stream init (Satisfied)
+- Credential dialogs trigger pre-capture BLOCK before frame acquisition (Satisfied)
+- Visual and audio perception records consolidate to CognitiveMemory with provenance (Satisfied)
+
+**Depends on:** M19, M20, M21
+**Enables:** M23, M26
+
+---
+
+---
+
+# PHASE 4 — Autonomy & Persistent Daemon
+
+---
+
+### M23 — Autonomous Daemon & Background Operations
+
+**Status:** `COMPLETE`
+**Priority:** 🟢 Verified Live
+
+AuraAI transforms into a persistent, autonomous agent daemon runtime with durable state machine, crash recovery, cooperative cancellation, and parameter-bound cryptographic autonomy governance.
 
 ```text
-Browser Capabilities
-├── browser.navigate      — load URL
-├── browser.search        — web search
-├── browser.read          — extract page content
-├── browser.extract       — structured data extraction
-├── browser.click         — UI element interaction
-├── browser.fill          — form filling
-├── browser.download      — file download
-├── browser.upload        — file upload
-└── browser.observe       — page state observation
+User Goal / Schedule
+        ↓
+MasterOrchestrator
+        ↓
+DecisionEngine (DAEMON / SCHEDULER)
+        ↓
+TaskDecomposer
+        ↓
+AutonomyGovernanceEngine (HMAC parameter-bound tokens & ActionRisk tiers)
+        ↓
+DaemonRuntime (Bounded Worker Pool & Persistent Scheduler Loop)
+        ↓
+DaemonStateStore (SQLite durable state machine & RECOVERY_REQUIRED crash recovery)
+        ↓
+CapabilityRegistry & BackendRegistry (Governed capability dispatch)
+        ↓
+ResultMerger + ConsolidationEngine (Semantic memory promotion)
 ```
 
 **Acceptance criteria:**
-- Web page content extracted correctly from a given URL
-- Form fill and submit works for a defined test page
-- Downloads routed to configured download directory
-- All browser actions pass through permission check
-- Browser session isolated per agent task
+- Scheduled and background requests traverse canonical orchestrator path (Satisfied)
+- Bounded worker pool with durable state transitions (Satisfied)
+- Deterministic one-shot, interval, and cron scheduling with timezone awareness (Satisfied)
+- Cooperative CancellationToken aborts and clean worker pool draining on shutdown (Satisfied)
+- Interrupted in-flight jobs transition to RECOVERY_REQUIRED without silent duplicate replay (Satisfied)
+- Parameter-bound, time-bound cryptographic HMAC authorization tokens enforced for elevated risk (Satisfied)
+- Prohibited capabilities unconditionally blocked from unattended execution (Satisfied)
 
-**Existing foundations:** `src/browser/`, `src/agents/browser_agent.py`,
-`src/brain/page_reader.py`, `src/brain/web_search.py`
-
-**Depends on:** M19
-**Enables:** M23, M26 (Personal OS browser integration)
-
----
-
----
-
-# PHASE 4 — External Capabilities
-
----
-
-### M23 — MCP Ecosystem
-
-**Status:** `PLANNED`
-**Priority:** 🟠 High
-
-MCP becomes useful here because Aura already has the Capability Registry to consume it.
-MCP is one standardized supply mechanism — not a dependency of the core architecture.
-
-```text
-Aura Capability Registry
-          │
-       MCP Adapter
-          │
- ┌────────┼─────────┐
- ▼        ▼         ▼
-GitHub   Google    Custom
- MCP      MCP       MCP
-```
+**Depends on:** M20, M21, M22
+**Enables:** M24 (Event Runtime), M25 (Expert Systems), M26 (Personal OS)
 
 **Build:**
 ```text
@@ -1523,15 +1521,15 @@ M19   Capability & Tool Runtime     ← requires M17 + M18 complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PHASE 3 — INTELLIGENCE EXPANSION    [parallel]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M20   Coding Intelligence 2.0       ← requires M19
-M21   Research Intelligence 2.0     ← requires M19
-M22   Browser Intelligence          ← requires M19
+M20   Coding Intelligence 2.0       COMPLETE  ← requires M19
+M21   Research & Knowledge Hardening COMPLETE  ← requires M19
+M22   Multimodal Voice & Vision      COMPLETE  ← requires M19
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 4 — EXTERNAL CAPABILITIES
+PHASE 4 — AUTONOMY & PERSISTENT DAEMON
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M23   MCP Ecosystem                 ← requires M20 + M21 + M22
+M23   Autonomous Daemon & Background Ops  COMPLETE  ← requires M20 + M21 + M22
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1571,18 +1569,19 @@ M30   Aura Command Center           ← requires M28
 
 ```text
 Phase 0 — Foundation (M01–M16)          ████████████████████  16/16  COMPLETE
-Phase 1 — Shared Intelligence (M17–M18) ██████████░░░░░░░░░░   1/2   IN PROGRESS (M17 COMPLETE, M18 ACTIVE)
-Phase 2 — Capability Foundation (M19)   ░░░░░░░░░░░░░░░░░░░░   0/1   READY
-Phase 3 — Intelligence Expansion        ░░░░░░░░░░░░░░░░░░░░   0/3   PLANNED
-Phase 4 — External Capabilities (M23)   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 1 — Shared Intelligence (M17–M18) ████████████████████   2/2   COMPLETE
+Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
+Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
+Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
 Phase 5 — Autonomy (M24–M26)            ░░░░░░░░░░░░░░░░░░░░   0/3   PLANNED
 Phase 6 — Autonomous Engineering (M27)  ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 7 — Aura OS (M28)                 ████████████████████   1/1   OPERATIONAL (Foundation Live)
-Phase 8 — Natural Interaction (M29)     ████████████████████   1/1   OPERATIONAL (Foundation Live)
-Phase 9 — Aura GUI (M30)                ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 7 — Aura OS (M28)                 ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 8 — Natural Interaction (M29)     ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M08 voice infrastructure is COMPLETE)
+Phase 9 — Aura GUI (M30)               ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
 ```
 
-**Overall:** 19 / 30 foundational subsystems active. Next critical milestones: M18 (World Model) and M19 (Capability Runtime).
+**Overall:** 23 / 30 milestones complete. 587 source files (~130K lines), 213 test files (~32K lines), ~5.1 MB source code.
+Next critical milestones: M24 (Event Runtime), M25 (Professional Expert Systems), M26 (Personal OS).
 
 ---
 
@@ -1590,17 +1589,13 @@ Phase 9 — Aura GUI (M30)                ░░░░░░░░░░░░�
 
 | Priority | Milestone | Status | Hard Blocker |
 | :--- | :--- | :--- | :--- |
-| 1 | **M18** — World Model (Workspace & System Graph) | `IN PROGRESS` | None |
-| 2 | **M19** — Capability & Tool Runtime | `READY` | M18 integration |
-| 3 | **M20** — Autonomous Coding Agent | `PLANNED` | M19 |
-| 4 | **M21** — Autonomous Research Agent | `PLANNED` | M19 |
-| 5 | **M22** — Browser Intelligence (Playwright) | `PLANNED` | M19 |
-| 6 | **M23** — MCP Ecosystem | `PLANNED` | M20 + M21 + M22 |
-| 7 | **M25** — Professional Expert Systems | `PLANNED` | M19 + M20 + M21 |
-| 8 | **M24** — Event Runtime & Autonomy | `PLANNED` | M23 |
-| 9 | **M26** — Personal OS Proactive Automation | `PLANNED` | M23 |
-| 10 | **M27** — Autonomous Engineering Loop | `PLANNED` | M24 + M25 + M26 |
-| 11 | **M30** — Aura GUI Command Center & Vision | `PLANNED` | M28 |
+| 1 | **M24** — Event Runtime & Autonomy | `PLANNED` | None (M23 complete) |
+| 2 | **M25** — Professional Expert Systems | `PLANNED` | None (M19 + M20 + M21 complete) |
+| 3 | **M26** — Personal OS Proactive Automation | `PLANNED` | None (M23 complete) |
+| 4 | **M27** — Autonomous Engineering Loop | `PLANNED` | M24 + M25 + M26 |
+| 5 | **M28** — Aura OS Runtime | `PLANNED` | M27 |
+| 6 | **M29** — Natural Interaction Layer | `PLANNED` | M28 |
+| 7 | **M30** — Aura GUI Command Center | `PLANNED` | M28 |
 
 ---
 
@@ -1612,4 +1607,4 @@ and contributor extension guidelines.
 
 ---
 
-*Last Updated: August 2026*
+*Last Updated: August 18, 2026 — v0.27.0-autonomous-daemon*

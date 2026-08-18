@@ -24,10 +24,12 @@ class CapabilityType(str, Enum):
     BROWSER = "browser"
     NETWORK = "network"
 
-    # Input/Output capabilities
+    # Input/Output capabilities — Agentic Computer Use
+    INPUT = "input"  # Keyboard/mouse simulation
     VISION = "vision"
     VOICE = "voice"
     CLIPBOARD = "clipboard"
+    SCREEN_ACTION = "screen_action"  # Screenshot-to-action loop
 
     # Knowledge and Memory
     MEMORY = "memory"
@@ -39,13 +41,26 @@ class CapabilityType(str, Enum):
     AGENT = "agent"  # Agent-based tasks
     WORKFLOW = "workflow"
 
-    # Plugin-based capabilities
-    PLUGIN = "plugin"
-    PLUGIN_SEARCH = "plugin_search"
+    # Productivity capabilities
+    EMAIL = "email"
+    CALENDAR = "calendar"
+    OFFICE = "office"
+    NOTIFICATION = "notification"
+    SCHEDULER = "scheduler"
+
+    # DevOps capabilities
+    DOCKER = "docker"
+    MCP = "mcp"  # Model Context Protocol
 
     # System capabilities
     SYSTEM = "system"
     SETTINGS = "settings"
+    SOFTWARE = "software"  # Package/software management
+    SECURITY = "security"  # Firewall, VPN, antivirus
+
+    # Plugin-based capabilities
+    PLUGIN = "plugin"
+    PLUGIN_SEARCH = "plugin_search"
 
 
 class CapabilityPriority(str, Enum):
@@ -73,3 +88,5 @@ class CapabilityCategory(str, Enum):
     KNOWLEDGE = "knowledge"  # Knowledge retrieval and storage
     PROCESSING = "processing"  # AI processing
     SYSTEM = "system"  # System operations
+    PRODUCTIVITY = "productivity"  # Email, calendar, office
+    DEVOPS = "devops"  # Docker, containers, CI/CD

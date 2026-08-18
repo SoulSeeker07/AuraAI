@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
+import logging
 import re
 import threading
 from collections.abc import Callable
@@ -11,6 +13,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from bs4.element import Comment
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentType(str, Enum):
@@ -169,21 +173,37 @@ class PageReader:
         """
         timeout = timeout_seconds or self.timeout_seconds
         from urllib.error import HTTPError, URLError
-        from urllib.request import Request, urlopen
+        from urllib.request import Request, build_opener
+        from src.desktop.native.security.network_policy import (
+            EgressDecision,
+            NetworkPolicyEngine,
+            SafeHTTPRedirectHandler,
+        )
 
         try:
+            # Enforce NetworkPolicy on initial destination
+            decision, reason, _ = NetworkPolicyEngine.get_instance().evaluate_destination(url)
+            if decision == EgressDecision.HARD_BLOCKED:
+                logger.warning(f"Blocked URL fetch for '{url}': {reason}")
+                return PageContent(
+                    url=url,
+                    title="Access Denied",
+                    main_text=f"Security Error: Network policy hard-block: {reason}",
+                )
+
             # Detect document type
             content_type = self.detect_document_type(url)
 
-            # Fetch content based on type
+            # Fetch content based on type with per-hop redirect validation
             headers = {
                 "User-Agent": "Mozilla/5.0 AuraAI/0.3 (compatible; bot)",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             }
 
             request = Request(url, headers=headers)
+            opener = build_opener(SafeHTTPRedirectHandler())
 
-            with urlopen(request, timeout=timeout) as response:
+            with opener.open(request, timeout=timeout) as response:
                 if content_type == "pdf":
                     raw_content = response.read()
                 else:

@@ -13,6 +13,7 @@ from typing import Any
 
 from ..adapters.network_adapter import NetworkAdapter, NetworkAdapterFactory
 from ..desktop_result import DesktopResult
+from ..security.approval_authority import CryptographicApprovalAuthority
 from .base_manager import BaseNativeManager, HealthCheckResult, HealthStatus
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class NetworkManager(BaseNativeManager):
       network.hostname, network.connection_type, network.wifi_name, network.signal_strength
     - Diagnostics: network.ping, network.traceroute, network.lookup, network.port_check,
       network.internet, network.speed, network.latency, network.packet_loss
-    - Control: network.enable_adapter, network.disable_adapter, network.release_ip,
+    - Control (HMAC-Gated): network.enable_adapter, network.disable_adapter, network.release_ip,
       network.renew_ip, network.flush_dns, network.disconnect_wifi, network.connect_wifi
     """
 
@@ -37,10 +38,25 @@ class NetworkManager(BaseNativeManager):
     PRIORITY = 20
     DEPENDENCIES = ["wmi", "netsh", "psutil"]
 
-    def __init__(self, adapter: NetworkAdapter | None = None):
-        """Initialize NetworkManager with optional injected adapter."""
+    MUTATING_CAPABILITIES = {
+        "network.enable_adapter",
+        "network.disable_adapter",
+        "network.release_ip",
+        "network.renew_ip",
+        "network.flush_dns",
+        "network.disconnect_wifi",
+        "network.connect_wifi",
+    }
+
+    def __init__(
+        self,
+        adapter: NetworkAdapter | None = None,
+        auth: CryptographicApprovalAuthority | None = None,
+    ):
+        """Initialize NetworkManager with optional injected adapter and approval authority."""
         super().__init__()
         self._adapter = adapter
+        self._auth: CryptographicApprovalAuthority = auth or CryptographicApprovalAuthority.get_instance()
 
     @property
     def adapter(self) -> NetworkAdapter:
@@ -223,31 +239,70 @@ class NetworkManager(BaseNativeManager):
                     goal=goal, capability=capability, arguments=arguments
                 )
 
-            # Control Handlers
-            elif cap_clean == "network.enable_adapter":
-                return self._handle_enable_adapter(
-                    goal=goal, capability=capability, arguments=arguments
+            # Control Handlers (HMAC Human Approval Gate Enforced)
+            if cap_clean in self.MUTATING_CAPABILITIES:
+                target = str(arguments.get("adapter_name") or arguments.get("ssid") or arguments.get("target") or "host_network_stack").strip()
+                action_params = {"capability": cap_clean, "target": target}
+                ticket_id = arguments.get("approval_ticket_id")
+                signature = arguments.get("approval_signature")
+
+                if not ticket_id or not signature:
+                    issued_ticket_id = self._auth.create_ticket(
+                        action_type=cap_clean,
+                        target=target,
+                        parameters=action_params,
+                        description=f"Human authorization required to execute {cap_clean} on '{target}'",
+                    )
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error=f"Network control operation '{cap_clean}' requires cryptographic human approval.",
+                        data={
+                            "requires_confirmation": True,
+                            "approval_ticket_id": issued_ticket_id,
+                            "action_type": cap_clean,
+                            "target": target,
+                            "risk_tier": "confirmation_required",
+                        },
+                    )
+
+                valid_sig, auth_err = self._auth.verify_and_redeem(
+                    ticket_id, signature, action_type=cap_clean, target=target, parameters=action_params
                 )
-            elif cap_clean == "network.disable_adapter":
-                return self._handle_disable_adapter(
-                    goal=goal, capability=capability, arguments=arguments
-                )
-            elif cap_clean == "network.release_ip":
-                return self._handle_release_ip(
-                    goal=goal, capability=capability, arguments=arguments
-                )
-            elif cap_clean == "network.renew_ip":
-                return self._handle_renew_ip(
-                    goal=goal, capability=capability, arguments=arguments
-                )
-            elif cap_clean == "network.flush_dns":
-                return self._handle_flush_dns(goal=goal, capability=capability)
-            elif cap_clean == "network.disconnect_wifi":
-                return self._handle_disconnect_wifi(goal=goal, capability=capability)
-            elif cap_clean == "network.connect_wifi":
-                return self._handle_connect_wifi(
-                    goal=goal, capability=capability, arguments=arguments
-                )
+                if not valid_sig:
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error=f"Human authorization failed: {auth_err}",
+                        data={"security_alert": "unauthorized_or_forged_approval"},
+                    )
+
+                if cap_clean == "network.enable_adapter":
+                    return self._handle_enable_adapter(
+                        goal=goal, capability=capability, arguments=arguments
+                    )
+                elif cap_clean == "network.disable_adapter":
+                    return self._handle_disable_adapter(
+                        goal=goal, capability=capability, arguments=arguments
+                    )
+                elif cap_clean == "network.release_ip":
+                    return self._handle_release_ip(
+                        goal=goal, capability=capability, arguments=arguments
+                    )
+                elif cap_clean == "network.renew_ip":
+                    return self._handle_renew_ip(
+                        goal=goal, capability=capability, arguments=arguments
+                    )
+                elif cap_clean == "network.flush_dns":
+                    return self._handle_flush_dns(goal=goal, capability=capability)
+                elif cap_clean == "network.disconnect_wifi":
+                    return self._handle_disconnect_wifi(goal=goal, capability=capability)
+                elif cap_clean == "network.connect_wifi":
+                    return self._handle_connect_wifi(
+                        goal=goal, capability=capability, arguments=arguments
+                    )
 
             else:
                 return DesktopResult.create_failure(

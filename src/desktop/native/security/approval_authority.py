@@ -1,0 +1,401 @@
+"""
+Cryptographic Approval Authority — Shared Human-in-the-Loop Authorization Service
+Location: src/desktop/native/security/approval_authority.py
+
+Provides HMAC-SHA256 cryptographic ticket generation, human signing, and verification
+to prevent LLM self-authorization, parameter tampering, and replay attacks across
+all native desktop managers (Terminal, Software, Settings, Security, File).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import logging
+import secrets
+import threading
+import time
+import uuid
+from dataclasses import dataclass, field
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ApprovalTicket:
+    """Represents a pending or authorized human-in-the-loop approval ticket."""
+
+    ticket_id: str
+    action_type: str
+    target: str
+    action_hash: str
+    created_at: float
+    expires_at: float
+    is_redeemed: bool = False
+    description: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def command_hash(self) -> str:
+        """Backward compatibility alias for TerminalManager tickets."""
+        return self.action_hash
+
+
+class CryptographicApprovalAuthority:
+    """
+    Unified Process-Wide Cryptographic Approval Authority.
+
+    Manages HMAC-SHA256 cryptographic ticket generation, human signing,
+    and single-use verification across all native desktop managers.
+    """
+
+    _instance: Optional["CryptographicApprovalAuthority"] = None
+    _lock: threading.Lock = threading.Lock()
+
+    def __init__(self, use_dpapi_kdf: bool = True) -> None:
+        if use_dpapi_kdf:
+            try:
+                from .dpapi_key_manager import DPAPIKeyManager
+                self._key_manager = DPAPIKeyManager()
+                self._secret_key, self._key_meta = self._key_manager.derive_purpose_key(
+                    purpose="action_approval_signing", version=1
+                )
+            except Exception as exc:
+                logger.debug(f"[CryptographicApprovalAuthority] DPAPI KDF fallback to ephemeral token: {exc}")
+                self._secret_key = secrets.token_bytes(32)
+                self._key_meta = None
+        else:
+            self._secret_key = secrets.token_bytes(32)
+            self._key_meta = None
+        self._tickets: dict[str, ApprovalTicket] = {}
+        self._ticket_lock: threading.Lock = threading.Lock()
+
+    @classmethod
+    def get_instance(cls) -> "CryptographicApprovalAuthority":
+        """Get or create the singleton instance of CryptographicApprovalAuthority."""
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = cls()
+            return cls._instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset the singleton instance (primarily for isolated unit testing)."""
+        with cls._lock:
+            cls._instance = None
+
+    def compute_action_hash(
+        self,
+        action_type: str,
+        target: str,
+        parameters: dict[str, Any] | None = None,
+    ) -> str:
+        """
+        Compute deterministic SHA-256 hash for a structured action payload.
+        Canonicalizes parameters by sorting keys.
+        """
+        params_str = ""
+        if parameters:
+            try:
+                params_str = json.dumps(parameters, sort_keys=True, default=str)
+            except Exception:
+                params_str = str(sorted(parameters.items()))
+
+        payload = f"{action_type.lower().strip()}:{target.strip()}:{params_str}".encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    def compute_command_hash(self, command: str, cwd: str) -> str:
+        """
+        Compute command hash matching TerminalManager format: '{cwd}:{command}'.
+        """
+        payload = f"{cwd.lower().strip()}:{command.strip()}".encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    def create_ticket(
+        self,
+        action_type: str,
+        target: str,
+        parameters: dict[str, Any] | None = None,
+        ttl_seconds: float = 300.0,
+        description: str = "",
+    ) -> str:
+        """
+        Create an un-signed ticket for human approval for any manager action.
+        Returns public ticket_id.
+        """
+        ticket_id = f"tkt_{uuid.uuid4().hex[:12]}"
+        action_hash = self.compute_action_hash(action_type, target, parameters)
+        now = time.time()
+
+        ticket = ApprovalTicket(
+            ticket_id=ticket_id,
+            action_type=action_type,
+            target=target,
+            action_hash=action_hash,
+            created_at=now,
+            expires_at=now + ttl_seconds,
+            is_redeemed=False,
+            description=description or f"{action_type}: {target}",
+            metadata=parameters or {},
+        )
+
+        with self._ticket_lock:
+            self._tickets[ticket_id] = ticket
+
+        try:
+            from .audit_logger import SecurityAuditLogger
+            SecurityAuditLogger.get_instance().log_event(
+                event_type="TICKET_ISSUED",
+                action_type=action_type,
+                target=target,
+                ticket_id=ticket_id,
+                status="PENDING",
+                details=parameters or {},
+            )
+        except Exception as audit_err:
+            logger.warning(f"Audit log failed on ticket creation: {audit_err}")
+
+        logger.info(
+            f"Issued approval ticket {ticket_id} for action '{action_type}' on '{target}' (TTL: {ttl_seconds}s)"
+        )
+        return ticket_id
+
+    def create_command_ticket(
+        self, command: str, cwd: str, ttl_seconds: float = 300.0
+    ) -> str:
+        """
+        Create an un-signed ticket specifically for shell command execution.
+        Returns public ticket_id.
+        """
+        ticket_id = f"tkt_{uuid.uuid4().hex[:12]}"
+        cmd_hash = self.compute_command_hash(command, cwd)
+        now = time.time()
+
+        ticket = ApprovalTicket(
+            ticket_id=ticket_id,
+            action_type="command",
+            target=command,
+            action_hash=cmd_hash,
+            created_at=now,
+            expires_at=now + ttl_seconds,
+            is_redeemed=False,
+            description=f"Terminal command: {command} in {cwd}",
+            metadata={"command": command, "cwd": cwd},
+        )
+
+        with self._ticket_lock:
+            self._tickets[ticket_id] = ticket
+
+        try:
+            from .audit_logger import SecurityAuditLogger
+            SecurityAuditLogger.get_instance().log_event(
+                event_type="TICKET_ISSUED",
+                action_type="command",
+                target=command,
+                ticket_id=ticket_id,
+                status="PENDING",
+                details={"cwd": cwd},
+            )
+        except Exception as audit_err:
+            logger.warning(f"Audit log failed on command ticket creation: {audit_err}")
+
+        logger.info(f"Issued command approval ticket {ticket_id} for '{command}' in '{cwd}'")
+        return ticket_id
+
+    def generate_human_signature(self, ticket_id: str) -> str | None:
+        """
+        Called strictly by the trusted Human UI / CLI approval channel.
+        Signs the ticket using the process HMAC secret.
+        """
+        with self._ticket_lock:
+            ticket = self._tickets.get(ticket_id)
+            if not ticket or ticket.is_redeemed or time.time() > ticket.expires_at:
+                return None
+
+            msg = f"{ticket.ticket_id}:{ticket.action_hash}".encode("utf-8")
+            sig = hmac.new(self._secret_key, msg, hashlib.sha256).hexdigest()
+
+            try:
+                from .audit_logger import SecurityAuditLogger
+                SecurityAuditLogger.get_instance().log_event(
+                    event_type="TICKET_SIGNED",
+                    action_type=ticket.action_type,
+                    target=ticket.target,
+                    ticket_id=ticket_id,
+                    status="SIGNED",
+                    details={"action_hash": ticket.action_hash},
+                )
+            except Exception as audit_err:
+                logger.warning(f"Audit log failed on ticket signing: {audit_err}")
+
+            return sig
+
+    def verify_and_redeem(
+        self,
+        ticket_id: str,
+        signature: str,
+        action_type: str,
+        target: str,
+        parameters: dict[str, Any] | None = None,
+    ) -> tuple[bool, str]:
+        """
+        Verify human signature with constant-time comparison and mark ticket as redeemed.
+        """
+        with self._ticket_lock:
+            ticket = self._tickets.get(ticket_id)
+            if not ticket:
+                self._log_audit_failure("TICKET_NOT_FOUND", action_type, target, ticket_id, "Invalid or unknown approval ticket.")
+                return False, "Invalid or unknown approval ticket."
+
+            if ticket.is_redeemed:
+                self._log_audit_failure("TICKET_ALREADY_REDEEMED", action_type, target, ticket_id, "Approval ticket has already been redeemed.")
+                return False, "Approval ticket has already been redeemed."
+
+            if time.time() > ticket.expires_at:
+                self._log_audit_failure("TICKET_EXPIRED", action_type, target, ticket_id, "Approval ticket has expired.")
+                return False, "Approval ticket has expired."
+
+            expected_hash = self.compute_action_hash(action_type, target, parameters)
+            cmd_hash = self.compute_command_hash(action_type, target)
+            if ticket.action_hash != expected_hash and ticket.action_hash != cmd_hash:
+                self._log_audit_failure(
+                    "SUBSTITUTION_ATTACK_BLOCKED",
+                    action_type,
+                    target,
+                    ticket_id,
+                    "Action payload or command does not match approval ticket.",
+                    {"expected_hash": expected_hash, "ticket_hash": ticket.action_hash},
+                )
+                return False, "Action payload or command does not match approval ticket."
+
+            expected_msg = f"{ticket.ticket_id}:{ticket.action_hash}".encode("utf-8")
+            expected_sig = hmac.new(self._secret_key, expected_msg, hashlib.sha256).hexdigest()
+
+            if not hmac.compare_digest(expected_sig, signature):
+                self._log_audit_failure("SIGNATURE_FORGERY_BLOCKED", action_type, target, ticket_id, "Cryptographic signature verification failed.")
+                return False, "Cryptographic signature verification failed (forged or invalid token)."
+
+            # Redeem ticket (single-use enforcement)
+            ticket.is_redeemed = True
+            try:
+                from .audit_logger import SecurityAuditLogger
+                SecurityAuditLogger.get_instance().log_event(
+                    event_type="TICKET_REDEEMED",
+                    action_type=action_type,
+                    target=target,
+                    ticket_id=ticket_id,
+                    status="REDEEMED",
+                    details=parameters or {},
+                )
+            except Exception as audit_err:
+                logger.warning(f"Audit log failed on ticket redemption: {audit_err}")
+
+            logger.info(f"Redeemed approval ticket {ticket_id} for action '{action_type}'")
+            return True, "Ticket verified and redeemed successfully."
+
+    def verify_and_redeem_command(
+        self, ticket_id: str, signature: str, command: str, cwd: str
+    ) -> tuple[bool, str]:
+        """
+        Verify human signature for terminal command execution and mark ticket as redeemed.
+        """
+        with self._ticket_lock:
+            ticket = self._tickets.get(ticket_id)
+            if not ticket:
+                self._log_audit_failure("TICKET_NOT_FOUND", "command", command, ticket_id, "Invalid or unknown approval ticket.")
+                return False, "Invalid or unknown approval ticket."
+
+            if ticket.is_redeemed:
+                self._log_audit_failure("TICKET_ALREADY_REDEEMED", "command", command, ticket_id, "Approval ticket has already been redeemed.")
+                return False, "Approval ticket has already been redeemed."
+
+            if time.time() > ticket.expires_at:
+                self._log_audit_failure("TICKET_EXPIRED", "command", command, ticket_id, "Approval ticket has expired.")
+                return False, "Approval ticket has expired."
+
+            expected_hash = self.compute_command_hash(command, cwd)
+            if ticket.action_hash != expected_hash:
+                self._log_audit_failure(
+                    "SUBSTITUTION_ATTACK_BLOCKED",
+                    "command",
+                    command,
+                    ticket_id,
+                    "Command or working directory does not match approval ticket.",
+                    {"expected_hash": expected_hash, "ticket_hash": ticket.action_hash, "cwd": cwd},
+                )
+                return False, "Command or working directory does not match approval ticket."
+
+            expected_msg = f"{ticket.ticket_id}:{ticket.action_hash}".encode("utf-8")
+            expected_sig = hmac.new(self._secret_key, expected_msg, hashlib.sha256).hexdigest()
+
+            if not hmac.compare_digest(expected_sig, signature):
+                self._log_audit_failure("SIGNATURE_FORGERY_BLOCKED", "command", command, ticket_id, "Cryptographic signature verification failed.")
+                return False, "Cryptographic signature verification failed (forged or invalid token)."
+
+            # Redeem ticket (single-use enforcement)
+            ticket.is_redeemed = True
+            try:
+                from .audit_logger import SecurityAuditLogger
+                SecurityAuditLogger.get_instance().log_event(
+                    event_type="TICKET_REDEEMED",
+                    action_type="command",
+                    target=command,
+                    ticket_id=ticket_id,
+                    status="REDEEMED",
+                    details={"cwd": cwd},
+                )
+            except Exception as audit_err:
+                logger.warning(f"Audit log failed on command ticket redemption: {audit_err}")
+
+            logger.info(f"Redeemed command approval ticket {ticket_id} for '{command}'")
+            return True, "Ticket verified and redeemed successfully."
+
+    def _log_audit_failure(
+        self,
+        event_type: str,
+        action_type: str,
+        target: str,
+        ticket_id: str | None,
+        reason: str,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        try:
+            from .audit_logger import SecurityAuditLogger
+            details = {"reason": reason}
+            if extra:
+                details.update(extra)
+            SecurityAuditLogger.get_instance().log_event(
+                event_type=event_type,
+                action_type=action_type,
+                target=target,
+                ticket_id=ticket_id,
+                status="DENIED",
+                details=details,
+            )
+        except Exception as audit_err:
+            logger.warning(f"Audit log failure record error: {audit_err}")
+
+    def get_ticket(self, ticket_id: str) -> ApprovalTicket | None:
+        """Lookup ticket by ID."""
+        with self._ticket_lock:
+            return self._tickets.get(ticket_id)
+
+    def get_pending_tickets(self) -> list[ApprovalTicket]:
+        """Return list of unredeemed, unexpired tickets awaiting approval."""
+        now = time.time()
+        with self._ticket_lock:
+            return [
+                t for t in self._tickets.values()
+                if not t.is_redeemed and t.expires_at > now
+            ]
+
+    def revoke_ticket(self, ticket_id: str) -> bool:
+        """Revoke a ticket manually."""
+        with self._ticket_lock:
+            ticket = self._tickets.get(ticket_id)
+            if ticket and not ticket.is_redeemed:
+                ticket.is_redeemed = True
+                return True
+            return False

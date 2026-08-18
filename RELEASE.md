@@ -4,6 +4,111 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v0.27.0-autonomous-daemon`] - 2026-08-18
+
+### Added
+- **Milestone 23 — Autonomous Daemon & Background Operations (COMPLETE)**: Complete transformation of AuraAI into a persistent, autonomous agent daemon runtime under the hardened 6-Gate Definition of Done.
+- **G1 Live Orchestration Path**: Background task dispatch (`daemon.spawn`, `daemon.status`, `daemon.list`, `daemon.cancel`) and scheduler requests route through `MasterOrchestrator` $\rightarrow$ `DecisionEngine` $\rightarrow$ `TaskDecomposer` $\rightarrow$ `DaemonEngineBackend` / `SchedulerBackendAdapter`.
+- **G2 Asynchronous Background Execution**: Bounded worker thread pool with cooperative lifecycle isolation and explicit state machine (`SCHEDULED` $\rightarrow$ `CLAIMED` $\rightarrow$ `RUNNING` $\rightarrow$ `COMPLETED` / `FAILED` / `CANCELLED` / `PAUSED` / `RECOVERY_REQUIRED`).
+- **G3 Deterministic Scheduling & Triggers**: One-shot timers, interval recurring jobs, and cron routines with durable timezone awareness (`UTC`) and explicit offline catch-up policies (`SKIP_STALE`, `EXECUTE_ONCE_ON_RECOVERY`).
+- **G4 Cooperative Interruption & Safe Shutdown**: `CancellationToken` cooperative aborts, pause/resume job lifecycle controls, and clean daemon shutdown draining active workers within timeout boundaries.
+- **G5 Durable Persistence & Crash Recovery Invariant**: SQLite-backed `DaemonStateStore` with atomic idempotency key claims (`{job_id}_{timestamp}`). Hard crashes during `RUNNING` state transition to `RECOVERY_REQUIRED` on reboot with zero ambiguous silent replay.
+- **G6 Autonomy Governance & Cryptographic Tokens**: `AutonomyGovernanceEngine` enforces parameter-bound, time-bound HMAC-SHA256 authorization tokens for elevated `ActionRisk`, unconditionally blocks `PROHIBITED` capabilities, and handles worker exceptions cleanly.
+- **12-Module Unified Platform Regression Green**: **183 / 183** automated tests passing across DACL isolation, sandbox, containment, manager hardening, network egress, security phases 1–4, research, multimodal, and autonomous daemon.
+
+---
+
+## [`v0.26.0-multimodal-hardening`] - 2026-08-18
+
+### Added
+- **Milestone 22 — Multimodal Voice & Vision Subsystems Hardening (COMPLETE)**: Complete integration of existing voice and vision engines into the canonical `MasterOrchestrator` execution pipeline under a verified 6-Gate Definition of Done.
+- **G1 Live Pipeline Orchestration**: Speech audio and screen perception queries route seamlessly through `DecisionEngine` and `TaskDecomposer` to `VoiceEngineBackend` and `VisionEngineBackend`.
+- **G2 Vision Grounding Invariant**: Screen capture $\rightarrow$ OCR/UI element detection $\rightarrow$ concrete coordinate space grounding with bounding boxes, screen indices, and active window anchors.
+- **G3 Voice Reliability & Degradation**: End-to-end speech flow (Google STT / FasterWhisper / Vosk $\rightarrow$ Orchestrator $\rightarrow$ Piper / Edge-TTS) with graceful degradation and deterministic offline/unavailable error reporting.
+- **G4 Device Privacy & Containment Invariant**: Independent permission gating for microphone, screen capture, and camera via `DevicePrivacyEngine` (denied permission $\implies$ zero hardware capture attempt).
+- **Sensitive-Window Default-BLOCK Protection**: Pre-capture detection of credential dialogs (KeePass, 1Password, BitLocker, Windows Security) with immediate capture BLOCK before frame acquisition.
+- **G5 Multimodal Memory Provenance**: Screen and voice observations persist into `CognitiveMemoryEngine` (`MemoryType.SEMANTIC`) with complete provenance metadata (`modality`, `device_id`, `capture_time`, `window_title`, `coordinates`).
+- **G6 Unified Platform Regression**: 167 / 167 automated tests passing across 11 test modules with 0 regressions.
+
+---
+
+## [`v0.25.0-research-hardening`] - 2026-08-18
+
+### Added
+- **Milestone 21 — Research & Knowledge Engine Hardening (COMPLETE)**: Complete end-to-end live research capability path integrated into `MasterOrchestrator` with 8-gate acceptance model verified.
+- **G1 & G2 Live Pipeline & Evidence Grounding**: Real user queries route from NLU / `DecisionEngine` to `ResearchEngineBackend` and `ResearchEngine`, binding every factual claim to a resolvable citation key, domain, snippet, and target source URL (`claim_id` $\leftrightarrow$ `citation_key` $\leftrightarrow$ `source_url` $\leftrightarrow$ evidence).
+- **G3 Citation Preservation Invariant**: Citation identity survives the entire pipeline (`research.search` $\rightarrow$ `research.synthesize` $\rightarrow$ `ResultMerger` $\rightarrow$ `final_response`), preventing stripped or orphaned sources in user responses.
+- **G4 Semantic Memory Provenance**: Verified research results consolidate into SQLite cognitive memory (`MemoryType.SEMANTIC`) with complete provenance metadata (`citations`, `claims`, `source_urls`, `research_event_id`, `topic`).
+- **G5 Zero-Refetch Memory Direct Fulfillment**: Stage 2.8 direct fulfillment serves follow-up queries directly from cognitive memory with zero external provider calls (`call_count == 0`).
+- **G6 Per-Provider Resilience**: Graceful per-provider degradation where rate-limited or timing-out providers do not collapse overall multi-provider research.
+- **G7 Network Egress & SSRF Protection**: Filtered all retrieved URLs through `NetworkPolicyEngine` before synthesis, blocking cloud metadata (`169.254.169.254`), RFC1918 private subnets, and loopback endpoints.
+- **G8 Deep Research Multi-Round Loop**: Verified multi-round iterative deep research capability (`research.deep_query`) producing structured findings with comprehensive citations and claims.
+- **10-Module Unified Regression Green**: 157 / 157 automated tests passing across DACL isolation, sandbox, containment, manager hardening, network egress, security phases 1–4, and milestone 21 research.
+
+---
+
+## [`v0.24.0-security-hardening`] - 2026-08-18
+
+### Added
+- **Security Hardening Track Complete (Phases 1–4)**: Complete 4-tier security architecture with 150/150 unified regression tests passing.
+- **Phase 4 — Isolated Audit Writer Service**: Dedicated out-of-process `AuditWriterService` maintaining monotonic sequences and hash-chain authority, communicating across authenticated Named Pipe IPC (SDDL DACL, client Windows identity checks, and HMAC challenge-response).
+- **DPAPI Master Key & HKDF-SHA256 Derivation**: Key storage protected at rest via Windows DPAPI (`win32crypt.CryptProtectData`) with purpose-separated process signing keys derived via RFC 5869 HKDF-SHA256.
+- **Canonical 11-Field Schema & OS Event Log Sink**: Structured, mathematically verifiable security events broadcast to the OS-managed Windows Event Log (`Application` log).
+- **Fail-Closed Security Policy**: Production mode fails closed on audit service disconnection, barring silent downgrades to unverified same-principal logs.
+
+---
+
+## [`v0.23.0-coding-intelligence`] - 2026-08-18
+
+### Added
+- **M20 — Coding Intelligence 2.0 (COMPLETE)**: Full engineering agent pipeline with AST analysis, code editor with physical byte-for-byte backup/rollback, Antigravity CLI bridge for code generation, World Model integration, and automated repair loop.
+- **M20.3 — Antigravity Agent Delegation**: `AntigravityCodingBridge` routing code generation through `agy --mode plan` with `WorkspacePolicy.authorize_write()` as sole write gate.
+- **M20.5 — World Model Integration**: Multi-domain `query_multi()` async dispatch with thread pool isolation and graceful decay.
+- **M20.6 — Automated Repair Loop**: `TestEngine` + `BugRepair` with exit code parsing (0: pass, 1: fail, 2/5: collection error), scoped test execution, and exhaustion-based rollback.
+- **M20.7 — Active IDE Document Context**: `EditorTracker` with fail-closed Win32 window perception, cross-project workspace matching, and ground-truth filesystem validation.
+
+---
+
+## [`v0.22.0-capability-foundation`] - 2026-08-15
+
+### Added
+- **M19 — Universal Capability & Tool Runtime (COMPLETE)**: Dynamic `CapabilityRegistry` with `ICapabilityProvider` contract, `ActionRisk` 5-tier governance taxonomy, typed `input_schema`/`output_schema`, and first-class DAG attributes.
+- **5 Capability Providers**: `DesktopCapabilityProvider` (100+ native capabilities), `CodingCapabilityProvider`, `BrowserCapabilityProvider`, `MemoryCapabilityProvider`, `ResearchCapabilityProvider`.
+- **Plan Graph Validation**: `validate_plan_graph()` with topological DFS cycle detection and fail-closed liveness gating.
+- **Master Orchestrator Wiring**: Stage 3.2 plan validation and `resolve_domain()` canonical domain authority.
+
+---
+
+## [`v0.21.0-world-model`] - 2026-08-12
+
+### Added
+- **M18 — World Model (COMPLETE)**: Unified multi-provider environment representation serving as single source of truth for all subsystems.
+- **10 Provider Slots**: DesktopProvider, RepositoryProvider, KnowledgeGraphProvider, DependencyProvider, SymbolGraphProvider, MemoryProvider, ResearchProvider, BrowserProvider, NetworkProvider, CalendarProvider.
+- `WorldModel.query(entity)` returning cross-provider facts, `WorldModel.snapshot()` for serializable state.
+
+---
+
+## [`v0.20.0-cognitive-memory`] - 2026-08-10
+
+### Added
+- **M17 — Cognitive Memory (COMPLETE)**: 8 typed memory stores with recall, decay, consolidation, and project-scoped isolation.
+- `CognitiveMemoryEngine`, `WorkingMemoryManager`, `EpisodicMemoryRecorder`, `SemanticMemoryStore`, `ProceduralMemoryStore`, `RecallEngine`, `ConsolidationEngine`, `DecayEngine`, `ProjectMemoryFilter`.
+
+---
+
+## [`v0.19.0-foundation-truth-pass`] - 2026-08-08
+
+### Added
+- **Foundation Wiring & Truth Pass**: Stabilization gate ensuring all Phase 0 items marked operational actually work through the real runtime.
+- `RUNTIME.md` — canonical live-path wiring map.
+- `SYSTEM_CLASSIFICATION.md` — full module lifecycle classification index.
+
+### Fixed
+- Coding backend no longer returns hardcoded `success=True` — routes to `EngineeringManager`.
+- Corrected milestone status inflation (M03, M09, M10, M13).
+
+---
+
 ## [`v0.18.0-runtime-stabilization`] - 2026-08-06
 
 ### Added
@@ -31,7 +136,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ---
 
 ## [`v0.15.0-core-platform`] - 2026-08-05
-
 
 ### Added
 - **Canonical Umbrella Launcher (`aura.py`)**: Unified entry point for `--doctor`, `--inspect`, `--verify`, `--cli`, and `--gui`.
@@ -69,3 +173,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 - Initial foundation launch, Aura Brain core intelligence, basic event bus, and provider interfaces.
+
+---
+
+*Last Updated: August 18, 2026*

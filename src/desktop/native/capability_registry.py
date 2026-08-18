@@ -140,6 +140,35 @@ class CapabilityRegistry:
         # UIA capabilities (first descriptors with real requires/verifies/rollback graph data)
         self._register_uia_capabilities()
 
+        # ── New Next-Gen Agentic Capabilities ──
+
+        # Input simulation (keyboard/mouse)
+        self._register_input_capabilities()
+
+        # Terminal / shell execution
+        self._register_terminal_capabilities()
+
+        # Extended file operations
+        self._register_file_extended_capabilities()
+
+        # System notifications
+        self._register_notification_capabilities()
+
+        # Task scheduler
+        self._register_scheduler_capabilities()
+
+        # Screen action loop (computer use)
+        self._register_screen_action_capabilities()
+
+        # System settings
+        self._register_settings_capabilities()
+
+        # Software / package management
+        self._register_software_capabilities()
+
+        # Security & privacy
+        self._register_security_capabilities()
+
     def _register_window_capabilities(self) -> None:
         """Register window management capabilities"""
         self.register(
@@ -1598,7 +1627,447 @@ class CapabilityRegistry:
             )
         )
 
+    # ═══════════════════════════════════════════════════════════════════════
+    #  NEW NEXT-GEN AGENTIC CAPABILITY REGISTRATION METHODS
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _register_input_capabilities(self) -> None:
+        """Register keyboard & mouse simulation capabilities."""
+        # Read-only
+        self.register(
+            CapabilityDescriptor(
+                name="input.mouse_position",
+                description="Get current mouse cursor position (x, y)",
+                manager="input",
+                category="input",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.SAFE,
+                supports_undo=False,
+                tags=["input", "mouse", "position"],
+                usage_examples=["Where is the mouse?", "Get cursor position"],
+            )
+        )
+
+        # Mouse interaction
+        mouse_caps = [
+            ("input.click", "Click at screen coordinates (x, y)", RiskLevel.HIGH),
+            ("input.double_click", "Double-click at screen coordinates", RiskLevel.HIGH),
+            ("input.right_click", "Right-click at screen coordinates (context menu)", RiskLevel.HIGH),
+            ("input.drag", "Drag from (x1, y1) to (x2, y2)", RiskLevel.HIGH),
+            ("input.scroll", "Scroll mouse wheel (direction, amount)", RiskLevel.MODERATE),
+            ("input.move_mouse", "Move cursor to position (x, y)", RiskLevel.LOW),
+        ]
+        for name, desc, risk in mouse_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="input",
+                    category="input",
+                    permission=PermissionRequired.CONTROL,
+                    permission_label="Control",
+                    risk_level=risk,
+                    is_destructive=risk == RiskLevel.HIGH,
+                    requires_confirmation=risk == RiskLevel.HIGH,
+                    supports_undo=False,
+                    tags=["input", "mouse", "simulation"],
+                )
+            )
+
+        # Keyboard interaction
+        kb_caps = [
+            ("input.type_text", "Type text via keyboard simulation", RiskLevel.HIGH, True),
+            ("input.hotkey", "Send keyboard shortcut (e.g. Ctrl+C, Alt+Tab)", RiskLevel.HIGH, True),
+            ("input.key_press", "Press and release a single key", RiskLevel.MODERATE, False),
+            ("input.key_down", "Hold down a key (modifier key)", RiskLevel.MODERATE, False),
+            ("input.key_up", "Release a held key", RiskLevel.MODERATE, False),
+        ]
+        for name, desc, risk, confirm in kb_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="input",
+                    category="input",
+                    permission=PermissionRequired.CONTROL,
+                    permission_label="Control",
+                    risk_level=risk,
+                    is_destructive=True,
+                    requires_confirmation=confirm,
+                    supports_undo=False,
+                    tags=["input", "keyboard", "simulation"],
+                )
+            )
+
+    def _register_terminal_capabilities(self) -> None:
+        """Register terminal / shell execution capabilities."""
+        # Read-only
+        read_caps = [
+            ("terminal.get_cwd", "Get current working directory"),
+            ("terminal.get_env", "Get environment variables"),
+            ("terminal.list_sessions", "List active terminal sessions"),
+        ]
+        for name, desc in read_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="terminal",
+                    category="terminal",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["terminal", "shell"],
+                )
+            )
+
+        # Execution
+        exec_caps = [
+            ("terminal.execute", "Run a shell command synchronously and return output", RiskLevel.HIGH, True),
+            ("terminal.execute_async", "Run a shell command in background", RiskLevel.HIGH, True),
+            ("terminal.send_input", "Send stdin input to a running terminal session", RiskLevel.MODERATE, False),
+            ("terminal.kill_session", "Kill a background terminal session", RiskLevel.MODERATE, True),
+            ("terminal.get_output", "Read output from a running terminal session", RiskLevel.SAFE, False),
+            ("terminal.set_cwd", "Change working directory for terminal", RiskLevel.LOW, False),
+            ("terminal.set_env", "Set an environment variable", RiskLevel.MODERATE, False),
+        ]
+        for name, desc, risk, confirm in exec_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="terminal",
+                    category="terminal",
+                    permission=PermissionRequired.CONTROL,
+                    permission_label="Control",
+                    risk_level=risk,
+                    is_destructive="kill" in name,
+                    requires_confirmation=confirm,
+                    supports_undo=False,
+                    tags=["terminal", "shell", "command"],
+                )
+            )
+
+    def _register_file_extended_capabilities(self) -> None:
+        """Register extended file system capabilities beyond basic CRUD."""
+        ext_read = [
+            ("file.read", "Read contents of a file"),
+            ("file.exists", "Check if a file or directory exists"),
+            ("file.info", "Get file metadata (size, dates, permissions)"),
+            ("file.list", "List directory contents with metadata"),
+            ("file.size", "Get file or directory size recursively"),
+            ("file.find_content", "Search inside file contents (grep-like)"),
+        ]
+        for name, desc in ext_read:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="file",
+                    category="file",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["file", "filesystem"],
+                )
+            )
+
+        ext_write = [
+            ("file.write", "Write or overwrite content to a file", RiskLevel.LOW, True, False),
+            ("file.delete", "Delete a file", RiskLevel.HIGH, False, True),
+            ("file.move", "Move or rename a file or directory", RiskLevel.LOW, True, False),
+            ("file.copy", "Copy a file or directory", RiskLevel.MODERATE, True, False),
+            ("file.mkdir", "Create a directory (with parents)", RiskLevel.LOW, True, False),
+            ("file.compress", "Create ZIP/TAR archive from files", RiskLevel.MODERATE, False, False),
+            ("file.decompress", "Extract ZIP/TAR archive", RiskLevel.MODERATE, False, False),
+            ("file.open_with", "Open file with a specific application", RiskLevel.LOW, False, False),
+            ("file.rmdir", "Remove a directory recursively", RiskLevel.HIGH, False, True),
+            ("file.watch", "Watch a path for filesystem changes", RiskLevel.LOW, False, False),
+        ]
+
+        for name, desc, risk, undo, confirm in ext_write:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="file",
+                    category="file",
+                    permission=PermissionRequired.WRITE,
+                    permission_label="Write",
+                    risk_level=risk,
+                    supports_undo=undo,
+                    is_destructive="rm" in name,
+                    requires_confirmation=confirm,
+                    tags=["file", "filesystem"],
+                )
+            )
+
+    def _register_notification_capabilities(self) -> None:
+        """Register system notification capabilities."""
+        caps = [
+            ("notify.toast", "Show a Windows toast notification", PermissionRequired.CONTROL, RiskLevel.SAFE),
+            ("notify.alert", "Show an alert dialog with buttons", PermissionRequired.CONTROL, RiskLevel.SAFE),
+            ("notify.schedule", "Schedule a notification for later", PermissionRequired.CONTROL, RiskLevel.SAFE),
+            ("notify.clear", "Clear all pending notifications", PermissionRequired.CONTROL, RiskLevel.LOW),
+            ("notify.list", "List pending scheduled notifications", PermissionRequired.READ, RiskLevel.SAFE),
+            ("notify.sound", "Play a notification sound", PermissionRequired.CONTROL, RiskLevel.SAFE),
+        ]
+        for name, desc, perm, risk in caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="notification",
+                    category="notification",
+                    permission=perm,
+                    permission_label=perm.name.title(),
+                    risk_level=risk,
+                    supports_undo=False,
+                    tags=["notification", "alert"],
+                )
+            )
+
+    def _register_scheduler_capabilities(self) -> None:
+        """Register task scheduler capabilities."""
+        read_caps = [
+            ("scheduler.list", "List all scheduled tasks"),
+        ]
+        for name, desc in read_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="scheduler",
+                    category="scheduler",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["scheduler", "cron", "timer"],
+                )
+            )
+
+        ctrl_caps = [
+            ("scheduler.at", "Schedule a one-time action at a specific time", RiskLevel.LOW),
+            ("scheduler.cron", "Schedule a recurring action with cron expression", RiskLevel.LOW),
+            ("scheduler.interval", "Run action at a fixed interval (seconds)", RiskLevel.LOW),
+            ("scheduler.cancel", "Cancel a scheduled task", RiskLevel.LOW),
+            ("scheduler.pause", "Pause a scheduled task", RiskLevel.LOW),
+            ("scheduler.resume", "Resume a paused scheduled task", RiskLevel.LOW),
+            ("scheduler.when", "Trigger action when a condition is met (event-driven)", RiskLevel.MODERATE),
+            ("scheduler.chain", "Chain multiple tasks sequentially", RiskLevel.MODERATE),
+        ]
+        for name, desc, risk in ctrl_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="scheduler",
+                    category="scheduler",
+                    permission=PermissionRequired.CONTROL,
+                    permission_label="Control",
+                    risk_level=risk,
+                    supports_undo=True,
+                    rollback_capabilities=["scheduler.cancel"] if "cancel" not in name else [],
+                    tags=["scheduler", "cron", "timer"],
+                )
+            )
+
+    def _register_screen_action_capabilities(self) -> None:
+        """Register screenshot-to-action loop (computer use) capabilities."""
+        read_caps = [
+            ("screen.capture", "Capture full screen as image"),
+            ("screen.capture_region", "Capture a specific screen region (x, y, w, h)"),
+            ("screen.capture_window", "Capture a specific window by title"),
+            ("screen.compare", "Compare two screenshots for differences"),
+        ]
+        for name, desc in read_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="screen_action",
+                    category="screen_action",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["screen", "capture", "vision"],
+                )
+            )
+
+        action_caps = [
+            ("screen.find_element", "AI-powered GUI element grounding (find element by description)", RiskLevel.SAFE, False),
+            ("screen.find_text", "Find text location on screen via OCR", RiskLevel.SAFE, False),
+            ("screen.wait_for_change", "Wait for a screen region to change within timeout", RiskLevel.LOW, False),
+            ("screen.act_step", "Execute one computer-use cycle: capture → reason → act → verify", RiskLevel.HIGH, True),
+        ]
+        for name, desc, risk, confirm in action_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="screen_action",
+                    category="screen_action",
+                    permission=PermissionRequired.CONTROL if confirm else PermissionRequired.READ,
+                    permission_label="Control" if confirm else "Read",
+                    risk_level=risk,
+                    is_destructive=confirm,
+                    requires_confirmation=confirm,
+                    supports_undo=False,
+                    requires=["input.click"] if name == "screen.act_step" else [],
+                    tags=["screen", "computer_use", "vision"],
+                )
+            )
+
+    def _register_settings_capabilities(self) -> None:
+        """Register system settings capabilities."""
+        read_caps = [
+            ("settings.startup_apps.list", "List programs that run at startup"),
+        ]
+        for name, desc in read_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="settings",
+                    category="settings",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["settings", "system"],
+                )
+            )
+
+        write_caps = [
+            ("settings.dark_mode", "Toggle system dark/light mode", RiskLevel.LOW, True),
+            ("settings.night_light", "Toggle night light / blue light filter", RiskLevel.LOW, True),
+            ("settings.wallpaper", "Change desktop wallpaper", RiskLevel.LOW, True),
+            ("settings.default_browser", "Set default web browser", RiskLevel.MODERATE, True),
+            ("settings.default_app", "Set default app for a file type", RiskLevel.MODERATE, True),
+            ("settings.startup_apps.add", "Add a program to startup", RiskLevel.MODERATE, True),
+            ("settings.startup_apps.remove", "Remove a program from startup", RiskLevel.MODERATE, True),
+            ("settings.taskbar.hide", "Auto-hide the taskbar", RiskLevel.LOW, True),
+            ("settings.taskbar.show", "Show the taskbar", RiskLevel.LOW, True),
+            ("settings.time_zone", "Set system time zone", RiskLevel.MODERATE, True),
+        ]
+        for name, desc, risk, undo in write_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="settings",
+                    category="settings",
+                    permission=PermissionRequired.WRITE,
+                    permission_label="Write",
+                    risk_level=risk,
+                    supports_undo=undo,
+                    tags=["settings", "system"],
+                )
+            )
+
+    def _register_software_capabilities(self) -> None:
+        """Register software / package management capabilities."""
+        read_caps = [
+            ("software.list_installed", "List all installed software"),
+            ("software.search", "Search for available software to install"),
+        ]
+        for name, desc in read_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="software",
+                    category="software",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["software", "package"],
+                )
+            )
+
+        write_caps = [
+            ("software.install", "Install software via package manager (winget/choco/scoop)", RiskLevel.HIGH, False, True),
+            ("software.uninstall", "Uninstall software", RiskLevel.CRITICAL, False, True),
+            ("software.update", "Update a specific software package", RiskLevel.MODERATE, False, True),
+            ("software.update_all", "Update all installed software packages", RiskLevel.HIGH, False, True),
+            ("pip.install", "Install a Python package in project venv", RiskLevel.MODERATE, False, True),
+            ("npm.install", "Install a Node.js package", RiskLevel.MODERATE, False, True),
+        ]
+        for name, desc, risk, undo, confirm in write_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="software",
+                    category="software",
+                    permission=PermissionRequired.CONTROL,
+                    permission_label="Control",
+                    risk_level=risk,
+                    is_destructive="uninstall" in name,
+                    requires_confirmation=confirm,
+                    supports_undo=undo,
+                    requires=["terminal.execute"],
+                    tags=["software", "package", "install"],
+                )
+            )
+
+    def _register_security_capabilities(self) -> None:
+        """Register security & privacy capabilities."""
+        read_caps = [
+            ("security.firewall.status", "Get Windows Firewall status"),
+            ("security.antivirus.status", "Get Windows Defender / antivirus status"),
+            ("security.vpn.status", "Get VPN connection status"),
+        ]
+        for name, desc in read_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="security",
+                    category="security",
+                    permission=PermissionRequired.READ,
+                    permission_label="Read",
+                    risk_level=RiskLevel.SAFE,
+                    supports_undo=False,
+                    tags=["security", "privacy"],
+                )
+            )
+
+        ctrl_caps = [
+            ("security.firewall.enable", "Enable Windows Firewall", RiskLevel.HIGH, True, True),
+            ("security.firewall.disable", "Disable Windows Firewall", RiskLevel.CRITICAL, True, True),
+            ("security.firewall.add_rule", "Add a firewall rule", RiskLevel.HIGH, False, True),
+            ("security.antivirus.scan", "Trigger a Windows Defender scan on path", RiskLevel.MODERATE, False, True),
+            ("security.vpn.connect", "Connect to a VPN", RiskLevel.MODERATE, False, True),
+            ("security.vpn.disconnect", "Disconnect from VPN", RiskLevel.MODERATE, False, False),
+            ("privacy.clear_temp", "Clear temporary files", RiskLevel.MODERATE, False, True),
+        ]
+        for name, desc, risk, destructive, confirm in ctrl_caps:
+            self.register(
+                CapabilityDescriptor(
+                    name=name,
+                    description=desc,
+                    manager="security",
+                    category="security",
+                    permission=PermissionRequired.CONTROL,
+                    permission_label="Control",
+                    risk_level=risk,
+                    is_destructive=destructive,
+                    requires_confirmation=confirm,
+                    supports_undo=False,
+                    requires_admin=True,
+                    tags=["security", "privacy"],
+                )
+            )
+
     def register(self, descriptor: CapabilityDescriptor) -> None:
+
         """
         Register a capability descriptor.
 

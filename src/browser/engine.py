@@ -70,53 +70,11 @@ def validate_url_security(
             f"Navigation blocked by security policy: Scheme '{scheme}' is prohibited. Only 'http://' and 'https://' are allowed.",
         )
 
-    hostname = (parsed.hostname or "").lower().strip()
-    if not hostname:
-        return False, f"Navigation blocked: Missing host in URL '{url}'."
+    from ..desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
 
-    # Prohibit loopback hostnames
-    if hostname in (
-        "localhost",
-        "localhost.localdomain",
-        "ip6-localhost",
-        "ip6-loopback",
-    ):
-        return (
-            False,
-            f"Navigation blocked by security policy: Prohibited loopback target '{hostname}'.",
-        )
-
-    # Check IP addresses
-    try:
-        ip = ipaddress.ip_address(hostname)
-        if str(ip) == "169.254.169.254":
-            return (
-                False,
-                "Navigation blocked by security policy: Cloud metadata endpoint '169.254.169.254' is strictly prohibited.",
-            )
-        if ip.is_loopback:
-            return (
-                False,
-                f"Navigation blocked by security policy: Loopback IP target '{hostname}' is prohibited.",
-            )
-        if ip.is_private:
-            return (
-                False,
-                f"Navigation blocked by security policy: Private/RFC1918 IP target '{hostname}' is prohibited.",
-            )
-        if ip.is_link_local:
-            return (
-                False,
-                f"Navigation blocked by security policy: Link-local IP target '{hostname}' is prohibited.",
-            )
-        if ip.is_reserved:
-            return (
-                False,
-                f"Navigation blocked by security policy: Reserved IP target '{hostname}' is prohibited.",
-            )
-    except ValueError:
-        # Standard domain name
-        pass
+    decision, reason, _ = NetworkPolicyEngine.get_instance().evaluate_destination(url_str)
+    if decision == EgressDecision.HARD_BLOCKED:
+        return False, f"Navigation blocked by security policy: {reason}"
 
     return True, url_str
 
@@ -179,6 +137,9 @@ class BrowserEngine:
                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 ),
             )
+            # Attach global network policy route interceptor
+            await self._context.route("**/*", self._route_network_policy_interceptor)
+
             # Capture the event loop for use in sync callbacks
             self._loop = asyncio.get_running_loop()
             self._context.on("page", self._on_new_page)
@@ -203,6 +164,34 @@ class BrowserEngine:
                 self._playwright = None
             self.is_active = True
             return True
+
+    async def _route_network_policy_interceptor(self, route: Any, request: Any) -> None:
+        """
+        Global Playwright route interceptor validating all browser network requests,
+        XHR/fetch calls, and subresources against NetworkPolicyEngine.
+        """
+        try:
+            req_url = request.url if hasattr(request, "url") else str(request)
+            if req_url.startswith(("data:", "about:", "blob:", "file://")):
+                await route.continue_()
+                return
+
+            from ..desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+
+            decision, reason, _ = NetworkPolicyEngine.get_instance().evaluate_destination(req_url)
+            if decision == EgressDecision.HARD_BLOCKED:
+                logger.warning(
+                    f"[BrowserEngine Route Interceptor] Aborted {getattr(request, 'method', 'GET')} to blocked destination '{req_url}': {reason}"
+                )
+                await route.abort("blockedbyclient")
+            else:
+                await route.continue_()
+        except Exception as exc:
+            logger.debug(f"[BrowserEngine Route Interceptor] Route handling error: {exc}")
+            try:
+                await route.continue_()
+            except Exception:
+                pass
 
     async def _safe_close_page(self, page: Any) -> None:
         """Safely close a page, suppressing errors."""

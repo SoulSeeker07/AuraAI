@@ -166,23 +166,33 @@
 
 ---
 
+## Recently Completed — No Longer Missing
+
+> **Update (August 18, 2026):** The following items were previously listed as MISSING.
+> They are now implemented and classified above in their respective subsystem sections.
+
+| Module | Status | Milestone |
+|:---|:---|:---|
+| Cognitive Memory stores (8 typed stores) | **ACTIVE** | M17 ✅ |
+| World Model (multi-provider environment model) | **ACTIVE** | M18 ✅ |
+| `CapabilityRegistry` (Universal capability contracts) | **ACTIVE** | M19 ✅ |
+| Coding Intelligence 2.0 (AST + Antigravity bridge + repair loop) | **ACTIVE** | M20 ✅ |
+| Research & Knowledge Hardening (Evidence grounding, zero-refetch, SSRF filter) | **ACTIVE** | M21 ✅ |
+| Multimodal Voice & Vision (Privacy gating, coordinate grounding, multi-engine fallback) | **ACTIVE** | M22 ✅ |
+| Autonomous Daemon & Background Operations (Durable state, crash recovery, HMAC tokens) | **ACTIVE** | M23 ✅ |
+| Security Hardening Track (Phases 1–4, DPAPI, HKDF, Isolated Audit Writer IPC) | **ACTIVE** | Core Security ✅ |
+
 ## Missing — Future Milestones
 
 | Module | Classification | Milestone |
 |:---|:---|:---|
-| Cognitive Memory stores (typed) | **MISSING** | M17 |
-| Full World Model (10 providers) | **MISSING** | M18 |
-| `CapabilityRegistry` | **MISSING** | M19 |
-| Coding Intelligence 2.0 (LLM-guided) | **MISSING** | M20 |
-| Research 2.0 (memory/project integration) | **MISSING** | M21 |
-| MCP Client / Server | **MISSING** | M23 |
-| Event Runtime (autonomous triggers) | **MISSING** | M24 |
-| Expert Systems | **MISSING** | M25 |
-| Personal OS | **MISSING** | M26 |
-| Autonomous Engineering Platform | **MISSING** | M27 |
-| Aura OS Runtime | **MISSING** | M28 |
-| Natural Interaction Layer | **MISSING** | M29 |
-| Aura GUI (Command Center) | **MISSING** | M30 |
+| Event Runtime (autonomous triggers, condition evaluators, event loops) | **MISSING** | M24 |
+| Professional Expert Systems (Specialized planners for NetEng, Security, Finance) | **MISSING** | M25 |
+| Personal OS (Proactive task & schedule management, daily workflows) | **MISSING** | M26 |
+| Autonomous Engineering Platform (End-to-end issue to PR pipeline) | **MISSING** | M27 |
+| Aura OS Runtime (Unified persistent OS environment) | **MISSING** | M28 |
+| Natural Interaction Layer (Full duplex, interruption/barge-in, echo cancellation) | **MISSING** | M29 |
+| Aura GUI Command Center (Complete desktop HUD & system visualization) | **MISSING** | M30 |
 
 ---
 
@@ -198,5 +208,5 @@ Before expanding any module:
 
 ---
 
-*Last Updated: August 2026 — Foundation Wiring & Truth Pass*
+*Last Updated: August 18, 2026*
 *Maintained in sync with [`RUNTIME.md`](RUNTIME.md) and [`roadmap.md`](roadmap.md)*

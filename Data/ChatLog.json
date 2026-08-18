@@ -1,362 +1,362 @@
 [
   {
     "role": "user",
-    "content": "check battery status",
+    "content": "research quantum computing principles",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:14:53.272664"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ❌ Zero valid search results found for 'research quantum computing principles'. All results may have been invalid or blocked by network policy.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:14:53.272664"
+  },
+  {
+    "role": "user",
+    "content": "research quantum computing principles",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:15:06.956695"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ❌ Zero valid search results found for 'research quantum computing principles'. All results may have been invalid or blocked by network policy.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:15:06.956695"
+  },
+  {
+    "role": "user",
+    "content": "recall research on quantum computing",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-18T21:15:06.989926"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Plan validation failed: Unknown capability in plan: 'memory_write'",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-18T21:15:06.989926"
+  },
+  {
+    "role": "user",
+    "content": "research the key principles of quantum computing",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:15:32.120002"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ❌ Zero valid search results found for 'research the key principles of quantum computing'. All results may have been invalid or blocked by network policy.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:15:32.120002"
+  },
+  {
+    "role": "user",
+    "content": "recall research on quantum computing",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-18T21:15:32.161741"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Plan validation failed: Unknown capability in plan: 'memory_write'",
+    "topic": "CapabilityRegistry",
+    "timestamp": "2026-08-18T21:15:32.161741"
+  },
+  {
+    "role": "user",
+    "content": "research the key principles of quantum computing",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:15:41.894311"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ❌ Zero valid search results found for 'research the key principles of quantum computing'. All results may have been invalid or blocked by network policy.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:15:41.894311"
+  },
+  {
+    "role": "user",
+    "content": "research the key principles of quantum computing",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:16:42.163738"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Found 1 relevant sources for 'research the key principles of quantum computing':\n[1] Quantum Computing (https://en.wikipedia.org/wiki/Quantum_computing)\n   Quantum computing uses quantum superposition.; ✓ Synthesized findings for 'research the key principles of quantum computing' (Confidence: 95%):\n\nQuantum computing uses quantum superposition.\n\nSources & Citations:\n[1] [Quantum Computing](https://en.wikipedia.org/wiki/Quantum_computing)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:16:42.163738"
+  },
+  {
+    "role": "user",
+    "content": "recall research on quantum computing",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:16:42.204083"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:16:42.204083"
+  },
+  {
+    "role": "user",
+    "content": "voice turn test: what is system status",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:17:37.371043"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Voice interaction on 'voice.transcribe test speech input': voice.transcribe test speech input",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:17:37.371043"
+  },
+  {
+    "role": "user",
+    "content": "find element coordinates for start button on screen",
     "topic": "desktop",
-    "timestamp": "2026-08-17T17:35:14.753672"
+    "timestamp": "2026-08-18T21:17:37.466178"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Battery is open.",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 213 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
     "topic": "desktop",
-    "timestamp": "2026-08-17T17:35:14.753672"
+    "timestamp": "2026-08-18T21:17:37.466178"
   },
   {
     "role": "user",
-    "content": "code.analyze",
-    "topic": "coding",
-    "timestamp": "2026-08-17T17:36:08.160418"
+    "content": "research the key principles of quantum computing",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:17:37.582659"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
-    "topic": "coding",
-    "timestamp": "2026-08-17T17:36:08.160418"
+    "content": "Result success=True. ✓ Found 1 relevant sources for 'research the key principles of quantum computing':\n[1] Quantum Computing Overview (https://en.wikipedia.org/wiki/Quantum_computing)\n   Quantum computing uses superposition and entanglement for quantum logic.; ✓ Synthesized findings for 'research the key principles of quantum computing' (Confidence: 95%):\n\nQuantum computing uses superposition and entanglement for quantum logic.\n\nSources & Citations:\n[1] [Quantum Computing Overview](https://en.wikipedia.org/wiki/Quantum_computing)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:17:37.582659"
   },
   {
     "role": "user",
-    "content": "browser.navigate",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T17:36:11.060772"
+    "content": "recall research on quantum computing",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:17:37.622308"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T17:36:11.060772"
+    "content": "Result success=True. Research findings on 'recall research on quantum computing': Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:17:37.622308"
   },
   {
     "role": "user",
-    "content": "cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T17:36:13.112019"
+    "content": "Research the latest features in Python 3.14",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:19:52.172119"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T17:36:13.112019"
+    "content": "Result success=True. ✓ Found 2 relevant sources for 'Research the latest features in Python 3.14':\n[1] Python 3.14 Official Release (https://python.org/news/314)\n   Python 3.14 introduces JIT compilation and free-threaded execution by default.\n[2] CPython Source Repository (https://github.com/python/cpython)\n   CPython repository tracking core interpreter changes and performance improvements.; ✓ Synthesized findings for 'Research the latest features in Python 3.14' (Confidence: 92%):\n\nPython 3.14 introduces JIT compilation and free-threaded execution by default.. CPython repository tracking core interpreter changes and performance improvements.\n\nSources & Citations:\n[1] [Python 3.14 Official Release](https://python.org/news/314)\n[2] [CPython Source Repository](https://github.com/python/cpython)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:19:52.172119"
   },
   {
     "role": "user",
-    "content": "check battery status",
+    "content": "Research the atmosphere of exoplanet K2-18b",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:19:52.318381"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Found 1 relevant sources for 'Research the atmosphere of exoplanet K2-18b':\n[1] Exoplanet K2-18b Water Vapor Discovery (https://astro.org/discoveries/exoplanet-k2)\n   Spectroscopic analysis reveals significant atmospheric water vapor and methane.; ✓ Synthesized findings for 'Research the atmosphere of exoplanet K2-18b' (Confidence: 96%):\n\nSpectroscopic analysis reveals significant atmospheric water vapor and methane.\n\nSources & Citations:\n[1] [Exoplanet K2-18b Water Vapor Discovery](https://astro.org/discoveries/exoplanet-k2)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:19:52.318381"
+  },
+  {
+    "role": "user",
+    "content": "What did we find earlier about exoplanet K2-18b atmosphere?",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:19:52.361106"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Research findings on 'Research the atmosphere of exoplanet K2-18b': Spectroscopic analysis reveals significant atmospheric water vapor and methane.",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:19:52.361106"
+  },
+  {
+    "role": "user",
+    "content": "describe screen",
+    "topic": "vision",
+    "timestamp": "2026-08-18T21:19:55.341953"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Visual desktop perception on 'describe screen':\n\nVisual desktop perception for 'describe screen': Active windows and controls visible on primary display.",
+    "topic": "vision",
+    "timestamp": "2026-08-18T21:19:55.341953"
+  },
+  {
+    "role": "user",
+    "content": "voice.transcribe test speech input",
+    "topic": "voice",
+    "timestamp": "2026-08-18T21:19:55.457570"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Voice transcription (google): \"voice.transcribe test speech input\"",
+    "topic": "voice",
+    "timestamp": "2026-08-18T21:19:55.457570"
+  },
+  {
+    "role": "user",
+    "content": "run in background task to check system status",
+    "topic": "daemon",
+    "timestamp": "2026-08-18T21:19:55.683046"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Spawned background task 'run in background task to check system status' [Job: job_5811744df5, Run: run_ab1fbe7c180e, Status: claimed]",
+    "topic": "daemon",
+    "timestamp": "2026-08-18T21:19:55.683046"
+  },
+  {
+    "role": "user",
+    "content": "schedule task in 60 seconds to check disk",
     "topic": "desktop",
-    "timestamp": "2026-08-17T18:09:00.350966"
+    "timestamp": "2026-08-18T21:19:55.814487"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Battery is open.",
+    "content": "Result success=True. ✓ Disk is open.",
     "topic": "desktop",
-    "timestamp": "2026-08-17T18:09:00.350966"
+    "timestamp": "2026-08-18T21:19:55.814487"
   },
   {
     "role": "user",
-    "content": "code.analyze",
-    "topic": "coding",
-    "timestamp": "2026-08-17T18:09:51.532360"
+    "content": "voice turn test: what is system status",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:51:30.584722"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
-    "topic": "coding",
-    "timestamp": "2026-08-17T18:09:51.532360"
+    "content": "Result success=True. Voice interaction on 'voice.transcribe test speech input': voice.transcribe test speech input",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:51:30.584722"
   },
   {
     "role": "user",
-    "content": "browser.navigate",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:09:54.510029"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:09:54.510029"
-  },
-  {
-    "role": "user",
-    "content": "cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:09:57.561256"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:09:57.561256"
-  },
-  {
-    "role": "user",
-    "content": "check battery status",
+    "content": "find element coordinates for start button on screen",
     "topic": "desktop",
-    "timestamp": "2026-08-17T18:13:18.964827"
+    "timestamp": "2026-08-18T21:51:30.675157"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Battery is open.",
+    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 213 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
     "topic": "desktop",
-    "timestamp": "2026-08-17T18:13:18.964827"
+    "timestamp": "2026-08-18T21:51:30.675157"
   },
   {
     "role": "user",
-    "content": "code.analyze",
-    "topic": "coding",
-    "timestamp": "2026-08-17T18:14:14.580852"
+    "content": "research the key principles of quantum computing",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:51:30.804815"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
-    "topic": "coding",
-    "timestamp": "2026-08-17T18:14:14.580852"
+    "content": "Result success=True. ✓ Found 1 relevant sources for 'research the key principles of quantum computing':\n[1] Quantum Computing Overview (https://en.wikipedia.org/wiki/Quantum_computing)\n   Quantum computing uses superposition and entanglement for quantum logic.; ✓ Synthesized findings for 'research the key principles of quantum computing' (Confidence: 95%):\n\nQuantum computing uses superposition and entanglement for quantum logic.\n\nSources & Citations:\n[1] [Quantum Computing Overview](https://en.wikipedia.org/wiki/Quantum_computing)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:51:30.804815"
   },
   {
     "role": "user",
-    "content": "browser.navigate",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:14:17.883654"
+    "content": "recall research on quantum computing",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:51:30.842696"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:14:17.883654"
+    "content": "Result success=True. Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:51:30.842696"
   },
   {
     "role": "user",
-    "content": "cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:14:21.308770"
+    "content": "Research the latest features in Python 3.14",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:52:58.992931"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T18:14:21.308770"
+    "content": "Result success=True. ✓ Found 2 relevant sources for 'Research the latest features in Python 3.14':\n[1] Python 3.14 Official Release (https://python.org/news/314)\n   Python 3.14 introduces JIT compilation and free-threaded execution by default.\n[2] CPython Source Repository (https://github.com/python/cpython)\n   CPython repository tracking core interpreter changes and performance improvements.; ✓ Synthesized findings for 'Research the latest features in Python 3.14' (Confidence: 92%):\n\nPython 3.14 introduces JIT compilation and free-threaded execution by default.. CPython repository tracking core interpreter changes and performance improvements.\n\nSources & Citations:\n[1] [Python 3.14 Official Release](https://python.org/news/314)\n[2] [CPython Source Repository](https://github.com/python/cpython)",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-18T21:52:58.992931"
   },
   {
     "role": "user",
-    "content": "research advancements in neuromorphic computing and synthesize findings",
+    "content": "Research the atmosphere of exoplanet K2-18b",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:12:45.575869"
+    "timestamp": "2026-08-18T21:52:59.149402"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ❌ Failed to synthesize research for 'research advancements in neuromorphic computing and synthesize findings': Zero sources provided for synthesis. A preceding 'research.search' step is required.",
+    "content": "Result success=True. ✓ Found 1 relevant sources for 'Research the atmosphere of exoplanet K2-18b':\n[1] Exoplanet K2-18b Water Vapor Discovery (https://astro.org/discoveries/exoplanet-k2)\n   Spectroscopic analysis reveals significant atmospheric water vapor and methane.; ✓ Synthesized findings for 'Research the atmosphere of exoplanet K2-18b' (Confidence: 96%):\n\nSpectroscopic analysis reveals significant atmospheric water vapor and methane.\n\nSources & Citations:\n[1] [Exoplanet K2-18b Water Vapor Discovery](https://astro.org/discoveries/exoplanet-k2)",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:12:45.575869"
+    "timestamp": "2026-08-18T21:52:59.149402"
   },
   {
     "role": "user",
-    "content": "research advancements in neuromorphic computing and synthesize findings",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:15:11.932359"
+    "content": "What did we find earlier about exoplanet K2-18b atmosphere?",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:52:59.186888"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:15:11.932359"
+    "content": "Result success=True. Research findings on 'Research the atmosphere of exoplanet K2-18b': Spectroscopic analysis reveals significant atmospheric water vapor and methane.",
+    "topic": "memory",
+    "timestamp": "2026-08-18T21:52:59.186888"
   },
   {
     "role": "user",
-    "content": "research advancements in neuromorphic computing and synthesize findings",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:16:24.502767"
+    "content": "describe screen",
+    "topic": "vision",
+    "timestamp": "2026-08-18T21:53:01.582959"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ✓ Synthesized findings for 'research advancements in neuromorphic computing and synthesize findings' (Confidence: 95%):\n\nWomen in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen. This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossar...\n\nSources & Citations:\n- [Women in computing](https://en.wikipedia.org/wiki/Women_in_computing)\n- [Glossary of artificial intelligence](https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n- [Ethics of artificial intelligence](https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n- [Biomimetics](https://en.wikipedia.org/wiki/Biomimetics)",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:16:24.502767"
+    "content": "Result success=True. ✓ Visual desktop perception on 'describe screen':\n\nVisual desktop perception for 'describe screen': Active windows and controls visible on primary display.",
+    "topic": "vision",
+    "timestamp": "2026-08-18T21:53:01.582959"
   },
   {
     "role": "user",
-    "content": "research advancements in neuromorphic computing and synthesize findings",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:16:57.377923"
+    "content": "voice.transcribe test speech input",
+    "topic": "voice",
+    "timestamp": "2026-08-18T21:53:01.709065"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ✓ Synthesized findings for 'research advancements in neuromorphic computing and synthesize findings' (Confidence: 95%):\n\nWomen in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen. This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossar...\n\nSources & Citations:\n- [Women in computing](https://en.wikipedia.org/wiki/Women_in_computing)\n- [Glossary of artificial intelligence](https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n- [Ethics of artificial intelligence](https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n- [Biomimetics](https://en.wikipedia.org/wiki/Biomimetics)",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T20:16:57.377923"
+    "content": "Result success=True. ✓ Voice transcription (google): \"voice.transcribe test speech input\"",
+    "topic": "voice",
+    "timestamp": "2026-08-18T21:53:01.709065"
   },
   {
     "role": "user",
-    "content": "check battery status",
+    "content": "run in background task to check system status",
+    "topic": "daemon",
+    "timestamp": "2026-08-18T21:53:01.917332"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Spawned background task 'run in background task to check system status' [Job: job_2b5654c12d, Run: run_7ca9c1d3095e, Status: claimed]",
+    "topic": "daemon",
+    "timestamp": "2026-08-18T21:53:01.917332"
+  },
+  {
+    "role": "user",
+    "content": "schedule task in 60 seconds to check disk",
     "topic": "desktop",
-    "timestamp": "2026-08-17T20:17:09.448087"
+    "timestamp": "2026-08-18T21:53:02.027333"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Battery is open.",
+    "content": "Result success=True. ✓ Disk is open.",
     "topic": "desktop",
-    "timestamp": "2026-08-17T20:17:09.448087"
-  },
-  {
-    "role": "user",
-    "content": "code.analyze",
-    "topic": "coding",
-    "timestamp": "2026-08-17T20:18:02.594844"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Analyzed 1/1 file(s).; ✓ tests/conftest.py",
-    "topic": "coding",
-    "timestamp": "2026-08-17T20:18:02.594844"
-  },
-  {
-    "role": "user",
-    "content": "browser.navigate",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T20:18:05.669255"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Capability 'browser.navigate' is scaffolded (is_live=False) and cannot be executed autonomously.; Plan validation failed: Prerequisite 'browser.open' for 'browser.navigate' is scaffolded (is_live=False).",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T20:18:05.669255"
-  },
-  {
-    "role": "user",
-    "content": "cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T20:18:08.875339"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Cyclic capability dependency detected: cycle.a -> cycle.b -> cycle.a",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T20:18:08.875339"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T21:15:50.805350"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Unknown capability in plan: 'browser.ensure_open'",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T21:15:50.805350"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:16:34.334232"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:16:34.334232"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:17:16.617976"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:17:16.617976"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:18:02.169678"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:18:02.169678"
-  },
-  {
-    "role": "user",
-    "content": "What capabilities do you have?",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T21:18:23.750009"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Plan validation failed: Unknown capability in plan: 'system_info'",
-    "topic": "CapabilityRegistry",
-    "timestamp": "2026-08-17T21:18:23.750009"
-  },
-  {
-    "role": "user",
-    "content": "What capabilities do you have?",
-    "topic": "desktop",
-    "timestamp": "2026-08-17T21:19:57.274979"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 124 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
-    "topic": "desktop",
-    "timestamp": "2026-08-17T21:19:57.274979"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:20:09.262035"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:20:09.262035"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:20:26.082553"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:20:26.082553"
-  },
-  {
-    "role": "user",
-    "content": "navigate to https://example.com and extract page content",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:22:33.301297"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://example.com/ (Title: 'Example Domain').; ✓ Extracted 181 characters of page content from 'https://example.com/'.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:22:33.301297"
-  },
-  {
-    "role": "user",
-    "content": "research advancements in neuromorphic computing and synthesize findings",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:23:01.388826"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. ✓ Found 4 relevant sources for 'research advancements in neuromorphic computing and synthesize findings':\n1. Women in computing (https://en.wikipedia.org/wiki/Women_in_computing)\n   Women in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen\n2. Glossary of artificial intelligence (https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n   This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossaries include Glossary of computer science, Glossary of robotics, Glossary of machine vision, and Glossa\n3. Ethics of artificial intelligence (https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n   The ethics of artificial intelligence covers a broad range of topics within AI that are considered to have particular ethical stakes. This includes algorithmic biases, fairness, accountability, transparency, privacy, and regulation, particularly where systems influence or automate human decision-mak\n4. Biomimetics (https://en.wikipedia.org/wiki/Biomimetics)\n   Biomimetics or biomimicry is the replication of the models, systems, and elements of nature for the purpose of solving complex human problems. The terms \"biomimetics\" and \"biomimicry\" are derived from Ancient Greek: βίος (bios), life, and μίμησις (mīmēsis), imitation, from μιμεῖσθαι (mīmeisthai), to; ✓ Synthesized findings for 'research advancements in neuromorphic computing and synthesize findings' (Confidence: 95%):\n\nWomen in computing were among the first programmers in the early 20th century, and contributed substantially to the industry. As technology and practices altered, the role of women as programmers has changed, and the recorded history of the field has downplayed their achievements. Since the 18th cen. This glossary of artificial intelligence is a list of definitions of terms and concepts relevant to the study of artificial intelligence (AI), its subdisciplines, and related fields. Related glossar...\n\nSources & Citations:\n- [Women in computing](https://en.wikipedia.org/wiki/Women_in_computing)\n- [Glossary of artificial intelligence](https://en.wikipedia.org/wiki/Glossary_of_artificial_intelligence)\n- [Ethics of artificial intelligence](https://en.wikipedia.org/wiki/Ethics_of_artificial_intelligence)\n- [Biomimetics](https://en.wikipedia.org/wiki/Biomimetics)",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-17T21:23:01.388826"
+    "timestamp": "2026-08-18T21:53:02.027333"
   }
 ]

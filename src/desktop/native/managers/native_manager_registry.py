@@ -272,6 +272,10 @@ class NativeManagerRegistry:
         """Get manager instance by name."""
         return self._managers.get(name)
 
+    def get_manager(self, name: str) -> BaseNativeManager | None:
+        """Alias for get() to support get_manager(name)."""
+        return self.get(name)
+
     def list(self) -> list[dict[str, Any]]:
         """List descriptors of all registered managers."""
         res = []

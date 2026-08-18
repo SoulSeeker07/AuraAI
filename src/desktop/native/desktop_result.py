@@ -136,6 +136,7 @@ class DesktopResult:
         capability: str,
         manager: str,
         error: str,
+        data: Any = None,
         events: list[str] | None = None,
         metrics: dict[str, Any] | None = None,
         warnings: list[str] | None = None,
@@ -146,12 +147,14 @@ class DesktopResult:
             goal=goal,
             capability=capability,
             manager=manager,
+            data=data,
             error=error,
             status=DesktopStatus.FAILURE,
             events=events or [],
             metrics=metrics or {},
             warnings=warnings or [],
         )
+
 
     @classmethod
     def create_partial(

@@ -4,51 +4,51 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.21.0--continuous--voice-green.svg)](RELEASE.md)
-[![Platform Progress](https://img.shields.io/badge/milestones-Phase%200%2B1%20Operational-green.svg)](roadmap.md)
-[![Architecture Status](https://img.shields.io/badge/cognitive--architecture-active-blue.svg)](docs/AURA_ARCHITECTURE_CONNECTION.md)
-[![Runtime Acceptance](https://img.shields.io/badge/runtime--acceptance-verified-brightgreen.svg)](docs/RUNTIME_ACCEPTANCE.md)
-[![Build Status](https://img.shields.io/badge/tests-89%2F89%20passed-brightgreen.svg)](docs/engineering.md)
+[![Platform Version](https://img.shields.io/badge/version-v0.27.0--autonomous--daemon-green.svg)](RELEASE.md)
+[![Codebase](https://img.shields.io/badge/source-580%2B%20files%20%7C%205%2C100%2B%20KB-brightgreen.svg)](src/)
+[![Security Model](https://img.shields.io/badge/security-DPAPI%20%7C%20HMAC--SHA256%20%7C%20Isolated%20Audit-blue.svg)](docs/security.md)
+[![Regression Suite](https://img.shields.io/badge/regression-183%2F183%20passing-brightgreen.svg)](tests/)
 
 Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies voice perception, natural language decision-making, planning, desktop OS automation, execution, reflection, and long-term memory into a single coordinated system.
 
-> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the Native Desktop Engine (Win32), continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), research by Gemini/Wikipedia/DuckDuckGo, and software engineering by the Engineering Engine.
+> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the 17 Native Desktop Managers (Win32), continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), research by Gemini/Wikipedia/DuckDuckGo, and software engineering by the Engineering Engine.
 
 ---
 
-## 🚀 Development Status
+## 🚀 Development Status & Milestone Progress
 
 ```text
 Operational Subsystems (Live on Physical System)
-├── Continuous Voice Loop — OPERATIONAL (AuraWake + Multi-Accent Google STT / Whisper + Piper TTS + Barge-in)
-├── Native Desktop Engine — OPERATIONAL (Win32 window manager, 2-tier app resolver, Start Menu, Antigravity IDE)
-├── Cognitive Pipeline — OPERATIONAL (MasterOrchestrator 7-stage request reasoning pipeline + Groq LLM)
-└── Long-Term Memory — OPERATIONAL (SQLite fact store, dynamic slot filling, conversational fact recall)
-
-Active Critical Path
-├── M17 Cognitive Memory — COMPLETE
-├── M18 World Model (Workspace & System Graph) — IN PROGRESS
-├── M19 Capability & Tool Runtime — READY
-├── M20 Autonomous Coding Agent — PLANNED
-├── M21 Autonomous Research Agent — PLANNED
-└── M22 Browser Intelligence (Playwright) — PLANNED
-
-Future Platform Milestones
-├── M23 MCP Ecosystem
-├── M24 Event Runtime & Autonomy
-├── M25 Expert Systems
-├── M26 Personal OS
-├── M27 Autonomous Engineering
-├── M28 Aura OS Core
-├── M29 Natural Interaction 2.0
-└── M30 Aura GUI & Multimodal Screen Perception
+├── Core Runtime Pipeline — OPERATIONAL (7-stage MasterOrchestrator, 57KB cognitive core)
+├── Native Desktop Engine — OPERATIONAL (17 Native Managers: Input, Terminal, ScreenAction, Window, File, Audio, Power, etc.)
+├── Unified Backend Registry — OPERATIONAL (23 Live Backend Adapters)
+├── Cognitive Memory (M17) — COMPLETE (8 typed stores: Working, Episodic, Semantic, Procedural, Preference, Project + Recall + Decay + Consolidation)
+├── World Model (M18) — COMPLETE (Multi-provider environment model with workspace, repository, and memory integration)
+├── Universal Capability Registry (M19) — COMPLETE (Cross-domain governance, ActionRisk taxonomy, DAG plan validation, 7 capability providers)
+├── Coding Intelligence 2.0 (M20) — COMPLETE (AST analysis, code editor with rollback, Antigravity bridge, World Model integration, automated repair loop)
+├── Research & Knowledge Hardening (M21) — COMPLETE (Evidence grounding, citation preservation, zero-refetch memory recall, SSRF protection)
+├── Multimodal Voice & Vision (M22) — COMPLETE (Pre-capture DevicePrivacyEngine fail-closed, sensitive-window default-BLOCK, UI grounding)
+├── Autonomous Daemon & Background Operations (M23) — COMPLETE (Durable state machine, crash recovery, cancellation, cryptographic HMAC autonomy governance)
+├── Security Hardening Track (Phases 1–4) — COMPLETE (DPAPI master keys, HKDF derivation, isolated audit writer IPC, OS event log sink)
+└── Unified Platform Regression — 183 / 183 PASSING (100% Green across 12 test suites)
 ```
+
+### Codebase Metrics
+
+| Metric | Value |
+|:---|:---|
+| **Platform Version** | `v0.27.0-autonomous-daemon` |
+| **Native Desktop Managers** | 17 Win32 managers |
+| **Backend Adapters** | 23 registered adapters |
+| **Capability Providers** | 7 core providers |
+| **Milestones Complete** | M01–M23 (Complete baseline) |
+| **Unified Regression Suite** | 183 / 183 passing (100%) |
 
 ---
 
 ## 🏛️ System Architecture
 
-Aura operates as an AI Operating System where the **Aura Cognitive Architecture (ACA)** serves as the cognitive runtime — the only component that "thinks" — while execution is delegated to specialized engines.
+Aura operates as an AI Operating System where the **Aura Cognitive Architecture (ACA)** serves as the cognitive runtime — the only component that "thinks" — while execution is delegated to specialized, sandboxed engines.
 
 ```text
                           USER
@@ -57,157 +57,125 @@ Aura operates as an AI Operating System where the **Aura Cognitive Architecture 
                      AuraCore Runtime
                             │
                             ▼
-              ┌──────────────────────────┐
-              │  Aura Cognitive Arch.    │
-              │  (ACA) — Executive Brain │
-              └──────────────────────────┘
+               ┌──────────────────────────┐
+               │  Aura Cognitive Arch.    │
+               │  (ACA) — Executive Brain │
+               └──────────────────────────┘
                             │
-    ┌─────────────────────────────────────────────────────┐
-    │                                                     │
-    ▼                                                     ▼
+     ┌─────────────────────────────────────────────────────┐
+     │                                                     │
+     ▼                                                     ▼
 Stage 0: Context & World Understanding            Goal Manager
-    │                                                     │
-    ▼                                                     │
+     │                                                     │
+     ▼                                                     │
 Stage 1: DMM (Decision Making Module)                     │
-    │   ├── Goal Understanding                            │
-    │   ├── Memory Retrieval                              │
-    │   ├── Capability Retrieval                          │
-    │   ├── Confidence Gate                               │
-    │   └── Fusion Engine → DecisionContext               │
-    │                                                     │
-    ▼                                                     │
-Policy Engine (Governance)                                │
-    │                                                     │
-    ▼                                                     │
+     │   ├── Goal Understanding                            │
+     │   ├── Memory Retrieval                              │
+     │   ├── Capability Retrieval                          │
+     │   ├── Confidence Gate                               │
+     │   └── Fusion Engine → DecisionContext               │
+     │                                                     │
+     ▼                                                     │
+Policy Engine & Cryptographic Authority                    │
+     │   ├── HMAC-SHA256 Human-in-the-Loop Gate            │
+     │   ├── Strict Executable Allowlists                  │
+     │   └── Dynamic System Root Protection                │
+     │                                                     │
+     ▼                                                     │
 Stage 2: Planning & Strategy                              │
-    │   ├── Planner (Groq → ExecutionMap)                 │
-    │   ├── TaskGraph (DAG for parallel execution)        │
-    │   └── Validator                                     │
-    │                                                     │
-    ▼                                                     │
+     │   ├── Planner (ExecutionMap DAG)                    │
+     │   ├── TaskGraph (DAG for parallel execution)        │
+     │   └── Validator                                     │
+     │                                                     │
+     ▼                                                     │
 RuntimeSession (Source of Truth)                          │
-    │                                                     │
-    ▼                                                     │
-Stage 3: Execution Coordination                           │
-    │   ├── Desktop Engine                                │
-    │   ├── Browser Engine                                │
-    │   ├── Research Engine                               │
-    │   ├── Engineering Engine                            │
-    │   ├── Voice / Vision / Memory                       │
-    │   └── Verification                                  │
-    │                                                     │
-    ▼                                                     │
+     │                                                     │
+     ▼                                                     │
+Stage 3: Execution Coordination (20 Backend Adapters)     │
+     │   ├── Terminal / Shell Execution Engine             │
+     │   ├── Input Simulation (SendInput Mouse/Keyboard)   │
+     │   ├── Screen Action Engine (Vision Grounding)       │
+     │   ├── Desktop Native Engine (17 Win32 Managers)     │
+     │   ├── Productivity Plugins (Email/Calendar/Office)  │
+     │   ├── DevOps Plugins (Docker, MCP Client)           │
+     │   └── Verification & Rollback                       │
+     │                                                     │
+     ▼                                                     │
 Artifact Manager (Everything creates artifacts)           │
-    │                                                     │
-    ▼                                                     │
+     │                                                     │
+     ▼                                                     │
 Stage 4: Reflection & Learning                            │
-    │                                                     │
-    ▼                                                     │
+     │                                                     │
+     ▼                                                     │
 Response (with session, goal, artifacts)                  │
 ```
 
 ---
 
-## 🧠 Aura Cognitive Architecture (ACA)
+## 🖥️ The 17 Native Desktop Managers & 20 Backend Engines
 
-The ACA is the cognitive center of Aura — the only component that "thinks." Everything else simply executes.
+Aura AI implements 17 direct Win32/native managers in `src/desktop/native/managers/` and 20 backend adapters in `src/core/backends/`:
 
-### The Golden Rule
-
-> **The Executive Brain thinks. The Planner organizes. The Engines execute. Reflection validates. Learning improves.**
-
-### 5-Stage Cognitive Pipeline
-
-| Stage | Component | Responsibility |
-|-------|-----------|----------------|
-| **0** | Context Manager + World Model | Collects everything Aura knows (RAM) + tracks the computer state |
-| **1** | DMM (FusionEngine + ConfidenceGate) | Understands goals, selects capabilities, fuses into DecisionContext |
-| **2** | Planner + TaskGraph + Validator | Produces structured ExecutionMap as a DAG, validates it |
-| **3** | Execution Coordinator + Verification | Delegates to engines, verifies outcomes |
-| **4** | Reflection + Learning | Self-evaluates, learns conservatively |
-
-### New Architectural Pieces
-
-| Piece | File | Purpose |
-Stage 1: Intent & Decision Reasoning               Memory Engine
-    │
-    ▼
-Stage 2: Goal & Task Decomposer
-    │
-    ▼
-Stage 3: Supervisor Planner Integration
-    │
-    ▼
-Stage 4: Execution Coordinator
-    │   ├─ Native Desktop Engine
-    │   ├─ Playwright Browser Engine
-    │   ├─ Research Engine
-    │   └─ Professional Expert Systems
-    ▼
-Stage 5: Verification & Self-Healing
-    │
-    ▼
-Stage 6: Activity Trace & User Feedback
-```
+| Subsystem | Native Manager | Backend Adapter | Key Live Capabilities |
+|:---|:---|:---|:---|
+| **Input Simulation** | `InputManager` | `InputBackendAdapter` | Pure Win32 ctypes `SendInput` mouse movement, clicks, drag, scroll, key events, hotkeys, and UTF-16 surrogate pairs. |
+| **Terminal & CLI** | `TerminalManager` | `TerminalBackendAdapter` | PowerShell/CMD synchronous & asynchronous execution, session lifecycle, env vars, CWD tracking, and stdin streaming. |
+| **Screen & Computer Use** | `ScreenActionManager` | `ScreenActionBackendAdapter` | Full screen capture, coordinate grounding, synthetic action dispatch, and verification loop. |
+| **Window Control** | `WindowManager`, `AdvancedWindowManager` | `DesktopEngineBackend` | Enumerate windows, focus, minimize, maximize, snap grids, pin topmost, and adjust window opacity. |
+| **Filesystem** | `FileManager` | `FilesystemPlugin` | CRUD, recursive list, file info, size calculation, grep-like content search, archive compression/extraction, and watching. |
+| **Notifications & Audio** | `NotificationManager`, `AudioManager` | `NotificationBackendAdapter` | Native Windows toast popups, Win32 `MessageBoxW`, audio sound cues (`winsound`), volume control, and scheduled alerts. |
+| **Task Scheduler** | `SchedulerManager` | `SchedulerBackendAdapter` | One-shot timers, interval schedules, cron patterns, and cancellation. |
+| **System Settings** | `SettingsManager` | `SettingsBackendAdapter` | Windows Registry (`winreg`) toggles, dark mode switching, startup app management, and timezone queries. |
+| **Software & Packages** | `SoftwareManager` | `SoftwareBackendAdapter` | Installed applications enumeration, `winget` installation, uninstallation, and update checks. |
+| **System Security** | `SecurityManager` | `SecurityBackendAdapter` | Windows Firewall profile inspection, Defender status, UAC elevation level checks, and lock workstation. |
+| **DevOps & Containers** | `DockerPlugin` | `DockerBackendAdapter` | Container list, start, stop, restart, image management, and inspection via Docker CLI. |
+| **MCP Integration** | `MCPPlugin` | `MCPBackendAdapter` | Model Context Protocol server registration, listing, and tool invocation. |
+| **Productivity** | `EmailPlugin`, `CalendarPlugin`, `OfficePlugin` | `EmailBackendAdapter`, `CalendarBackendAdapter`, `OfficeBackendAdapter` | IMAP/SMTP email handling, SQLite-backed calendar events and task management, DOCX/XLSX generation. |
+| **System Diagnostics** | `DisplayManager`, `PowerManager`, `NetworkManager` | `DesktopEngineBackend` | Display resolution, DPI scaling, multi-monitor topology, battery percentage, charging state, NIC list, and ping tests. |
 
 ---
 
-## 🧠 Core Capabilities
+## 🛡️ Security Architecture & Human-in-the-Loop Governance
 
-### 🧠 Cognitive Architecture
-- **5-Stage Cognitive Pipeline**: Perception → Decision → Planning → Execution → Reflection/Learning
-- **Shared Blackboard**: All stages read/write one shared working memory
-- **Per-Domain Confidence**: Goal, entity, memory, capability, safety — not one number
-- **Policy Governance**: Independent security/permission layer before planning
-- **Long-Term Goals**: Goal Manager tracks progress across multiple requests
-- **Parallel Execution**: TaskGraph DAG enables parallel engine execution
-- **Artifact-Centric**: Everything Aura creates becomes an artifact
+Aura AI implements a **Defense-in-Depth Security Framework** to govern autonomous AI execution:
 
-### 🖥️ Native Desktop Engine
-- **Hardware & OS Control**: Windows-native managers for window placement, active clipboard monitoring, display metrics, audio streams, power management, and network interfaces.
-- **Safety Bounds**: SafetyPolicy pre-execution checks enforce protected process rules before calling Win32 APIs.
-
-### 🔍 Autonomous Research Engine
-- **Query Decomposition**: Breaks complex research topics into parallel execution sub-queries.
-- **Evidence Evaluation**: Performs trust scoring, conflict resolution, recency weighting, and multi-style citation generation (APA, MLA, IEEE).
-
-### 🤖 Multi-Backend LLM & Engine Routing
-- **Declarative Backends**: Built-in adapters for Groq, Gemini 2.0 Flash, Antigravity CLI, Playwright Browser Engine, and Desktop Native Engine.
-- **Adaptive Negotiation**: Dynamic capability negotiation with moving-average latency, success rate, and load tracking (`negotiate_capabilities()`).
+1. **Cryptographic HMAC-SHA256 Human Approval Gate:**
+   - High-risk operations (e.g. process termination, system modifications, non-allowlisted executables) return an un-signed `ticket_id` and halt autonomous execution.
+   - Only the out-of-band Human UI/CLI channel possessing the internal HMAC secret can generate a valid signature.
+   - LLM self-supplied tokens or replay attacks are strictly rejected via constant-time comparison (`hmac.compare_digest`).
+2. **Hash-Chained Cryptographic Audit Ledger:**
+   - Append-only, SHA-256 Merkle-style hash-chained and HMAC-signed audit ledger.
+   - Mathematical chain verification API to detect any log tampering, modification, insertion, or history truncation.
+3. **Strict Developer Tool Allowlist:**
+   - Autonomous CLI execution is strictly scoped to approved developer tools (`git`, `pytest`, `python`, `node`, `npm`, `cargo`, `ruff`, etc.).
+   - General-purpose shell interpreters (`powershell`, `pwsh`, `cmd`, `bash`) are excluded from autonomous execution to prevent nested-shell bypasses.
+4. **Network Egress Policy:**
+   - Domain-level egress filtering with allow/deny lists for outbound network requests.
+5. **OS Process Sandboxing:**
+   - Dedicated `AuraSandboxUser` with kernel NTFS DACLs, Win32 Job Objects, Docker isolation, and workspace jail.
+6. **De-Obfuscation Pipeline:**
+   - Normalizes PowerShell backtick escapes, token split quotes, and string concatenations prior to evaluation.
+7. **Dynamic System Root Protection:**
+   - Dynamically resolves `%SystemDrive%`, `%WINDIR%`, `%ProgramFiles%`, and `%USERPROFILE%` at runtime to block relative wildcard deletion attacks in system roots.
 
 ---
 
-## ⚡ Permanent Aura System Invariants
+## 🧠 Cognitive Memory System (M17)
 
-Every layer of Aura adheres to three mandatory system invariants:
+Aura's memory is not a simple key-value store — it's a multi-layered cognitive memory system:
 
 ```text
-PERCEPTION:
-Normalize wording, never invent intent.
-
-EXECUTION:
-Recover transient failures, never fabricate success.
-
-VERIFICATION:
-Accept success only when independently observed evidence proves the goal.
+Cognitive Memory
+├── Working Memory       — active context in the current session
+├── Short-Term Memory    — recent interactions and outputs
+├── Long-Term Memory     — persistent facts and entities across sessions
+├── Episodic Memory      — timestamped "what happened when" narrative
+├── Semantic Memory      — concepts, entities, and relationships
+├── Procedural Memory    — learned workflows and how-to sequences
+├── Preference Memory    — user style, formatting, tooling choices
+├── Project Memory       — per-project context, decisions, history
+└── Memory Recall        — relevance-ranked, scored retrieval with decay
 ```
-
----
-
-## ⚡ Real Implementation & Wiring Audit (M18 – M25 Verified)
-
-> **Implementation Guarantee:** Physical implementations are verified on a real Windows machine; explicit simulation fallbacks exist only for headless/non-GUI environments.
-
-The table below outlines what is **physically wired to live system backends** versus what operates with **governance policy / fallback behavior**:
-
-| Component / Capability | Implementation Status | Real Physical Wiring Details | Fallback / Policy Behavior |
-| :--- | :--- | :--- | :--- |
-| **Continuous Voice Loop & Speech** | 🟢 **REAL WIRED** | `AuraWakeDetector` (real-time mic energy/spectral wake detection), `GoogleSTTEngine` (`en-in` with `FasterWhisper` offline fallback + 4-layer anti-hallucination defense), `PiperTTS` (chunked local playback with `EdgeTTS` fallback), 5.0s conversational follow-up window, and Alexa-style barge-in & thinking interruption. | Degrades gracefully to Faster-Whisper on network drop, Edge-TTS on local Piper missing, and silence rejection on background noise. |
-| **Desktop Native Engine** | 🟢 **REAL WIRED** | Real Win32 APIs (`FindWindow`, `SetForegroundWindow`, `ShowWindow`, `os.startfile`, `pyautogui`, `pyperclip`) + 2-Tier App Resolver (Fast-path aliases + fuzzy matching), Start Menu (`VK_LWIN`) toggle, Antigravity IDE focus, and WhatsApp UWP/web fallback. | In non-GUI/headless mode, safely logs simulated observation; returns clear honest error if app is missing. |
-| **Long-Term Memory** | 🟢 **REAL WIRED** | SQLite persistent fact store (`Memory.db`), dynamic slot extraction, category-based indexing, and natural conversational fact recall (*"Your name is Sreekanta"*). | Falls back to active working memory if query fact is not in database. |
-| **Cognitive Pipeline** | 🟢 **REAL WIRED** | 7-stage `MasterOrchestrator` (Stage 1 Memory Recall $\rightarrow$ Stage 2 Decision Engine $\rightarrow$ Stage 3 Task Decomposition $\rightarrow$ Stage 4 Supervisor Delegation $\rightarrow$ Stage 5 Backend Dispatch $\rightarrow$ Stage 6 Result Fusion $\rightarrow$ Stage 7 Memory Write) connected to Groq LLM. | Low confidence or unresolvable multi-target intents halt as honest `CLARIFICATION_REQUIRED`. |
-| **Research Engine** | 🟡 **SCAFFOLDED** | Wikipedia provider, DuckDuckGo scraper, Trust-level scoring, conflict resolution, and citation generators built and unit-tested. | Ready for full autonomous multi-step web research integration in M21. |
-| **Engineering & AST Engine** | 🟡 **SCAFFOLDED** | `EngineeringManager`, `CodeEditor` (with backups & rollback), `ASTManager` syntax validator, and code analyzers operational. | Deterministic code editing active; full LLM multi-file generation scheduled for M20. |
 
 ---
 
@@ -232,68 +200,47 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3. Running System & Applications
+### 3. Running Automated Tests
 ```bash
-# Run system diagnostic doctor
-python aura.py --doctor
+# Collect and run the full test suite (1,350 tests)
+.\.venv\Scripts\python.exe -m pytest tests/ -v
 
-# Inspect system status dashboard
-python aura.py --inspect
-
-# Execute CI pipeline verification
-python aura.py --verify
-
-# Launch interactive CLI client
-python aura.py --cli
-
-# Launch GUI desktop interface
-python aura.py --gui
-```
-
-### 4. Test the Cognitive Architecture
-```bash
-# Run ACA test suite (8 tests)
-.venv\Scripts\python.exe scripts/test_aca.py
-
-# Run Executive Runtime test suite (12 tests)
-.venv\Scripts\python.exe scripts/test_aura_brain_runtime.py
+# Run specific security and capability tests
+.\.venv\Scripts\python.exe -m pytest tests/test_all_new_capabilities.py tests/test_capability_registry.py -v
 ```
 
 ---
 
-## 📚 Platform Documentation
+## 📊 Milestone Progress
 
-Detailed technical guides and architecture specifications are available in the [`docs/`](docs/) directory:
+```text
+━━━ COMPLETE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+M01–M16   Phase 0 — Foundation                    16/16 milestones
+M17       Cognitive Memory                        ✅
+M18       World Model                             ✅
+M19       Capability & Tool Runtime               ✅
+M20       Coding Intelligence 2.0                 ✅
+M21       Research & Knowledge Hardening          ✅
+M22       Multimodal Voice & Vision               ✅
+M23       Autonomous Daemon & Background Ops      ✅
 
-- 🚀 [**Getting Started**](docs/getting-started.md) — Installation, environment setup, and launcher guide.
-- 🏗️ [**Architecture Connection**](docs/AURA_ARCHITECTURE_CONNECTION.md) — How everything is connected end-to-end.
-- 📊 [**Architecture Audit**](docs/AURA_ARCHITECTURE_AUDIT.md) — What's connected vs. what's missing.
-- 🧠 [**AuraBrain Executive Runtime**](docs/AURABRAIN_EXECUTIVE_RUNTIME.md) — The cognitive runtime specification.
-- 🏗️ [**Architecture & Layers**](docs/architecture.md) — Architectural manifest, layer boundaries, and import contracts.
-- 🧠 [**Planner System**](docs/planners.md) — Specialized domain planners and declarative schemas.
-- 🔌 [**Backend Registry**](docs/backends.md) — Multi-model routing engine and adaptive capability negotiation.
-- 🖥️ [**Desktop Native Engine**](docs/desktop.md) — Native Windows managers, execution pipeline, and safety contracts.
-- 🔍 [**Research Engine**](docs/research.md) — Autonomous evidence evaluation, conflict resolution, and citations.
-- 🛠️ [**Engineering & Diagnostics**](docs/engineering.md) — Aura Doctor, Inspector dashboard, and CI verification pipeline.
-- 🧩 [**Plugin Ecosystem**](docs/plugins.md) — Modular plugin registry and declarative auto-discovery.
-- 🗺️ [**Platform Roadmap**](roadmap.md) — Complete roadmap from Era 1 Foundation to Era 3 Aura OS.
+━━━ NEXT UP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+M24       Event Runtime & Autonomous Triggers     PLANNED
+M25       Professional Expert Systems             PLANNED
+M26       Personal OS Proactive Automation        PLANNED
 
----
+━━━ FUTURE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+M27       Autonomous Engineering                  PLANNED
+M28       Aura OS                                 PLANNED
+M29       Natural Interaction                     PLANNED
+M30       Aura GUI Command Center                 PLANNED
+```
 
-## 🤝 Contributing
-
-Contributions follow strict architectural contracts:
-1. Files in `src/` must never use `from src.` import prefixes when imported internally.
-2. Lower architectural layers (`core`) must not import upper layers (`desktop`, `gui`).
-3. Run `python aura.py --verify` prior to submitting pull requests.
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for full details.
+See [roadmap.md](roadmap.md) for detailed milestone specifications.
 
 ---
 
 ## 📄 License
-
-This software is proprietary and confidential — see the [`LICENSE`](LICENSE) file for complete terms:
 
 **AuraAI Proprietary Software License Version 1.0**  
 Copyright (c) 2026 Sreekanta YR. All Rights Reserved.

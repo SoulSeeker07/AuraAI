@@ -78,6 +78,13 @@ class ResearchEngineBackend(BaseBackendAdapter):
         )
 
         try:
+            # Import NetworkPolicyEngine for G7 Security Destination Validation
+            try:
+                from desktop.native.security.network_policy import NetworkPolicyEngine
+                net_policy = NetworkPolicyEngine.get_instance()
+            except Exception:
+                net_policy = None
+
             # ── 1. Search Query ───────────────────────────────────────────────
             if cap_clean in ("research.search", "web_search"):
                 query = args.get("query") or args.get("topic") or goal
@@ -108,25 +115,44 @@ class ResearchEngineBackend(BaseBackendAdapter):
                 is_offline = meta.get("offline_mode", False)
                 prefix = "[Offline / Mock Search] " if is_offline else ""
 
+                # G7 Security: Filter results through NetworkPolicyEngine
+                filtered_results = []
+                for r in results:
+                    if r.url and net_policy is not None:
+                        try:
+                            from desktop.native.security.network_policy import EgressDecision
+                            decision, reason, _ = net_policy.evaluate_destination(r.url, resolve_dns=False)
+                            if decision == EgressDecision.HARD_BLOCKED:
+                                logger.warning(
+                                    f"[ResearchEngineBackend] Blocked forbidden destination '{r.url}' by NetworkPolicy: {reason}"
+                                )
+                                continue
+                        except Exception as eval_err:
+                            logger.debug(f"NetworkPolicy evaluation skipped for '{r.url}': {eval_err}")
+                    filtered_results.append(r)
+
+                results = filtered_results
+
                 if not results:
                     return ExecutionResult(
                         success=False,
                         planner="research",
                         goal=goal,
                         observations=[
-                            f"❌ {prefix}Zero search results found for '{query}'. "
-                            f"Try refining query keywords or specifying target domains."
+                            f"❌ {prefix}Zero valid search results found for '{query}'. "
+                            f"All results may have been invalid or blocked by network policy."
                         ],
-                        data=dict(meta, error=f"Zero search results for '{query}'."),
+                        data=dict(meta, error=f"Zero valid search results for '{query}'."),
                     )
 
                 # Format search result snippets
                 snippets = []
                 serialized_results = []
                 for idx, r in enumerate(results, start=1):
-                    snippets.append(f"{idx}. {r.title} ({r.url})\n   {r.snippet}")
+                    snippets.append(f"[{idx}] {r.title} ({r.url})\n   {r.snippet}")
                     serialized_results.append(
                         {
+                            "key": f"[{idx}]",
                             "title": r.title,
                             "url": r.url,
                             "snippet": r.snippet,
@@ -207,14 +233,17 @@ class ResearchEngineBackend(BaseBackendAdapter):
 
                 summary = synth_result.get("summary", "")
                 citations = synth_result.get("citations", [])
+                claims = synth_result.get("claims", [])
                 conf_score = synth_result.get("confidence_score", 0.0)
 
-                # Format citations block
+                # Format citations block with explicit key [1], [2]
                 cit_lines = []
                 for c in citations:
+                    c_key = c.get("key", "")
                     c_title = c.get("title") or c.get("source", "Source")
                     c_url = c.get("url", "")
-                    cit_lines.append(f"- [{c_title}]({c_url})" if c_url else f"- {c_title}")
+                    prefix = f"{c_key} " if c_key else "- "
+                    cit_lines.append(f"{prefix}[{c_title}]({c_url})" if c_url else f"{prefix}{c_title}")
 
                 cit_block = "\n" + "\n".join(cit_lines) if cit_lines else ""
                 obs_text = (
@@ -231,13 +260,33 @@ class ResearchEngineBackend(BaseBackendAdapter):
                     confidence=conf_score,
                     execution_time_seconds=dur,
                     observations=[obs_text],
+                    artifacts=[
+                        {
+                            "artifact_id": "art_research_synthesis",
+                            "artifact_type": "research",
+                            "content": {
+                                "topic": topic,
+                                "summary": summary,
+                                "claims": claims,
+                                "citations": citations,
+                                "confidence_score": conf_score,
+                            },
+                            "data": {
+                                "topic": topic,
+                                "claims": claims,
+                                "citations": citations,
+                            },
+                        }
+                    ],
                     data={
                         "backend": self.name,
                         "capability": cap_clean,
                         "topic": topic,
                         "summary": summary,
+                        "claims": claims,
                         "citations": citations,
                         "confidence_score": conf_score,
+                        "sources_count": len(citations),
                     },
                 )
 
@@ -247,16 +296,72 @@ class ResearchEngineBackend(BaseBackendAdapter):
                 rounds = int(args.get("rounds", 3))
 
                 report = self.engine.deep_query(question=question, rounds=rounds)
-                summary = report.summary or "Deep research concluded."
-                conf = (
-                    report.key_stats.get("confidence_score", 85.0) / 100.0
-                    if isinstance(report.key_stats, dict)
-                    else 0.85
-                )
+                summary = getattr(report, "summary", None)
+                if not summary and getattr(report, "evidence", None):
+                    summary = " ".join([e.fact for e in report.evidence[:3]])
+                if not summary:
+                    summary = f"Deep research findings concluded for '{question}'."
 
+                conf = getattr(report, "confidence", None)
+                if conf is None and hasattr(report, "key_stats") and isinstance(report.key_stats, dict):
+                    conf = report.key_stats.get("confidence_score", 85.0) / 100.0
+                if conf is None:
+                    conf = 0.85
+
+                duration_val = getattr(report, "duration", None)
+                if duration_val is None:
+                    duration_val = round(datetime.now().timestamp() - start_t, 2)
+
+                # Format report citations and claims
+                report_citations = []
+                raw_cits = getattr(report, "citations", []) or []
+                if not raw_cits and getattr(report, "evidence", None):
+                    from urllib.parse import urlparse
+                    for idx, ev in enumerate(report.evidence[:10], start=1):
+                        ev_url = getattr(ev, "url", "")
+                        ev_domain = urlparse(ev_url).netloc if ev_url else ""
+                        report_citations.append(
+                            {
+                                "key": f"[{idx}]",
+                                "url": ev_url,
+                                "domain": ev_domain,
+                                "title": getattr(ev, "source", f"Source {idx}"),
+                                "snippet": getattr(ev, "fact", ""),
+                                "score": getattr(ev, "score", 85),
+                            }
+                        )
+                else:
+                    for idx, cit in enumerate(raw_cits, start=1):
+                        cit_dict = cit.to_dict() if hasattr(cit, "to_dict") else dict(cit)
+                        if not cit_dict.get("key"):
+                            cit_dict["key"] = f"[{idx}]"
+                        report_citations.append(cit_dict)
+
+                report_claims = []
+                for idx, cit_dict in enumerate(report_citations, start=1):
+                    report_claims.append(
+                        {
+                            "claim_id": f"c{idx}",
+                            "text": cit_dict.get("snippet", summary[:100]),
+                            "citations": [cit_dict.get("key", f"[{idx}]")],
+                            "source_url": cit_dict.get("url", ""),
+                            "domain": cit_dict.get("domain", ""),
+                        }
+                    )
+
+                cit_lines = []
+                for c in report_citations:
+                    c_key = c.get("key", "")
+                    c_title = c.get("title") or c.get("source", "Source")
+                    c_url = c.get("url", "")
+                    prefix = f"{c_key} " if c_key else "- "
+                    cit_lines.append(f"{prefix}[{c_title}]({c_url})" if c_url else f"{prefix}{c_title}")
+
+                cit_block = "\n" + "\n".join(cit_lines) if cit_lines else ""
                 obs_text = (
-                    f"✓ Deep Research Report on '{question}' (Duration: {report.duration:.1f}s):\n\n"
-                    f"{summary}"
+                    f"✓ Deep Research Report on '{question}' (Duration: {duration_val:.1f}s):\n\n"
+                    f"{summary}\n\n"
+                    f"Sources & Citations:{cit_block}"
                 )
 
                 dur = datetime.now().timestamp() - start_t
@@ -267,13 +372,37 @@ class ResearchEngineBackend(BaseBackendAdapter):
                     confidence=conf,
                     execution_time_seconds=dur,
                     observations=[obs_text],
+                    artifacts=[
+                        {
+                            "artifact_id": "art_deep_research",
+                            "artifact_type": "research",
+                            "content": {
+                                "question": question,
+                                "summary": summary,
+                                "claims": report_claims,
+                                "citations": report_citations,
+                            },
+                            "data": {
+                                "question": question,
+                                "claims": report_claims,
+                                "citations": report_citations,
+                            },
+                        }
+                    ],
                     data={
                         "backend": self.name,
                         "capability": cap_clean,
                         "question": question,
-                        "report_summary": summary,
-                        "duration": report.duration,
-                        "sources_count": len(report.results),
+                        "topic": question,
+                        "summary": summary,
+                        "claims": report_claims,
+                        "citations": report_citations,
+                        "duration": duration_val,
+                        "sources_count": len(
+                            getattr(report, "results", None)
+                            or getattr(report, "evidence", None)
+                            or report_citations
+                        ),
                     },
                 )
 

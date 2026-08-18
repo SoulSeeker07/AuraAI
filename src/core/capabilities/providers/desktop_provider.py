@@ -197,6 +197,10 @@ class DesktopCapabilityProvider(ICapabilityProvider):
             )
 
         desc = self._native_registry.get(name)
+        if desc is None and name.startswith("filesystem."):
+            alias_name = name.replace("filesystem.", "file.", 1)
+            desc = self._native_registry.get(alias_name)
+
         if desc is None:
             return None
 
@@ -205,3 +209,4 @@ class DesktopCapabilityProvider(ICapabilityProvider):
             return None
 
         return self._descriptor_to_capability(desc)
+

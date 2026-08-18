@@ -59,10 +59,23 @@ These backends are registered at startup and serve live requests:
 |:---|:---|:---|:---|
 | `DesktopEngineBackend` | `desktop`, `desktop_control`, `app_open/close`, `window.*`, `app.launch` | ✅ ACTIVE | Production-quality Win32 integration |
 | `DefaultNativeDesktopAdapter` | `desktop`, `chat`, `system_info` | ✅ ACTIVE | Routes to DesktopEngineBackend |
+| `InputBackendAdapter` | `input.*`, `keyboard`, `mouse`, `click`, `type`, `hotkey` | ✅ ACTIVE | Win32 SendInput synthetic input simulation |
+| `TerminalBackendAdapter` | `terminal.*`, `shell`, `run_command`, `command` | ✅ ACTIVE | PowerShell execution & session management |
+| `ScreenActionBackendAdapter` | `screen_action`, `screen.*`, `computer_use` | ✅ ACTIVE | Closed-loop vision grounding & action |
+| `NotificationBackendAdapter` | `notification.*`, `notify.*`, `toast`, `alert`, `reminder` | ✅ ACTIVE | Windows toast, dialogs, audio cues |
+| `SchedulerBackendAdapter` | `scheduler.*`, `schedule`, `cron`, `timer` | ✅ ACTIVE | Timers, intervals, and cron automation |
+| `EmailBackendAdapter` | `email.*`, `mail`, `send_email` | ✅ ACTIVE | IMAP/SMTP email automation |
+| `CalendarBackendAdapter` | `calendar.*`, `tasks.*`, `event`, `todo` | ✅ ACTIVE | SQLite event and task manager |
+| `OfficeBackendAdapter` | `office.*`, `document`, `spreadsheet`, `word`, `excel` | ✅ ACTIVE | Office document generation & printing |
+| `DockerBackendAdapter` | `docker.*`, `container`, `compose` | ✅ ACTIVE | Docker container lifecycle automation |
+| `MCPBackendAdapter` | `mcp.*`, `tool_server` | ✅ ACTIVE | Model Context Protocol client |
+| `SettingsBackendAdapter` | `settings.*`, `dark_mode`, `wallpaper` | ✅ ACTIVE | Windows personalization & startup apps |
+| `SoftwareBackendAdapter` | `software.*`, `pip.*`, `npm.*`, `install` | ✅ ACTIVE | Winget, pip, npm package management |
+| `SecurityBackendAdapter` | `security.*`, `privacy.*`, `firewall`, `vpn` | ✅ ACTIVE | Defender, Firewall, temp cleanup |
 | `CodingBackendAdapter` | `coding`, `code.analyze`, `code.edit`, `code.report` | ✅ ACTIVE | Routes to EngineeringManager (Foundation Pass) |
 | `MemoryBackend` | `memory_read`, `memory_write`, `memory.read`, `memory.write` | ✅ ACTIVE | SQLite fact store |
 | `DefaultGeminiResearchAdapter` | `research`, `knowledge.query`, `summarize` | ⚠️ SCAFFOLDED | Stub responses in default path |
-| `PlaywrightBrowserAdapter` | browser capabilities | ⚠️ SCAFFOLDED | Code exists, Playwright setup required |
+| `PlaywrightBrowserAdapter` | `browser.*`, `shopping.*` | ✅ ACTIVE | Playwright DOM & browser engine |
 
 ---
 
@@ -84,6 +97,14 @@ code.report   → EngineeringManager.get_quality_report()
 - Injects live git status, project root, and targeted symbol resolution from `WorldModel`.
 
 **Contract:** Never returns `success=True` unless a file was inspected, generated, modified, or a real verified analysis was returned. Strict `WorkspacePolicy.authorize_write()` gate enforced on all file mutations.
+
+---
+
+## Milestone Status Definitions
+
+- **COMPLETE**: Implemented, connected to the intended live path, and covered by integration/regression verification.
+- **SCAFFOLDED**: Substantial implementation exists, but production live-path integration or verification is incomplete.
+- **PENDING**: Not yet implemented to the milestone's acceptance criteria.
 
 ---
 
@@ -114,17 +135,23 @@ DEPRECATED   — Will be removed.
 | `EngineeringManager` | `src/engineering/engineering_manager.py` | **ACTIVE** | Called by CodingBackend |
 | `CodeEditor` | `src/engineering/code_editor.py` | **ACTIVE** | Called by CodingBackend |
 | `ASTManager` | `src/engineering/ast_manager.py` | **ACTIVE** | Called by CodingBackend |
-| `ResearchEngine` | `src/research/research_engine.py` | **SCAFFOLDED** | Real code. Not on pipeline path. |
-| `VoiceManager` | `src/voice/voice_manager.py` | **SCAFFOLDED** | Infrastructure built. Runtime reliability unverified. |
-| `PlaywrightBrowserAdapter` | `src/core/backends/adapters/browser_backend.py` | **SCAFFOLDED** | Playwright setup required. |
-| `WorldModel` | `src/brain/world_model.py` | **SCAFFOLDED** | Desktop context snapshot. Will become WorldStateProvider in M18. |
+| `CognitiveMemoryEngine` | `src/memory/cognitive_memory.py` | **ACTIVE** | M17 — 8 typed memory stores, recall, decay, consolidation. |
+| `CapabilityRegistry` | `src/core/capabilities/capability_registry.py` | **ACTIVE** | M19 — 5 providers, DAG validation, ActionRisk governance. |
+| `WorldModel` | `src/brain/world_model.py` | **ACTIVE** | M18 — Multi-provider world model with incremental updates. |
+| `AntigravityCodingBridge` | `src/engineering/antigravity_bridge.py` | **ACTIVE** | M20 — Code generation via agy CLI with WorkspacePolicy gate. |
+| `ResearchEngine` | `src/research/research_engine.py` | **ACTIVE** | M21 — Live retrieval, evidence grounding, citation preservation, zero-refetch recall, network security. |
+| `VoiceManager` / `VoiceEngineBackend` | `src/voice/voice_manager.py`, `src/core/backends/adapters/voice_backend.py` | **ACTIVE** | M22 — Live STT/TTS pipeline, circuit breaker, Google/Whisper/Vosk fallback, DevicePrivacyEngine gating. |
+| `VisionManager` / `VisionEngineBackend` | `src/vision/vision_manager.py`, `src/core/backends/adapters/vision_backend.py` | **ACTIVE** | M22 — Screen capture, OCR, UI grounding coordinates, sensitive-window default-BLOCK. |
+| `DevicePrivacyEngine` | `src/desktop/native/security/device_privacy.py` | **ACTIVE** | M22 — Pre-acquisition permission gating for mic, screen, and camera; fail-closed enforcement. |
+| `DaemonRuntime` / `DaemonEngineBackend` | `src/daemon/daemon_runtime.py`, `src/core/backends/adapters/daemon_backend.py` | **ACTIVE** | M23 — Bounded worker pool, scheduler loop, durable states, cancellation, crash recovery. |
+| `AutonomyGovernanceEngine` | `src/daemon/governance.py` | **ACTIVE** | M23 — Parameter-bound, time-bound cryptographic HMAC authorization tokens & risk tiers. |
+| `DaemonStateStore` | `src/daemon/state_store.py` | **ACTIVE** | M23 — SQLite persistence for jobs, idempotency claims, and crash recovery (RECOVERY_REQUIRED). |
+| `PlaywrightBrowserAdapter` | `src/core/backends/adapters/browser_backend.py` | **ACTIVE** | Playwright DOM & browser engine. Capability contracts scaffolded. |
 | `WorkflowEngine` | `src/workflows/workflow_engine.py` | **DISCONNECTED** | Real framework. No active workflows. Will reconnect at M24. |
 | `AgentRuntime` | `src/agents/agent_runtime.py` | **LEGACY** | Superseded by MasterOrchestrator pipeline. Not on live path. |
 | `ReflectionEngine` | `src/brain/executive/reflection.py` | **DISCONNECTED** | Rule-based recovery patterns. Not connected to live result handling. |
 | `LearningEngine` | `src/brain/executive/learning.py` | **DISCONNECTED** | LearnedItem objects created but not persisted to SQLite. |
 | `MultiAgent collaboration` | `src/agents/collaboration.py` | **DISCONNECTED** | Not called from live path. |
-| `CapabilityRegistry` | — | **MISSING** | M19 deliverable. Does not exist yet. |
-| `MCP Client` | — | **MISSING** | M23 deliverable. |
 | `Event Runtime` | — | **MISSING** | M24 deliverable. |
 | `Expert Systems` | — | **MISSING** | M25 deliverable. |
 
@@ -145,44 +172,68 @@ should_parallel = any(w in goal_lower for w in ["and", ",", "while", ...])
 - Assigns `PlannerRole` based on keywords ("code" → CODING, "search" → RESEARCH)
 - Does NOT use an LLM for task decomposition
 
-Both will be replaced / augmented with Memory + World Model context in M17/M18.
+Both now have access to Memory + World Model context (M17/M18 complete), but the core decomposition logic remains heuristic.
 
 ---
 
-## What Memory Does and Does Not Do
+## Memory System (M17 Complete)
 
-**Does:**
+The `Memory.py` facade wraps `CognitiveMemoryEngine` which provides:
+
+**Foundation (always active):**
 - Store `(category, key, value)` facts in SQLite
 - Extract facts from conversation text via regex patterns
 - Recall facts by category or keyword search
 - Inject recalled facts into Stage 1 of the pipeline
 
-**Does NOT:**
-- Distinguish Working / Short-Term / Long-Term / Episodic / Semantic memory types
-- Score memories by importance or recency
-- Apply decay to stale memories
-- Consolidate duplicate memories
-- Isolate memory per project
-
-M17 (Cognitive Memory) builds on this SQLite foundation to add all of the above.
+**Cognitive Memory (M17 — all active):**
+- 8 typed memory stores: Working, Short-Term, Long-Term, Episodic, Semantic, Procedural, Preference, Project
+- Multi-factor recall scoring by importance + recency
+- Decay engine for stale memory retention
+- Consolidation engine for duplicate merging
+- Project-scoped memory isolation per project root path
 
 ---
 
-## World Model Current State
+## World Model (M18 Complete)
 
-`src/brain/world_model.py` — 177 lines.
+`src/brain/world_model.py` — multi-provider environment model.
 
-**Currently tracks:**
-```python
-focused_window    # active OS window title
-focused_pid       # process ID
-applications      # running process list (up to 20)
-git_branch        # current branch via subprocess("git branch --show-current")
-is_live           # whether snapshot_provider is active
+**Provider slots (10 defined, active providers wired):**
+```text
+DesktopProvider        — active windows, screen state
+RepositoryProvider     — git repos, branches, commits, diffs
+KnowledgeGraphProvider — concepts, entities, relationships
+DependencyProvider     — package and module dependencies
+SymbolGraphProvider    — classes, functions, call graphs
+MemoryProvider         — Cognitive Memory interface (M17)
+ResearchProvider       — research results and citations
+BrowserProvider        — open tabs, visited pages
+NetworkProvider        — local services, ports, processes
+CalendarProvider       — events, deadlines, meetings
 ```
 
-This is a **desktop context snapshot** (essentially M04 Workspace Awareness).
-It becomes `WorldStateProvider` — the first provider — when M18 (World Model) is built.
+**APIs:** `WorldModel.query(entity)`, `WorldModel.snapshot()`, incremental state updates.
+
+---
+
+## Security Subsystem & Cryptographic Authorization (Phases 1–4 Complete)
+
+`src/desktop/native/security/` — full kernel, network, and cryptographic security boundary.
+
+**Components:**
+```text
+CryptographicApprovalAuthority — Central process authorization with HMAC-SHA256 parameter-bound tickets
+NetworkPolicyEngine            — 3-tier egress policy, hop-by-hop redirect verification & DNS rebinding checks
+WindowsEventAuditSink          — OS-managed Windows Event Log sink emitting canonical 11-field audit stream
+AuditWriterService             — Dedicated out-of-process worker maintaining monotonic sequence and hash-chain authority
+DPAPIKeyManager                — Windows DPAPI master secret encryption at rest + HKDF-SHA256 process key derivation
+```
+
+**Boundary Invariants:**
+1. All host-context package managers (`pip`, `npm`, `winget`) enforce strict registry pinning and environment variable isolation.
+2. Production audit submission operates on a fail-closed policy (`allow_embedded_fallback=False`), barring silent downgrades to unverified local files.
+3. Full 9-module test suite passes 150/150 tests.
 
 ---
 
@@ -203,4 +254,4 @@ It becomes `WorldStateProvider` — the first provider — when M18 (World Model
 
 ---
 
-*Generated: August 2026 — Foundation Wiring & Truth Pass*
+*Last Updated: August 18, 2026*

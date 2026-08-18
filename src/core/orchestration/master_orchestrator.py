@@ -667,6 +667,46 @@ class MasterOrchestrator:
             )
             return self.result_merger.merge_session(session, success=False)
 
+        # Stage 2.8: Direct Fulfillment from Memory (Zero-Refetch Invariant - G5)
+        if decision.can_answer_from_memory:
+            ranked_mems = session.memory_context.get("ranked_cognitive_memories") or []
+            sem_mems = [
+                m for m in ranked_mems if isinstance(m, dict) and m.get("type") == "semantic"
+            ]
+            recalled_facts = session.memory_context.get("recalled_facts") or []
+
+            answer_text = ""
+            citations = []
+            if sem_mems:
+                best_mem = sem_mems[0]
+                answer_text = f"{best_mem.get('content', '')}"
+                citations = best_mem.get("metadata", {}).get("citations", [])
+            elif recalled_facts:
+                answer_text = f"From memory: {'; '.join(recalled_facts)}"
+
+            if answer_text:
+                logger.info(
+                    f"[MasterOrchestrator] Direct fulfillment from memory (Zero-Refetch): {answer_text[:60]}"
+                )
+                res = ExecutionResult(
+                    success=True,
+                    planner="memory",
+                    goal=goal_text,
+                    confidence=1.0,
+                    observations=[answer_text],
+                    data={
+                        "backend": "memory",
+                        "capability": "memory_read",
+                        "answer": answer_text,
+                        "citations": citations,
+                        "answered_from_memory": True,
+                        "zero_refetch": True,
+                    },
+                )
+                self._write_memory(session, res)
+                self._last_result = res
+                return res
+
         # Stage 3: Task Graph Decomposition
         t2 = datetime.now().timestamp()
         task_graph = self.decomposer.decompose(goal_text, decision=decision)

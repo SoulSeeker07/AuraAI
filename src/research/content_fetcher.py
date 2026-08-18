@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from src.desktop.native.security.network_policy import SafeSession
 from .models import Document
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,8 @@ class ContentFetcher:
         self.session = self._create_session()
 
     def _create_session(self):
-        """Create a requests session with retry logic."""
-        session = requests.Session()
+        """Create a safe requests session with retry logic and network policy enforcement."""
+        session = SafeSession() if SafeSession is not None else requests.Session()
 
         # Configure retry strategy
         retry_strategy = Retry(
@@ -85,7 +86,7 @@ class ContentFetcher:
                 url, response.text, response.headers.get("Content-Type", "")
             )
 
-        except requests.RequestException as e:
+        except (requests.RequestException, PermissionError) as e:
             logger.error(f"Failed to fetch {url}: {e}")
             return None
 

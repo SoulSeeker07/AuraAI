@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from .cache_manager import CacheManager
-from .citation_builder import Citation
 from .content_fetcher import ContentFetcher
 from .metrics import MetricsCollector
 from .models import (
     MIN_SYNTHESIS_CONFIDENCE_THRESHOLD,
+    Citation,
     Document,
     Evidence,
     ResearchConfig,
@@ -192,6 +192,9 @@ class ResearchEngine:
         # Create metrics collector
         metrics = MetricsCollector(query=query)
 
+        # Pop non-SearchQuery arguments
+        max_iterations = kwargs.pop("max_iterations", 3)
+
         # Create search query
         search_mode = mode or self.config.default_mode
         query_obj = SearchQuery(query_text=query, mode=search_mode, **kwargs)
@@ -209,7 +212,9 @@ class ResearchEngine:
         metrics.start_timer("planning")
 
         # Execute research using the new planner + reasoning layer
-        context = self._execute_research(query_obj, metrics_collector=metrics)
+        context = self._execute_research(
+            query_obj, max_iterations=max_iterations, metrics_collector=metrics
+        )
 
         # Stop timing
         metrics.stop_timer("planning")
@@ -627,20 +632,30 @@ class ResearchEngine:
         """
         citations = []
 
+        from urllib.parse import urlparse
+
         for i, result in enumerate(results[:10], start=1):  # Top 10 sources
             trust_level_str = (
                 result.trust_level.value
                 if isinstance(result.trust_level, SourceTrustLevel)
                 else str(result.trust_level)
             )
+            domain = ""
+            if result.url:
+                try:
+                    domain = urlparse(result.url).netloc
+                except Exception:
+                    domain = ""
+
             citation = Citation(
-                id=i,
-                source=result.source,
+                key=f"[{i}]",
+                domain=domain,
                 title=result.title,
                 url=result.url,
                 trust_level=trust_level_str,
-                confidence=result.score / 100.0,  # score is 0-100, Citation wants 0-1
-                evidence_ids=[i],
+                score=result.score,
+                snippet=result.snippet,
+                evidence=result.snippet,
             )
             citations.append(citation)
 
@@ -1049,45 +1064,51 @@ class ResearchEngine:
                 logger.info(f"  - {info}")
         else:
             logger.info("Current information is sufficient")
-        logger.info()
+        logger.info("")
 
         # Planner
         logger.info("Planner")
         logger.info("STANDARD")
-        logger.info()
+        logger.info("")
 
         # Providers
         logger.info("Providers")
         if self.search_manager and self.search_manager.providers:
-            for provider_name in self.search_manager.providers.keys():
-                logger.info(f"  ✓ {provider_name}")
+            prov_list = (
+                self.search_manager.providers
+                if isinstance(self.search_manager.providers, list)
+                else list(self.search_manager.providers.values())
+            )
+            for p in prov_list:
+                p_name = getattr(p, "name", str(p))
+                logger.info(f"  ✓ {p_name}")
         else:
             logger.info("  (No providers available)")
-        logger.info()
+        logger.info("")
 
         # Iterations
         logger.info("Iterations")
         logger.info(f"{iteration}")
-        logger.info()
+        logger.info("")
 
         # Confidence
         logger.info("Confidence")
         logger.info(f"{final_context.confidence:.2f}")
-        logger.info()
+        logger.info("")
 
         # Evidence distribution
         logger.info("Strong Evidence")
         logger.info(f"{len(reasoning_result.strong_evidence)}")
-        logger.info()
+        logger.info("")
 
         logger.info("Weak Evidence")
         logger.info(f"{len(reasoning_result.weak_evidence)}")
-        logger.info()
+        logger.info("")
 
         # Conflicts
         logger.info("Conflicts")
         logger.info(f"{len(reasoning_result.conflicts)}")
-        logger.info()
+        logger.info("")
 
         # Stopped because
         logger.info("Stopped Because")
@@ -1106,7 +1127,7 @@ class ResearchEngine:
 
         for reason in stop_reason:
             logger.info(f"  - {reason}")
-        logger.info()
+        logger.info("")
 
         # Execution time
         logger.info("Execution Time")
@@ -1266,10 +1287,29 @@ class ResearchEngine:
                 ),
             }
 
+        # Extract structured claims mapped to citation keys (G2 Evidence Grounding)
+        claims = []
+        for i, r in enumerate(normalized_results[:10], start=1):
+            cit_key = f"[{i}]"
+            claim_text = r.snippet.strip() if r.snippet else r.title
+            if "." in claim_text:
+                claim_text = claim_text.split(".")[0].strip() + "."
+            domain_val = citations[i - 1].domain if i - 1 < len(citations) else ""
+            claims.append(
+                {
+                    "claim_id": f"c{i}",
+                    "text": claim_text,
+                    "citations": [cit_key],
+                    "source_url": r.url,
+                    "domain": domain_val,
+                }
+            )
+
         return {
             "success": True,
             "topic": topic_text,
             "summary": summary,
+            "claims": claims,
             "citations": [c.to_dict() if hasattr(c, "to_dict") else vars(c) for c in citations],
             "confidence_score": avg_score,
             "sources_count": len(normalized_results),

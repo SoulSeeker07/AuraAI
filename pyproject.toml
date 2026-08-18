@@ -90,7 +90,7 @@ warn_return_any = false
 disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "union-attr", "var-annotated", "call-arg", "name-defined", "override", "str-bytes-safe", "valid-type", "operator", "dict-item", "index", "import-untyped", "annotation-unchecked", "return-value", "no-redef", "truthy-function", "type-var", "has-type", "used-before-def", "list-item", "unused-coroutine", "call-overload"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib -m 'not slow'"
 markers = [

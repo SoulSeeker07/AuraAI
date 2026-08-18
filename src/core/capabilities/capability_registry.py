@@ -18,10 +18,14 @@ from core.capabilities.providers.browser_provider import BrowserCapabilityProvid
 from core.capabilities.providers.coding_provider import CodingCapabilityProvider
 from core.capabilities.providers.desktop_provider import DesktopCapabilityProvider
 from core.capabilities.providers.memory_provider import MemoryCapabilityProvider
+from core.capabilities.providers.multimodal_provider import MultimodalCapabilityProvider
 from core.capabilities.providers.research_provider import ResearchCapabilityProvider
 from core.orchestration.autonomy_mode import ActionRisk
 
 logger = logging.getLogger(__name__)
+
+# Backward-compatibility alias
+CapabilityDefinition = Capability
 
 
 class CapabilityRegistry:
@@ -57,11 +61,14 @@ class CapabilityRegistry:
 
     def _register_default_providers(self) -> None:
         """Register core domain capability providers."""
+        from .providers.daemon_provider import DaemonCapabilityProvider
         self.register_provider(DesktopCapabilityProvider())
         self.register_provider(CodingCapabilityProvider())
         self.register_provider(BrowserCapabilityProvider())
         self.register_provider(MemoryCapabilityProvider())
         self.register_provider(ResearchCapabilityProvider())
+        self.register_provider(MultimodalCapabilityProvider())
+        self.register_provider(DaemonCapabilityProvider())
 
     def register_provider(self, provider: ICapabilityProvider) -> None:
         """Register a domain capability provider."""

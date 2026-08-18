@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-08-18T16:21:23.970142+00:00",
+  "release": "v0.27.0-autonomous-daemon",
+  "environment": {
+    "os": "Windows-10-10.0.26300-SP0",
+    "python": "3.11.9",
+    "processor": "Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "node": "Sharma"
+  },
+  "pillars": {
+    "Pillar 1: Process Startup & Registries": {
+      "passed": true,
+      "timestamp": "2026-08-18T16:21:28.046600+00:00",
+      "details": {
+        "backend_adapters_count": 23,
+        "capabilities_count": 244,
+        "providers_count": 7,
+        "orchestrator_ready": true,
+        "daemon_runtime_running": true,
+        "governance_engine_ready": true
+      }
+    },
+    "Pillar 2: Real Voice Loop": {
+      "passed": true,
+      "timestamp": "2026-08-18T16:21:30.595512+00:00",
+      "details": {
+        "microphone_evaluation_allowed": true,
+        "microphone_permission_state": "allowed",
+        "tts_synthesis_initiated": true,
+        "orchestrator_voice_turn_success": true,
+        "orchestrator_planner": "memory"
+      }
+    },
+    "Pillar 3: Real Screen Grounding": {
+      "passed": true,
+      "timestamp": "2026-08-18T16:21:30.683316+00:00",
+      "details": {
+        "screen_capture_allowed": true,
+        "physical_display_geometry": "1920x1080",
+        "metrics_detected": true,
+        "grounding_orchestration_success": true,
+        "grounding_data_present": false
+      }
+    },
+    "Pillar 4: Research -> Memory -> Zero-Refetch": {
+      "passed": true,
+      "timestamp": "2026-08-18T16:21:30.857940+00:00",
+      "details": {
+        "research_query_success": true,
+        "citations_extracted": 1,
+        "memory_recall_query_success": true,
+        "zero_refetch_verified": true,
+        "provider_calls_count": 1
+      }
+    },
+    "Pillar 5: Daemon Crash Recovery": {
+      "passed": true,
+      "timestamp": "2026-08-18T16:21:30.892701+00:00",
+      "details": {
+        "pre_crash_status": "running",
+        "post_restart_recovered_count": 1,
+        "post_restart_status": "recovery_required",
+        "crash_error_reason": "INTERRUPTED_BY_CRASH",
+        "duplicate_idempotency_blocked": true
+      }
+    }
+  },
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  }
+}

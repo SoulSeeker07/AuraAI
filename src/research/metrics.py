@@ -162,6 +162,11 @@ class MetricsCollector:
             + self.metrics.llm_ms
         )
 
+    @property
+    def total_ms(self) -> float:
+        """Total elapsed milliseconds from metrics."""
+        return self.metrics.total_ms
+
     def print_summary(self):
         """Print a formatted summary of metrics."""
         self.metrics.print_summary()

@@ -67,12 +67,72 @@ class ResultMerger:
             obs_texts = task_obs if task_obs else user_facing_sys_obs
         artifacts_dict = [art.to_dict() for art in session.artifacts]
 
+        # Extract citations and claims from artifacts or observations if present (G3 Invariant)
+        extracted_citations: list[dict[str, Any]] = []
+        extracted_claims: list[dict[str, Any]] = []
+        extracted_topic: str = session.goal
+        extracted_summary: str = ""
+        extracted_grounding: list[dict[str, Any]] = []
+        extracted_transcripts: list[dict[str, Any]] = []
+        extracted_captures: list[dict[str, Any]] = []
+
+        for art in session.artifacts:
+            art_data = getattr(art, "content", None)
+            if isinstance(art_data, dict):
+                if art_data.get("citations"):
+                    extracted_citations.extend(art_data["citations"])
+                if art_data.get("claims"):
+                    extracted_claims.extend(art_data["claims"])
+                if art_data.get("summary"):
+                    extracted_summary = art_data["summary"]
+                if art_data.get("topic"):
+                    extracted_topic = art_data["topic"]
+                if art_data.get("grounding") or getattr(art, "artifact_type", "") == "ui_grounding":
+                    extracted_grounding.append(art_data.get("grounding") or art_data)
+                if art_data.get("transcript") or getattr(art, "artifact_type", "") == "voice_transcript":
+                    extracted_transcripts.append(art_data)
+                if art_data.get("capture_id") or getattr(art, "artifact_type", "") in ("vision_capture", "vision_perception"):
+                    extracted_captures.append(art_data)
+
         avg_confidence = (
             sum(obs.confidence for obs in session.observations)
             / len(session.observations)
             if session.observations
             else 1.0
         )
+
+        res_data: dict[str, Any] = {
+            "session_id": session.session_id,
+            "metrics": session.metrics,
+            "budget": session.budget.to_dict(),
+            "system_observations": sys_obs,
+        }
+
+        if extracted_citations:
+            res_data["citations"] = extracted_citations
+        if extracted_claims:
+            res_data["claims"] = extracted_claims
+        if extracted_summary:
+            res_data["summary"] = extracted_summary
+        if extracted_topic:
+            res_data["topic"] = extracted_topic
+        if extracted_grounding:
+            res_data["grounding"] = extracted_grounding[0] if len(extracted_grounding) == 1 else extracted_grounding
+        if extracted_transcripts:
+            res_data["transcripts"] = extracted_transcripts
+        if extracted_captures:
+            res_data["vision_captures"] = extracted_captures
+
+        # Extract daemon and scheduler keys if present in any subtask data
+        for art in session.artifacts:
+            art_data = getattr(art, "content", None)
+            if isinstance(art_data, dict):
+                if "job_id" in art_data and "job_id" not in res_data:
+                    res_data["job_id"] = art_data["job_id"]
+                if "run_id" in art_data and "run_id" not in res_data:
+                    res_data["run_id"] = art_data["run_id"]
+                if "jobs" in art_data and "jobs" not in res_data:
+                    res_data["jobs"] = art_data["jobs"]
 
         return ExecutionResult(
             success=success,
@@ -82,12 +142,7 @@ class ResultMerger:
             trace=session.execution_trace,
             artifacts=artifacts_dict,
             observations=obs_texts,
-            data={
-                "session_id": session.session_id,
-                "metrics": session.metrics,
-                "budget": session.budget.to_dict(),
-                "system_observations": sys_obs,
-            },
+            data=res_data,
         )
 
     def merge(self, results: list[ExecutionResult], goal: str) -> ExecutionResult:
@@ -116,6 +171,8 @@ class ResultMerger:
         merged_artifacts: list[dict[str, Any]] = []
         merged_memory_updates: dict[str, Any] = {}
         merged_data: dict[str, Any] = {}
+        aggregated_citations: list[dict[str, Any]] = []
+        aggregated_claims: list[dict[str, Any]] = []
 
         merged_trace = ExecutionTrace(
             trace_id=f"merged_{uuid.uuid4().hex[:8]}",
@@ -130,6 +187,12 @@ class ResultMerger:
             merged_memory_updates.update(r.memory_updates)
             merged_data[r.planner] = r.data
 
+            if isinstance(r.data, dict):
+                if r.data.get("citations"):
+                    aggregated_citations.extend(r.data["citations"])
+                if r.data.get("claims"):
+                    aggregated_claims.extend(r.data["claims"])
+
             if r.trace:
                 for node in r.trace.nodes:
                     merged_trace.add_node(
@@ -138,6 +201,11 @@ class ResultMerger:
                         duration_ms=node.duration_ms,
                         details=node.details,
                     )
+
+        if aggregated_citations:
+            merged_data["citations"] = aggregated_citations
+        if aggregated_claims:
+            merged_data["claims"] = aggregated_claims
 
         merged_trace.complete(success=all_success, score=avg_confidence * 100.0)
 

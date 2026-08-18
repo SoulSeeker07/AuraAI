@@ -79,7 +79,9 @@ class Citation:
         url: Source URL
         title: Source title
         trust_level: Trust level of the source
-        score: Trust score (1-5)
+        score: int | float
+        key: Citation key (e.g. '[1]', '[2]')
+        domain: Extracted source domain (e.g. 'python.org')
         author: Author if available
         date: Publication date
         snippet: Relevant snippet
@@ -89,7 +91,9 @@ class Citation:
     url: str
     title: str
     trust_level: SourceTrustLevel
-    score: int
+    score: int | float = 80
+    key: str = ""
+    domain: str = ""
     author: str | None = None
     date: datetime | None = None
     snippet: str | None = None
@@ -98,9 +102,11 @@ class Citation:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
+            "key": self.key,
             "url": self.url,
+            "domain": self.domain,
             "title": self.title,
-            "trust_level": self.trust_level.value,
+            "trust_level": self.trust_level.value if isinstance(self.trust_level, SourceTrustLevel) else str(self.trust_level),
             "score": self.score,
             "author": self.author,
             "date": self.date.isoformat() if self.date else None,
@@ -113,11 +119,21 @@ class Citation:
         """Create from dictionary."""
         date_str = data.get("date")
         date = datetime.fromisoformat(date_str) if date_str else None
+        trust = data.get("trust_level", "unknown")
+        if isinstance(trust, str):
+            try:
+                trust_lvl = SourceTrustLevel(trust)
+            except ValueError:
+                trust_lvl = SourceTrustLevel.UNKNOWN
+        else:
+            trust_lvl = trust
         return cls(
-            url=data["url"],
-            title=data["title"],
-            trust_level=SourceTrustLevel(data["trust_level"]),
-            score=data["score"],
+            key=data.get("key", ""),
+            url=data.get("url", ""),
+            domain=data.get("domain", ""),
+            title=data.get("title", ""),
+            trust_level=trust_lvl,
+            score=data.get("score", 80),
             author=data.get("author"),
             date=date,
             snippet=data.get("snippet"),

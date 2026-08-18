@@ -42,10 +42,11 @@ class Capability:
 
     # Core Identity & Domain
     name: str  # e.g. "power.battery", "code.analyze", "browser.navigate"
-    domain: str  # "desktop", "coding", "browser", "memory", "research", "mcp"
-    description: str
+    domain: str = "custom"  # "desktop", "coding", "browser", "memory", "research", "mcp", "custom"
+    description: str = ""
     category: str = "general"
     version: str = "1.0"
+
 
     # Typed I/O Contracts (JSONSchema)
     input_schema: dict[str, Any] = field(default_factory=dict)
