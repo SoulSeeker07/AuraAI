@@ -22,7 +22,7 @@ except ImportError:
     pass
 
 from src.voice.continuous_loop import ContinuousVoiceLoop, VoiceState
-from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
+from core.aura_core import AuraCore
 from src.brain.execution_coordinator import CoordinationResult
 from src.voice.voice_manager import VoiceManager, ConversationState
 
@@ -36,11 +36,8 @@ def main():
     print(" AURA LEVEL 3: HEADLESS REAL ENGINE INTEGRATION")
     print("==================================================")
 
-    # Boot OS Runtime (no async tasks to prevent event loop crash)
-    os_runtime = PersonalOSRuntime.get_instance()
-    os_runtime.event_runtime.start = AsyncMock()
-    with patch('asyncio.create_task'):
-        os_runtime.boot()
+    # Instantiate AuraCore directly
+    aura_core = AuraCore({"groq_model": "mock", "voice_enabled": False})
 
     # Initialize Voice Manager
     print("\n[1/5] Initializing Voice Manager (STT + TTS)...")
@@ -77,7 +74,7 @@ def main():
         print_metric("TTS Initialization", f"{t_tts_init:.3f}s")
 
         # Inject into FSM and bind callbacks
-        loop = os_runtime.voice_loop
+        loop = aura_core.voice_loop
         loop.voice_manager = vm
         vm.on_stt_result = loop._on_stt_result
         vm.on_tts_complete = loop._on_tts_complete
@@ -136,8 +133,8 @@ def main():
             step_results=[],
             data={}
         )
-        original_coordinate = os_runtime.coordinator.coordinate
-        os_runtime.coordinator.coordinate = mock_coordinate
+        original_coordinate = aura_core.coordinator.coordinate
+        aura_core.coordinator.coordinate = mock_coordinate
 
         # Start FSM
         loop.start()
@@ -260,7 +257,7 @@ def main():
             print(f"  [Fail] Expected IDLE after voice error, got {loop.state.name}.")
 
         loop.stop()
-        os_runtime.coordinator.coordinate = original_coordinate
+        aura_core.coordinator.coordinate = original_coordinate
         
     print("\n==================================================")
     print(" LEVEL 3 HEADLESS INTEGRATION TEST COMPLETE")

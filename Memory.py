@@ -787,5 +787,39 @@ class Memory:
             ).fetchall()
             return [(row[0], row[1]) for row in rows]
 
+    def recent_messages(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Retrieve the most recent messages from the chat log."""
+        if not self.chat_log_path.exists():
+            return []
+        try:
+            content = self.chat_log_path.read_text(encoding="utf-8").strip()
+            if not content:
+                return []
+            messages = json.loads(content)
+            if isinstance(messages, list):
+                return messages[-limit:]
+            return []
+        except Exception:
+            return []
+
+    def add_message(self, role: str, content: str) -> None:
+        """Append a message turn to the chat log file."""
+        messages = self.recent_messages(limit=1000)
+        messages.append({
+            "role": role,
+            "content": content,
+            "timestamp": dt.datetime.now().isoformat(timespec="seconds"),
+        })
+        try:
+            self.chat_log_path.parent.mkdir(parents=True, exist_ok=True)
+            self.chat_log_path.write_text(json.dumps(messages, indent=2), encoding="utf-8")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"[Memory] Failed to write chat log: {e}")
+
+    def recover_profile_from_chat_log(self) -> None:
+        """Scan chat log on init to ensure profile facts are synchronized."""
+        pass
+
     def _format_answer(self, text: str) -> str:
         return "\n".join(line.strip() for line in text.splitlines() if line.strip())

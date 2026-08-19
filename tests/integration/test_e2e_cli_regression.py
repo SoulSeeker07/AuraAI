@@ -1,92 +1,77 @@
 import pytest
-import asyncio
-from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
-from src.brain.aca.engine_interface import EngineRegistry
-from src.core.orchestration.reference_resolver import ReferenceResolver
+from core.nlu.nlu_engine import NLUEngine
+from core.orchestration.reference_resolver import ReferenceResolver
+from Memory import Memory
 
-class MockMemoryForRuntime:
-    def __init__(self):
-        self.messages = []
-    
-    def upsert_fact(self, *args, **kwargs):
-        pass
-        
-    def recent_messages(self, limit=5):
-        return self.messages[-limit:]
 
 @pytest.fixture
-def personal_os_runtime(monkeypatch):
-    # Ensure PersonalOSRuntime doesn't start infinite loops in test
-    runtime = PersonalOSRuntime.get_instance()
-    
-    # Mock memory for ReferenceResolver context
-    mem = MockMemoryForRuntime()
-    import Memory
-    monkeypatch.setattr(Memory, "Memory", lambda *args, **kwargs: mem)
-    
-    # Provide access to the mock memory to modify it during tests
-    runtime._mock_memory = mem
-    return runtime
+def test_memory_instance(tmp_path):
+    db_path = tmp_path / "test_memory.db"
+    chat_log = tmp_path / "ChatLog.json"
+    return Memory(db_path=str(db_path), chat_log_path=str(chat_log))
+
 
 @pytest.mark.asyncio
-async def test_end_to_end_3_turn_regression(personal_os_runtime):
+async def test_end_to_end_3_turn_regression(test_memory_instance, monkeypatch):
     """
     Test the specific 3-turn regression identified by the user:
     Turn 1: current dollar to rupees conversion rate
     Turn 2: as of today?
     Turn 3: as of today whats the convertion rate of doller to inr
     """
+    nlu_engine = NLUEngine()
+
     # Turn 1
     t1_text = "current dollar to rupees conversion rate"
-    personal_os_runtime._mock_memory.messages.append({"role": "user", "content": t1_text})
-    
-    # Since PersonalOSRuntime currently skips direct intent generation in this stub,
-    # we just want to ensure it passes through the pipeline cleanly and the resolver works.
-    resolved_1, meta_1 = ReferenceResolver.resolve_references(t1_text, context={"memory_context": {}})
-    
-    # Turn 2
+    test_memory_instance.add_message("user", t1_text)
+
+    # Monkeypatch Memory instantiation in ReferenceResolver to use test_memory_instance
+    import Memory as MemModule
+    monkeypatch.setattr(MemModule, "Memory", lambda *args, **kwargs: test_memory_instance)
+
+    resolved_1, meta_1 = ReferenceResolver.resolve_references(t1_text, context={"world_state": {}})
+
+    # Turn 2: resolves against conversational memory
     t2_text = "as of today?"
-    resolved_2, meta_2 = ReferenceResolver.resolve_references(t2_text, context={"memory_context": {}})
-    
+    resolved_2, meta_2 = ReferenceResolver.resolve_references(t2_text, context={"world_state": {}})
+
     assert meta_2["resolved"] is True
     # The 'current' word is stripped to prevent semantic conflict with 'today'
     assert "dollar to rupees conversion rate as of today" in resolved_2
-    
+
     # Turn 3
     t3_text = "as of today whats the convertion rate of doller to inr"
-    nlu_res = personal_os_runtime.nlu_engine.process(t3_text)
-    
+    nlu_res = nlu_engine.process(t3_text)
+
     # Normalization check
     assert "conversion" in nlu_res.normalized_text.lower()
     assert "dollar" in nlu_res.normalized_text.lower()
 
+
 @pytest.mark.asyncio
-async def test_end_to_end_boundary_queries(personal_os_runtime):
+async def test_end_to_end_boundary_queries(test_memory_instance):
     """
     Test the boundaries between local_time and research/exchange rate routing.
     """
     from src.brain.intent_router import IntentRouter
-    router = IntentRouter(personal_os_runtime._mock_memory)
-    
+    router = IntentRouter(test_memory_instance)
+
     queries = [
         ("what time is it?", "local_time"),
         ("what is today's date?", "local_time"),
         ("what is the current time in London?", "local_time"),
-        ("what is today's USD to INR exchange rate?", "research"), # research via ResearchDecision or web_search
+        ("what is today's USD to INR exchange rate?", "research"),
         ("as of today, what's the USD to INR exchange rate?", "research"),
     ]
-    
+
     for query, expected_intent in queries:
-        # We test intent routing first
         intent = router.detect(query)
-        
+
         if expected_intent == "local_time":
             assert intent.name == "local_time", f"Expected local_time for '{query}', got '{intent.name}'"
         else:
-            # If it's research, it shouldn't be local_time
             assert intent.name != "local_time", f"Expected NOT local_time for '{query}'"
-            
-            # Check DecisionEngine
+
             from src.core.orchestration.decision_engine import DecisionEngine
             engine = DecisionEngine()
             out = engine.evaluate(query)
