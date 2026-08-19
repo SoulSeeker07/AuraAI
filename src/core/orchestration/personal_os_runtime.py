@@ -23,7 +23,7 @@ from brain.aca.engine_interface import EngineRegistry
 from brain.execution_coordinator import ExecutionCoordinator, CoordinationResult
 from brain.goal_verifier import GoalVerifier
 from experts import DomainExpertRegistry, DomainType
-from autonomy.event_runtime import EventRuntime
+from autonomy.trigger_scheduler import TriggerScheduler
 from autonomy.trigger_registry import TriggerRegistry
 from brain.executive.dmm import DecisionMakingModule
 from brain.executive.execution_map import ExecutionMap
@@ -98,7 +98,7 @@ class PersonalOSRuntime:
         self.provider_manager = ProviderManager()
         self.memory_manager = MemoryManager(provider_manager=self.provider_manager)
         
-        self.event_runtime = EventRuntime(
+        self.trigger_scheduler = TriggerScheduler(
             registry=self.trigger_registry,
             coordinator=self.coordinator,
             policy=self.policy,
@@ -121,12 +121,12 @@ class PersonalOSRuntime:
     @classmethod
     def reset_instance(cls) -> None:
         if cls._instance is not None:
-            if cls._instance.event_runtime._running:
+            if cls._instance.trigger_scheduler._running:
                 try:
                     loop = asyncio.get_running_loop()
-                    loop.create_task(cls._instance.event_runtime.stop())
+                    loop.create_task(cls._instance.trigger_scheduler.stop())
                 except RuntimeError:
-                    asyncio.run(cls._instance.event_runtime.stop())
+                    asyncio.run(cls._instance.trigger_scheduler.stop())
             if cls._instance.voice_loop._running:
                 cls._instance.voice_loop.stop()
                 # M2: trigger session-close consolidation (idempotent)
@@ -143,14 +143,13 @@ class PersonalOSRuntime:
 
         logger.info("Booting Aura Personal Operating System Runtime...")
         self.voice_loop.start()
-        self.event_runtime._running = True
-        asyncio.create_task(self.event_runtime.start())
+        asyncio.create_task(self.trigger_scheduler.start())
 
         self._booted = True
         return {
             "status": "BOOTED",
             "voice_loop_active": self.voice_loop._running,
-            "event_runtime_active": True,
+            "trigger_scheduler_active": True,
             "registered_engines": list(self.engine_registry._engines.keys()),
             "registered_experts": list(self.expert_registry._experts.keys()),
             "subsystems_ready": True,

@@ -34,6 +34,7 @@ from .policy_gate import (
     PolicyDecisionType,
 )
 from .trigger_registry import TriggerRegistry
+from .trigger_scheduler import TriggerScheduler
 from .watchers import FilesystemWatcher, ProcessMonitor
 
 __all__ = [
@@ -57,9 +58,11 @@ __all__ = [
     "compute_semantic_fingerprint",
     "normalize_resource_key",
     "TriggerRegistry",
+    "TriggerScheduler",
     "Trigger",
     "TriggerState",
     "TriggerType",
     "ConcurrencyPolicy",
     "EventProvenance",
 ]
+

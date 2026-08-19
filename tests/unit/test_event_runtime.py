@@ -1,5 +1,5 @@
 """
-Unit Tests for Milestone 24: Event Runtime & Proactive Autonomy
+Unit Tests for Milestone 24: TriggerScheduler & Proactive Autonomy
 Location: tests/unit/test_event_runtime.py
 """
 
@@ -13,7 +13,7 @@ import tempfile
 
 sys.path.insert(0, os_import.path.abspath("src"))
 
-from autonomy.event_runtime import EventRuntime
+from autonomy.trigger_scheduler import TriggerScheduler
 from autonomy.models import ConcurrencyPolicy, EventProvenance, Trigger, TriggerState, TriggerType
 from autonomy.trigger_registry import TriggerRegistry
 from brain.execution_coordinator import ExecutionCoordinator
@@ -32,7 +32,7 @@ def temp_storage():
 async def test_g1_scheduled_trigger(temp_storage):
     registry = TriggerRegistry(storage_path=temp_storage)
     coordinator = ExecutionCoordinator()
-    runtime = EventRuntime(registry=registry, coordinator=coordinator)
+    scheduler = TriggerScheduler(registry=registry, coordinator=coordinator)
 
     trigger = Trigger(
         trigger_id="trg_g1_scheduled",
@@ -46,9 +46,9 @@ async def test_g1_scheduled_trigger(temp_storage):
     )
     registry.register_trigger(trigger)
 
-    await runtime.start()
+    await scheduler.start()
     await asyncio.sleep(0.3)
-    await runtime.stop()
+    await scheduler.stop()
 
     t = registry.get_trigger("trg_g1_scheduled")
     assert t is not None
@@ -61,7 +61,7 @@ async def test_g1_scheduled_trigger(temp_storage):
 async def test_g2_system_event_trigger(temp_storage):
     registry = TriggerRegistry(storage_path=temp_storage)
     coordinator = ExecutionCoordinator()
-    runtime = EventRuntime(registry=registry, coordinator=coordinator)
+    scheduler = TriggerScheduler(registry=registry, coordinator=coordinator)
 
     trigger = Trigger(
         trigger_id="trg_g2_file_event",
@@ -75,12 +75,12 @@ async def test_g2_system_event_trigger(temp_storage):
     )
     registry.register_trigger(trigger)
 
-    await runtime.start()
-    count = await runtime.emit_event("file.changed", {"path": "src/main.py"})
+    await scheduler.start()
+    count = await scheduler.emit_event("file.changed", {"path": "src/main.py"})
     assert count == 1
 
     await asyncio.sleep(0.3)
-    await runtime.stop()
+    await scheduler.stop()
 
     t = registry.get_trigger("trg_g2_file_event")
     assert t is not None
@@ -114,19 +114,19 @@ async def test_g3_persistent_state_restart(temp_storage):
 async def test_g4_event_queue(temp_storage):
     registry = TriggerRegistry(storage_path=temp_storage)
     coordinator = ExecutionCoordinator()
-    runtime = EventRuntime(registry=registry, coordinator=coordinator)
+    scheduler = TriggerScheduler(registry=registry, coordinator=coordinator)
 
     t1 = Trigger("trg_q1", TriggerType.SYSTEM_EVENT, "Queue step 1", {"goal": "Q1", "steps": [{"engine": "browser", "action": "browser.navigate", "parameters": {"url": "data:text/html,<h1>Q1</h1>"}}]}, event_pattern="q.event")
     t2 = Trigger("trg_q2", TriggerType.SYSTEM_EVENT, "Queue step 2", {"goal": "Q2", "steps": [{"engine": "browser", "action": "browser.navigate", "parameters": {"url": "data:text/html,<h1>Q2</h1>"}}]}, event_pattern="q.event")
     registry.register_trigger(t1)
     registry.register_trigger(t2)
 
-    await runtime.start()
-    matched = await runtime.emit_event("q.event")
+    await scheduler.start()
+    matched = await scheduler.emit_event("q.event")
     assert matched == 2
 
     await asyncio.sleep(0.3)
-    await runtime.stop()
+    await scheduler.stop()
 
     assert registry.get_trigger("trg_q1").state in [TriggerState.VERIFIED, TriggerState.RUNNING]
     assert registry.get_trigger("trg_q2").state in [TriggerState.VERIFIED, TriggerState.RUNNING]
@@ -136,7 +136,7 @@ async def test_g4_event_queue(temp_storage):
 async def test_g6_policy_enforcement(temp_storage):
     registry = TriggerRegistry(storage_path=temp_storage)
     coordinator = ExecutionCoordinator()
-    runtime = EventRuntime(registry=registry, coordinator=coordinator)
+    scheduler = TriggerScheduler(registry=registry, coordinator=coordinator)
 
     # Trigger with unauthorized high-risk action
     trigger = Trigger(
@@ -151,10 +151,10 @@ async def test_g6_policy_enforcement(temp_storage):
     )
     registry.register_trigger(trigger)
 
-    await runtime.start()
-    await runtime.emit_event("high_risk.trigger")
+    await scheduler.start()
+    await scheduler.emit_event("high_risk.trigger")
     await asyncio.sleep(0.3)
-    await runtime.stop()
+    await scheduler.stop()
 
     t = registry.get_trigger("trg_g6_high_risk")
     assert t is not None

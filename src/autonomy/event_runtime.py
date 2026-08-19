@@ -22,13 +22,11 @@ import hashlib
 import json
 import logging
 import os
-from pathlib import Path
 import threading
 from types import MappingProxyType
 from typing import Any, Callable, Coroutine, Mapping
-import uuid
 
-from .events import AuraEvent, EventSource, EventType, EventUrgency, EventValidationError
+from .events import AuraEvent, EventSource, EventValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -223,14 +221,7 @@ class EventRuntime:
         correlation_window_seconds: float = 5.0,
         max_queue_size: int = 10000,
         dispatch_handler: DispatchHandler | None = None,
-        registry: Any | None = None,
-        coordinator: Any | None = None,
-        policy: Any | None = None,
-        **kwargs: Any,
     ) -> None:
-        self.registry = registry
-        self.coordinator = coordinator
-        self.policy = policy
         self.dedup_engine = DeduplicationEngine(window_seconds=dedup_window_seconds)
         self.correlation_engine = CorrelationEngine(correlation_window_seconds=correlation_window_seconds)
         self.max_queue_size = max_queue_size
@@ -250,16 +241,10 @@ class EventRuntime:
         self._total_dispatched = 0
         self._total_dropped = 0
 
-        self._scheduler_task: asyncio.Task[None] | None = None
-        self._active_events: set[str] = set()
-
     @property
     def _running(self) -> bool:
+        """Read-only compatibility property. Use is_running for new code."""
         return self._is_running
-
-    @_running.setter
-    def _running(self, val: bool) -> None:
-        self._is_running = val
 
     def set_dispatch_handler(self, handler: DispatchHandler) -> None:
         """Register downstream handler (EventInterpreter)."""
@@ -273,8 +258,6 @@ class EventRuntime:
         self._queue = asyncio.Queue(maxsize=self.max_queue_size)
         self._is_running = True
         self._worker_task = asyncio.create_task(self._dispatch_worker())
-        if self.registry:
-            self._scheduler_task = asyncio.create_task(self._scheduler_loop())
         logger.info("[EventRuntime] Core event runtime started.")
 
     async def stop(self, drain_timeout: float = 2.0) -> None:
@@ -283,13 +266,6 @@ class EventRuntime:
             return
 
         self._is_running = False
-        if self._scheduler_task:
-            self._scheduler_task.cancel()
-            try:
-                await self._scheduler_task
-            except asyncio.CancelledError:
-                pass
-            self._scheduler_task = None
 
         if self._queue and not self._queue.empty():
             try:
@@ -306,101 +282,6 @@ class EventRuntime:
             self._worker_task = None
 
         logger.info("[EventRuntime] Core event runtime stopped.")
-
-    async def emit_event(self, event_type: str, payload: dict[str, Any] | None = None) -> int:
-        """Emit a system event. Finds matching triggers and queues them for execution."""
-        if not self.registry:
-            return 0
-        payload = payload or {}
-        matched_count = 0
-        triggers = self.registry.list_triggers(enabled_only=True)
-
-        from .models import TriggerType
-        for trigger in triggers:
-            if trigger.trigger_type == TriggerType.SYSTEM_EVENT:
-                if not trigger.event_pattern or trigger.event_pattern == event_type or trigger.event_pattern in event_type:
-                    await self._fire_trigger(trigger, fired_payload=payload)
-                    matched_count += 1
-
-        return matched_count
-
-    async def _scheduler_loop(self) -> None:
-        """Periodically evaluates SCHEDULED triggers."""
-        from .models import TriggerType, TriggerState
-        while self._is_running:
-            try:
-                if self.registry:
-                    triggers = self.registry.list_triggers(enabled_only=True)
-                    for trigger in triggers:
-                        if trigger.trigger_type == TriggerType.SCHEDULED and trigger.state in [TriggerState.ARMED, TriggerState.REGISTERED]:
-                            await self._fire_trigger(trigger)
-                await asyncio.sleep(0.1)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"[EventRuntime] Error in scheduler loop: {e}")
-                await asyncio.sleep(0.1)
-
-    async def _fire_trigger(self, trigger: Any, fired_payload: dict[str, Any] | None = None) -> bool:
-        """Fire a trigger and route to coordinator."""
-        from .models import ConcurrencyPolicy, EventProvenance, TriggerState
-        if trigger.state == TriggerState.RUNNING:
-            if trigger.concurrency_policy == ConcurrencyPolicy.REJECT:
-                logger.warning(f"[EventRuntime] Trigger '{trigger.trigger_id}' is already RUNNING — rejecting duplicate execution.")
-                return False
-            elif trigger.concurrency_policy == ConcurrencyPolicy.COALESCE:
-                logger.info(f"[EventRuntime] Trigger '{trigger.trigger_id}' is already RUNNING — coalescing trigger event.")
-                return False
-
-        if trigger.dedup_key and trigger.dedup_key in self._active_events:
-            logger.warning(f"[EventRuntime] Active event with dedup_key '{trigger.dedup_key}' is already processing — coalescing.")
-            return False
-
-        provenance = EventProvenance(
-            trigger_id=trigger.trigger_id,
-            dedup_key=trigger.dedup_key or trigger.trigger_id,
-            trigger_type=trigger.trigger_type.value,
-            fired_at=datetime.now().isoformat(),
-        )
-
-        self.registry.update_state(trigger.trigger_id, TriggerState.FIRED, provenance=provenance)
-        asyncio.create_task(self._execute_trigger_task(trigger, provenance))
-        logger.info(f"[EventRuntime] Trigger '{trigger.trigger_id}' FIRED -> Event {provenance.event_id} queued.")
-        return True
-
-    async def _execute_trigger_task(self, trigger: Any, provenance: Any) -> None:
-        """Worker task execution for trigger."""
-        from .models import TriggerState
-        self.registry.update_state(trigger.trigger_id, TriggerState.RUNNING, provenance=provenance)
-        exec_map = trigger.execution_map or {}
-        exec_map["goal"] = f"[Trigger: {trigger.trigger_type.value} | Event: {provenance.event_id}] {trigger.action_goal}"
-
-        from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
-        policy = self.policy or ExecutionPolicy.get_instance()
-        steps = exec_map.get("steps", [])
-        for step in steps:
-            engine = step.get("engine", "desktop")
-            action = step.get("action", "")
-            params = step.get("parameters", {})
-            policy_decision = policy.evaluate_action(engine, action, params)
-            if policy_decision.action == PolicyAction.ASK_USER and not params.get("user_authorized", False):
-                provenance.result_status = "BLOCKED"
-                self.registry.update_state(trigger.trigger_id, TriggerState.BLOCKED, provenance=provenance)
-                logger.warning(f"[EventRuntime] Autonomous trigger '{trigger.trigger_id}' HALTED by ExecutionPolicy: {policy_decision.message}")
-                return
-
-        if self.coordinator:
-            try:
-                res = await self.coordinator.coordinate(exec_map)
-                provenance.execution_id = res.execution_id if hasattr(res, "execution_id") else uuid.uuid4().hex[:8]
-                if res.success:
-                    provenance.result_status = "VERIFIED"
-                    self.registry.update_state(trigger.trigger_id, TriggerState.VERIFIED, provenance=provenance)
-                else:
-                    self.registry.update_state(trigger.trigger_id, TriggerState.FAILED, provenance=provenance)
-            except Exception as e:
-                provenance.result_status = "FAILED"
-                self.registry.update_state(trigger.trigger_id, TriggerState.FAILED, provenance=provenance)
 
     def ingest(self, event: AuraEvent) -> EventTraceRecord:
         """
