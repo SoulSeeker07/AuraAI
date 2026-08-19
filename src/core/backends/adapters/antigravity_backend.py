@@ -777,11 +777,16 @@ class CodingBackendAdapter(BaseBackendAdapter):
         new_content: str = args.get("new_content", "")
 
         # Build edit_operations from flat args if not provided as structured list
-        if not edit_operations and target_files and new_content:
-            edit_operations = [
-                {"file_path": f, "new_content": new_content}
-                for f in target_files
-            ]
+        if not edit_operations:
+            file_path = args.get("file_path") or args.get("target_file")
+            content = args.get("new_content") or args.get("content") or args.get("text")
+            if file_path and content:
+                edit_operations = [{"file_path": str(file_path), "new_content": str(content)}]
+            elif target_files and new_content:
+                edit_operations = [
+                    {"file_path": f, "new_content": new_content}
+                    for f in target_files
+                ]
 
         agy_attempted = False
         if not edit_operations:

@@ -129,6 +129,16 @@ class PlannerRegistry:
             logger.warning(f"Could not load SoftwareEngineeringSupervisor: {e}")
             return None
 
+    def get_expert_router(self):
+        """Retrieve the singleton ExpertDomainRouter for M25 professional experts."""
+        from experts.router import ExpertDomainRouter
+        return ExpertDomainRouter.get_instance()
+
+    async def route_to_expert(self, goal_text: str, context: dict[str, Any] | None = None):
+        """Route a goal to specialized domain experts."""
+        router = self.get_expert_router()
+        return await router.route(goal_text, context=context)
+
     def find_planners_for_goal(self, goal_text: str) -> list[tuple[str, BasePlanner]]:
         """Find all registered planners that can handle a goal."""
         return [

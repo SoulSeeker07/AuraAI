@@ -60,10 +60,18 @@ def com_scope():
     try:
         pythoncom.CoInitialize()
         initialized = True
-    except Exception:
-        # COM may already be initialized on this thread (e.g. main thread,
-        # or nested com_scope calls). That's fine — we just skip uninit later.
-        pass
+    except Exception as exc:
+        # Check for RPC_E_CHANGED_MODE (0x80010106 / -2147417850)
+        hresult = getattr(exc, "hresult", None)
+        if hresult == -2147417850 or "0x80010106" in str(exc) or "changed mode" in str(exc).lower():
+            logger.debug(
+                f"[com_scope] Thread already initialized in a different COM mode (RPC_E_CHANGED_MODE): {exc}. "
+                "Operating within existing apartment."
+            )
+        else:
+            logger.warning(
+                f"[com_scope] pythoncom.CoInitialize failed with unexpected error: {type(exc).__name__}: {exc}"
+            )
 
     try:
         yield
@@ -71,8 +79,10 @@ def com_scope():
         if initialized:
             try:
                 pythoncom.CoUninitialize()
-            except Exception:
-                pass
+            except Exception as uninit_exc:
+                logger.warning(
+                    f"[com_scope] pythoncom.CoUninitialize failed: {type(uninit_exc).__name__}: {uninit_exc}"
+                )
 
 
 def com_thread_safe(fn):

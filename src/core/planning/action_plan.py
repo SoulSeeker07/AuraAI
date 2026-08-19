@@ -163,14 +163,17 @@ class ActionPlan:
                             params["file_path"] = art.location
                             params["target_file"] = art.location
 
-        target = (
+        raw_target = (
             params.get("app_name")
             or params.get("target")
-            or subtask.description.split()[-1]
+            or params.get("file_path")
+            or (subtask.description.split()[-1] if getattr(subtask, "description", None) else "target")
+            or "target"
         )
+        target = str(raw_target).lower().strip()
         return cls.for_desktop(
             action=subtask.capability,
-            target=str(target).lower().strip(),
+            target=target,
             goal=subtask.description,
             capability=subtask.capability,
             arguments=params,

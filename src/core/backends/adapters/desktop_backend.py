@@ -197,7 +197,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
             capability = "app_open"
         elif capability in ("close_app", "window.close"):
             capability = "app_close"
-        elif capability in ("type_text", "write", "input_text"):
+        elif capability in ("type_text", "write", "input_text", "input.type_text", "uia.type_text", "keyboard.type"):
             capability = "keyboard.type"
 
         args = arguments or {}
@@ -287,15 +287,12 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     logger.debug(
                         f"pyautogui.write failed: {pyauto_exc}, trying WScript.Shell fallback"
                     )
-                    import pythoncom
+                    from desktop.native.adapters.com_threading import com_scope
                     import win32com.client
 
-                    pythoncom.CoInitialize()
-                    try:
+                    with com_scope():
                         shell = win32com.client.Dispatch("WScript.Shell")
                         shell.SendKeys(text)
-                    finally:
-                        pythoncom.CoUninitialize()
 
                 logger.info(f"[DesktopBackend] Typed text: '{text}'")
                 obs = f"✓ Typed text: '{text}'"
@@ -362,28 +359,12 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     logger.debug(
                         f"pyautogui.press failed: {pyauto_exc}, trying SendKeys fallback"
                     )
-                    import pythoncom
+                    from desktop.native.adapters.com_threading import com_scope
                     import win32com.client
 
-                    sendkeys_map = {
-                        "enter": "{ENTER}",
-                        "tab": "{TAB}",
-                        "escape": "{ESC}",
-                        "backspace": "{BACKSPACE}",
-                        "delete": "{DELETE}",
-                        "space": " ",
-                        "up": "{UP}",
-                        "down": "{DOWN}",
-                        "left": "{LEFT}",
-                        "right": "{RIGHT}",
-                    }
-                    send_text = sendkeys_map.get(target_key, target_key)
-                    pythoncom.CoInitialize()
-                    try:
+                    with com_scope():
                         shell = win32com.client.Dispatch("WScript.Shell")
                         shell.SendKeys(send_text)
-                    finally:
-                        pythoncom.CoUninitialize()
 
                 logger.info(f"[DesktopBackend] Pressed key: '{target_key}'")
                 obs = f"✓ Pressed key: '{key_clean}'"
@@ -733,8 +714,12 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     data={"backend": self.name, "capability": capability},
                 )
 
-        args = dict(arguments or {})
-        app_name = args.get("app_name") or args.get("target") or args.get("application") or (goal.split()[-1].lower() if isinstance(goal, str) and goal else "notepad")
+        raw_app = args.get("app_name") or args.get("target") or args.get("application")
+        if not raw_app or str(raw_app).lower().strip() in ("open_app", "app_open", "app", "application", "launch", "close_app", "app_close"):
+            candidates = [w for w in goal.lower().split() if w not in ("open", "app", "open_app", "launch", "the", "close", "to", "window", "and", "a", "write", "search")] if isinstance(goal, str) else []
+            app_name = candidates[-1] if candidates else "notepad"
+        else:
+            app_name = str(raw_app).lower().strip()
         args["app_name"] = app_name
         self._last_app_name = app_name
 

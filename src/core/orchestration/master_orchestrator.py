@@ -252,6 +252,21 @@ class MasterOrchestrator:
             )
         )
 
+    async def run(
+        self,
+        goal: str,
+        precomputed_graph: Any | None = None,
+        session: AgentSession | None = None,
+        **kwargs: Any,
+    ) -> ExecutionResult:
+        """Execute a goal with optional precomputed TaskGraph."""
+        return await self.process_request_async(
+            goal_text=goal,
+            task_graph=precomputed_graph,
+            session=session,
+            **kwargs,
+        )
+
     async def process_request_async(
         self,
         goal_text: str,
@@ -259,6 +274,8 @@ class MasterOrchestrator:
         parameters: dict[str, Any] | None = None,
         budget: ExecutionBudget | None = None,
         context: Any = None,
+        task_graph: Any | None = None,
+        session: AgentSession | None = None,
     ) -> ExecutionResult:
         """
         Execute full 7-stage cognitive orchestration pipeline using AgentSession.
@@ -293,7 +310,7 @@ class MasterOrchestrator:
                     return resolved_res
 
         start_t = datetime.now().timestamp()
-        session = AgentSession(goal=goal_text, budget=budget or ExecutionBudget())
+        session = session or AgentSession(goal=goal_text, budget=budget or ExecutionBudget())
         self._last_session = session  # for session-scoped confirmation resolution
         self._log_pipeline_start(goal_text, session.session_id)
 
@@ -309,8 +326,8 @@ class MasterOrchestrator:
             )
             session.metrics["nlu_result"] = nlu_result.to_dict()
 
-            # Ambiguity Clarification Gate: ask for clarification if perception is ambiguous
-            if nlu_result.is_ambiguous and nlu_result.clarification_prompt:
+            # Ambiguity Clarification Gate: ask for clarification if perception is ambiguous (skipped if task_graph precomputed)
+            if nlu_result.is_ambiguous and nlu_result.clarification_prompt and task_graph is None:
                 logger.info(f"[MasterOrchestrator] Perception ambiguous: {nlu_result.clarification_prompt}")
                 return ExecutionResult(
                     success=False,
@@ -656,7 +673,7 @@ class MasterOrchestrator:
             shared_world_state = {"running_processes": [], "is_live": False}
             world_diff = None
 
-        if decision.should_refuse:
+        if decision.should_refuse and task_graph is None:
             session.add_observation(
                 Observation(
                     obs_type="system",
@@ -668,7 +685,7 @@ class MasterOrchestrator:
             return self.result_merger.merge_session(session, success=False)
 
         # Stage 2.8: Direct Fulfillment from Memory (Zero-Refetch Invariant - G5)
-        if decision.can_answer_from_memory:
+        if decision.can_answer_from_memory and task_graph is None:
             ranked_mems = session.memory_context.get("ranked_cognitive_memories") or []
             sem_mems = [
                 m for m in ranked_mems if isinstance(m, dict) and m.get("type") == "semantic"
@@ -709,7 +726,7 @@ class MasterOrchestrator:
 
         # Stage 3: Task Graph Decomposition
         t2 = datetime.now().timestamp()
-        task_graph = self.decomposer.decompose(goal_text, decision=decision)
+        task_graph = task_graph or self.decomposer.decompose(goal_text, decision=decision)
         if parameters:
             if len(task_graph.subtasks) == 1:
                 # Single subtask / direct dispatch: caller parameters apply directly

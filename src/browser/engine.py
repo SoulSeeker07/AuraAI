@@ -70,7 +70,10 @@ def validate_url_security(
             f"Navigation blocked by security policy: Scheme '{scheme}' is prohibited. Only 'http://' and 'https://' are allowed.",
         )
 
-    from ..desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+    try:
+        from desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+    except (ImportError, ValueError):
+        from ..desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
 
     decision, reason, _ = NetworkPolicyEngine.get_instance().evaluate_destination(url_str)
     if decision == EgressDecision.HARD_BLOCKED:
@@ -504,6 +507,62 @@ class BrowserEngine:
                 except Exception as e:
                     return {"success": False, "action": "submit", "error": str(e)}
         return {"success": True, "action": "submit", "mode": "fallback"}
+
+    async def scroll_down(self, pixels: int = 500) -> dict[str, Any]:
+        """Scroll down by the specified number of pixels."""
+        if not self._page and not self.is_active:
+            await self.start()
+        if self._page:
+            try:
+                await self._page.evaluate(f"window.scrollBy(0, {pixels})")
+                return {"success": True, "action": "scroll_down", "pixels": pixels}
+            except Exception as e:
+                return {"success": False, "action": "scroll_down", "error": str(e)}
+        return {"success": True, "action": "scroll_down", "pixels": pixels, "mode": "fallback"}
+
+    async def scroll_up(self, pixels: int = 500) -> dict[str, Any]:
+        """Scroll up by the specified number of pixels."""
+        if not self._page and not self.is_active:
+            await self.start()
+        if self._page:
+            try:
+                await self._page.evaluate(f"window.scrollBy(0, -{pixels})")
+                return {"success": True, "action": "scroll_up", "pixels": pixels}
+            except Exception as e:
+                return {"success": False, "action": "scroll_up", "error": str(e)}
+        return {"success": True, "action": "scroll_up", "pixels": pixels, "mode": "fallback"}
+
+    async def scroll_to_bottom(self) -> dict[str, Any]:
+        """Scroll to the bottom of the page."""
+        if not self._page and not self.is_active:
+            await self.start()
+        if self._page:
+            try:
+                await self._page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                return {"success": True, "action": "scroll_to_bottom"}
+            except Exception as e:
+                return {"success": False, "action": "scroll_to_bottom", "error": str(e)}
+        return {"success": True, "action": "scroll_to_bottom", "mode": "fallback"}
+
+    async def infinite_scroll(self, max_scrolls: int = 5, delay_seconds: float = 0.5) -> dict[str, Any]:
+        """Scroll continuously down to trigger dynamic content loading."""
+        if not self._page and not self.is_active:
+            await self.start()
+        if self._page:
+            completed = 0
+            try:
+                for _ in range(max_scrolls):
+                    prev_h = await self._page.evaluate("document.body.scrollHeight")
+                    await self._page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    completed += 1
+                    await asyncio.sleep(delay_seconds)
+                    new_h = await self._page.evaluate("document.body.scrollHeight")
+                    if new_h == prev_h:
+                        break
+                return {"success": True, "action": "infinite_scroll", "scrolls_completed": completed}
+            except Exception as e:
+                return {"success": False, "action": "infinite_scroll", "scrolls_completed": completed, "error": str(e)}
+        return {"success": True, "action": "infinite_scroll", "scrolls_completed": max_scrolls, "mode": "fallback"}
 
     async def extract_content(
         self, selector: str | None = None, format: str = "markdown"

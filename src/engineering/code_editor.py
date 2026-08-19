@@ -164,21 +164,20 @@ class CodeEditor:
         """
         full_path = self.repository_path / file_path
 
-        if not full_path.exists():
-            return EditResult(
-                success=False,
-                file_path=file_path,
-                old_content=None,
-                new_content=new_content,
-                changes=[],
-                errors=[f"File not found: {full_path}"],
-            )
+        is_new_file = not full_path.exists()
+        if is_new_file:
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            old_content_actual = ""
+        else:
+            old_content_actual = old_content
 
         try:
             # Create backup if requested
-            old_content_actual = old_content
-            if backup and old_content_actual is None:
+            if backup and not is_new_file and old_content_actual is None:
                 old_content_actual = full_path.read_text(encoding="utf-8")
+                backup_path = self._create_backup(file_path, old_content_actual)
+                if backup_path:
+                    self._backup_mapping[file_path] = str(backup_path)
 
             # Validate if requested
             validation_errors = []

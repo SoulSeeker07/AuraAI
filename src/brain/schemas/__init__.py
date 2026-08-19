@@ -14,7 +14,7 @@ from .execution_map import (
     VerificationCriterion,
 )
 from .runtime_session import RuntimeSession
-from .task_graph import TaskGraph, TaskNode
+from .task_graph import CognitiveTaskGraph, TaskGraph, TaskNode
 from .thought import (
     Confidence,
     DecisionContext,

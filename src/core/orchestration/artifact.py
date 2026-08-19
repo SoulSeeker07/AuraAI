@@ -68,14 +68,10 @@ class Artifact:
 
     @property
     def has_payload(self) -> bool:
-        """Return True if this artifact carries a non-empty content payload."""
-        if not self.content:
+        """Return True if this artifact carries a non-empty string content payload."""
+        if not isinstance(self.content, str):
             return False
-        if isinstance(self.content, str):
-            return bool(self.content.strip())
-        if isinstance(self.content, (list, dict, set, tuple)):
-            return len(self.content) > 0
-        return True
+        return bool(self.content.strip())
 
 
     def to_dict(self) -> dict[str, Any]:

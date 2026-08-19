@@ -167,6 +167,211 @@ class DesktopCapabilityProvider(ICapabilityProvider):
                 )
             )
 
+        # First-class network capabilities
+        network_caps = [
+            Capability(
+                name="network.interface_list",
+                domain=self.DOMAIN,
+                description="List physical and virtual network adapters, IP assignments, and operational status.",
+                category="network",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "interfaces", "adapters"],
+            ),
+            Capability(
+                name="network.ping",
+                domain=self.DOMAIN,
+                description="Probe target host/IP via ICMP echo to evaluate round-trip latency and packet loss.",
+                category="network",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "ping", "latency", "diagnostics"],
+            ),
+            Capability(
+                name="network.dns_query",
+                domain=self.DOMAIN,
+                description="Query DNS name resolution records (A, AAAA, CNAME, MX) and resolver response times.",
+                category="network",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "dns", "lookup", "diagnostics"],
+            ),
+            Capability(
+                name="network.route_inspect",
+                domain=self.DOMAIN,
+                description="Inspect local routing tables, default gateways, and network interface metric bindings.",
+                category="network",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "routing", "gateway"],
+            ),
+            Capability(
+                name="network.traceroute",
+                domain=self.DOMAIN,
+                description="Perform hop-by-hop route tracing to identify latency bottlenecks and packet drop points.",
+                category="network",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "traceroute", "hops", "diagnostics"],
+            ),
+            Capability(
+                name="network.socket_probe",
+                domain=self.DOMAIN,
+                description="Test TCP/UDP socket connectivity and handshake response on target host and port.",
+                category="network",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "socket", "tcp", "port", "diagnostics"],
+            ),
+            Capability(
+                name="network.remediate",
+                domain=self.DOMAIN,
+                description="Execute authorized network remediation (e.g. flush DNS cache, renew DHCP, reset adapter).",
+                category="network",
+                risk_level=ActionRisk.HIGH,
+                requires_confirmation=True,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["network", "remediation", "repair"],
+            ),
+        ]
+
+        # First-class security audit capabilities
+        security_caps = [
+            Capability(
+                name="security.credential_scan",
+                domain=self.DOMAIN,
+                description="Scan workspace files, configs, and memory for exposed API keys, tokens, and credentials.",
+                category="security",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["security", "credentials", "secrets", "audit"],
+            ),
+            Capability(
+                name="security.attack_surface_audit",
+                domain=self.DOMAIN,
+                description="Audit listening network ports, running elevated processes, and exposed services.",
+                category="security",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["security", "ports", "services", "attack_surface"],
+            ),
+            Capability(
+                name="security.cve_check",
+                domain=self.DOMAIN,
+                description="Correlate installed software, packages, and dependencies against known vulnerability patterns.",
+                category="security",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["security", "cve", "vulnerabilities", "audit"],
+            ),
+            Capability(
+                name="security.firewall_audit",
+                domain=self.DOMAIN,
+                description="Audit Windows Firewall profiles, inbound/outbound rules, and Windows Defender status.",
+                category="security",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["security", "firewall", "defender", "compliance"],
+            ),
+            Capability(
+                name="security.remediate",
+                domain=self.DOMAIN,
+                description="Execute authorized security remediation (e.g. revoke compromised token, adjust firewall rule).",
+                category="security",
+                risk_level=ActionRisk.HIGH,
+                requires_confirmation=True,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["security", "remediation", "hardening"],
+            ),
+        ]
+
+        # First-class financial analysis capabilities
+        finance_caps = [
+            Capability(
+                name="finance.extract_tabular",
+                domain=self.DOMAIN,
+                description="Extract structured financial tabular figures, line items, and periods from sheets or reports.",
+                category="finance",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["finance", "extract", "tabular", "balance_sheet", "pnl"],
+            ),
+            Capability(
+                name="finance.compute_metrics",
+                domain=self.DOMAIN,
+                description="Compute financial statement metrics (Gross Margin, EBITDA, Operating Margin, Debt/Equity, YoY Growth).",
+                category="finance",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["finance", "metrics", "ratios", "ebitda", "margin"],
+            ),
+            Capability(
+                name="finance.variance_analysis",
+                domain=self.DOMAIN,
+                description="Perform budget vs actual, period-over-period, and variance percentage calculations.",
+                category="finance",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["finance", "variance", "budget", "forecast"],
+            ),
+            Capability(
+                name="finance.forecast_model",
+                domain=self.DOMAIN,
+                description="Build financial forecast models with declared growth assumptions and sensitivity scenarios.",
+                category="finance",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["finance", "forecast", "model", "cagr", "sensitivity"],
+            ),
+            Capability(
+                name="finance.generate_report",
+                domain=self.DOMAIN,
+                description="Generate structured financial summary reports with full provenance citations and formula tables.",
+                category="finance",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["finance", "report", "synthesis", "provenance"],
+            ),
+        ]
+
+        for ncap in network_caps + security_caps + finance_caps:
+            if ncap.name not in built_in_names:
+                available_caps.append(ncap)
+
         return available_caps
 
     def get_capability(self, name: str) -> Capability | None:
@@ -195,6 +400,11 @@ class DesktopCapabilityProvider(ICapabilityProvider):
                 availability="online",
                 tags=["chat", "general"],
             )
+
+        # Check network capabilities
+        for c in self.list_capabilities():
+            if c.name == name:
+                return c
 
         desc = self._native_registry.get(name)
         if desc is None and name.startswith("filesystem."):

@@ -227,7 +227,7 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 else:
                     url = "https://www.google.com"
 
-            res = await self._engine.navigate(url)
+            res = await self._engine.navigate(url, allow_testing_schemes=True)
             if not res.get("success", False):
                 err = res.get("error", "Navigation failed.")
                 return ExecutionResult(

@@ -58,11 +58,11 @@ class TaskNode:
 
 
 @dataclass
-class TaskGraph:
+class CognitiveTaskGraph:
     """
     A directed acyclic graph of execution tasks.
 
-    The Planner produces a TaskGraph, not a linear ExecutionMap.
+    The Planner produces a CognitiveTaskGraph, not a linear ExecutionMap.
     """
 
     goal: str
@@ -154,4 +154,5 @@ class TaskGraph:
         }
 
 
-__all__ = ["TaskGraph", "TaskNode"]
+TaskGraph = CognitiveTaskGraph
+__all__ = ["TaskNode", "CognitiveTaskGraph", "TaskGraph"]

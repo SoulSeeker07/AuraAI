@@ -1895,7 +1895,14 @@ class TaskDecomposer:
                     current_level.append(t_id)
 
             if not current_level:
-                current_level = list(remaining)
+                unresolved = {
+                    t_id: [d for d in graph.subtasks[t_id].dependencies if d not in completed]
+                    for t_id in remaining
+                }
+                raise ValueError(
+                    f"Cyclic or unresolvable dependencies detected in TaskGraph for goal '{graph.goal}'. "
+                    f"Stuck subtasks: {unresolved}"
+                )
 
             levels.append(current_level)
             for t_id in current_level:
