@@ -61,13 +61,14 @@ This document tracks identified architectural debt, interim compatibility shims,
 
 ---
 
-## 6. `PersonalOSRuntime` Orphaned Execution Loop & Container Retirement
-* **Location**: [`src/core/orchestration/personal_os_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/personal_os_runtime.py), [`core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/core/aura_core.py), [`clients/cli_client.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/clients/cli_client.py)
-* **Status**: **ORPHANED HARNESS (Candidate for Retirement)**
-* **Context**: Production user requests route through `AuraCore` $\to$ `ACABrain` $\to$ `MasterOrchestrator`. Reachability verification confirmed zero production calls to `PersonalOSRuntime.execute_goal()`. Currently, `PersonalOSRuntime` serves only as a container holding singleton references to `memory_manager` and `voice_loop` (used by `clients/cli_client.py`), and as a harness for Milestone 26 test scripts.
-* **Remediation Plan**:
-  1. Migrate `voice_loop` and `memory_manager` lifecycle ownership directly onto `AuraCore` (e.g. `aura_core.voice_loop`, `aura_core.memory_manager`).
-  2. Update `clients/cli_client.py` (`voice on` / `voice off`) to interact directly with `aura_core.voice_loop`.
-  3. Port valuable multi-turn / app-launch scenarios from `test_personal_os_runtime.py` to `MasterOrchestrator` regression suites.
-  4. Deprecate and delete `PersonalOSRuntime` and its standalone un-orchestrated execution loop.
+## 6. `PersonalOSRuntime` Container Retirement & Direct Ownership Migration
+* **Location**: [`src/core/orchestration/personal_os_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/personal_os_runtime.py), [`core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/core/aura_core.py), [`clients/cli_client.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/clients/cli_client.py), [`src/brain/execution_coordinator.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/execution_coordinator.py)
+* **Status**: ✅ **RESOLVED**
+* **Resolution**:
+  1. **Direct Ownership in `AuraCore`**: Migrated `MemoryManager`, `ProviderManager`, `TriggerRegistry`, `TriggerScheduler`, `ContinuousVoiceLoop`, and `ExecutionCoordinator` to direct ownership under `AuraCore`.
+  2. **Zero Split-Brain Memory**: Explicitly passed `memory_manager` into `ExecutionCoordinator` (`self.coordinator = ExecutionCoordinator(memory_manager=self.memory_manager)`), removing singleton runtime imports in `_provider_fallback()` and maintaining absolute single-source truth.
+  3. **Explicit Autonomy Lifecycle**: `autonomy_enabled` defaults to `False` on `AuraCore`. Subsystem is explicitly managed via `AuraCore.start_autonomy()`, `AuraCore.stop_autonomy(drain_timeout)`, and `AuraCore.autonomy_active`.
+  4. **CLI Integration**: Replaced legacy runtime voice loop access in `clients/cli_client.py` with `self.aura_core.voice_loop`, and exposed explicit `autonomy on`, `autonomy off`, and `autonomy status` commands.
+  5. **Container Deprecation**: Marked `PersonalOSRuntime` with a runtime `DeprecationWarning` and removed all internal dependencies across `src/`, `core/`, and `clients/`.
+  6. **Regression Suite**: Added comprehensive test suite [`tests/unit/test_auracore_autonomy.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/unit/test_auracore_autonomy.py) and verified wiring in [`tests/memory/test_auracore_brain_init_wiring.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/memory/test_auracore_brain_init_wiring.py). All 14/14 regression tests passed.
 

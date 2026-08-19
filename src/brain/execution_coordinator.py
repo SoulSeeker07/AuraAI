@@ -89,6 +89,7 @@ class ExecutionCoordinator:
         self,
         orchestrator: Any | None = None,
         engine_callbacks: dict[str, Any] | None = None,
+        memory_manager: Any | None = None,
     ):
         """
         Initialize the Execution Coordinator.
@@ -97,9 +98,11 @@ class ExecutionCoordinator:
             orchestrator: Optional MasterOrchestrator for delegation.
             engine_callbacks: Optional dict of engine → callable.
                 Each callback receives (action, parameters) and returns a result dict.
+            memory_manager: Optional MemoryManager for conversation context in fallbacks.
         """
         self.orchestrator = orchestrator
         self.engine_callbacks = engine_callbacks or {}
+        self.memory_manager = memory_manager
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -465,16 +468,14 @@ class ExecutionCoordinator:
         """Generate a natural language response using the LLM provider."""
         from ai.provider_manager import ProviderManager
         from ai.models import ChatRequest, ChatMessage
-        from core.orchestration.personal_os_runtime import PersonalOSRuntime
 
         provider = ProviderManager()
         try:
             message = params.get("message") or params.get("response") or f"{action} {params}"
             messages = []
             
-            runtime = PersonalOSRuntime.get_instance()
-            if runtime and hasattr(runtime, "memory_manager"):
-                context_msgs = runtime.memory_manager.get_context_messages()
+            if self.memory_manager is not None:
+                context_msgs = self.memory_manager.get_context_messages()
                 # Prepend Persona System Prompt
                 messages.append(ChatMessage(role="system", content="You are Aura, an AI operating system."))
                 for msg in context_msgs:

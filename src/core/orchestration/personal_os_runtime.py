@@ -83,6 +83,14 @@ class PersonalOSRuntime:
     _instance: PersonalOSRuntime | None = None
 
     def __init__(self):
+        import warnings
+        warnings.warn(
+            "PersonalOSRuntime is deprecated and scheduled for retirement under Technical Debt Item 6. "
+            "AuraCore directly owns and manages all subsystems (MemoryManager, TriggerScheduler, "
+            "ContinuousVoiceLoop, ExecutionCoordinator, MasterOrchestrator).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.engine_registry = EngineRegistry.get_instance()
         self.expert_registry = DomainExpertRegistry.get_instance()
         self.trigger_registry = TriggerRegistry()

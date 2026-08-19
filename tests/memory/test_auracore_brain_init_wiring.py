@@ -1,11 +1,8 @@
 """
 Test: AuraCore brain_init wiring — identity check runs under CI.
 
-The identity check in aura_core.py (RuntimeError if ContextBuilder.memory_manager
-is not PersonalOSRuntime.memory_manager) only fires when brain_init completes.
-brain_init normally needs GROQ_API_KEY to succeed. This test mocks GroqProvider
-at the boundary so brain_init reaches the RuntimeError guard without a real key,
-proving the wiring is exercised in CI.
+Verifies that ContextBuilder.memory_manager and ExecutionCoordinator.memory_manager
+are the exact same MemoryManager instance directly owned by AuraCore (zero split-brain).
 """
 import pytest
 from unittest.mock import MagicMock, patch
@@ -15,33 +12,26 @@ from unittest.mock import MagicMock, patch
 def reset_aura_core_singleton():
     """Each test gets a clean AuraCore singleton."""
     from core.aura_core import AuraCore
-    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
 
     # Reset singletons before the test
     AuraCore._instance = None
     AuraCore._initialized = False
-    PersonalOSRuntime._instance = None
 
     yield
 
     # Tear down after
     AuraCore._instance = None
     AuraCore._initialized = False
-    PersonalOSRuntime._instance = None
 
 
 def test_brain_init_wiring_identity_check(tmp_path):
     """
-    brain_init must complete successfully (brain_enabled=True) and the
-    ContextBuilder.memory_manager must be the exact same object as
-    PersonalOSRuntime.memory_manager — the identity guard must pass, not raise.
+    brain_init must complete successfully (brain_enabled=True) and
+    ContextBuilder.memory_manager and ExecutionCoordinator.memory_manager
+    must be the exact same object as core.memory_manager.
     """
     from core.aura_core import AuraCore
-    from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
-
-    # ── Build a real PersonalOSRuntime singleton with a real MemoryManager ──
-    runtime = PersonalOSRuntime.get_instance()
-    real_memory_manager = runtime.memory_manager
+    AuraCore.reset_instance()
 
     # Use a real temp file so Path(db_path) resolves correctly
     db_path = tmp_path / "test_memory.db"
@@ -53,9 +43,7 @@ def test_brain_init_wiring_identity_check(tmp_path):
 
     with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_provider_manager), \
-         patch("core.aura_core.Memory", return_value=mock_memory_instance), \
-         patch("src.core.orchestration.personal_os_runtime.PersonalOSRuntime.get_instance",
-               return_value=runtime):
+         patch("core.aura_core.Memory", return_value=mock_memory_instance):
 
         config = {
             "groq_model": "mock-model",
@@ -72,11 +60,18 @@ def test_brain_init_wiring_identity_check(tmp_path):
     assert hasattr(core, "conversation_engine"), (
         "brain_init completed but conversation_engine was not set"
     )
+    assert hasattr(core, "memory_manager"), (
+        "AuraCore must directly own its memory_manager"
+    )
 
     # ── Assert the identity check actually passed ────────────────────────────
-    assert core.conversation_engine.context_builder.memory_manager is real_memory_manager, (
+    assert core.conversation_engine.context_builder.memory_manager is core.memory_manager, (
         "ContextBuilder.memory_manager is NOT the same object as "
-        "PersonalOSRuntime.memory_manager — split-brain regression!"
+        "AuraCore.memory_manager — split-brain regression!"
+    )
+    assert core.coordinator.memory_manager is core.memory_manager, (
+        "ExecutionCoordinator.memory_manager is NOT the same object as "
+        "AuraCore.memory_manager — split-brain regression!"
     )
 
 
@@ -87,6 +82,7 @@ def test_brain_init_failure_is_loud():
     swallowed.
     """
     from core.aura_core import AuraCore
+    AuraCore.reset_instance()
 
     # Force GroqProvider to blow up
     with patch("src.ai.groq_provider.GroqProvider", side_effect=RuntimeError("no key")):

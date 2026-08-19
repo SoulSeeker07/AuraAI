@@ -12,8 +12,16 @@ import asyncio
 from concurrent.futures import Executor
 from typing import Any
 
-from workspace.active_window import ActiveWindowMonitor
-from workspace.running_apps import RunningAppsMonitor
+try:
+    from workspace.active_window import ActiveWindowMonitor
+    from workspace.running_apps import RunningAppsMonitor
+except (ImportError, ModuleNotFoundError):
+    try:
+        from src.workspace.active_window import ActiveWindowMonitor
+        from src.workspace.running_apps import RunningAppsMonitor
+    except Exception:
+        ActiveWindowMonitor = None  # type: ignore
+        RunningAppsMonitor = None  # type: ignore
 from .base import IWorldProvider, ProviderFact
 
 

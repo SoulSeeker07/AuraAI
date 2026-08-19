@@ -124,6 +124,12 @@ class AuraCore:
             cls._instance = cls(config)
         return cls._instance
 
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset the singleton instance (primarily for test isolation)."""
+        cls._instance = None
+        cls._initialized = False
+
     def __init__(self, config: dict[str, Any] | None = None):
         # Guard the WHOLE body — not just _initialize_components() — so a second
         # AuraCore() call anywhere in the codebase can't wipe out live state.
@@ -263,6 +269,10 @@ class AuraCore:
             )
 
             orchestrator = MasterOrchestrator.get_instance()
+            self.coordinator = ExecutionCoordinator(
+                orchestrator=orchestrator,
+                memory_manager=getattr(self, "memory_manager", None),
+            )
 
             # Create the ACA Brain (5-stage cognitive architecture)
             self.executive_brain = ACABrain(
@@ -279,12 +289,40 @@ class AuraCore:
                     llm_client=self.groq_client if self.llm_enabled else None
                 ),
                 validator=ExecutionMapValidator(),
-                coordinator=ExecutionCoordinator(orchestrator=orchestrator),
+                coordinator=self.coordinator,
                 verification=VerificationEngine(),
                 reflection=ReflectionEngine(),
                 learning=LearningEngine(),
                 llm_client=self.groq_client if self.llm_enabled else None,
             )
+
+            try:
+                from autonomy.trigger_registry import TriggerRegistry
+                from autonomy.trigger_scheduler import TriggerScheduler
+                from core.orchestration.execution_policy import ExecutionPolicy
+                from voice.continuous_loop import ContinuousVoiceLoop
+            except (ImportError, ModuleNotFoundError):
+                from src.autonomy.trigger_registry import TriggerRegistry
+                from src.autonomy.trigger_scheduler import TriggerScheduler
+                from src.core.orchestration.execution_policy import ExecutionPolicy
+                from src.voice.continuous_loop import ContinuousVoiceLoop
+
+            self.policy = ExecutionPolicy.get_instance()
+            self.trigger_registry = TriggerRegistry(
+                storage_path=self.project_root / "storage" / "triggers.json"
+            )
+            self.trigger_scheduler = TriggerScheduler(
+                registry=self.trigger_registry,
+                coordinator=self.coordinator,
+                policy=self.policy,
+            )
+
+            self.voice_loop = ContinuousVoiceLoop(
+                coordinator=self.coordinator,
+                nlu_engine=getattr(self, "nlu_engine", None),
+            )
+            self.voice_loop._aura_core = self
+            ContinuousVoiceLoop.set_global_aura_core(self)
 
             # ── Wire Real Engine Callbacks ─────────────────────────────────
             # Replace mock callbacks with real engines so there is ONE execution path.
@@ -887,45 +925,32 @@ class AuraCore:
 
             # Create ConversationEngine
             from ai.provider_manager import ProviderManager
-            from core.orchestration.personal_os_runtime import PersonalOSRuntime
-            try:
-                from voice.continuous_loop import ContinuousVoiceLoop
-                ContinuousVoiceLoop.set_global_aura_core(self)
-            except Exception:
-                pass
-
-            # Build provider manager
+            from memory.manager.memory_manager import MemoryManager
             from src.ai.groq_provider import (  # adjust path if it lives elsewhere
                 GroqProvider,
             )
             from src.brain.conversation_engine import ConversationEngine
 
-            personal_os_runtime = PersonalOSRuntime.get_instance()
-            if hasattr(personal_os_runtime, "voice_loop") and personal_os_runtime.voice_loop:
-                personal_os_runtime.voice_loop._aura_core = self
-            memory_manager = personal_os_runtime.memory_manager
-
-            provider_manager = personal_os_runtime.provider_manager
-            provider_manager.register(
+            self.provider_manager = ProviderManager()
+            self.provider_manager.register(
                 "groq", GroqProvider(api_key=os.environ.get("GROQ_API_KEY", ""))
             )
-            provider_manager.set_default("groq")
+            self.provider_manager.set_default("groq")
+
+            self.memory_manager = MemoryManager(provider_manager=self.provider_manager)
 
             # Create ConversationEngine
             self.conversation_engine = ConversationEngine(
                 memory=self.memory,
-                provider_manager=provider_manager,
+                provider_manager=self.provider_manager,
                 settings={
                     "provider": "groq",
                     "model": self.groq_model,
                 },
                 model=self.groq_model,
                 aura_core=self,
-                memory_manager=memory_manager,
+                memory_manager=self.memory_manager,
             )
-            
-            if self.conversation_engine.context_builder.memory_manager is not personal_os_runtime.memory_manager:
-                raise RuntimeError("MemoryManager instance mismatch: ConversationEngine and PersonalOSRuntime are not sharing state")
 
             self.brain_enabled = True
             self.components["brain"] = ComponentStatus(
@@ -1834,21 +1859,75 @@ MasterOrchestrator
                 name="Planner", status=AuraCoreStatus.ERROR, message=str(e)
             )
 
+    def start_autonomy(self) -> bool:
+        """Explicitly start the background TriggerScheduler loop."""
+        if hasattr(self, "trigger_scheduler") and self.trigger_scheduler:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                if not self.trigger_scheduler._is_running:
+                    self.trigger_scheduler._is_running = True
+                    self.trigger_scheduler._scheduler_task = loop.create_task(
+                        self.trigger_scheduler._scheduler_loop()
+                    )
+            except RuntimeError:
+                asyncio.run(self.trigger_scheduler.start())
+            return True
+        return False
+
+    def stop_autonomy(self, drain_timeout: float = 2.0) -> bool:
+        """Explicitly stop and drain the background TriggerScheduler loop."""
+        if hasattr(self, "trigger_scheduler") and self.trigger_scheduler:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                if self.trigger_scheduler._is_running:
+                    self.trigger_scheduler._is_running = False
+                    if self.trigger_scheduler._scheduler_task:
+                        self.trigger_scheduler._scheduler_task.cancel()
+                        self.trigger_scheduler._scheduler_task = None
+            except RuntimeError:
+                asyncio.run(self.trigger_scheduler.stop(drain_timeout=drain_timeout))
+            return True
+        return False
+
+    @property
+    def autonomy_active(self) -> bool:
+        """Return whether the autonomous trigger scheduler is running."""
+        return (
+            getattr(self.trigger_scheduler, "_running", False)
+            if hasattr(self, "trigger_scheduler") and self.trigger_scheduler
+            else False
+        )
+
     def shutdown(self):
         """Shutdown Aura Core."""
         logger.info("Shutting down Aura Core...")
         self._save_conversation_history()
         self.clear_conversation_history()
-        
-        # M2: Trigger explicit session close for short-term memory consolidation
-        try:
-            from core.orchestration.personal_os_runtime import PersonalOSRuntime
-            runtime = PersonalOSRuntime.get_instance()
-            if hasattr(runtime, "memory_manager") and runtime.memory_manager:
-                runtime.memory_manager.close_session(wait_for_consolidation=True)
-        except Exception as _mem_exc:
-            logger.debug(f"[AuraCore] Memory consolidation on shutdown skipped: {_mem_exc}")
-                
+
+        # 1. Stop voice loop
+        if hasattr(self, "voice_loop") and self.voice_loop and getattr(self.voice_loop, "_running", False):
+            try:
+                self.voice_loop.stop()
+            except Exception as exc:
+                logger.debug(f"[AuraCore] voice_loop stop error: {exc}")
+
+        # 2. Stop and drain trigger scheduler
+        if hasattr(self, "trigger_scheduler") and self.trigger_scheduler and getattr(self.trigger_scheduler, "_running", False):
+            try:
+                self.stop_autonomy(drain_timeout=2.0)
+            except Exception as exc:
+                logger.debug(f"[AuraCore] trigger_scheduler stop error: {exc}")
+
+        # 3. Trigger explicit session close for short-term memory consolidation
+        if hasattr(self, "memory_manager") and self.memory_manager:
+            try:
+                self.memory_manager.close_session(wait_for_consolidation=True)
+            except Exception as _mem_exc:
+                logger.debug(f"[AuraCore] Memory consolidation on shutdown skipped: {_mem_exc}")
+
+        # 4. Shutdown BackendRegistry
         try:
             from core.backends.backend_registry import BackendRegistry
 

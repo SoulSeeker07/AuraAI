@@ -17,10 +17,14 @@ try:
         get_desktop_execution_engine,
     )
 except (ImportError, ModuleNotFoundError):
-    from desktop.native.desktop_execution_engine import (
-        DesktopExecutionEngine,
-        get_desktop_execution_engine,
-    )
+    try:
+        from src.desktop.native.desktop_execution_engine import (
+            DesktopExecutionEngine,
+            get_desktop_execution_engine,
+        )
+    except Exception:
+        DesktopExecutionEngine = None  # type: ignore
+        get_desktop_execution_engine = None  # type: ignore
 
 try:
     from ...planning.execution_result import ExecutionResult

@@ -46,15 +46,13 @@ class CLIClient:
             "normal"  # 'normal', 'developer', 'debug', 'benchmark', 'trace'
         )
 
-        # Wire aura_core into PersonalOSRuntime's voice loop so continuous voice can reach Groq
+        # Wire aura_core into voice loop so continuous voice can reach Groq
         try:
             from voice.continuous_loop import ContinuousVoiceLoop
             ContinuousVoiceLoop.set_global_aura_core(self.aura_core)
-            from core.orchestration.personal_os_runtime import PersonalOSRuntime
-            personal_os = PersonalOSRuntime.get_instance()
-            if hasattr(personal_os, "voice_loop") and personal_os.voice_loop:
-                personal_os.voice_loop._aura_core = self.aura_core
-                personal_os.voice_loop.on_stop = lambda: setattr(self, "voice_listening", False)
+            if hasattr(self.aura_core, "voice_loop") and self.aura_core.voice_loop:
+                self.aura_core.voice_loop._aura_core = self.aura_core
+                self.aura_core.voice_loop.on_stop = lambda: setattr(self, "voice_listening", False)
         except Exception as e:
             logger.debug(f"Could not wire aura_core to voice_loop on init: {e}")
 
@@ -798,29 +796,20 @@ class CLIClient:
                 print("  Use 'Stop Listening' to disable.")
 
                 try:
-                    from core.orchestration.personal_os_runtime import PersonalOSRuntime
-
-                    # Get PersonalOSRuntime and start its voice loop
-                    personal_os = PersonalOSRuntime.get_instance()
-                    if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
-                        personal_os.voice_loop._aura_core = self.aura_core
-                        success = personal_os.voice_loop.start()
+                    if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
+                        self.aura_core.voice_loop._aura_core = self.aura_core
+                        success = self.aura_core.voice_loop.start()
                         if success:
-                            print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                            print(f"  ✓ ContinuousVoiceLoop started (running: {self.aura_core.voice_loop._running})")
                         else:
                             print(f"  ✗ Failed to start ContinuousVoiceLoop")
                             self.voice_listening = False
                     else:
-                        print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                        print(f"  ✗ No voice_loop found on AuraCore")
                         self.voice_listening = False
                 except Exception as e:
                     logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
                     print(f"  ✗ Error starting voice listening: {e}")
-                    print(f"  Exception type: {type(e).__name__}")
-                    import traceback
-                    print(f"  Full traceback:")
-                    for line in traceback.format_exc().split('\n'):
-                        print(f"    {line}")
                     self.voice_listening = False
 
                 self.print_commands()
@@ -836,16 +825,12 @@ class CLIClient:
                 print("\n✓ Stopping voice listening...")
 
                 try:
-                    from core.orchestration.personal_os_runtime import PersonalOSRuntime
-
-                    # Get PersonalOSRuntime and stop its voice loop
-                    personal_os = PersonalOSRuntime.get_instance()
-                    if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
-                        personal_os.voice_loop.stop()
+                    if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
+                        self.aura_core.voice_loop.stop()
                         print("  ContinuousVoiceLoop stopped.")
                         self.voice_listening = False
                     else:
-                        print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                        print(f"  ✗ No voice_loop found on AuraCore")
                         self.voice_listening = False
                 except Exception as e:
                     logger.error(f"Failed to stop ContinuousVoiceLoop: {e}", exc_info=True)
@@ -855,7 +840,6 @@ class CLIClient:
 
             elif command == "voice_listen" or command == "voice_listen_toggle":
                 # Legacy alias for voice listening (case-insensitive)
-                # Changed from toggle to enable-only for clarity
                 self.voice_listening = True
                 print("\n✓ Voice listening enabled (legacy alias).")
                 print("  Use 'Start Listening' for explicit start command.")
@@ -863,26 +847,47 @@ class CLIClient:
                 print("  Use 'Stop Listening' to disable.")
 
                 try:
-                    from core.orchestration.personal_os_runtime import PersonalOSRuntime
-
-                    # Get PersonalOSRuntime and start its voice loop
-                    personal_os = PersonalOSRuntime.get_instance()
-                    if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
-                        personal_os.voice_loop._aura_core = self.aura_core
-                        success = personal_os.voice_loop.start()
+                    if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
+                        self.aura_core.voice_loop._aura_core = self.aura_core
+                        success = self.aura_core.voice_loop.start()
                         if success:
-                            print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                            print(f"  ✓ ContinuousVoiceLoop started (running: {self.aura_core.voice_loop._running})")
                         else:
                             print(f"  ✗ Failed to start ContinuousVoiceLoop")
                             self.voice_listening = False
                     else:
-                        print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                        print(f"  ✗ No voice_loop found on AuraCore")
                         self.voice_listening = False
                 except Exception as e:
                     logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
                     print(f"  ✗ Error starting voice listening: {e}")
                     self.voice_listening = False
 
+                self.print_commands()
+
+            elif command.lower() in ("autonomy on", "autonomy start"):
+                success = self.aura_core.start_autonomy()
+                if success:
+                    print("\n✓ Autonomous TriggerScheduler active (background daemon running).")
+                else:
+                    print("\n✗ Failed to start TriggerScheduler on AuraCore.")
+                self.print_commands()
+
+            elif command.lower() in ("autonomy off", "autonomy stop"):
+                success = self.aura_core.stop_autonomy(drain_timeout=2.0)
+                if success:
+                    print("\n✓ Autonomous TriggerScheduler stopped and drained.")
+                else:
+                    print("\n✗ Failed to stop TriggerScheduler.")
+                self.print_commands()
+
+            elif command.lower() == "autonomy status":
+                active = self.aura_core.autonomy_active
+                trig_count = len(self.aura_core.trigger_registry.list_triggers()) if hasattr(self.aura_core, "trigger_registry") and self.aura_core.trigger_registry else 0
+                status_str = "ACTIVE (running)" if active else "INACTIVE (stopped)"
+                print(f"\n[Autonomy Subsystem]")
+                print(f"  Status: {status_str}")
+                print(f"  Registered Triggers: {trig_count}")
                 self.print_commands()
 
             elif cmd == "mode" or cmd.startswith("mode"):
@@ -984,16 +989,11 @@ class CLIClient:
         if self.aura_core.voice_enabled and should_speak:
             try:
                 import re
-                from core.orchestration.personal_os_runtime import PersonalOSRuntime
-                personal_os = PersonalOSRuntime.get_instance()
-                
-                # Check if voice components are available
-                if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
-                    if hasattr(personal_os.voice_loop, 'voice_manager') and personal_os.voice_loop.voice_manager:
-                        # Clean up markdown formatting for speech
+                if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
+                    if hasattr(self.aura_core.voice_loop, 'voice_manager') and self.aura_core.voice_loop.voice_manager:
                         clean_text = re.sub(r'[*_#`]', '', response)
                         if clean_text.strip():
-                            personal_os.voice_loop.voice_manager.speak(clean_text)
+                            self.aura_core.voice_loop.voice_manager.speak(clean_text)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to trigger TTS: {e}")
@@ -1319,19 +1319,17 @@ class CLIClient:
                     print("  Waiting for wake word: Aura")
                     print("  Use 'Stop Listening' to disable.")
                     try:
-                        from core.orchestration.personal_os_runtime import PersonalOSRuntime
-                        personal_os = PersonalOSRuntime.get_instance()
-                        if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
-                            personal_os.voice_loop._aura_core = self.aura_core
-                            personal_os.voice_loop.on_stop = lambda: setattr(self, "voice_listening", False)
-                            success = personal_os.voice_loop.start()
+                        if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
+                            self.aura_core.voice_loop._aura_core = self.aura_core
+                            self.aura_core.voice_loop.on_stop = lambda: setattr(self, "voice_listening", False)
+                            success = self.aura_core.voice_loop.start()
                             if success:
-                                print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                                print(f"  ✓ ContinuousVoiceLoop started (running: {self.aura_core.voice_loop._running})")
                             else:
                                 print(f"  ✗ Failed to start ContinuousVoiceLoop")
                                 self.voice_listening = False
                         else:
-                            print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                            print(f"  ✗ No voice_loop found on AuraCore")
                             self.voice_listening = False
                     except Exception as e:
                         logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)
@@ -1346,14 +1344,12 @@ class CLIClient:
                         return
                     print("\n✓ Stopping voice listening...")
                     try:
-                        from core.orchestration.personal_os_runtime import PersonalOSRuntime
-                        personal_os = PersonalOSRuntime.get_instance()
-                        if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
-                            personal_os.voice_loop.stop()
+                        if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
+                            self.aura_core.voice_loop.stop()
                             print("  ContinuousVoiceLoop stopped.")
                             self.voice_listening = False
                         else:
-                            print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                            print(f"  ✗ No voice_loop found on AuraCore")
                             self.voice_listening = False
                     except Exception as e:
                         logger.error(f"Failed to stop ContinuousVoiceLoop: {e}", exc_info=True)
@@ -1376,20 +1372,18 @@ class CLIClient:
                     print("  Waiting for wake word: Aura")
                     print("  Use 'Stop Listening' to disable.")
                     try:
-                        from core.orchestration.personal_os_runtime import PersonalOSRuntime
-                        personal_os = PersonalOSRuntime.get_instance()
-                        if hasattr(personal_os, 'voice_loop') and personal_os.voice_loop:
+                        if hasattr(self.aura_core, 'voice_loop') and self.aura_core.voice_loop:
                             # Inject AuraCore so voice transcripts go through the
                             # same Groq path as typed messages.
-                            personal_os.voice_loop._aura_core = self.aura_core
-                            success = personal_os.voice_loop.start()
+                            self.aura_core.voice_loop._aura_core = self.aura_core
+                            success = self.aura_core.voice_loop.start()
                             if success:
-                                print(f"  ✓ ContinuousVoiceLoop started (running: {personal_os.voice_loop._running})")
+                                print(f"  ✓ ContinuousVoiceLoop started (running: {self.aura_core.voice_loop._running})")
                             else:
                                 print(f"  ✗ Failed to start ContinuousVoiceLoop")
                                 self.voice_listening = False
                         else:
-                            print(f"  ✗ No voice_loop found in PersonalOSRuntime")
+                            print(f"  ✗ No voice_loop found on AuraCore")
                             self.voice_listening = False
                     except Exception as e:
                         logger.error(f"Failed to start ContinuousVoiceLoop: {e}", exc_info=True)

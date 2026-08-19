@@ -12,8 +12,16 @@ import logging
 import time
 from typing import Any
 
-from browser.engine import BrowserEngine
-from browser.shopping import ShoppingManager
+try:
+    from browser.engine import BrowserEngine
+    from browser.shopping import ShoppingManager
+except (ModuleNotFoundError, ImportError):
+    try:
+        from src.browser.engine import BrowserEngine
+        from src.browser.shopping import ShoppingManager
+    except Exception:
+        BrowserEngine = None  # type: ignore
+        ShoppingManager = None  # type: ignore
 
 from .base_agent import AgentCapabilities, AgentResult, AgentState, BaseAgent
 from .task_model import TaskType

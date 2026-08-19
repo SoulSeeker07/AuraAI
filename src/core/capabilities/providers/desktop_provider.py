@@ -14,13 +14,29 @@ import logging
 from core.capabilities.models import Capability
 from core.capabilities.provider import ICapabilityProvider
 from core.orchestration.autonomy_mode import ActionRisk
-from desktop.native.capability_registry import (
-    CapabilityDescriptor,
-    CapabilityRegistry as NativeCapabilityRegistry,
-    PermissionRequired,
-    RiskLevel as NativeRiskLevel,
-)
-from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+try:
+    from desktop.native.capability_registry import (
+        CapabilityDescriptor,
+        CapabilityRegistry as NativeCapabilityRegistry,
+        PermissionRequired,
+        RiskLevel as NativeRiskLevel,
+    )
+    from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+except (ImportError, ModuleNotFoundError):
+    try:
+        from src.desktop.native.capability_registry import (
+            CapabilityDescriptor,
+            CapabilityRegistry as NativeCapabilityRegistry,
+            PermissionRequired,
+            RiskLevel as NativeRiskLevel,
+        )
+        from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+    except Exception:
+        CapabilityDescriptor = None  # type: ignore
+        NativeCapabilityRegistry = None  # type: ignore
+        PermissionRequired = None  # type: ignore
+        NativeRiskLevel = None  # type: ignore
+        NativeManagerRegistry = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 

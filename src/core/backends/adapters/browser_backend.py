@@ -16,9 +16,13 @@ from typing import Any
 try:
     from browser.engine import BrowserEngine
     from browser.shopping import ShoppingManager
-except ModuleNotFoundError:
-    from browser.engine import BrowserEngine
-    from browser.shopping import ShoppingManager
+except (ModuleNotFoundError, ImportError):
+    try:
+        from src.browser.engine import BrowserEngine
+        from src.browser.shopping import ShoppingManager
+    except Exception:
+        BrowserEngine = None  # type: ignore
+        ShoppingManager = None  # type: ignore
 
 try:
     from ...planning.execution_result import ExecutionResult

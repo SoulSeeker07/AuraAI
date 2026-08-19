@@ -11,7 +11,14 @@ import asyncio
 from concurrent.futures import Executor
 from typing import Any
 
-from browser.world_model import BrowserContext, BrowserStateProbe
+try:
+    from browser.world_model import BrowserContext, BrowserStateProbe
+except (ImportError, ModuleNotFoundError):
+    try:
+        from src.browser.world_model import BrowserContext, BrowserStateProbe
+    except Exception:
+        BrowserContext = None  # type: ignore
+        BrowserStateProbe = None  # type: ignore
 from .base import IWorldProvider, ProviderFact
 
 

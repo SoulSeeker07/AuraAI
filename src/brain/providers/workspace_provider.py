@@ -13,10 +13,22 @@ from concurrent.futures import Executor
 from pathlib import Path
 from typing import Any
 
-from workspace.editor_tracker import EditorTracker
-from workspace.git_context import GitContext
-from workspace.project_detector import ProjectDetector
-from workspace.workspace_walker import WorkspaceWalker
+try:
+    from workspace.editor_tracker import EditorTracker
+    from workspace.git_context import GitContext
+    from workspace.project_detector import ProjectDetector
+    from workspace.workspace_walker import WorkspaceWalker
+except (ImportError, ModuleNotFoundError):
+    try:
+        from src.workspace.editor_tracker import EditorTracker
+        from src.workspace.git_context import GitContext
+        from src.workspace.project_detector import ProjectDetector
+        from src.workspace.workspace_walker import WorkspaceWalker
+    except Exception:
+        EditorTracker = None  # type: ignore
+        GitContext = None  # type: ignore
+        ProjectDetector = None  # type: ignore
+        WorkspaceWalker = None  # type: ignore
 from .base import IWorldProvider, ProviderFact
 
 
