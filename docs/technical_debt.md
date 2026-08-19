@@ -57,10 +57,13 @@ This document tracks identified architectural debt, interim compatibility shims,
 
 ---
 
-## 6. PersonalOSRuntime vs MasterOrchestrator Pipeline Convergence
-* **Location**: [`src/core/orchestration/personal_os_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/personal_os_runtime.py), [`core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/core/aura_core.py)
-* **Status**: **ACTIVE ARCHITECTURAL DIVERGENCE**
-* **Context**: Production user requests route through `AuraCore` $\to$ `ACABrain` $\to$ `MasterOrchestrator` (with fail-closed DAG execution, level concurrency, and artifact validation). However, `PersonalOSRuntime.execute_goal()` drives execution through a standalone `ExecutionCoordinator(orchestrator=None)` running flat sequential steps without `TaskGraph` level parallelization or fail-closed halt semantics.
+## 6. `PersonalOSRuntime` Orphaned Execution Loop & Container Retirement
+* **Location**: [`src/core/orchestration/personal_os_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/personal_os_runtime.py), [`core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/core/aura_core.py), [`clients/cli_client.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/clients/cli_client.py)
+* **Status**: **ORPHANED HARNESS (Candidate for Retirement)**
+* **Context**: Production user requests route through `AuraCore` $\to$ `ACABrain` $\to$ `MasterOrchestrator`. Reachability verification confirmed zero production calls to `PersonalOSRuntime.execute_goal()`. Currently, `PersonalOSRuntime` serves only as a container holding singleton references to `memory_manager` and `voice_loop` (used by `clients/cli_client.py`), and as a harness for Milestone 26 test scripts.
 * **Remediation Plan**:
-  1. Migrate `PersonalOSRuntime.execute_goal()` to delegate directly to `MasterOrchestrator.process_request_async()` (or `MasterOrchestrator.run()`).
-  2. Unify session state and memory logging between `PersonalOSRuntime` and `MasterOrchestrator`, deprecating the standalone un-orchestrated execution loop.
+  1. Migrate `voice_loop` and `memory_manager` lifecycle ownership directly onto `AuraCore` (e.g. `aura_core.voice_loop`, `aura_core.memory_manager`).
+  2. Update `clients/cli_client.py` (`voice on` / `voice off`) to interact directly with `aura_core.voice_loop`.
+  3. Port valuable multi-turn / app-launch scenarios from `test_personal_os_runtime.py` to `MasterOrchestrator` regression suites.
+  4. Deprecate and delete `PersonalOSRuntime` and its standalone un-orchestrated execution loop.
+
