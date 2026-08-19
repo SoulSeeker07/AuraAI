@@ -1,15 +1,32 @@
 """
-Domain Expert Models & Data Contracts
+Domain Expert Data Models & Plan DAG (M25 Phase 1)
 Location: src/experts/models.py
 
-Defines standard data structures for domain analysis findings, proposals, and result packages.
+Defines immutable DomainAssessment, PlanNode, and PlanDAG models
+for the Milestone 25 Professional Expert Systems.
+
+Architectural Invariants:
+1. Deep Immutability: DomainAssessment is frozen and side-effect free.
+2. Causal Continuity: assessment_id and causal_context continue the audit chain:
+   event_id -> correlation_id -> assessment_id -> policy_decision_id -> domain_assessment_id -> plan_id
+3. Pure Data Structures: PlanDAG and PlanNode contain intent and capability graph nodes;
+   they NEVER execute capabilities directly.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import json
+import logging
+from types import MappingProxyType
+from typing import Any, Mapping
+import uuid
+
+from core.orchestration.autonomy_mode import ActionRisk
 from enum import Enum
-from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class DomainType(Enum):
@@ -49,7 +66,7 @@ class DomainFinding:
             "category": self.category,
             "title": self.title,
             "description": self.description,
-            "severity": self.severity.value,
+            "severity": self.severity.value if hasattr(self.severity, "value") else str(self.severity),
             "evidence": self.evidence,
             "location": self.location,
             "confidence": self.confidence,
@@ -82,7 +99,7 @@ class ExpertAnalysisResult:
 
     domain: DomainType
     success: bool
-    summary: str
+    summary: str = ""
     findings: list[DomainFinding] = field(default_factory=list)
     proposals: list[DomainActionProposal] = field(default_factory=list)
     error: str = ""
@@ -98,7 +115,7 @@ class ExpertAnalysisResult:
                 "parameters": prop.parameters,
             })
         return {
-            "goal": f"[Domain: {self.domain.value}] {goal}",
+            "goal": f"[Domain: {self.domain.value if hasattr(self.domain, 'value') else self.domain}] {goal}",
             "steps": steps,
             "domain_context": {
                 "summary": self.summary,
@@ -108,7 +125,7 @@ class ExpertAnalysisResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "domain": self.domain.value,
+            "domain": self.domain.value if hasattr(self.domain, "value") else str(self.domain),
             "success": self.success,
             "summary": self.summary,
             "findings": [f.to_dict() for f in self.findings],
@@ -116,3 +133,256 @@ class ExpertAnalysisResult:
             "error": self.error,
             "data": self.data,
         }
+
+
+
+def _freeze_dict(d: Mapping[str, Any] | None) -> MappingProxyType[str, Any]:
+    if d is None:
+        return MappingProxyType({})
+    frozen: dict[str, Any] = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            frozen[k] = _freeze_dict(v)
+        elif isinstance(v, list):
+            frozen[k] = tuple(v)
+        else:
+            frozen[k] = v
+    return MappingProxyType(frozen)
+
+
+def _unfreeze_dict(d: MappingProxyType[str, Any] | Mapping[str, Any]) -> dict[str, Any]:
+    unfrozen: dict[str, Any] = {}
+    for k, v in d.items():
+        if isinstance(v, (MappingProxyType, dict)):
+            unfrozen[k] = _unfreeze_dict(v)
+        elif isinstance(v, tuple):
+            unfrozen[k] = list(v)
+        else:
+            unfrozen[k] = v
+    return unfrozen
+
+
+@dataclass(frozen=True)
+class DomainAssessment:
+    """
+    Immutable structured evaluation produced by a specialized DomainExpertPlanner
+    prior to plan generation.
+
+    Attributes:
+        assessment_id: Unique domain assessment identifier (format: dasm_<uuid4_hex>)
+        domain: Domain identifier (e.g. 'software_engineering', 'network_engineering', 'cybersecurity', 'finance')
+        confidence: Domain confidence score [0.0 .. 1.0]
+        findings: Key facts, diagnostic observations, or situational signals
+        assumptions: Explicit operational or domain assumptions made during reasoning
+        required_capabilities: Set of capability names necessary to satisfy the goal
+        recommended_strategy: Summary of the domain strategy / methodology
+        causal_context: Immutable map preserving event_id, correlation_id, policy_decision_id
+        created_at: UTC ISO 8601 timestamp
+        metadata: Immutable auxiliary metadata
+    """
+    assessment_id: str
+    domain: str
+    confidence: float
+    findings: tuple[str, ...] = field(default_factory=tuple)
+    assumptions: tuple[str, ...] = field(default_factory=tuple)
+    required_capabilities: tuple[str, ...] = field(default_factory=tuple)
+    recommended_strategy: str = ""
+    causal_context: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    metadata: MappingProxyType[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+
+    @classmethod
+    def create(
+        cls,
+        domain: str,
+        confidence: float,
+        findings: list[str] | tuple[str, ...] | None = None,
+        assumptions: list[str] | tuple[str, ...] | None = None,
+        required_capabilities: list[str] | tuple[str, ...] | None = None,
+        recommended_strategy: str = "",
+        causal_context: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "DomainAssessment":
+        return cls(
+            assessment_id=f"dasm_{uuid.uuid4().hex}",
+            domain=domain.lower().strip(),
+            confidence=max(0.0, min(1.0, float(confidence))),
+            findings=tuple(findings or ()),
+            assumptions=tuple(assumptions or ()),
+            required_capabilities=tuple(required_capabilities or ()),
+            recommended_strategy=recommended_strategy,
+            causal_context=_freeze_dict(causal_context),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            metadata=_freeze_dict(metadata),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "assessment_id": self.assessment_id,
+            "domain": self.domain,
+            "confidence": self.confidence,
+            "findings": list(self.findings),
+            "assumptions": list(self.assumptions),
+            "required_capabilities": list(self.required_capabilities),
+            "recommended_strategy": self.recommended_strategy,
+            "causal_context": _unfreeze_dict(self.causal_context),
+            "created_at": self.created_at,
+            "metadata": _unfreeze_dict(self.metadata),
+        }
+
+    def to_json(self, indent: int | None = None) -> str:
+        return json.dumps(self.to_dict(), indent=indent)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "DomainAssessment":
+        return cls(
+            assessment_id=data["assessment_id"],
+            domain=data["domain"],
+            confidence=float(data["confidence"]),
+            findings=tuple(data.get("findings", ())),
+            assumptions=tuple(data.get("assumptions", ())),
+            required_capabilities=tuple(data.get("required_capabilities", ())),
+            recommended_strategy=data.get("recommended_strategy", ""),
+            causal_context=_freeze_dict(data.get("causal_context", {})),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            metadata=_freeze_dict(data.get("metadata", {})),
+        )
+
+
+@dataclass
+class PlanNode:
+    """Represents a single executable node in an expert Plan DAG."""
+    node_id: str
+    capability: str
+    parameters: dict[str, Any] = field(default_factory=dict)
+    dependencies: list[str] = field(default_factory=list)
+    description: str = ""
+    expected_output_type: str = "any"
+    risk_level: ActionRisk = ActionRisk.LOW
+    timeout_seconds: int = 30
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "node_id": self.node_id,
+            "capability": self.capability,
+            "parameters": self.parameters,
+            "dependencies": self.dependencies,
+            "description": self.description,
+            "expected_output_type": self.expected_output_type,
+            "risk_level": self.risk_level.value if isinstance(self.risk_level, ActionRisk) else str(self.risk_level),
+            "timeout_seconds": self.timeout_seconds,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PlanNode":
+        return cls(
+            node_id=data["node_id"],
+            capability=data["capability"],
+            parameters=data.get("parameters", {}),
+            dependencies=data.get("dependencies", []),
+            description=data.get("description", ""),
+            expected_output_type=data.get("expected_output_type", "any"),
+            risk_level=ActionRisk(data.get("risk_level", "low")),
+            timeout_seconds=int(data.get("timeout_seconds", 30)),
+        )
+
+
+@dataclass
+class PlanDAG:
+    """
+    Structured Directed Acyclic Graph of capability execution nodes produced by an expert.
+    """
+    plan_id: str
+    domain: str
+    goal: str
+    assessment_id: str
+    nodes: dict[str, PlanNode] = field(default_factory=dict)
+    execution_stages: list[list[str]] = field(default_factory=list)
+    causal_context: dict[str, Any] = field(default_factory=dict)
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    @classmethod
+    def create(
+        cls,
+        domain: str,
+        goal: str,
+        assessment_id: str,
+        causal_context: dict[str, Any] | None = None,
+    ) -> "PlanDAG":
+        return cls(
+            plan_id=f"plan_{uuid.uuid4().hex}",
+            domain=domain,
+            goal=goal,
+            assessment_id=assessment_id,
+            nodes={},
+            execution_stages=[],
+            causal_context=causal_context or {},
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    def add_node(self, node: PlanNode) -> None:
+        self.nodes[node.node_id] = node
+
+    def compute_execution_stages(self) -> list[list[str]]:
+        """
+        Topologically sorts the DAG into parallel execution stages.
+        Raises ValueError if cyclic dependencies are detected.
+        """
+        in_degree = {nid: len(n.dependencies) for nid, n in self.nodes.items()}
+        dependents: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        for nid, node in self.nodes.items():
+            for dep in node.dependencies:
+                if dep in dependents:
+                    dependents[dep].append(nid)
+
+        current_stage = [nid for nid, deg in in_degree.items() if deg == 0]
+        stages: list[list[str]] = []
+        processed_count = 0
+
+        while current_stage:
+            stages.append(list(current_stage))
+            processed_count += len(current_stage)
+            next_stage: list[str] = []
+
+            for nid in current_stage:
+                for child in dependents.get(nid, []):
+                    in_degree[child] -= 1
+                    if in_degree[child] == 0:
+                        next_stage.append(child)
+
+            current_stage = next_stage
+
+        if processed_count < len(self.nodes):
+            raise ValueError(f"Cyclic dependency detected in PlanDAG '{self.plan_id}' ({processed_count}/{len(self.nodes)} resolved).")
+
+        self.execution_stages = stages
+        return stages
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "plan_id": self.plan_id,
+            "domain": self.domain,
+            "goal": self.goal,
+            "assessment_id": self.assessment_id,
+            "nodes": {nid: node.to_dict() for nid, node in self.nodes.items()},
+            "execution_stages": self.execution_stages,
+            "causal_context": self.causal_context,
+            "created_at": self.created_at,
+        }
+
+    def to_json(self, indent: int | None = None) -> str:
+        return json.dumps(self.to_dict(), indent=indent)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PlanDAG":
+        nodes = {nid: PlanNode.from_dict(ndata) for nid, ndata in data.get("nodes", {}).items()}
+        return cls(
+            plan_id=data["plan_id"],
+            domain=data["domain"],
+            goal=data["goal"],
+            assessment_id=data["assessment_id"],
+            nodes=nodes,
+            execution_stages=data.get("execution_stages", []),
+            causal_context=data.get("causal_context", {}),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+        )
