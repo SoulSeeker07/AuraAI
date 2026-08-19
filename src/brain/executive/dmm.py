@@ -83,6 +83,8 @@ _APP_ALIASES: dict[str, str] = {
     "word": "winword",
     "excel": "excel",
     "powerpoint": "powerpnt",
+    "browser": "chrome",
+    "web browser": "chrome",
 }
 
 _BROWSER_URLS: dict[str, str] = {
@@ -309,7 +311,7 @@ class DecisionMakingModule:
         if not modifiers:
             modifiers["chat"] = True
 
-        return goal if "goal" in locals() else text, modifiers
+        return text, modifiers
 
     # ── Execution Map Builder ───────────────────────────────────────────────
 
@@ -518,7 +520,7 @@ class DecisionMakingModule:
                 step_type=StepType.LAUNCH,
                 description="Open default browser",
                 capability=Capability.DESKTOP,
-                parameters={"operation": "launch_default_browser"},
+                parameters={"app_name": "browser", "operation": "launch_default_browser"},
                 retries=1,
                 timeout=15,
             ),

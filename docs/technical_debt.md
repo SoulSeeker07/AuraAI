@@ -17,13 +17,14 @@ This document tracks identified architectural debt, interim compatibility shims,
 ---
 
 ## 2. Desktop Application Name Resolution & Parameter Propagation
-* **Location**: [`src/core/orchestration/personal_os_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/personal_os_runtime.py), [`src/core/backends/adapters/desktop_backend.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/adapters/desktop_backend.py), [`src/brain/executive/dmm.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/executive/dmm.py)
-* **Status**: **STOPGAP IN PLACE (Source-level fix pending)**
-* **Context**: When `DecisionMakingModule` or `PersonalOSRuntime._step_to_action` translates abstract user goals (e.g. `"open notepad and write hello world"`), the resulting step parameter dictionary sometimes omits an explicit `parameters["app_name"]` or defaults to the action verb (`"open_app"`).
-* **Current Implementation**: A defense-in-depth token filter in `desktop_backend.py` intercepts generic verb strings (`"open_app"`, `"app_open"`, `"launch"`, `"application"`) and extracts application candidates from the raw goal.
-* **Remediation Plan**:
-  1. Update `PersonalOSRuntime._step_to_action` and `DMM._understand_goal` to explicitly extract and populate `parameters["app_name"] = app_entity` at plan generation time.
-  2. Retain the `desktop_backend.py` guard purely as a secondary defensive fallback.
+* **Location**: [`src/brain/executive/dmm.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/executive/dmm.py), [`src/core/backends/adapters/desktop_backend.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/adapters/desktop_backend.py)
+* **Status**: **PARTIALLY RESOLVED (Source-level fix applied; defense-in-depth guard retained)**
+* **Context**: `_map_direct_url` in DMM previously constructed launch steps without an explicit `parameters["app_name"]`, causing backend token fallback. In addition, `_understand_goal` contained dead `"goal" in locals()` control flow.
+* **Current Implementation**:
+  1. Source-level fix applied in `_map_direct_url` to explicitly set `parameters={"app_name": "browser", "operation": "launch_default_browser"}`.
+  2. Added `"browser": "chrome"` and `"web browser": "chrome"` to `_APP_ALIASES`.
+  3. Cleaned `_understand_goal` to return `(text, modifiers)` directly.
+  4. Retained the defense-in-depth token filter in `desktop_backend.py` as a safety guard.
 
 ---
 
@@ -43,3 +44,23 @@ This document tracks identified architectural debt, interim compatibility shims,
 * **Context**: Milestone 25 Domain Experts produce structured `PlanDAG` reasoning graphs, whereas `MasterOrchestrator` executes `TaskGraph` / `SubTask` dependency trees.
 * **Remediation Plan**:
   1. Build an automated `PlanDAGCompiler` to translate `PlanNode` and `PlanDAG` into `TaskGraph` subtasks with verified `input_artifacts` and `output_artifacts` dependency bindings.
+
+---
+
+## 5. Multi-Intent / Compound Goal Decomposition in DMM
+* **Location**: [`src/brain/executive/dmm.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/executive/dmm.py)
+* **Status**: **ACTIVE ARCHITECTURAL GAP**
+* **Context**: DMM evaluates modifier flags via a waterfall `if-elif` chain in `_build_execution_map`. For compound goals containing multiple actions (e.g. `"open notepad and write hello world"`), the first matching branch (app launch) consumes the request and produces launch/verify steps, silently dropping downstream intents (e.g. typing text).
+* **Remediation Plan**:
+  1. Implement multi-intent segmentation in `DMM._understand_goal` to extract sequential intent clauses.
+  2. Update `_build_execution_map` to assemble composite execution plans linking multiple intent steps (e.g., Launch App $\to$ Focus Window $\to$ Type Text).
+
+---
+
+## 6. PersonalOSRuntime vs MasterOrchestrator Pipeline Convergence
+* **Location**: [`src/core/orchestration/personal_os_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/personal_os_runtime.py), [`core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/core/aura_core.py)
+* **Status**: **ACTIVE ARCHITECTURAL DIVERGENCE**
+* **Context**: Production user requests route through `AuraCore` $\to$ `ACABrain` $\to$ `MasterOrchestrator` (with fail-closed DAG execution, level concurrency, and artifact validation). However, `PersonalOSRuntime.execute_goal()` drives execution through a standalone `ExecutionCoordinator(orchestrator=None)` running flat sequential steps without `TaskGraph` level parallelization or fail-closed halt semantics.
+* **Remediation Plan**:
+  1. Migrate `PersonalOSRuntime.execute_goal()` to delegate directly to `MasterOrchestrator.process_request_async()` (or `MasterOrchestrator.run()`).
+  2. Unify session state and memory logging between `PersonalOSRuntime` and `MasterOrchestrator`, deprecating the standalone un-orchestrated execution loop.
