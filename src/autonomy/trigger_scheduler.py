@@ -17,6 +17,9 @@ import uuid
 from .models import ConcurrencyPolicy, EventProvenance, Trigger, TriggerState, TriggerType
 from .trigger_registry import TriggerRegistry
 
+from brain.execution_coordinator import ExecutionCoordinator
+from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,15 +32,13 @@ class TriggerScheduler:
     def __init__(
         self,
         registry: TriggerRegistry,
-        coordinator: Any | None = None,
-        policy: Any | None = None,
-        event_runtime: Any | None = None,
+        coordinator: ExecutionCoordinator | None = None,
+        policy: ExecutionPolicy | None = None,
         poll_interval_seconds: float = 0.1,
     ) -> None:
         self.registry = registry
         self.coordinator = coordinator
         self.policy = policy
-        self.event_runtime = event_runtime
         self.poll_interval_seconds = poll_interval_seconds
 
         self._is_running = False
@@ -150,7 +151,6 @@ class TriggerScheduler:
             exec_map = dict(trigger.execution_map or {})
             exec_map["goal"] = f"[Trigger: {trigger.trigger_type} | Event: {provenance.event_id}] {trigger.action_goal}"
 
-            from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
             policy = self.policy or ExecutionPolicy.get_instance()
             steps = exec_map.get("steps", [])
 

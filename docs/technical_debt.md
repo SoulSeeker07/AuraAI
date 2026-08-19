@@ -5,14 +5,14 @@ This document tracks identified architectural debt, interim compatibility shims,
 ---
 
 ## 1. `EventRuntime` Dual-API & Legacy Trigger Compatibility Shim
-* **Location**: [`src/autonomy/event_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/event_runtime.py)
-* **Status**: **ACTIVE DEBT (Compatibility Shim)**
-* **Context**: `EventRuntime` was rewritten in Milestone 24 Phase 2 as the single-choke-point telemetry ingest engine (`ingest(AuraEvent)` $\to$ `DeduplicationEngine` $\to$ `CorrelationEngine` $\to$ `EventInterpreter`). However, earlier subsystems (`PersonalOSRuntime`) and unit tests (`tests/unit/test_event_runtime.py`) expect an older constructor accepting `registry`, `coordinator`, `policy`, and invoking `emit_event()`.
-* **Current Implementation**: A compatibility shim exists in `EventRuntime` exposing `emit_event()`, `_scheduler_loop()`, and `_execute_trigger_task()` alongside the canonical `ingest()` method.
-* **Remediation Plan**:
-  1. Extract trigger evaluation into a dedicated `TriggerScheduler` or `TriggerLifecycleManager` daemon.
-  2. Migrate `PersonalOSRuntime` to instantiate the dedicated scheduler and interact with `EventRuntime` solely via canonical `ingest(AuraEvent)` records.
-  3. Refactor `tests/unit/test_event_runtime.py` to target `TriggerScheduler` directly, restoring `EventRuntime` to pure telemetry ingestion without execution logic.
+* **Location**: [`src/autonomy/event_runtime.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/event_runtime.py), [`src/autonomy/trigger_scheduler.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/trigger_scheduler.py)
+* **Status**: ✅ **RESOLVED** (`c1b7be8`)
+* **Resolution**:
+  1. Extracted `TriggerScheduler` daemon into dedicated [`src/autonomy/trigger_scheduler.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/trigger_scheduler.py) — owns `start()`/`stop()`, `emit_event()`, `fire_trigger()`, `_scheduler_loop()`, `_execute_trigger_task()`, concurrency policy enforcement, and coordinator dispatch.
+  2. Cleaned `EventRuntime` to pure telemetry ingestion: dropped `registry`, `coordinator`, `policy`, `**kwargs` from constructor; removed `emit_event()`, `_scheduler_loop()`, `_fire_trigger()`, `_execute_trigger_task()`, `_running` setter. Constructor now fails loudly on unexpected kwargs.
+  3. Updated `PersonalOSRuntime` to instantiate `TriggerScheduler(registry=..., coordinator=..., policy=...)` instead of `EventRuntime(...)`.
+  4. Migrated `tests/unit/test_event_runtime.py` trigger lifecycle tests to `TriggerScheduler`.
+  5. **Regression**: 73/73 tests passed (M23+M24 full suite, 37.86s).
 
 ---
 
