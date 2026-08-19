@@ -6,6 +6,7 @@ Exposes DomainExpertPlanner contract, DomainAssessment, PlanDAG, PlanNode, and E
 """
 
 from .base_expert import BaseExpertSystem, DomainExpertPlanner
+from .compiler import PlanDAGCompiler
 from .expert_registry import DomainExpertRegistry
 from .financial_expert import FinancialAnalysisExpert
 from .models import (
@@ -30,6 +31,7 @@ __all__ = [
     "DomainAssessment",
     "PlanDAG",
     "PlanNode",
+    "PlanDAGCompiler",
     "ExpertDomainRouter",
     "DomainType",
     "SeverityLevel",

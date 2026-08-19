@@ -39,11 +39,15 @@ This document tracks identified architectural debt, interim compatibility shims,
 ---
 
 ## 4. Milestone 25 PlanDAG $\to$ TaskGraph Compiler
-* **Location**: [`src/experts/`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/experts/), [`src/core/orchestration/task_decomposer.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/task_decomposer.py)
-* **Status**: **DEFERRED (Manual DAG construction in place for tests)**
-* **Context**: Milestone 25 Domain Experts produce structured `PlanDAG` reasoning graphs, whereas `MasterOrchestrator` executes `TaskGraph` / `SubTask` dependency trees.
-* **Remediation Plan**:
-  1. Build an automated `PlanDAGCompiler` to translate `PlanNode` and `PlanDAG` into `TaskGraph` subtasks with verified `input_artifacts` and `output_artifacts` dependency bindings.
+* **Location**: [`src/experts/compiler.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/experts/compiler.py), [`src/experts/__init__.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/experts/__init__.py), [`tests/unit/test_plandag_compiler.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/unit/test_plandag_compiler.py)
+* **Status**: ✅ **RESOLVED**
+* **Resolution**:
+  1. Implemented [`PlanDAGCompiler`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/experts/compiler.py) to translate structured `PlanDAG` reasoning graphs into executable `TaskGraph` dependency trees.
+  2. Resolves domain $\to$ `PlannerRole` via universal `CapabilityRegistry.resolve_domain()`.
+  3. Single-source parameter mapping: propagates `risk_level`, `timeout_seconds`, `expected_output_type`, `assessment_id`, `plan_id`, and `causal_context` directly through `subtask.parameters`.
+  4. Deterministic artifact wiring: wires producer `output_artifacts = ["art_{node_id}"]` and consumer `input_artifacts = ["art_{dep}"]`.
+  5. Strict fail-loud validation against cyclic dependencies, dangling node references, and unregistered capabilities.
+  6. **Regression**: 124/124 tests passed across M23/M24/M25 suites.
 
 ---
 
