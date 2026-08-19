@@ -263,5 +263,11 @@ def main():
     print(" LEVEL 3 HEADLESS INTEGRATION TEST COMPLETE")
     print("==================================================")
 
+
+def test_level3_headless_voice_engine_integration():
+    """Pytest entrypoint for Level 3 Headless Voice Engine Integration."""
+    main()
+
+
 if __name__ == "__main__":
     main()
