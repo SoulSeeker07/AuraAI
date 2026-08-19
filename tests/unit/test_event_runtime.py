@@ -191,3 +191,77 @@ async def test_g11_user_cancellation(temp_storage):
     removed = registry.remove_trigger("t_cancel")
     assert removed is True
     assert registry.get_trigger("t_cancel") is None
+
+
+@pytest.mark.asyncio
+async def test_scheduler_loop_actually_runs_after_start(temp_storage):
+    """
+    Regression test for the boot() no-op bug:
+    Proves that calling start() creates a live _scheduler_loop task that
+    autonomously evaluates SCHEDULED triggers and dispatches to
+    coordinator.coordinate() — without any manual _running flag manipulation.
+
+    This test would have FAILED with the old EventRuntime boot() code that did:
+        self.event_runtime._running = True  # pre-flip
+        asyncio.create_task(self.event_runtime.start())  # start() sees _running=True, returns immediately
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    registry = TriggerRegistry(storage_path=temp_storage)
+
+    # Mock coordinator whose .coordinate() we can assert was called
+    mock_coordinator = MagicMock()
+    mock_result = MagicMock()
+    mock_result.success = True
+    mock_result.execution_id = "test_exec_001"
+    mock_coordinator.coordinate = AsyncMock(return_value=mock_result)
+
+    scheduler = TriggerScheduler(
+        registry=registry,
+        coordinator=mock_coordinator,
+        poll_interval_seconds=0.05,
+    )
+
+    trigger = Trigger(
+        trigger_id="trg_loop_regression",
+        trigger_type=TriggerType.SCHEDULED,
+        action_goal="Prove scheduler loop runs",
+        execution_map={
+            "goal": "Prove scheduler loop runs",
+            "steps": [],  # No policy-gated steps — goes straight to coordinator
+        },
+        interval_seconds=0.05,
+    )
+    registry.register_trigger(trigger)
+
+    # Pre-conditions: scheduler is NOT running, no task exists
+    assert scheduler._is_running is False
+    assert scheduler._scheduler_task is None
+
+    await scheduler.start()
+
+    # Post-start: scheduler IS running and _scheduler_task is a live Task
+    assert scheduler._is_running is True
+    assert scheduler._scheduler_task is not None
+    assert isinstance(scheduler._scheduler_task, asyncio.Task)
+    assert not scheduler._scheduler_task.done()
+
+    # Wait enough for at least one poll cycle to fire the trigger
+    await asyncio.sleep(0.3)
+
+    await scheduler.stop()
+
+    # The scheduler loop must have autonomously fired the trigger
+    # and dispatched to coordinator.coordinate()
+    assert mock_coordinator.coordinate.call_count >= 1, (
+        "coordinator.coordinate() was never called — _scheduler_loop did not "
+        "autonomously fire the SCHEDULED trigger after start()"
+    )
+
+    # Verify the trigger transitioned through the expected states
+    t = registry.get_trigger("trg_loop_regression")
+    assert t is not None
+    assert t.state == TriggerState.VERIFIED
+    assert t.last_provenance is not None
+    assert t.last_provenance.result_status == "VERIFIED"
+    assert t.last_provenance.execution_id == "test_exec_001"
