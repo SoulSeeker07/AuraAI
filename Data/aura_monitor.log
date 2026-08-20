@@ -1,400 +1,2545 @@
 AURA AI LIVE MONITOR
 ================================================================================
-Start Time: 2026-08-16 23:31:27
+Start Time: 2026-08-18 22:39:10
 
-[2026-08-16 23:31:27] 
+[2026-08-18 22:39:10] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:27]   Memory: READY
-[2026-08-16 23:31:27]   Knowledge: READY
-[2026-08-16 23:31:27]   Workspace: READY
-[2026-08-16 23:31:27]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:27]   Agent Runtime: READY
-[2026-08-16 23:31:27]   Workflow Engine: READY
-[2026-08-16 23:31:27]   Vision: READY
-[2026-08-16 23:31:27]   Voice: READY
-[2026-08-16 23:31:27] 
+[2026-08-18 22:39:10]   Memory: READY
+[2026-08-18 22:39:10]   Knowledge: READY
+[2026-08-18 22:39:10]   Workspace: READY
+[2026-08-18 22:39:10]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:10]   Agent Runtime: READY
+[2026-08-18 22:39:10]   Workflow Engine: READY
+[2026-08-18 22:39:10]   Vision: READY
+[2026-08-18 22:39:10]   Voice: READY
+[2026-08-18 22:39:10] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:27]   total_memories: 10
-[2026-08-16 23:31:27]   num_categories: 5
-[2026-08-16 23:31:27]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:27]   indexed: YES
-[2026-08-16 23:31:27]   search_enabled: YES
-[2026-08-16 23:31:27]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:27]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:27]   exists: YES
-[2026-08-16 23:31:27]   files: 83061
-[2026-08-16 23:31:27]   folders: 11444
-[2026-08-16 23:31:27]   Conversation History: 0 turns
-[2026-08-16 23:31:27]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:27] 
+[2026-08-18 22:39:10]   total_memories: 10
+[2026-08-18 22:39:10]   num_categories: 5
+[2026-08-18 22:39:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:10]   indexed: YES
+[2026-08-18 22:39:10]   search_enabled: YES
+[2026-08-18 22:39:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:10]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:10]   exists: YES
+[2026-08-18 22:39:10]   files: 83630
+[2026-08-18 22:39:10]   folders: 11507
+[2026-08-18 22:39:10]   Conversation History: 0 turns
+[2026-08-18 22:39:10]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:10] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:27] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:27] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:27] Vision System: YES
-[2026-08-16 23:31:27] Voice System: YES
-[2026-08-16 23:31:27] Uptime: 0d 0h 0m 0s
-[2026-08-16 23:31:27] --------------------------------------------------------------------------------
+[2026-08-18 22:39:10] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:10] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:10] Vision System: YES
+[2026-08-18 22:39:10] Voice System: YES
+[2026-08-18 22:39:10] Uptime: 0d 0h 0m 0s
+[2026-08-18 22:39:10] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:29] 
+[2026-08-18 22:39:12] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:29]   Memory: READY
-[2026-08-16 23:31:29]   Knowledge: READY
-[2026-08-16 23:31:29]   Workspace: READY
-[2026-08-16 23:31:29]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:29]   Agent Runtime: READY
-[2026-08-16 23:31:29]   Workflow Engine: READY
-[2026-08-16 23:31:29]   Vision: READY
-[2026-08-16 23:31:29]   Voice: READY
-[2026-08-16 23:31:29] 
+[2026-08-18 22:39:12]   Memory: READY
+[2026-08-18 22:39:12]   Knowledge: READY
+[2026-08-18 22:39:12]   Workspace: READY
+[2026-08-18 22:39:12]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:12]   Agent Runtime: READY
+[2026-08-18 22:39:12]   Workflow Engine: READY
+[2026-08-18 22:39:12]   Vision: READY
+[2026-08-18 22:39:12]   Voice: READY
+[2026-08-18 22:39:12] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:29]   total_memories: 10
-[2026-08-16 23:31:29]   num_categories: 5
-[2026-08-16 23:31:29]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:29]   indexed: YES
-[2026-08-16 23:31:29]   search_enabled: YES
-[2026-08-16 23:31:29]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:29]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:29]   exists: YES
-[2026-08-16 23:31:29]   files: 83061
-[2026-08-16 23:31:29]   folders: 11444
-[2026-08-16 23:31:29]   Conversation History: 0 turns
-[2026-08-16 23:31:29]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:29] 
+[2026-08-18 22:39:12]   total_memories: 10
+[2026-08-18 22:39:12]   num_categories: 5
+[2026-08-18 22:39:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:12]   indexed: YES
+[2026-08-18 22:39:12]   search_enabled: YES
+[2026-08-18 22:39:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:12]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:12]   exists: YES
+[2026-08-18 22:39:12]   files: 83630
+[2026-08-18 22:39:12]   folders: 11507
+[2026-08-18 22:39:12]   Conversation History: 0 turns
+[2026-08-18 22:39:12]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:12] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:29] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:29] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:29] Vision System: YES
-[2026-08-16 23:31:29] Voice System: YES
-[2026-08-16 23:31:29] Uptime: 0d 0h 0m 2s
-[2026-08-16 23:31:29] --------------------------------------------------------------------------------
+[2026-08-18 22:39:12] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:12] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:12] Vision System: YES
+[2026-08-18 22:39:12] Voice System: YES
+[2026-08-18 22:39:12] Uptime: 0d 0h 0m 2s
+[2026-08-18 22:39:12] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:31] 
+[2026-08-18 22:39:14] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:31]   Memory: READY
-[2026-08-16 23:31:31]   Knowledge: READY
-[2026-08-16 23:31:31]   Workspace: READY
-[2026-08-16 23:31:31]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:31]   Agent Runtime: READY
-[2026-08-16 23:31:31]   Workflow Engine: READY
-[2026-08-16 23:31:31]   Vision: READY
-[2026-08-16 23:31:31]   Voice: READY
-[2026-08-16 23:31:31] 
+[2026-08-18 22:39:14]   Memory: READY
+[2026-08-18 22:39:14]   Knowledge: READY
+[2026-08-18 22:39:14]   Workspace: READY
+[2026-08-18 22:39:14]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:14]   Agent Runtime: READY
+[2026-08-18 22:39:14]   Workflow Engine: READY
+[2026-08-18 22:39:14]   Vision: READY
+[2026-08-18 22:39:14]   Voice: READY
+[2026-08-18 22:39:14] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:31]   total_memories: 10
-[2026-08-16 23:31:31]   num_categories: 5
-[2026-08-16 23:31:31]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:31]   indexed: YES
-[2026-08-16 23:31:31]   search_enabled: YES
-[2026-08-16 23:31:31]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:31]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:31]   exists: YES
-[2026-08-16 23:31:31]   files: 83061
-[2026-08-16 23:31:31]   folders: 11444
-[2026-08-16 23:31:31]   Conversation History: 0 turns
-[2026-08-16 23:31:31]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:31] 
+[2026-08-18 22:39:14]   total_memories: 10
+[2026-08-18 22:39:14]   num_categories: 5
+[2026-08-18 22:39:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:14]   indexed: YES
+[2026-08-18 22:39:14]   search_enabled: YES
+[2026-08-18 22:39:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:14]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:14]   exists: YES
+[2026-08-18 22:39:14]   files: 83630
+[2026-08-18 22:39:14]   folders: 11507
+[2026-08-18 22:39:14]   Conversation History: 0 turns
+[2026-08-18 22:39:14]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:14] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:31] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:31] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:31] Vision System: YES
-[2026-08-16 23:31:31] Voice System: YES
-[2026-08-16 23:31:31] Uptime: 0d 0h 0m 4s
-[2026-08-16 23:31:31] --------------------------------------------------------------------------------
+[2026-08-18 22:39:14] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:14] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:14] Vision System: YES
+[2026-08-18 22:39:14] Voice System: YES
+[2026-08-18 22:39:14] Uptime: 0d 0h 0m 4s
+[2026-08-18 22:39:14] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:33] 
+[2026-08-18 22:39:16] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:33]   Memory: READY
-[2026-08-16 23:31:33]   Knowledge: READY
-[2026-08-16 23:31:33]   Workspace: READY
-[2026-08-16 23:31:33]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:33]   Agent Runtime: READY
-[2026-08-16 23:31:33]   Workflow Engine: READY
-[2026-08-16 23:31:33]   Vision: READY
-[2026-08-16 23:31:33]   Voice: READY
-[2026-08-16 23:31:33] 
+[2026-08-18 22:39:16]   Memory: READY
+[2026-08-18 22:39:16]   Knowledge: READY
+[2026-08-18 22:39:16]   Workspace: READY
+[2026-08-18 22:39:16]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:16]   Agent Runtime: READY
+[2026-08-18 22:39:16]   Workflow Engine: READY
+[2026-08-18 22:39:16]   Vision: READY
+[2026-08-18 22:39:16]   Voice: READY
+[2026-08-18 22:39:16] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:33]   total_memories: 10
-[2026-08-16 23:31:33]   num_categories: 5
-[2026-08-16 23:31:33]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:33]   indexed: YES
-[2026-08-16 23:31:33]   search_enabled: YES
-[2026-08-16 23:31:33]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:33]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:33]   exists: YES
-[2026-08-16 23:31:33]   files: 83061
-[2026-08-16 23:31:33]   folders: 11444
-[2026-08-16 23:31:33]   Conversation History: 0 turns
-[2026-08-16 23:31:33]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:33] 
+[2026-08-18 22:39:16]   total_memories: 10
+[2026-08-18 22:39:16]   num_categories: 5
+[2026-08-18 22:39:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:16]   indexed: YES
+[2026-08-18 22:39:16]   search_enabled: YES
+[2026-08-18 22:39:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:16]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:16]   exists: YES
+[2026-08-18 22:39:16]   files: 83630
+[2026-08-18 22:39:16]   folders: 11507
+[2026-08-18 22:39:16]   Conversation History: 0 turns
+[2026-08-18 22:39:16]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:16] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:33] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:33] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:33] Vision System: YES
-[2026-08-16 23:31:33] Voice System: YES
-[2026-08-16 23:31:33] Uptime: 0d 0h 0m 6s
-[2026-08-16 23:31:33] --------------------------------------------------------------------------------
+[2026-08-18 22:39:16] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:16] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:16] Vision System: YES
+[2026-08-18 22:39:16] Voice System: YES
+[2026-08-18 22:39:16] Uptime: 0d 0h 0m 6s
+[2026-08-18 22:39:16] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:35] 
+[2026-08-18 22:39:18] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:35]   Memory: READY
-[2026-08-16 23:31:35]   Knowledge: READY
-[2026-08-16 23:31:35]   Workspace: READY
-[2026-08-16 23:31:35]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:35]   Agent Runtime: READY
-[2026-08-16 23:31:35]   Workflow Engine: READY
-[2026-08-16 23:31:35]   Vision: READY
-[2026-08-16 23:31:35]   Voice: READY
-[2026-08-16 23:31:35] 
+[2026-08-18 22:39:18]   Memory: READY
+[2026-08-18 22:39:18]   Knowledge: READY
+[2026-08-18 22:39:18]   Workspace: READY
+[2026-08-18 22:39:18]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:18]   Agent Runtime: READY
+[2026-08-18 22:39:18]   Workflow Engine: READY
+[2026-08-18 22:39:18]   Vision: READY
+[2026-08-18 22:39:18]   Voice: READY
+[2026-08-18 22:39:18] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:35]   total_memories: 10
-[2026-08-16 23:31:35]   num_categories: 5
-[2026-08-16 23:31:35]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:35]   indexed: YES
-[2026-08-16 23:31:35]   search_enabled: YES
-[2026-08-16 23:31:35]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:35]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:35]   exists: YES
-[2026-08-16 23:31:35]   files: 83061
-[2026-08-16 23:31:35]   folders: 11444
-[2026-08-16 23:31:35]   Conversation History: 0 turns
-[2026-08-16 23:31:35]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:35] 
+[2026-08-18 22:39:18]   total_memories: 10
+[2026-08-18 22:39:18]   num_categories: 5
+[2026-08-18 22:39:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:18]   indexed: YES
+[2026-08-18 22:39:18]   search_enabled: YES
+[2026-08-18 22:39:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:18]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:18]   exists: YES
+[2026-08-18 22:39:18]   files: 83630
+[2026-08-18 22:39:18]   folders: 11507
+[2026-08-18 22:39:18]   Conversation History: 0 turns
+[2026-08-18 22:39:18]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:18] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:35] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:35] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:35] Vision System: YES
-[2026-08-16 23:31:35] Voice System: YES
-[2026-08-16 23:31:35] Uptime: 0d 0h 0m 8s
-[2026-08-16 23:31:35] --------------------------------------------------------------------------------
+[2026-08-18 22:39:18] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:18] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:18] Vision System: YES
+[2026-08-18 22:39:18] Voice System: YES
+[2026-08-18 22:39:18] Uptime: 0d 0h 0m 8s
+[2026-08-18 22:39:18] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:37] 
+[2026-08-18 22:39:20] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:37]   Memory: READY
-[2026-08-16 23:31:37]   Knowledge: READY
-[2026-08-16 23:31:37]   Workspace: READY
-[2026-08-16 23:31:37]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:37]   Agent Runtime: READY
-[2026-08-16 23:31:37]   Workflow Engine: READY
-[2026-08-16 23:31:37]   Vision: READY
-[2026-08-16 23:31:37]   Voice: READY
-[2026-08-16 23:31:37] 
+[2026-08-18 22:39:20]   Memory: READY
+[2026-08-18 22:39:20]   Knowledge: READY
+[2026-08-18 22:39:20]   Workspace: READY
+[2026-08-18 22:39:20]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:20]   Agent Runtime: READY
+[2026-08-18 22:39:20]   Workflow Engine: READY
+[2026-08-18 22:39:20]   Vision: READY
+[2026-08-18 22:39:20]   Voice: READY
+[2026-08-18 22:39:20] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:37]   total_memories: 10
-[2026-08-16 23:31:37]   num_categories: 5
-[2026-08-16 23:31:37]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:37]   indexed: YES
-[2026-08-16 23:31:37]   search_enabled: YES
-[2026-08-16 23:31:37]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:37]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:37]   exists: YES
-[2026-08-16 23:31:37]   files: 83061
-[2026-08-16 23:31:37]   folders: 11444
-[2026-08-16 23:31:37]   Conversation History: 0 turns
-[2026-08-16 23:31:37]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:37] 
+[2026-08-18 22:39:20]   total_memories: 10
+[2026-08-18 22:39:20]   num_categories: 5
+[2026-08-18 22:39:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:20]   indexed: YES
+[2026-08-18 22:39:20]   search_enabled: YES
+[2026-08-18 22:39:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:20]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:20]   exists: YES
+[2026-08-18 22:39:20]   files: 83630
+[2026-08-18 22:39:20]   folders: 11507
+[2026-08-18 22:39:20]   Conversation History: 0 turns
+[2026-08-18 22:39:20]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:20] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:37] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:37] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:37] Vision System: YES
-[2026-08-16 23:31:37] Voice System: YES
-[2026-08-16 23:31:37] Uptime: 0d 0h 0m 10s
-[2026-08-16 23:31:37] --------------------------------------------------------------------------------
+[2026-08-18 22:39:20] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:20] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:20] Vision System: YES
+[2026-08-18 22:39:20] Voice System: YES
+[2026-08-18 22:39:20] Uptime: 0d 0h 0m 10s
+[2026-08-18 22:39:20] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:39] 
+[2026-08-18 22:39:22] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:39]   Memory: READY
-[2026-08-16 23:31:39]   Knowledge: READY
-[2026-08-16 23:31:39]   Workspace: READY
-[2026-08-16 23:31:39]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:39]   Agent Runtime: READY
-[2026-08-16 23:31:39]   Workflow Engine: READY
-[2026-08-16 23:31:39]   Vision: READY
-[2026-08-16 23:31:39]   Voice: READY
-[2026-08-16 23:31:39] 
+[2026-08-18 22:39:22]   Memory: READY
+[2026-08-18 22:39:22]   Knowledge: READY
+[2026-08-18 22:39:22]   Workspace: READY
+[2026-08-18 22:39:22]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:22]   Agent Runtime: READY
+[2026-08-18 22:39:22]   Workflow Engine: READY
+[2026-08-18 22:39:22]   Vision: READY
+[2026-08-18 22:39:22]   Voice: READY
+[2026-08-18 22:39:22] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:39]   total_memories: 10
-[2026-08-16 23:31:39]   num_categories: 5
-[2026-08-16 23:31:39]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:39]   indexed: YES
-[2026-08-16 23:31:39]   search_enabled: YES
-[2026-08-16 23:31:39]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:39]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:39]   exists: YES
-[2026-08-16 23:31:39]   files: 83061
-[2026-08-16 23:31:39]   folders: 11444
-[2026-08-16 23:31:39]   Conversation History: 0 turns
-[2026-08-16 23:31:39]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:39] 
+[2026-08-18 22:39:22]   total_memories: 10
+[2026-08-18 22:39:22]   num_categories: 5
+[2026-08-18 22:39:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:22]   indexed: YES
+[2026-08-18 22:39:22]   search_enabled: YES
+[2026-08-18 22:39:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:22]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:22]   exists: YES
+[2026-08-18 22:39:22]   files: 83630
+[2026-08-18 22:39:22]   folders: 11507
+[2026-08-18 22:39:22]   Conversation History: 0 turns
+[2026-08-18 22:39:22]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:22] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:39] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:39] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:39] Vision System: YES
-[2026-08-16 23:31:39] Voice System: YES
-[2026-08-16 23:31:39] Uptime: 0d 0h 0m 12s
-[2026-08-16 23:31:39] --------------------------------------------------------------------------------
+[2026-08-18 22:39:22] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:22] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:22] Vision System: YES
+[2026-08-18 22:39:22] Voice System: YES
+[2026-08-18 22:39:22] Uptime: 0d 0h 0m 12s
+[2026-08-18 22:39:22] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:41] 
+[2026-08-18 22:39:24] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:41]   Memory: READY
-[2026-08-16 23:31:41]   Knowledge: READY
-[2026-08-16 23:31:41]   Workspace: READY
-[2026-08-16 23:31:41]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:41]   Agent Runtime: READY
-[2026-08-16 23:31:41]   Workflow Engine: READY
-[2026-08-16 23:31:41]   Vision: READY
-[2026-08-16 23:31:41]   Voice: READY
-[2026-08-16 23:31:41] 
+[2026-08-18 22:39:24]   Memory: READY
+[2026-08-18 22:39:24]   Knowledge: READY
+[2026-08-18 22:39:24]   Workspace: READY
+[2026-08-18 22:39:24]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:24]   Agent Runtime: READY
+[2026-08-18 22:39:24]   Workflow Engine: READY
+[2026-08-18 22:39:24]   Vision: READY
+[2026-08-18 22:39:24]   Voice: READY
+[2026-08-18 22:39:24] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:41]   total_memories: 10
-[2026-08-16 23:31:41]   num_categories: 5
-[2026-08-16 23:31:41]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:41]   indexed: YES
-[2026-08-16 23:31:41]   search_enabled: YES
-[2026-08-16 23:31:41]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:41]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:41]   exists: YES
-[2026-08-16 23:31:41]   files: 83061
-[2026-08-16 23:31:41]   folders: 11444
-[2026-08-16 23:31:41]   Conversation History: 0 turns
-[2026-08-16 23:31:41]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:41] 
+[2026-08-18 22:39:24]   total_memories: 10
+[2026-08-18 22:39:24]   num_categories: 5
+[2026-08-18 22:39:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:24]   indexed: YES
+[2026-08-18 22:39:24]   search_enabled: YES
+[2026-08-18 22:39:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:24]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:24]   exists: YES
+[2026-08-18 22:39:24]   files: 83630
+[2026-08-18 22:39:24]   folders: 11507
+[2026-08-18 22:39:24]   Conversation History: 0 turns
+[2026-08-18 22:39:24]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:24] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:41] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:41] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:41] Vision System: YES
-[2026-08-16 23:31:41] Voice System: YES
-[2026-08-16 23:31:41] Uptime: 0d 0h 0m 14s
-[2026-08-16 23:31:41] --------------------------------------------------------------------------------
+[2026-08-18 22:39:24] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:24] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:24] Vision System: YES
+[2026-08-18 22:39:24] Voice System: YES
+[2026-08-18 22:39:24] Uptime: 0d 0h 0m 14s
+[2026-08-18 22:39:24] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:43] 
+[2026-08-18 22:39:26] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:43]   Memory: READY
-[2026-08-16 23:31:43]   Knowledge: READY
-[2026-08-16 23:31:43]   Workspace: READY
-[2026-08-16 23:31:43]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:43]   Agent Runtime: READY
-[2026-08-16 23:31:43]   Workflow Engine: READY
-[2026-08-16 23:31:43]   Vision: READY
-[2026-08-16 23:31:43]   Voice: READY
-[2026-08-16 23:31:43] 
+[2026-08-18 22:39:26]   Memory: READY
+[2026-08-18 22:39:26]   Knowledge: READY
+[2026-08-18 22:39:26]   Workspace: READY
+[2026-08-18 22:39:26]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:26]   Agent Runtime: READY
+[2026-08-18 22:39:26]   Workflow Engine: READY
+[2026-08-18 22:39:26]   Vision: READY
+[2026-08-18 22:39:26]   Voice: READY
+[2026-08-18 22:39:26] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:43]   total_memories: 10
-[2026-08-16 23:31:43]   num_categories: 5
-[2026-08-16 23:31:43]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:43]   indexed: YES
-[2026-08-16 23:31:43]   search_enabled: YES
-[2026-08-16 23:31:43]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:43]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:43]   exists: YES
-[2026-08-16 23:31:43]   files: 83061
-[2026-08-16 23:31:43]   folders: 11444
-[2026-08-16 23:31:43]   Conversation History: 2 turns
-[2026-08-16 23:31:43]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:43] 
+[2026-08-18 22:39:26]   total_memories: 10
+[2026-08-18 22:39:26]   num_categories: 5
+[2026-08-18 22:39:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:26]   indexed: YES
+[2026-08-18 22:39:26]   search_enabled: YES
+[2026-08-18 22:39:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:26]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:26]   exists: YES
+[2026-08-18 22:39:26]   files: 83630
+[2026-08-18 22:39:26]   folders: 11507
+[2026-08-18 22:39:26]   Conversation History: 0 turns
+[2026-08-18 22:39:26]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:26] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:43] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:43] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:43] Vision System: YES
-[2026-08-16 23:31:43] Voice System: YES
-[2026-08-16 23:31:43] Uptime: 0d 0h 0m 16s
-[2026-08-16 23:31:43] --------------------------------------------------------------------------------
+[2026-08-18 22:39:26] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:26] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:26] Vision System: YES
+[2026-08-18 22:39:26] Voice System: YES
+[2026-08-18 22:39:26] Uptime: 0d 0h 0m 16s
+[2026-08-18 22:39:26] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:45] 
+[2026-08-18 22:39:28] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:45]   Memory: READY
-[2026-08-16 23:31:45]   Knowledge: READY
-[2026-08-16 23:31:45]   Workspace: READY
-[2026-08-16 23:31:45]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:45]   Agent Runtime: READY
-[2026-08-16 23:31:45]   Workflow Engine: READY
-[2026-08-16 23:31:45]   Vision: READY
-[2026-08-16 23:31:45]   Voice: READY
-[2026-08-16 23:31:45] 
+[2026-08-18 22:39:28]   Memory: READY
+[2026-08-18 22:39:28]   Knowledge: READY
+[2026-08-18 22:39:28]   Workspace: READY
+[2026-08-18 22:39:28]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:28]   Agent Runtime: READY
+[2026-08-18 22:39:28]   Workflow Engine: READY
+[2026-08-18 22:39:28]   Vision: READY
+[2026-08-18 22:39:28]   Voice: READY
+[2026-08-18 22:39:28] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:45]   total_memories: 10
-[2026-08-16 23:31:45]   num_categories: 5
-[2026-08-16 23:31:45]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:45]   indexed: YES
-[2026-08-16 23:31:45]   search_enabled: YES
-[2026-08-16 23:31:45]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:45]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:45]   exists: YES
-[2026-08-16 23:31:45]   files: 83061
-[2026-08-16 23:31:45]   folders: 11444
-[2026-08-16 23:31:45]   Conversation History: 2 turns
-[2026-08-16 23:31:45]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:45] 
+[2026-08-18 22:39:28]   total_memories: 10
+[2026-08-18 22:39:28]   num_categories: 5
+[2026-08-18 22:39:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:28]   indexed: YES
+[2026-08-18 22:39:28]   search_enabled: YES
+[2026-08-18 22:39:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:28]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:28]   exists: YES
+[2026-08-18 22:39:28]   files: 83630
+[2026-08-18 22:39:28]   folders: 11507
+[2026-08-18 22:39:28]   Conversation History: 0 turns
+[2026-08-18 22:39:28]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:28] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:45] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:45] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:45] Vision System: YES
-[2026-08-16 23:31:45] Voice System: YES
-[2026-08-16 23:31:45] Uptime: 0d 0h 0m 18s
-[2026-08-16 23:31:45] --------------------------------------------------------------------------------
+[2026-08-18 22:39:28] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:28] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:28] Vision System: YES
+[2026-08-18 22:39:28] Voice System: YES
+[2026-08-18 22:39:28] Uptime: 0d 0h 0m 18s
+[2026-08-18 22:39:28] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:47] 
+[2026-08-18 22:39:31] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:47]   Memory: READY
-[2026-08-16 23:31:47]   Knowledge: READY
-[2026-08-16 23:31:47]   Workspace: READY
-[2026-08-16 23:31:47]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:47]   Agent Runtime: READY
-[2026-08-16 23:31:47]   Workflow Engine: READY
-[2026-08-16 23:31:47]   Vision: READY
-[2026-08-16 23:31:47]   Voice: READY
-[2026-08-16 23:31:47] 
+[2026-08-18 22:39:31]   Memory: READY
+[2026-08-18 22:39:31]   Knowledge: READY
+[2026-08-18 22:39:31]   Workspace: READY
+[2026-08-18 22:39:31]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:31]   Agent Runtime: READY
+[2026-08-18 22:39:31]   Workflow Engine: READY
+[2026-08-18 22:39:31]   Vision: READY
+[2026-08-18 22:39:31]   Voice: READY
+[2026-08-18 22:39:31] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:47]   total_memories: 10
-[2026-08-16 23:31:47]   num_categories: 5
-[2026-08-16 23:31:47]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:47]   indexed: YES
-[2026-08-16 23:31:47]   search_enabled: YES
-[2026-08-16 23:31:47]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:47]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:47]   exists: YES
-[2026-08-16 23:31:47]   files: 83061
-[2026-08-16 23:31:47]   folders: 11444
-[2026-08-16 23:31:47]   Conversation History: 2 turns
-[2026-08-16 23:31:47]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:47] 
+[2026-08-18 22:39:31]   total_memories: 10
+[2026-08-18 22:39:31]   num_categories: 5
+[2026-08-18 22:39:31]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:31]   indexed: YES
+[2026-08-18 22:39:31]   search_enabled: YES
+[2026-08-18 22:39:31]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:31]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:31]   exists: YES
+[2026-08-18 22:39:31]   files: 83630
+[2026-08-18 22:39:31]   folders: 11507
+[2026-08-18 22:39:31]   Conversation History: 0 turns
+[2026-08-18 22:39:31]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:31] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:47] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:47] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:47] Vision System: YES
-[2026-08-16 23:31:47] Voice System: YES
-[2026-08-16 23:31:47] Uptime: 0d 0h 0m 20s
-[2026-08-16 23:31:47] --------------------------------------------------------------------------------
+[2026-08-18 22:39:31] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:31] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:31] Vision System: YES
+[2026-08-18 22:39:31] Voice System: YES
+[2026-08-18 22:39:31] Uptime: 0d 0h 0m 20s
+[2026-08-18 22:39:31] --------------------------------------------------------------------------------
 
-[2026-08-16 23:31:49] 
+[2026-08-18 22:39:33] 
 --- COMPONENT STATUS ---
-[2026-08-16 23:31:49]   Memory: READY
-[2026-08-16 23:31:49]   Knowledge: READY
-[2026-08-16 23:31:49]   Workspace: READY
-[2026-08-16 23:31:49]   Plugins: READY - 0 loaded
-[2026-08-16 23:31:49]   Agent Runtime: READY
-[2026-08-16 23:31:49]   Workflow Engine: READY
-[2026-08-16 23:31:49]   Vision: READY
-[2026-08-16 23:31:49]   Voice: READY
-[2026-08-16 23:31:49] 
+[2026-08-18 22:39:33]   Memory: READY
+[2026-08-18 22:39:33]   Knowledge: READY
+[2026-08-18 22:39:33]   Workspace: READY
+[2026-08-18 22:39:33]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:33]   Agent Runtime: READY
+[2026-08-18 22:39:33]   Workflow Engine: READY
+[2026-08-18 22:39:33]   Vision: READY
+[2026-08-18 22:39:33]   Voice: READY
+[2026-08-18 22:39:33] 
 --- SYSTEM STATISTICS ---
-[2026-08-16 23:31:49]   total_memories: 10
-[2026-08-16 23:31:49]   num_categories: 5
-[2026-08-16 23:31:49]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:49]   indexed: YES
-[2026-08-16 23:31:49]   search_enabled: YES
-[2026-08-16 23:31:49]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:49]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:49]   exists: YES
-[2026-08-16 23:31:49]   files: 83061
-[2026-08-16 23:31:49]   folders: 11444
-[2026-08-16 23:31:49]   Conversation History: 2 turns
-[2026-08-16 23:31:49]   LLM: Ready - openai/gpt-oss-120b
-[2026-08-16 23:31:49] 
+[2026-08-18 22:39:33]   total_memories: 10
+[2026-08-18 22:39:33]   num_categories: 5
+[2026-08-18 22:39:33]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:33]   indexed: YES
+[2026-08-18 22:39:33]   search_enabled: YES
+[2026-08-18 22:39:33]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:33]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:33]   exists: YES
+[2026-08-18 22:39:33]   files: 83630
+[2026-08-18 22:39:33]   folders: 11507
+[2026-08-18 22:39:33]   Conversation History: 0 turns
+[2026-08-18 22:39:33]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:33] 
 --- MONITORING SUMMARY ---
-[2026-08-16 23:31:49] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:49] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-[2026-08-16 23:31:49] Vision System: YES
-[2026-08-16 23:31:49] Voice System: YES
-[2026-08-16 23:31:49] Uptime: 0d 0h 0m 22s
-[2026-08-16 23:31:49] --------------------------------------------------------------------------------
+[2026-08-18 22:39:33] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:33] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:33] Vision System: YES
+[2026-08-18 22:39:33] Voice System: YES
+[2026-08-18 22:39:33] Uptime: 0d 0h 0m 22s
+[2026-08-18 22:39:33] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:35] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:35]   Memory: READY
+[2026-08-18 22:39:35]   Knowledge: READY
+[2026-08-18 22:39:35]   Workspace: READY
+[2026-08-18 22:39:35]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:35]   Agent Runtime: READY
+[2026-08-18 22:39:35]   Workflow Engine: READY
+[2026-08-18 22:39:35]   Vision: READY
+[2026-08-18 22:39:35]   Voice: READY
+[2026-08-18 22:39:35] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:35]   total_memories: 10
+[2026-08-18 22:39:35]   num_categories: 5
+[2026-08-18 22:39:35]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:35]   indexed: YES
+[2026-08-18 22:39:35]   search_enabled: YES
+[2026-08-18 22:39:35]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:35]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:35]   exists: YES
+[2026-08-18 22:39:35]   files: 83630
+[2026-08-18 22:39:35]   folders: 11507
+[2026-08-18 22:39:35]   Conversation History: 0 turns
+[2026-08-18 22:39:35]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:35] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:35] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:35] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:35] Vision System: YES
+[2026-08-18 22:39:35] Voice System: YES
+[2026-08-18 22:39:35] Uptime: 0d 0h 0m 24s
+[2026-08-18 22:39:35] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:37] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:37]   Memory: READY
+[2026-08-18 22:39:37]   Knowledge: READY
+[2026-08-18 22:39:37]   Workspace: READY
+[2026-08-18 22:39:37]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:37]   Agent Runtime: READY
+[2026-08-18 22:39:37]   Workflow Engine: READY
+[2026-08-18 22:39:37]   Vision: READY
+[2026-08-18 22:39:37]   Voice: READY
+[2026-08-18 22:39:37] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:37]   total_memories: 10
+[2026-08-18 22:39:37]   num_categories: 5
+[2026-08-18 22:39:37]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:37]   indexed: YES
+[2026-08-18 22:39:37]   search_enabled: YES
+[2026-08-18 22:39:37]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:37]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:37]   exists: YES
+[2026-08-18 22:39:37]   files: 83630
+[2026-08-18 22:39:37]   folders: 11507
+[2026-08-18 22:39:37]   Conversation History: 0 turns
+[2026-08-18 22:39:37]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:37] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:37] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:37] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:37] Vision System: YES
+[2026-08-18 22:39:37] Voice System: YES
+[2026-08-18 22:39:37] Uptime: 0d 0h 0m 26s
+[2026-08-18 22:39:37] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:39] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:39]   Memory: READY
+[2026-08-18 22:39:39]   Knowledge: READY
+[2026-08-18 22:39:39]   Workspace: READY
+[2026-08-18 22:39:39]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:39]   Agent Runtime: READY
+[2026-08-18 22:39:39]   Workflow Engine: READY
+[2026-08-18 22:39:39]   Vision: READY
+[2026-08-18 22:39:39]   Voice: READY
+[2026-08-18 22:39:39] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:39]   total_memories: 10
+[2026-08-18 22:39:39]   num_categories: 5
+[2026-08-18 22:39:39]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:39]   indexed: YES
+[2026-08-18 22:39:39]   search_enabled: YES
+[2026-08-18 22:39:39]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:39]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:39]   exists: YES
+[2026-08-18 22:39:39]   files: 83630
+[2026-08-18 22:39:39]   folders: 11507
+[2026-08-18 22:39:39]   Conversation History: 0 turns
+[2026-08-18 22:39:39]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:39] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:39] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:39] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:39] Vision System: YES
+[2026-08-18 22:39:39] Voice System: YES
+[2026-08-18 22:39:39] Uptime: 0d 0h 0m 28s
+[2026-08-18 22:39:39] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:41] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:41]   Memory: READY
+[2026-08-18 22:39:41]   Knowledge: READY
+[2026-08-18 22:39:41]   Workspace: READY
+[2026-08-18 22:39:41]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:41]   Agent Runtime: READY
+[2026-08-18 22:39:41]   Workflow Engine: READY
+[2026-08-18 22:39:41]   Vision: READY
+[2026-08-18 22:39:41]   Voice: READY
+[2026-08-18 22:39:41] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:41]   total_memories: 10
+[2026-08-18 22:39:41]   num_categories: 5
+[2026-08-18 22:39:41]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:41]   indexed: YES
+[2026-08-18 22:39:41]   search_enabled: YES
+[2026-08-18 22:39:41]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:41]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:41]   exists: YES
+[2026-08-18 22:39:41]   files: 83630
+[2026-08-18 22:39:41]   folders: 11507
+[2026-08-18 22:39:41]   Conversation History: 0 turns
+[2026-08-18 22:39:41]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:41] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:41] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:41] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:41] Vision System: YES
+[2026-08-18 22:39:41] Voice System: YES
+[2026-08-18 22:39:41] Uptime: 0d 0h 0m 30s
+[2026-08-18 22:39:41] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:43] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:43]   Memory: READY
+[2026-08-18 22:39:43]   Knowledge: READY
+[2026-08-18 22:39:43]   Workspace: READY
+[2026-08-18 22:39:43]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:43]   Agent Runtime: READY
+[2026-08-18 22:39:43]   Workflow Engine: READY
+[2026-08-18 22:39:43]   Vision: READY
+[2026-08-18 22:39:43]   Voice: READY
+[2026-08-18 22:39:43] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:43]   total_memories: 10
+[2026-08-18 22:39:43]   num_categories: 5
+[2026-08-18 22:39:43]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:43]   indexed: YES
+[2026-08-18 22:39:43]   search_enabled: YES
+[2026-08-18 22:39:43]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:43]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:43]   exists: YES
+[2026-08-18 22:39:43]   files: 83630
+[2026-08-18 22:39:43]   folders: 11507
+[2026-08-18 22:39:43]   Conversation History: 0 turns
+[2026-08-18 22:39:43]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:43] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:43] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:43] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:43] Vision System: YES
+[2026-08-18 22:39:43] Voice System: YES
+[2026-08-18 22:39:43] Uptime: 0d 0h 0m 32s
+[2026-08-18 22:39:43] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:45] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:45]   Memory: READY
+[2026-08-18 22:39:45]   Knowledge: READY
+[2026-08-18 22:39:45]   Workspace: READY
+[2026-08-18 22:39:45]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:45]   Agent Runtime: READY
+[2026-08-18 22:39:45]   Workflow Engine: READY
+[2026-08-18 22:39:45]   Vision: READY
+[2026-08-18 22:39:45]   Voice: READY
+[2026-08-18 22:39:45] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:45]   total_memories: 10
+[2026-08-18 22:39:45]   num_categories: 5
+[2026-08-18 22:39:45]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:45]   indexed: YES
+[2026-08-18 22:39:45]   search_enabled: YES
+[2026-08-18 22:39:45]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:45]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:45]   exists: YES
+[2026-08-18 22:39:45]   files: 83630
+[2026-08-18 22:39:45]   folders: 11507
+[2026-08-18 22:39:45]   Conversation History: 0 turns
+[2026-08-18 22:39:45]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:45] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:45] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:45] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:45] Vision System: YES
+[2026-08-18 22:39:45] Voice System: YES
+[2026-08-18 22:39:45] Uptime: 0d 0h 0m 34s
+[2026-08-18 22:39:45] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:47] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:47]   Memory: READY
+[2026-08-18 22:39:47]   Knowledge: READY
+[2026-08-18 22:39:47]   Workspace: READY
+[2026-08-18 22:39:47]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:47]   Agent Runtime: READY
+[2026-08-18 22:39:47]   Workflow Engine: READY
+[2026-08-18 22:39:47]   Vision: READY
+[2026-08-18 22:39:47]   Voice: READY
+[2026-08-18 22:39:47] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:47]   total_memories: 10
+[2026-08-18 22:39:47]   num_categories: 5
+[2026-08-18 22:39:47]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:47]   indexed: YES
+[2026-08-18 22:39:47]   search_enabled: YES
+[2026-08-18 22:39:47]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:47]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:47]   exists: YES
+[2026-08-18 22:39:47]   files: 83630
+[2026-08-18 22:39:47]   folders: 11507
+[2026-08-18 22:39:47]   Conversation History: 0 turns
+[2026-08-18 22:39:47]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:47] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:47] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:47] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:47] Vision System: YES
+[2026-08-18 22:39:47] Voice System: YES
+[2026-08-18 22:39:47] Uptime: 0d 0h 0m 36s
+[2026-08-18 22:39:47] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:49] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:49]   Memory: READY
+[2026-08-18 22:39:49]   Knowledge: READY
+[2026-08-18 22:39:49]   Workspace: READY
+[2026-08-18 22:39:49]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:49]   Agent Runtime: READY
+[2026-08-18 22:39:49]   Workflow Engine: READY
+[2026-08-18 22:39:49]   Vision: READY
+[2026-08-18 22:39:49]   Voice: READY
+[2026-08-18 22:39:49] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:49]   total_memories: 10
+[2026-08-18 22:39:49]   num_categories: 5
+[2026-08-18 22:39:49]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:49]   indexed: YES
+[2026-08-18 22:39:49]   search_enabled: YES
+[2026-08-18 22:39:49]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:49]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:49]   exists: YES
+[2026-08-18 22:39:49]   files: 83630
+[2026-08-18 22:39:49]   folders: 11507
+[2026-08-18 22:39:49]   Conversation History: 0 turns
+[2026-08-18 22:39:49]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:49] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:49] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:49] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:49] Vision System: YES
+[2026-08-18 22:39:49] Voice System: YES
+[2026-08-18 22:39:49] Uptime: 0d 0h 0m 38s
+[2026-08-18 22:39:49] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:51] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:51]   Memory: READY
+[2026-08-18 22:39:51]   Knowledge: READY
+[2026-08-18 22:39:51]   Workspace: READY
+[2026-08-18 22:39:51]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:51]   Agent Runtime: READY
+[2026-08-18 22:39:51]   Workflow Engine: READY
+[2026-08-18 22:39:51]   Vision: READY
+[2026-08-18 22:39:51]   Voice: READY
+[2026-08-18 22:39:51] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:51]   total_memories: 10
+[2026-08-18 22:39:51]   num_categories: 5
+[2026-08-18 22:39:51]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:51]   indexed: YES
+[2026-08-18 22:39:51]   search_enabled: YES
+[2026-08-18 22:39:51]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:51]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:51]   exists: YES
+[2026-08-18 22:39:51]   files: 83630
+[2026-08-18 22:39:51]   folders: 11507
+[2026-08-18 22:39:51]   Conversation History: 0 turns
+[2026-08-18 22:39:51]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:51] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:51] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:51] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:51] Vision System: YES
+[2026-08-18 22:39:51] Voice System: YES
+[2026-08-18 22:39:51] Uptime: 0d 0h 0m 40s
+[2026-08-18 22:39:51] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:53] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:53]   Memory: READY
+[2026-08-18 22:39:53]   Knowledge: READY
+[2026-08-18 22:39:53]   Workspace: READY
+[2026-08-18 22:39:53]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:53]   Agent Runtime: READY
+[2026-08-18 22:39:53]   Workflow Engine: READY
+[2026-08-18 22:39:53]   Vision: READY
+[2026-08-18 22:39:53]   Voice: READY
+[2026-08-18 22:39:53] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:53]   total_memories: 10
+[2026-08-18 22:39:53]   num_categories: 5
+[2026-08-18 22:39:53]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:53]   indexed: YES
+[2026-08-18 22:39:53]   search_enabled: YES
+[2026-08-18 22:39:53]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:53]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:53]   exists: YES
+[2026-08-18 22:39:53]   files: 83630
+[2026-08-18 22:39:53]   folders: 11507
+[2026-08-18 22:39:53]   Conversation History: 0 turns
+[2026-08-18 22:39:53]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:53] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:53] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:53] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:53] Vision System: YES
+[2026-08-18 22:39:53] Voice System: YES
+[2026-08-18 22:39:53] Uptime: 0d 0h 0m 42s
+[2026-08-18 22:39:53] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:55] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:55]   Memory: READY
+[2026-08-18 22:39:55]   Knowledge: READY
+[2026-08-18 22:39:55]   Workspace: READY
+[2026-08-18 22:39:55]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:55]   Agent Runtime: READY
+[2026-08-18 22:39:55]   Workflow Engine: READY
+[2026-08-18 22:39:55]   Vision: READY
+[2026-08-18 22:39:55]   Voice: READY
+[2026-08-18 22:39:55] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:55]   total_memories: 10
+[2026-08-18 22:39:55]   num_categories: 5
+[2026-08-18 22:39:55]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:55]   indexed: YES
+[2026-08-18 22:39:55]   search_enabled: YES
+[2026-08-18 22:39:55]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:55]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:55]   exists: YES
+[2026-08-18 22:39:55]   files: 83630
+[2026-08-18 22:39:55]   folders: 11507
+[2026-08-18 22:39:55]   Conversation History: 0 turns
+[2026-08-18 22:39:55]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:55] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:55] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:55] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:55] Vision System: YES
+[2026-08-18 22:39:55] Voice System: YES
+[2026-08-18 22:39:55] Uptime: 0d 0h 0m 44s
+[2026-08-18 22:39:55] --------------------------------------------------------------------------------
+
+[2026-08-18 22:39:57] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:39:57]   Memory: READY
+[2026-08-18 22:39:57]   Knowledge: READY
+[2026-08-18 22:39:57]   Workspace: READY
+[2026-08-18 22:39:57]   Plugins: READY - 0 loaded
+[2026-08-18 22:39:57]   Agent Runtime: READY
+[2026-08-18 22:39:57]   Workflow Engine: READY
+[2026-08-18 22:39:57]   Vision: READY
+[2026-08-18 22:39:57]   Voice: READY
+[2026-08-18 22:39:57] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:39:57]   total_memories: 10
+[2026-08-18 22:39:57]   num_categories: 5
+[2026-08-18 22:39:57]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:57]   indexed: YES
+[2026-08-18 22:39:57]   search_enabled: YES
+[2026-08-18 22:39:57]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:57]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:57]   exists: YES
+[2026-08-18 22:39:57]   files: 83630
+[2026-08-18 22:39:57]   folders: 11507
+[2026-08-18 22:39:57]   Conversation History: 0 turns
+[2026-08-18 22:39:57]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:39:57] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:39:57] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:57] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:39:57] Vision System: YES
+[2026-08-18 22:39:57] Voice System: YES
+[2026-08-18 22:39:57] Uptime: 0d 0h 0m 46s
+[2026-08-18 22:39:57] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:00] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:00]   Memory: READY
+[2026-08-18 22:40:00]   Knowledge: READY
+[2026-08-18 22:40:00]   Workspace: READY
+[2026-08-18 22:40:00]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:00]   Agent Runtime: READY
+[2026-08-18 22:40:00]   Workflow Engine: READY
+[2026-08-18 22:40:00]   Vision: READY
+[2026-08-18 22:40:00]   Voice: READY
+[2026-08-18 22:40:00] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:00]   total_memories: 10
+[2026-08-18 22:40:00]   num_categories: 5
+[2026-08-18 22:40:00]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:00]   indexed: YES
+[2026-08-18 22:40:00]   search_enabled: YES
+[2026-08-18 22:40:00]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:00]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:00]   exists: YES
+[2026-08-18 22:40:00]   files: 83630
+[2026-08-18 22:40:00]   folders: 11507
+[2026-08-18 22:40:00]   Conversation History: 2 turns
+[2026-08-18 22:40:00]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:00] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:00] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:00] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:00] Vision System: YES
+[2026-08-18 22:40:00] Voice System: YES
+[2026-08-18 22:40:00] Uptime: 0d 0h 0m 49s
+[2026-08-18 22:40:00] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:02] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:02]   Memory: READY
+[2026-08-18 22:40:02]   Knowledge: READY
+[2026-08-18 22:40:02]   Workspace: READY
+[2026-08-18 22:40:02]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:02]   Agent Runtime: READY
+[2026-08-18 22:40:02]   Workflow Engine: READY
+[2026-08-18 22:40:02]   Vision: READY
+[2026-08-18 22:40:02]   Voice: READY
+[2026-08-18 22:40:02] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:02]   total_memories: 10
+[2026-08-18 22:40:02]   num_categories: 5
+[2026-08-18 22:40:02]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:02]   indexed: YES
+[2026-08-18 22:40:02]   search_enabled: YES
+[2026-08-18 22:40:02]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:02]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:02]   exists: YES
+[2026-08-18 22:40:02]   files: 83630
+[2026-08-18 22:40:02]   folders: 11507
+[2026-08-18 22:40:02]   Conversation History: 2 turns
+[2026-08-18 22:40:02]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:02] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:02] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:02] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:02] Vision System: YES
+[2026-08-18 22:40:02] Voice System: YES
+[2026-08-18 22:40:02] Uptime: 0d 0h 0m 51s
+[2026-08-18 22:40:02] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:04] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:04]   Memory: READY
+[2026-08-18 22:40:04]   Knowledge: READY
+[2026-08-18 22:40:04]   Workspace: READY
+[2026-08-18 22:40:04]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:04]   Agent Runtime: READY
+[2026-08-18 22:40:04]   Workflow Engine: READY
+[2026-08-18 22:40:04]   Vision: READY
+[2026-08-18 22:40:04]   Voice: READY
+[2026-08-18 22:40:04] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:04]   total_memories: 10
+[2026-08-18 22:40:04]   num_categories: 5
+[2026-08-18 22:40:04]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:04]   indexed: YES
+[2026-08-18 22:40:04]   search_enabled: YES
+[2026-08-18 22:40:04]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:04]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:04]   exists: YES
+[2026-08-18 22:40:04]   files: 83630
+[2026-08-18 22:40:04]   folders: 11507
+[2026-08-18 22:40:04]   Conversation History: 2 turns
+[2026-08-18 22:40:04]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:04] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:04] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:04] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:04] Vision System: YES
+[2026-08-18 22:40:04] Voice System: YES
+[2026-08-18 22:40:04] Uptime: 0d 0h 0m 53s
+[2026-08-18 22:40:04] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:06] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:06]   Memory: READY
+[2026-08-18 22:40:06]   Knowledge: READY
+[2026-08-18 22:40:06]   Workspace: READY
+[2026-08-18 22:40:06]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:06]   Agent Runtime: READY
+[2026-08-18 22:40:06]   Workflow Engine: READY
+[2026-08-18 22:40:06]   Vision: READY
+[2026-08-18 22:40:06]   Voice: READY
+[2026-08-18 22:40:06] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:06]   total_memories: 10
+[2026-08-18 22:40:06]   num_categories: 5
+[2026-08-18 22:40:06]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:06]   indexed: YES
+[2026-08-18 22:40:06]   search_enabled: YES
+[2026-08-18 22:40:06]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:06]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:06]   exists: YES
+[2026-08-18 22:40:06]   files: 83630
+[2026-08-18 22:40:06]   folders: 11507
+[2026-08-18 22:40:06]   Conversation History: 2 turns
+[2026-08-18 22:40:06]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:06] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:06] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:06] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:06] Vision System: YES
+[2026-08-18 22:40:06] Voice System: YES
+[2026-08-18 22:40:06] Uptime: 0d 0h 0m 55s
+[2026-08-18 22:40:06] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:08] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:08]   Memory: READY
+[2026-08-18 22:40:08]   Knowledge: READY
+[2026-08-18 22:40:08]   Workspace: READY
+[2026-08-18 22:40:08]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:08]   Agent Runtime: READY
+[2026-08-18 22:40:08]   Workflow Engine: READY
+[2026-08-18 22:40:08]   Vision: READY
+[2026-08-18 22:40:08]   Voice: READY
+[2026-08-18 22:40:08] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:08]   total_memories: 10
+[2026-08-18 22:40:08]   num_categories: 5
+[2026-08-18 22:40:08]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:08]   indexed: YES
+[2026-08-18 22:40:08]   search_enabled: YES
+[2026-08-18 22:40:08]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:08]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:08]   exists: YES
+[2026-08-18 22:40:08]   files: 83630
+[2026-08-18 22:40:08]   folders: 11507
+[2026-08-18 22:40:08]   Conversation History: 2 turns
+[2026-08-18 22:40:08]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:08] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:08] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:08] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:08] Vision System: YES
+[2026-08-18 22:40:08] Voice System: YES
+[2026-08-18 22:40:08] Uptime: 0d 0h 0m 57s
+[2026-08-18 22:40:08] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:10] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:10]   Memory: READY
+[2026-08-18 22:40:10]   Knowledge: READY
+[2026-08-18 22:40:10]   Workspace: READY
+[2026-08-18 22:40:10]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:10]   Agent Runtime: READY
+[2026-08-18 22:40:10]   Workflow Engine: READY
+[2026-08-18 22:40:10]   Vision: READY
+[2026-08-18 22:40:10]   Voice: READY
+[2026-08-18 22:40:10] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:10]   total_memories: 10
+[2026-08-18 22:40:10]   num_categories: 5
+[2026-08-18 22:40:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:10]   indexed: YES
+[2026-08-18 22:40:10]   search_enabled: YES
+[2026-08-18 22:40:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:10]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:10]   exists: YES
+[2026-08-18 22:40:10]   files: 83630
+[2026-08-18 22:40:10]   folders: 11507
+[2026-08-18 22:40:10]   Conversation History: 2 turns
+[2026-08-18 22:40:10]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:10] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:10] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:10] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:10] Vision System: YES
+[2026-08-18 22:40:10] Voice System: YES
+[2026-08-18 22:40:10] Uptime: 0d 0h 0m 59s
+[2026-08-18 22:40:10] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:12] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:12]   Memory: READY
+[2026-08-18 22:40:12]   Knowledge: READY
+[2026-08-18 22:40:12]   Workspace: READY
+[2026-08-18 22:40:12]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:12]   Agent Runtime: READY
+[2026-08-18 22:40:12]   Workflow Engine: READY
+[2026-08-18 22:40:12]   Vision: READY
+[2026-08-18 22:40:12]   Voice: READY
+[2026-08-18 22:40:12] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:12]   total_memories: 10
+[2026-08-18 22:40:12]   num_categories: 5
+[2026-08-18 22:40:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:12]   indexed: YES
+[2026-08-18 22:40:12]   search_enabled: YES
+[2026-08-18 22:40:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:12]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:12]   exists: YES
+[2026-08-18 22:40:12]   files: 83630
+[2026-08-18 22:40:12]   folders: 11507
+[2026-08-18 22:40:12]   Conversation History: 2 turns
+[2026-08-18 22:40:12]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:12] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:12] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:12] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:12] Vision System: YES
+[2026-08-18 22:40:12] Voice System: YES
+[2026-08-18 22:40:12] Uptime: 0d 0h 1m 1s
+[2026-08-18 22:40:12] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:14] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:14]   Memory: READY
+[2026-08-18 22:40:14]   Knowledge: READY
+[2026-08-18 22:40:14]   Workspace: READY
+[2026-08-18 22:40:14]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:14]   Agent Runtime: READY
+[2026-08-18 22:40:14]   Workflow Engine: READY
+[2026-08-18 22:40:14]   Vision: READY
+[2026-08-18 22:40:14]   Voice: READY
+[2026-08-18 22:40:14] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:14]   total_memories: 10
+[2026-08-18 22:40:14]   num_categories: 5
+[2026-08-18 22:40:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:14]   indexed: YES
+[2026-08-18 22:40:14]   search_enabled: YES
+[2026-08-18 22:40:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:14]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:14]   exists: YES
+[2026-08-18 22:40:14]   files: 83630
+[2026-08-18 22:40:14]   folders: 11507
+[2026-08-18 22:40:14]   Conversation History: 3 turns
+[2026-08-18 22:40:14]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:14] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:14] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:14] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:14] Vision System: YES
+[2026-08-18 22:40:14] Voice System: YES
+[2026-08-18 22:40:14] Uptime: 0d 0h 1m 3s
+[2026-08-18 22:40:14] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:16] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:16]   Memory: READY
+[2026-08-18 22:40:16]   Knowledge: READY
+[2026-08-18 22:40:16]   Workspace: READY
+[2026-08-18 22:40:16]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:16]   Agent Runtime: READY
+[2026-08-18 22:40:16]   Workflow Engine: READY
+[2026-08-18 22:40:16]   Vision: READY
+[2026-08-18 22:40:16]   Voice: READY
+[2026-08-18 22:40:16] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:16]   total_memories: 10
+[2026-08-18 22:40:16]   num_categories: 5
+[2026-08-18 22:40:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:16]   indexed: YES
+[2026-08-18 22:40:16]   search_enabled: YES
+[2026-08-18 22:40:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:16]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:16]   exists: YES
+[2026-08-18 22:40:16]   files: 83630
+[2026-08-18 22:40:16]   folders: 11507
+[2026-08-18 22:40:16]   Conversation History: 4 turns
+[2026-08-18 22:40:16]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:16] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:16] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:16] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:16] Vision System: YES
+[2026-08-18 22:40:16] Voice System: YES
+[2026-08-18 22:40:16] Uptime: 0d 0h 1m 5s
+[2026-08-18 22:40:16] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:18] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:18]   Memory: READY
+[2026-08-18 22:40:18]   Knowledge: READY
+[2026-08-18 22:40:18]   Workspace: READY
+[2026-08-18 22:40:18]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:18]   Agent Runtime: READY
+[2026-08-18 22:40:18]   Workflow Engine: READY
+[2026-08-18 22:40:18]   Vision: READY
+[2026-08-18 22:40:18]   Voice: READY
+[2026-08-18 22:40:18] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:18]   total_memories: 10
+[2026-08-18 22:40:18]   num_categories: 5
+[2026-08-18 22:40:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:18]   indexed: YES
+[2026-08-18 22:40:18]   search_enabled: YES
+[2026-08-18 22:40:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:18]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:18]   exists: YES
+[2026-08-18 22:40:18]   files: 83630
+[2026-08-18 22:40:18]   folders: 11507
+[2026-08-18 22:40:18]   Conversation History: 4 turns
+[2026-08-18 22:40:18]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:18] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:18] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:18] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:18] Vision System: YES
+[2026-08-18 22:40:18] Voice System: YES
+[2026-08-18 22:40:18] Uptime: 0d 0h 1m 7s
+[2026-08-18 22:40:18] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:20] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:20]   Memory: READY
+[2026-08-18 22:40:20]   Knowledge: READY
+[2026-08-18 22:40:20]   Workspace: READY
+[2026-08-18 22:40:20]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:20]   Agent Runtime: READY
+[2026-08-18 22:40:20]   Workflow Engine: READY
+[2026-08-18 22:40:20]   Vision: READY
+[2026-08-18 22:40:20]   Voice: READY
+[2026-08-18 22:40:20] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:20]   total_memories: 10
+[2026-08-18 22:40:20]   num_categories: 5
+[2026-08-18 22:40:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:20]   indexed: YES
+[2026-08-18 22:40:20]   search_enabled: YES
+[2026-08-18 22:40:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:20]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:20]   exists: YES
+[2026-08-18 22:40:20]   files: 83630
+[2026-08-18 22:40:20]   folders: 11507
+[2026-08-18 22:40:20]   Conversation History: 4 turns
+[2026-08-18 22:40:20]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:20] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:20] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:20] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:20] Vision System: YES
+[2026-08-18 22:40:20] Voice System: YES
+[2026-08-18 22:40:20] Uptime: 0d 0h 1m 9s
+[2026-08-18 22:40:20] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:22] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:22]   Memory: READY
+[2026-08-18 22:40:22]   Knowledge: READY
+[2026-08-18 22:40:22]   Workspace: READY
+[2026-08-18 22:40:22]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:22]   Agent Runtime: READY
+[2026-08-18 22:40:22]   Workflow Engine: READY
+[2026-08-18 22:40:22]   Vision: READY
+[2026-08-18 22:40:22]   Voice: READY
+[2026-08-18 22:40:22] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:22]   total_memories: 10
+[2026-08-18 22:40:22]   num_categories: 5
+[2026-08-18 22:40:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:22]   indexed: YES
+[2026-08-18 22:40:22]   search_enabled: YES
+[2026-08-18 22:40:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:22]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:22]   exists: YES
+[2026-08-18 22:40:22]   files: 83630
+[2026-08-18 22:40:22]   folders: 11507
+[2026-08-18 22:40:22]   Conversation History: 4 turns
+[2026-08-18 22:40:22]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:22] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:22] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:22] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:22] Vision System: YES
+[2026-08-18 22:40:22] Voice System: YES
+[2026-08-18 22:40:22] Uptime: 0d 0h 1m 11s
+[2026-08-18 22:40:22] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:24] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:24]   Memory: READY
+[2026-08-18 22:40:24]   Knowledge: READY
+[2026-08-18 22:40:24]   Workspace: READY
+[2026-08-18 22:40:24]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:24]   Agent Runtime: READY
+[2026-08-18 22:40:24]   Workflow Engine: READY
+[2026-08-18 22:40:24]   Vision: READY
+[2026-08-18 22:40:24]   Voice: READY
+[2026-08-18 22:40:24] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:24]   total_memories: 10
+[2026-08-18 22:40:24]   num_categories: 5
+[2026-08-18 22:40:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:24]   indexed: YES
+[2026-08-18 22:40:24]   search_enabled: YES
+[2026-08-18 22:40:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:24]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:24]   exists: YES
+[2026-08-18 22:40:24]   files: 83630
+[2026-08-18 22:40:24]   folders: 11507
+[2026-08-18 22:40:24]   Conversation History: 4 turns
+[2026-08-18 22:40:24]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:24] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:24] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:24] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:24] Vision System: YES
+[2026-08-18 22:40:24] Voice System: YES
+[2026-08-18 22:40:24] Uptime: 0d 0h 1m 13s
+[2026-08-18 22:40:24] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:26] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:26]   Memory: READY
+[2026-08-18 22:40:26]   Knowledge: READY
+[2026-08-18 22:40:26]   Workspace: READY
+[2026-08-18 22:40:26]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:26]   Agent Runtime: READY
+[2026-08-18 22:40:26]   Workflow Engine: READY
+[2026-08-18 22:40:26]   Vision: READY
+[2026-08-18 22:40:26]   Voice: READY
+[2026-08-18 22:40:26] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:26]   total_memories: 10
+[2026-08-18 22:40:26]   num_categories: 5
+[2026-08-18 22:40:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:26]   indexed: YES
+[2026-08-18 22:40:26]   search_enabled: YES
+[2026-08-18 22:40:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:26]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:26]   exists: YES
+[2026-08-18 22:40:26]   files: 83630
+[2026-08-18 22:40:26]   folders: 11507
+[2026-08-18 22:40:26]   Conversation History: 4 turns
+[2026-08-18 22:40:26]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:26] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:26] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:26] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:26] Vision System: YES
+[2026-08-18 22:40:26] Voice System: YES
+[2026-08-18 22:40:26] Uptime: 0d 0h 1m 15s
+[2026-08-18 22:40:26] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:28] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:28]   Memory: READY
+[2026-08-18 22:40:28]   Knowledge: READY
+[2026-08-18 22:40:28]   Workspace: READY
+[2026-08-18 22:40:28]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:28]   Agent Runtime: READY
+[2026-08-18 22:40:28]   Workflow Engine: READY
+[2026-08-18 22:40:28]   Vision: READY
+[2026-08-18 22:40:28]   Voice: READY
+[2026-08-18 22:40:28] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:28]   total_memories: 10
+[2026-08-18 22:40:28]   num_categories: 5
+[2026-08-18 22:40:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:28]   indexed: YES
+[2026-08-18 22:40:28]   search_enabled: YES
+[2026-08-18 22:40:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:28]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:28]   exists: YES
+[2026-08-18 22:40:28]   files: 83630
+[2026-08-18 22:40:28]   folders: 11507
+[2026-08-18 22:40:28]   Conversation History: 4 turns
+[2026-08-18 22:40:28]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:28] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:28] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:28] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:28] Vision System: YES
+[2026-08-18 22:40:28] Voice System: YES
+[2026-08-18 22:40:28] Uptime: 0d 0h 1m 17s
+[2026-08-18 22:40:28] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:30] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:30]   Memory: READY
+[2026-08-18 22:40:30]   Knowledge: READY
+[2026-08-18 22:40:30]   Workspace: READY
+[2026-08-18 22:40:30]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:30]   Agent Runtime: READY
+[2026-08-18 22:40:30]   Workflow Engine: READY
+[2026-08-18 22:40:30]   Vision: READY
+[2026-08-18 22:40:30]   Voice: READY
+[2026-08-18 22:40:30] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:30]   total_memories: 10
+[2026-08-18 22:40:30]   num_categories: 5
+[2026-08-18 22:40:30]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:30]   indexed: YES
+[2026-08-18 22:40:30]   search_enabled: YES
+[2026-08-18 22:40:30]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:30]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:30]   exists: YES
+[2026-08-18 22:40:30]   files: 83630
+[2026-08-18 22:40:30]   folders: 11507
+[2026-08-18 22:40:30]   Conversation History: 4 turns
+[2026-08-18 22:40:30]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:30] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:30] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:30] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:30] Vision System: YES
+[2026-08-18 22:40:30] Voice System: YES
+[2026-08-18 22:40:30] Uptime: 0d 0h 1m 19s
+[2026-08-18 22:40:30] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:32] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:32]   Memory: READY
+[2026-08-18 22:40:32]   Knowledge: READY
+[2026-08-18 22:40:32]   Workspace: READY
+[2026-08-18 22:40:32]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:32]   Agent Runtime: READY
+[2026-08-18 22:40:32]   Workflow Engine: READY
+[2026-08-18 22:40:32]   Vision: READY
+[2026-08-18 22:40:32]   Voice: READY
+[2026-08-18 22:40:32] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:32]   total_memories: 10
+[2026-08-18 22:40:32]   num_categories: 5
+[2026-08-18 22:40:32]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:32]   indexed: YES
+[2026-08-18 22:40:32]   search_enabled: YES
+[2026-08-18 22:40:32]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:32]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:32]   exists: YES
+[2026-08-18 22:40:32]   files: 83630
+[2026-08-18 22:40:32]   folders: 11507
+[2026-08-18 22:40:32]   Conversation History: 4 turns
+[2026-08-18 22:40:32]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:32] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:32] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:32] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:32] Vision System: YES
+[2026-08-18 22:40:32] Voice System: YES
+[2026-08-18 22:40:32] Uptime: 0d 0h 1m 21s
+[2026-08-18 22:40:32] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:34] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:34]   Memory: READY
+[2026-08-18 22:40:34]   Knowledge: READY
+[2026-08-18 22:40:34]   Workspace: READY
+[2026-08-18 22:40:34]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:34]   Agent Runtime: READY
+[2026-08-18 22:40:34]   Workflow Engine: READY
+[2026-08-18 22:40:34]   Vision: READY
+[2026-08-18 22:40:34]   Voice: READY
+[2026-08-18 22:40:34] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:34]   total_memories: 10
+[2026-08-18 22:40:34]   num_categories: 5
+[2026-08-18 22:40:34]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:34]   indexed: YES
+[2026-08-18 22:40:34]   search_enabled: YES
+[2026-08-18 22:40:34]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:34]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:34]   exists: YES
+[2026-08-18 22:40:34]   files: 83630
+[2026-08-18 22:40:34]   folders: 11507
+[2026-08-18 22:40:34]   Conversation History: 4 turns
+[2026-08-18 22:40:34]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:34] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:34] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:34] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:34] Vision System: YES
+[2026-08-18 22:40:34] Voice System: YES
+[2026-08-18 22:40:34] Uptime: 0d 0h 1m 23s
+[2026-08-18 22:40:34] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:36] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:36]   Memory: READY
+[2026-08-18 22:40:36]   Knowledge: READY
+[2026-08-18 22:40:36]   Workspace: READY
+[2026-08-18 22:40:36]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:36]   Agent Runtime: READY
+[2026-08-18 22:40:36]   Workflow Engine: READY
+[2026-08-18 22:40:36]   Vision: READY
+[2026-08-18 22:40:36]   Voice: READY
+[2026-08-18 22:40:36] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:36]   total_memories: 10
+[2026-08-18 22:40:36]   num_categories: 5
+[2026-08-18 22:40:36]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:36]   indexed: YES
+[2026-08-18 22:40:36]   search_enabled: YES
+[2026-08-18 22:40:36]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:36]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:36]   exists: YES
+[2026-08-18 22:40:36]   files: 83630
+[2026-08-18 22:40:36]   folders: 11507
+[2026-08-18 22:40:36]   Conversation History: 4 turns
+[2026-08-18 22:40:36]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:36] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:36] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:36] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:36] Vision System: YES
+[2026-08-18 22:40:36] Voice System: YES
+[2026-08-18 22:40:36] Uptime: 0d 0h 1m 25s
+[2026-08-18 22:40:36] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:38] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:38]   Memory: READY
+[2026-08-18 22:40:38]   Knowledge: READY
+[2026-08-18 22:40:38]   Workspace: READY
+[2026-08-18 22:40:38]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:38]   Agent Runtime: READY
+[2026-08-18 22:40:38]   Workflow Engine: READY
+[2026-08-18 22:40:38]   Vision: READY
+[2026-08-18 22:40:38]   Voice: READY
+[2026-08-18 22:40:38] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:38]   total_memories: 10
+[2026-08-18 22:40:38]   num_categories: 5
+[2026-08-18 22:40:38]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:38]   indexed: YES
+[2026-08-18 22:40:38]   search_enabled: YES
+[2026-08-18 22:40:38]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:38]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:38]   exists: YES
+[2026-08-18 22:40:38]   files: 83630
+[2026-08-18 22:40:38]   folders: 11507
+[2026-08-18 22:40:38]   Conversation History: 4 turns
+[2026-08-18 22:40:38]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:38] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:38] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:38] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:38] Vision System: YES
+[2026-08-18 22:40:38] Voice System: YES
+[2026-08-18 22:40:38] Uptime: 0d 0h 1m 27s
+[2026-08-18 22:40:38] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:40] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:40]   Memory: READY
+[2026-08-18 22:40:40]   Knowledge: READY
+[2026-08-18 22:40:40]   Workspace: READY
+[2026-08-18 22:40:40]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:40]   Agent Runtime: READY
+[2026-08-18 22:40:40]   Workflow Engine: READY
+[2026-08-18 22:40:40]   Vision: READY
+[2026-08-18 22:40:40]   Voice: READY
+[2026-08-18 22:40:40] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:40]   total_memories: 10
+[2026-08-18 22:40:40]   num_categories: 5
+[2026-08-18 22:40:40]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:40]   indexed: YES
+[2026-08-18 22:40:40]   search_enabled: YES
+[2026-08-18 22:40:40]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:40]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:40]   exists: YES
+[2026-08-18 22:40:40]   files: 83630
+[2026-08-18 22:40:40]   folders: 11507
+[2026-08-18 22:40:40]   Conversation History: 4 turns
+[2026-08-18 22:40:40]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:40] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:40] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:40] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:40] Vision System: YES
+[2026-08-18 22:40:40] Voice System: YES
+[2026-08-18 22:40:40] Uptime: 0d 0h 1m 29s
+[2026-08-18 22:40:40] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:42] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:42]   Memory: READY
+[2026-08-18 22:40:42]   Knowledge: READY
+[2026-08-18 22:40:42]   Workspace: READY
+[2026-08-18 22:40:42]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:42]   Agent Runtime: READY
+[2026-08-18 22:40:42]   Workflow Engine: READY
+[2026-08-18 22:40:42]   Vision: READY
+[2026-08-18 22:40:42]   Voice: READY
+[2026-08-18 22:40:42] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:42]   total_memories: 10
+[2026-08-18 22:40:42]   num_categories: 5
+[2026-08-18 22:40:42]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:42]   indexed: YES
+[2026-08-18 22:40:42]   search_enabled: YES
+[2026-08-18 22:40:42]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:42]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:42]   exists: YES
+[2026-08-18 22:40:42]   files: 83630
+[2026-08-18 22:40:42]   folders: 11507
+[2026-08-18 22:40:42]   Conversation History: 4 turns
+[2026-08-18 22:40:42]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:42] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:42] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:42] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:42] Vision System: YES
+[2026-08-18 22:40:42] Voice System: YES
+[2026-08-18 22:40:42] Uptime: 0d 0h 1m 31s
+[2026-08-18 22:40:42] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:44] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:44]   Memory: READY
+[2026-08-18 22:40:44]   Knowledge: READY
+[2026-08-18 22:40:44]   Workspace: READY
+[2026-08-18 22:40:44]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:44]   Agent Runtime: READY
+[2026-08-18 22:40:44]   Workflow Engine: READY
+[2026-08-18 22:40:44]   Vision: READY
+[2026-08-18 22:40:44]   Voice: READY
+[2026-08-18 22:40:44] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:44]   total_memories: 10
+[2026-08-18 22:40:44]   num_categories: 5
+[2026-08-18 22:40:44]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:44]   indexed: YES
+[2026-08-18 22:40:44]   search_enabled: YES
+[2026-08-18 22:40:44]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:44]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:44]   exists: YES
+[2026-08-18 22:40:44]   files: 83630
+[2026-08-18 22:40:44]   folders: 11507
+[2026-08-18 22:40:44]   Conversation History: 4 turns
+[2026-08-18 22:40:44]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:44] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:44] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:44] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:44] Vision System: YES
+[2026-08-18 22:40:44] Voice System: YES
+[2026-08-18 22:40:44] Uptime: 0d 0h 1m 33s
+[2026-08-18 22:40:44] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:46] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:46]   Memory: READY
+[2026-08-18 22:40:46]   Knowledge: READY
+[2026-08-18 22:40:46]   Workspace: READY
+[2026-08-18 22:40:46]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:46]   Agent Runtime: READY
+[2026-08-18 22:40:46]   Workflow Engine: READY
+[2026-08-18 22:40:46]   Vision: READY
+[2026-08-18 22:40:46]   Voice: READY
+[2026-08-18 22:40:46] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:46]   total_memories: 10
+[2026-08-18 22:40:46]   num_categories: 5
+[2026-08-18 22:40:46]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:46]   indexed: YES
+[2026-08-18 22:40:46]   search_enabled: YES
+[2026-08-18 22:40:46]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:46]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:46]   exists: YES
+[2026-08-18 22:40:46]   files: 83630
+[2026-08-18 22:40:46]   folders: 11507
+[2026-08-18 22:40:46]   Conversation History: 4 turns
+[2026-08-18 22:40:46]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:46] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:46] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:46] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:46] Vision System: YES
+[2026-08-18 22:40:46] Voice System: YES
+[2026-08-18 22:40:46] Uptime: 0d 0h 1m 35s
+[2026-08-18 22:40:46] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:48] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:48]   Memory: READY
+[2026-08-18 22:40:48]   Knowledge: READY
+[2026-08-18 22:40:48]   Workspace: READY
+[2026-08-18 22:40:48]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:48]   Agent Runtime: READY
+[2026-08-18 22:40:48]   Workflow Engine: READY
+[2026-08-18 22:40:48]   Vision: READY
+[2026-08-18 22:40:48]   Voice: READY
+[2026-08-18 22:40:48] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:48]   total_memories: 10
+[2026-08-18 22:40:48]   num_categories: 5
+[2026-08-18 22:40:48]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:48]   indexed: YES
+[2026-08-18 22:40:48]   search_enabled: YES
+[2026-08-18 22:40:48]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:48]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:48]   exists: YES
+[2026-08-18 22:40:48]   files: 83630
+[2026-08-18 22:40:48]   folders: 11507
+[2026-08-18 22:40:48]   Conversation History: 4 turns
+[2026-08-18 22:40:48]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:48] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:48] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:48] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:48] Vision System: YES
+[2026-08-18 22:40:48] Voice System: YES
+[2026-08-18 22:40:48] Uptime: 0d 0h 1m 37s
+[2026-08-18 22:40:48] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:50] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:50]   Memory: READY
+[2026-08-18 22:40:50]   Knowledge: READY
+[2026-08-18 22:40:50]   Workspace: READY
+[2026-08-18 22:40:50]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:50]   Agent Runtime: READY
+[2026-08-18 22:40:50]   Workflow Engine: READY
+[2026-08-18 22:40:50]   Vision: READY
+[2026-08-18 22:40:50]   Voice: READY
+[2026-08-18 22:40:50] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:50]   total_memories: 10
+[2026-08-18 22:40:50]   num_categories: 5
+[2026-08-18 22:40:50]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:50]   indexed: YES
+[2026-08-18 22:40:50]   search_enabled: YES
+[2026-08-18 22:40:50]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:50]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:50]   exists: YES
+[2026-08-18 22:40:50]   files: 83630
+[2026-08-18 22:40:50]   folders: 11507
+[2026-08-18 22:40:50]   Conversation History: 4 turns
+[2026-08-18 22:40:50]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:50] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:50] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:50] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:50] Vision System: YES
+[2026-08-18 22:40:50] Voice System: YES
+[2026-08-18 22:40:50] Uptime: 0d 0h 1m 39s
+[2026-08-18 22:40:50] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:52] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:52]   Memory: READY
+[2026-08-18 22:40:52]   Knowledge: READY
+[2026-08-18 22:40:52]   Workspace: READY
+[2026-08-18 22:40:52]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:52]   Agent Runtime: READY
+[2026-08-18 22:40:52]   Workflow Engine: READY
+[2026-08-18 22:40:52]   Vision: READY
+[2026-08-18 22:40:52]   Voice: READY
+[2026-08-18 22:40:52] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:52]   total_memories: 10
+[2026-08-18 22:40:52]   num_categories: 5
+[2026-08-18 22:40:52]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:52]   indexed: YES
+[2026-08-18 22:40:52]   search_enabled: YES
+[2026-08-18 22:40:52]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:52]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:52]   exists: YES
+[2026-08-18 22:40:52]   files: 83630
+[2026-08-18 22:40:52]   folders: 11507
+[2026-08-18 22:40:52]   Conversation History: 4 turns
+[2026-08-18 22:40:52]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:52] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:52] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:52] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:52] Vision System: YES
+[2026-08-18 22:40:52] Voice System: YES
+[2026-08-18 22:40:52] Uptime: 0d 0h 1m 41s
+[2026-08-18 22:40:52] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:54] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:54]   Memory: READY
+[2026-08-18 22:40:54]   Knowledge: READY
+[2026-08-18 22:40:54]   Workspace: READY
+[2026-08-18 22:40:54]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:54]   Agent Runtime: READY
+[2026-08-18 22:40:54]   Workflow Engine: READY
+[2026-08-18 22:40:54]   Vision: READY
+[2026-08-18 22:40:54]   Voice: READY
+[2026-08-18 22:40:54] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:54]   total_memories: 10
+[2026-08-18 22:40:54]   num_categories: 5
+[2026-08-18 22:40:54]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:54]   indexed: YES
+[2026-08-18 22:40:54]   search_enabled: YES
+[2026-08-18 22:40:54]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:54]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:54]   exists: YES
+[2026-08-18 22:40:54]   files: 83630
+[2026-08-18 22:40:54]   folders: 11507
+[2026-08-18 22:40:54]   Conversation History: 4 turns
+[2026-08-18 22:40:54]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:54] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:54] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:54] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:54] Vision System: YES
+[2026-08-18 22:40:54] Voice System: YES
+[2026-08-18 22:40:54] Uptime: 0d 0h 1m 43s
+[2026-08-18 22:40:54] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:56] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:56]   Memory: READY
+[2026-08-18 22:40:56]   Knowledge: READY
+[2026-08-18 22:40:56]   Workspace: READY
+[2026-08-18 22:40:56]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:56]   Agent Runtime: READY
+[2026-08-18 22:40:56]   Workflow Engine: READY
+[2026-08-18 22:40:56]   Vision: READY
+[2026-08-18 22:40:56]   Voice: READY
+[2026-08-18 22:40:56] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:56]   total_memories: 10
+[2026-08-18 22:40:56]   num_categories: 5
+[2026-08-18 22:40:56]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:56]   indexed: YES
+[2026-08-18 22:40:56]   search_enabled: YES
+[2026-08-18 22:40:56]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:56]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:56]   exists: YES
+[2026-08-18 22:40:56]   files: 83630
+[2026-08-18 22:40:56]   folders: 11507
+[2026-08-18 22:40:56]   Conversation History: 4 turns
+[2026-08-18 22:40:56]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:56] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:56] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:56] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:56] Vision System: YES
+[2026-08-18 22:40:56] Voice System: YES
+[2026-08-18 22:40:56] Uptime: 0d 0h 1m 45s
+[2026-08-18 22:40:56] --------------------------------------------------------------------------------
+
+[2026-08-18 22:40:58] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:40:58]   Memory: READY
+[2026-08-18 22:40:58]   Knowledge: READY
+[2026-08-18 22:40:58]   Workspace: READY
+[2026-08-18 22:40:58]   Plugins: READY - 0 loaded
+[2026-08-18 22:40:58]   Agent Runtime: READY
+[2026-08-18 22:40:58]   Workflow Engine: READY
+[2026-08-18 22:40:58]   Vision: READY
+[2026-08-18 22:40:58]   Voice: READY
+[2026-08-18 22:40:58] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:40:58]   total_memories: 10
+[2026-08-18 22:40:58]   num_categories: 5
+[2026-08-18 22:40:58]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:58]   indexed: YES
+[2026-08-18 22:40:58]   search_enabled: YES
+[2026-08-18 22:40:58]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:58]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:58]   exists: YES
+[2026-08-18 22:40:58]   files: 83630
+[2026-08-18 22:40:58]   folders: 11507
+[2026-08-18 22:40:58]   Conversation History: 4 turns
+[2026-08-18 22:40:58]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:40:58] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:40:58] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:58] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:40:58] Vision System: YES
+[2026-08-18 22:40:58] Voice System: YES
+[2026-08-18 22:40:58] Uptime: 0d 0h 1m 47s
+[2026-08-18 22:40:58] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:00] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:00]   Memory: READY
+[2026-08-18 22:41:00]   Knowledge: READY
+[2026-08-18 22:41:00]   Workspace: READY
+[2026-08-18 22:41:00]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:00]   Agent Runtime: READY
+[2026-08-18 22:41:00]   Workflow Engine: READY
+[2026-08-18 22:41:00]   Vision: READY
+[2026-08-18 22:41:00]   Voice: READY
+[2026-08-18 22:41:00] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:00]   total_memories: 10
+[2026-08-18 22:41:00]   num_categories: 5
+[2026-08-18 22:41:00]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:00]   indexed: YES
+[2026-08-18 22:41:00]   search_enabled: YES
+[2026-08-18 22:41:00]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:00]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:00]   exists: YES
+[2026-08-18 22:41:00]   files: 83630
+[2026-08-18 22:41:00]   folders: 11507
+[2026-08-18 22:41:00]   Conversation History: 4 turns
+[2026-08-18 22:41:00]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:00] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:00] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:00] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:00] Vision System: YES
+[2026-08-18 22:41:00] Voice System: YES
+[2026-08-18 22:41:00] Uptime: 0d 0h 1m 49s
+[2026-08-18 22:41:00] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:02] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:02]   Memory: READY
+[2026-08-18 22:41:02]   Knowledge: READY
+[2026-08-18 22:41:02]   Workspace: READY
+[2026-08-18 22:41:02]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:02]   Agent Runtime: READY
+[2026-08-18 22:41:02]   Workflow Engine: READY
+[2026-08-18 22:41:02]   Vision: READY
+[2026-08-18 22:41:02]   Voice: READY
+[2026-08-18 22:41:02] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:02]   total_memories: 10
+[2026-08-18 22:41:02]   num_categories: 5
+[2026-08-18 22:41:02]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:02]   indexed: YES
+[2026-08-18 22:41:02]   search_enabled: YES
+[2026-08-18 22:41:02]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:02]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:02]   exists: YES
+[2026-08-18 22:41:02]   files: 83630
+[2026-08-18 22:41:02]   folders: 11507
+[2026-08-18 22:41:02]   Conversation History: 4 turns
+[2026-08-18 22:41:02]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:02] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:02] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:02] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:02] Vision System: YES
+[2026-08-18 22:41:02] Voice System: YES
+[2026-08-18 22:41:02] Uptime: 0d 0h 1m 51s
+[2026-08-18 22:41:02] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:04] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:04]   Memory: READY
+[2026-08-18 22:41:04]   Knowledge: READY
+[2026-08-18 22:41:04]   Workspace: READY
+[2026-08-18 22:41:04]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:04]   Agent Runtime: READY
+[2026-08-18 22:41:04]   Workflow Engine: READY
+[2026-08-18 22:41:04]   Vision: READY
+[2026-08-18 22:41:04]   Voice: READY
+[2026-08-18 22:41:04] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:04]   total_memories: 10
+[2026-08-18 22:41:04]   num_categories: 5
+[2026-08-18 22:41:04]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:04]   indexed: YES
+[2026-08-18 22:41:04]   search_enabled: YES
+[2026-08-18 22:41:04]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:04]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:04]   exists: YES
+[2026-08-18 22:41:04]   files: 83630
+[2026-08-18 22:41:04]   folders: 11507
+[2026-08-18 22:41:04]   Conversation History: 4 turns
+[2026-08-18 22:41:04]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:04] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:04] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:04] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:04] Vision System: YES
+[2026-08-18 22:41:04] Voice System: YES
+[2026-08-18 22:41:04] Uptime: 0d 0h 1m 53s
+[2026-08-18 22:41:04] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:06] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:06]   Memory: READY
+[2026-08-18 22:41:06]   Knowledge: READY
+[2026-08-18 22:41:06]   Workspace: READY
+[2026-08-18 22:41:06]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:06]   Agent Runtime: READY
+[2026-08-18 22:41:06]   Workflow Engine: READY
+[2026-08-18 22:41:06]   Vision: READY
+[2026-08-18 22:41:06]   Voice: READY
+[2026-08-18 22:41:06] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:06]   total_memories: 10
+[2026-08-18 22:41:06]   num_categories: 5
+[2026-08-18 22:41:06]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:06]   indexed: YES
+[2026-08-18 22:41:06]   search_enabled: YES
+[2026-08-18 22:41:06]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:06]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:06]   exists: YES
+[2026-08-18 22:41:06]   files: 83630
+[2026-08-18 22:41:06]   folders: 11507
+[2026-08-18 22:41:06]   Conversation History: 4 turns
+[2026-08-18 22:41:06]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:06] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:06] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:06] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:06] Vision System: YES
+[2026-08-18 22:41:06] Voice System: YES
+[2026-08-18 22:41:06] Uptime: 0d 0h 1m 55s
+[2026-08-18 22:41:06] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:08] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:08]   Memory: READY
+[2026-08-18 22:41:08]   Knowledge: READY
+[2026-08-18 22:41:08]   Workspace: READY
+[2026-08-18 22:41:08]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:08]   Agent Runtime: READY
+[2026-08-18 22:41:08]   Workflow Engine: READY
+[2026-08-18 22:41:08]   Vision: READY
+[2026-08-18 22:41:08]   Voice: READY
+[2026-08-18 22:41:08] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:08]   total_memories: 10
+[2026-08-18 22:41:08]   num_categories: 5
+[2026-08-18 22:41:08]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:08]   indexed: YES
+[2026-08-18 22:41:08]   search_enabled: YES
+[2026-08-18 22:41:08]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:08]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:08]   exists: YES
+[2026-08-18 22:41:08]   files: 83630
+[2026-08-18 22:41:08]   folders: 11507
+[2026-08-18 22:41:08]   Conversation History: 4 turns
+[2026-08-18 22:41:08]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:08] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:08] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:08] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:08] Vision System: YES
+[2026-08-18 22:41:08] Voice System: YES
+[2026-08-18 22:41:08] Uptime: 0d 0h 1m 57s
+[2026-08-18 22:41:08] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:10] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:10]   Memory: READY
+[2026-08-18 22:41:10]   Knowledge: READY
+[2026-08-18 22:41:10]   Workspace: READY
+[2026-08-18 22:41:10]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:10]   Agent Runtime: READY
+[2026-08-18 22:41:10]   Workflow Engine: READY
+[2026-08-18 22:41:10]   Vision: READY
+[2026-08-18 22:41:10]   Voice: READY
+[2026-08-18 22:41:10] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:10]   total_memories: 10
+[2026-08-18 22:41:10]   num_categories: 5
+[2026-08-18 22:41:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:10]   indexed: YES
+[2026-08-18 22:41:10]   search_enabled: YES
+[2026-08-18 22:41:10]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:10]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:10]   exists: YES
+[2026-08-18 22:41:10]   files: 83630
+[2026-08-18 22:41:10]   folders: 11507
+[2026-08-18 22:41:10]   Conversation History: 4 turns
+[2026-08-18 22:41:10]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:10] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:10] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:10] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:10] Vision System: YES
+[2026-08-18 22:41:10] Voice System: YES
+[2026-08-18 22:41:10] Uptime: 0d 0h 1m 59s
+[2026-08-18 22:41:10] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:12] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:12]   Memory: READY
+[2026-08-18 22:41:12]   Knowledge: READY
+[2026-08-18 22:41:12]   Workspace: READY
+[2026-08-18 22:41:12]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:12]   Agent Runtime: READY
+[2026-08-18 22:41:12]   Workflow Engine: READY
+[2026-08-18 22:41:12]   Vision: READY
+[2026-08-18 22:41:12]   Voice: READY
+[2026-08-18 22:41:12] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:12]   total_memories: 10
+[2026-08-18 22:41:12]   num_categories: 5
+[2026-08-18 22:41:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:12]   indexed: YES
+[2026-08-18 22:41:12]   search_enabled: YES
+[2026-08-18 22:41:12]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:12]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:12]   exists: YES
+[2026-08-18 22:41:12]   files: 83630
+[2026-08-18 22:41:12]   folders: 11507
+[2026-08-18 22:41:12]   Conversation History: 4 turns
+[2026-08-18 22:41:12]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:12] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:12] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:12] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:12] Vision System: YES
+[2026-08-18 22:41:12] Voice System: YES
+[2026-08-18 22:41:12] Uptime: 0d 0h 2m 1s
+[2026-08-18 22:41:12] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:14] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:14]   Memory: READY
+[2026-08-18 22:41:14]   Knowledge: READY
+[2026-08-18 22:41:14]   Workspace: READY
+[2026-08-18 22:41:14]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:14]   Agent Runtime: READY
+[2026-08-18 22:41:14]   Workflow Engine: READY
+[2026-08-18 22:41:14]   Vision: READY
+[2026-08-18 22:41:14]   Voice: READY
+[2026-08-18 22:41:14] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:14]   total_memories: 10
+[2026-08-18 22:41:14]   num_categories: 5
+[2026-08-18 22:41:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:14]   indexed: YES
+[2026-08-18 22:41:14]   search_enabled: YES
+[2026-08-18 22:41:14]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:14]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:14]   exists: YES
+[2026-08-18 22:41:14]   files: 83630
+[2026-08-18 22:41:14]   folders: 11507
+[2026-08-18 22:41:14]   Conversation History: 4 turns
+[2026-08-18 22:41:14]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:14] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:14] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:14] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:14] Vision System: YES
+[2026-08-18 22:41:14] Voice System: YES
+[2026-08-18 22:41:14] Uptime: 0d 0h 2m 3s
+[2026-08-18 22:41:14] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:16] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:16]   Memory: READY
+[2026-08-18 22:41:16]   Knowledge: READY
+[2026-08-18 22:41:16]   Workspace: READY
+[2026-08-18 22:41:16]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:16]   Agent Runtime: READY
+[2026-08-18 22:41:16]   Workflow Engine: READY
+[2026-08-18 22:41:16]   Vision: READY
+[2026-08-18 22:41:16]   Voice: READY
+[2026-08-18 22:41:16] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:16]   total_memories: 10
+[2026-08-18 22:41:16]   num_categories: 5
+[2026-08-18 22:41:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:16]   indexed: YES
+[2026-08-18 22:41:16]   search_enabled: YES
+[2026-08-18 22:41:16]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:16]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:16]   exists: YES
+[2026-08-18 22:41:16]   files: 83630
+[2026-08-18 22:41:16]   folders: 11507
+[2026-08-18 22:41:16]   Conversation History: 4 turns
+[2026-08-18 22:41:16]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:16] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:16] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:16] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:16] Vision System: YES
+[2026-08-18 22:41:16] Voice System: YES
+[2026-08-18 22:41:16] Uptime: 0d 0h 2m 5s
+[2026-08-18 22:41:16] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:18] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:18]   Memory: READY
+[2026-08-18 22:41:18]   Knowledge: READY
+[2026-08-18 22:41:18]   Workspace: READY
+[2026-08-18 22:41:18]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:18]   Agent Runtime: READY
+[2026-08-18 22:41:18]   Workflow Engine: READY
+[2026-08-18 22:41:18]   Vision: READY
+[2026-08-18 22:41:18]   Voice: READY
+[2026-08-18 22:41:18] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:18]   total_memories: 10
+[2026-08-18 22:41:18]   num_categories: 5
+[2026-08-18 22:41:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:18]   indexed: YES
+[2026-08-18 22:41:18]   search_enabled: YES
+[2026-08-18 22:41:18]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:18]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:18]   exists: YES
+[2026-08-18 22:41:18]   files: 83630
+[2026-08-18 22:41:18]   folders: 11507
+[2026-08-18 22:41:18]   Conversation History: 4 turns
+[2026-08-18 22:41:18]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:18] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:18] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:18] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:18] Vision System: YES
+[2026-08-18 22:41:18] Voice System: YES
+[2026-08-18 22:41:18] Uptime: 0d 0h 2m 7s
+[2026-08-18 22:41:18] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:20] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:20]   Memory: READY
+[2026-08-18 22:41:20]   Knowledge: READY
+[2026-08-18 22:41:20]   Workspace: READY
+[2026-08-18 22:41:20]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:20]   Agent Runtime: READY
+[2026-08-18 22:41:20]   Workflow Engine: READY
+[2026-08-18 22:41:20]   Vision: READY
+[2026-08-18 22:41:20]   Voice: READY
+[2026-08-18 22:41:20] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:20]   total_memories: 10
+[2026-08-18 22:41:20]   num_categories: 5
+[2026-08-18 22:41:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:20]   indexed: YES
+[2026-08-18 22:41:20]   search_enabled: YES
+[2026-08-18 22:41:20]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:20]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:20]   exists: YES
+[2026-08-18 22:41:20]   files: 83630
+[2026-08-18 22:41:20]   folders: 11507
+[2026-08-18 22:41:20]   Conversation History: 4 turns
+[2026-08-18 22:41:20]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:20] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:20] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:20] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:20] Vision System: YES
+[2026-08-18 22:41:20] Voice System: YES
+[2026-08-18 22:41:20] Uptime: 0d 0h 2m 9s
+[2026-08-18 22:41:20] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:22] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:22]   Memory: READY
+[2026-08-18 22:41:22]   Knowledge: READY
+[2026-08-18 22:41:22]   Workspace: READY
+[2026-08-18 22:41:22]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:22]   Agent Runtime: READY
+[2026-08-18 22:41:22]   Workflow Engine: READY
+[2026-08-18 22:41:22]   Vision: READY
+[2026-08-18 22:41:22]   Voice: READY
+[2026-08-18 22:41:22] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:22]   total_memories: 10
+[2026-08-18 22:41:22]   num_categories: 5
+[2026-08-18 22:41:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:22]   indexed: YES
+[2026-08-18 22:41:22]   search_enabled: YES
+[2026-08-18 22:41:22]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:22]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:22]   exists: YES
+[2026-08-18 22:41:22]   files: 83630
+[2026-08-18 22:41:22]   folders: 11507
+[2026-08-18 22:41:22]   Conversation History: 4 turns
+[2026-08-18 22:41:22]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:22] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:22] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:22] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:22] Vision System: YES
+[2026-08-18 22:41:22] Voice System: YES
+[2026-08-18 22:41:22] Uptime: 0d 0h 2m 11s
+[2026-08-18 22:41:22] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:24] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:24]   Memory: READY
+[2026-08-18 22:41:24]   Knowledge: READY
+[2026-08-18 22:41:24]   Workspace: READY
+[2026-08-18 22:41:24]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:24]   Agent Runtime: READY
+[2026-08-18 22:41:24]   Workflow Engine: READY
+[2026-08-18 22:41:24]   Vision: READY
+[2026-08-18 22:41:24]   Voice: READY
+[2026-08-18 22:41:24] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:24]   total_memories: 10
+[2026-08-18 22:41:24]   num_categories: 5
+[2026-08-18 22:41:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:24]   indexed: YES
+[2026-08-18 22:41:24]   search_enabled: YES
+[2026-08-18 22:41:24]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:24]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:24]   exists: YES
+[2026-08-18 22:41:24]   files: 83630
+[2026-08-18 22:41:24]   folders: 11507
+[2026-08-18 22:41:24]   Conversation History: 4 turns
+[2026-08-18 22:41:24]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:24] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:24] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:24] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:24] Vision System: YES
+[2026-08-18 22:41:24] Voice System: YES
+[2026-08-18 22:41:24] Uptime: 0d 0h 2m 13s
+[2026-08-18 22:41:24] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:26] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:26]   Memory: READY
+[2026-08-18 22:41:26]   Knowledge: READY
+[2026-08-18 22:41:26]   Workspace: READY
+[2026-08-18 22:41:26]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:26]   Agent Runtime: READY
+[2026-08-18 22:41:26]   Workflow Engine: READY
+[2026-08-18 22:41:26]   Vision: READY
+[2026-08-18 22:41:26]   Voice: READY
+[2026-08-18 22:41:26] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:26]   total_memories: 10
+[2026-08-18 22:41:26]   num_categories: 5
+[2026-08-18 22:41:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:26]   indexed: YES
+[2026-08-18 22:41:26]   search_enabled: YES
+[2026-08-18 22:41:26]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:26]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:26]   exists: YES
+[2026-08-18 22:41:26]   files: 83630
+[2026-08-18 22:41:26]   folders: 11507
+[2026-08-18 22:41:26]   Conversation History: 4 turns
+[2026-08-18 22:41:26]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:26] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:26] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:26] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:26] Vision System: YES
+[2026-08-18 22:41:26] Voice System: YES
+[2026-08-18 22:41:26] Uptime: 0d 0h 2m 15s
+[2026-08-18 22:41:26] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:28] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:28]   Memory: READY
+[2026-08-18 22:41:28]   Knowledge: READY
+[2026-08-18 22:41:28]   Workspace: READY
+[2026-08-18 22:41:28]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:28]   Agent Runtime: READY
+[2026-08-18 22:41:28]   Workflow Engine: READY
+[2026-08-18 22:41:28]   Vision: READY
+[2026-08-18 22:41:28]   Voice: READY
+[2026-08-18 22:41:28] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:28]   total_memories: 10
+[2026-08-18 22:41:28]   num_categories: 5
+[2026-08-18 22:41:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:28]   indexed: YES
+[2026-08-18 22:41:28]   search_enabled: YES
+[2026-08-18 22:41:28]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:28]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:28]   exists: YES
+[2026-08-18 22:41:28]   files: 83630
+[2026-08-18 22:41:28]   folders: 11507
+[2026-08-18 22:41:28]   Conversation History: 4 turns
+[2026-08-18 22:41:28]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:28] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:28] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:28] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:28] Vision System: YES
+[2026-08-18 22:41:28] Voice System: YES
+[2026-08-18 22:41:28] Uptime: 0d 0h 2m 17s
+[2026-08-18 22:41:28] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:30] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:30]   Memory: READY
+[2026-08-18 22:41:30]   Knowledge: READY
+[2026-08-18 22:41:30]   Workspace: READY
+[2026-08-18 22:41:30]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:30]   Agent Runtime: READY
+[2026-08-18 22:41:30]   Workflow Engine: READY
+[2026-08-18 22:41:30]   Vision: READY
+[2026-08-18 22:41:30]   Voice: READY
+[2026-08-18 22:41:30] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:30]   total_memories: 10
+[2026-08-18 22:41:30]   num_categories: 5
+[2026-08-18 22:41:30]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:30]   indexed: YES
+[2026-08-18 22:41:30]   search_enabled: YES
+[2026-08-18 22:41:30]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:30]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:30]   exists: YES
+[2026-08-18 22:41:30]   files: 83630
+[2026-08-18 22:41:30]   folders: 11507
+[2026-08-18 22:41:30]   Conversation History: 4 turns
+[2026-08-18 22:41:30]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:30] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:30] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:30] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:30] Vision System: YES
+[2026-08-18 22:41:30] Voice System: YES
+[2026-08-18 22:41:30] Uptime: 0d 0h 2m 19s
+[2026-08-18 22:41:30] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:32] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:32]   Memory: READY
+[2026-08-18 22:41:32]   Knowledge: READY
+[2026-08-18 22:41:32]   Workspace: READY
+[2026-08-18 22:41:32]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:32]   Agent Runtime: READY
+[2026-08-18 22:41:32]   Workflow Engine: READY
+[2026-08-18 22:41:32]   Vision: READY
+[2026-08-18 22:41:32]   Voice: READY
+[2026-08-18 22:41:32] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:32]   total_memories: 10
+[2026-08-18 22:41:32]   num_categories: 5
+[2026-08-18 22:41:32]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:32]   indexed: YES
+[2026-08-18 22:41:32]   search_enabled: YES
+[2026-08-18 22:41:32]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:32]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:32]   exists: YES
+[2026-08-18 22:41:32]   files: 83630
+[2026-08-18 22:41:32]   folders: 11507
+[2026-08-18 22:41:32]   Conversation History: 4 turns
+[2026-08-18 22:41:32]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:32] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:32] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:32] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:32] Vision System: YES
+[2026-08-18 22:41:32] Voice System: YES
+[2026-08-18 22:41:32] Uptime: 0d 0h 2m 21s
+[2026-08-18 22:41:32] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:34] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:34]   Memory: READY
+[2026-08-18 22:41:34]   Knowledge: READY
+[2026-08-18 22:41:34]   Workspace: READY
+[2026-08-18 22:41:34]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:34]   Agent Runtime: READY
+[2026-08-18 22:41:34]   Workflow Engine: READY
+[2026-08-18 22:41:34]   Vision: READY
+[2026-08-18 22:41:34]   Voice: READY
+[2026-08-18 22:41:34] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:34]   total_memories: 10
+[2026-08-18 22:41:34]   num_categories: 5
+[2026-08-18 22:41:34]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:34]   indexed: YES
+[2026-08-18 22:41:34]   search_enabled: YES
+[2026-08-18 22:41:34]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:34]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:34]   exists: YES
+[2026-08-18 22:41:34]   files: 83630
+[2026-08-18 22:41:34]   folders: 11507
+[2026-08-18 22:41:34]   Conversation History: 4 turns
+[2026-08-18 22:41:34]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:34] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:34] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:34] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:34] Vision System: YES
+[2026-08-18 22:41:34] Voice System: YES
+[2026-08-18 22:41:34] Uptime: 0d 0h 2m 23s
+[2026-08-18 22:41:34] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:36] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:36]   Memory: READY
+[2026-08-18 22:41:36]   Knowledge: READY
+[2026-08-18 22:41:36]   Workspace: READY
+[2026-08-18 22:41:36]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:36]   Agent Runtime: READY
+[2026-08-18 22:41:36]   Workflow Engine: READY
+[2026-08-18 22:41:36]   Vision: READY
+[2026-08-18 22:41:36]   Voice: READY
+[2026-08-18 22:41:36] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:36]   total_memories: 10
+[2026-08-18 22:41:36]   num_categories: 5
+[2026-08-18 22:41:36]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:36]   indexed: YES
+[2026-08-18 22:41:36]   search_enabled: YES
+[2026-08-18 22:41:36]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:36]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:36]   exists: YES
+[2026-08-18 22:41:36]   files: 83630
+[2026-08-18 22:41:36]   folders: 11507
+[2026-08-18 22:41:36]   Conversation History: 4 turns
+[2026-08-18 22:41:36]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:36] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:36] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:36] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:36] Vision System: YES
+[2026-08-18 22:41:36] Voice System: YES
+[2026-08-18 22:41:36] Uptime: 0d 0h 2m 25s
+[2026-08-18 22:41:36] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:38] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:38]   Memory: READY
+[2026-08-18 22:41:38]   Knowledge: READY
+[2026-08-18 22:41:38]   Workspace: READY
+[2026-08-18 22:41:38]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:38]   Agent Runtime: READY
+[2026-08-18 22:41:38]   Workflow Engine: READY
+[2026-08-18 22:41:38]   Vision: READY
+[2026-08-18 22:41:38]   Voice: READY
+[2026-08-18 22:41:38] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:38]   total_memories: 10
+[2026-08-18 22:41:38]   num_categories: 5
+[2026-08-18 22:41:38]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:38]   indexed: YES
+[2026-08-18 22:41:38]   search_enabled: YES
+[2026-08-18 22:41:38]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:38]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:38]   exists: YES
+[2026-08-18 22:41:38]   files: 83630
+[2026-08-18 22:41:38]   folders: 11507
+[2026-08-18 22:41:38]   Conversation History: 4 turns
+[2026-08-18 22:41:38]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:38] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:38] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:38] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:38] Vision System: YES
+[2026-08-18 22:41:38] Voice System: YES
+[2026-08-18 22:41:38] Uptime: 0d 0h 2m 27s
+[2026-08-18 22:41:38] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:40] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:40]   Memory: READY
+[2026-08-18 22:41:40]   Knowledge: READY
+[2026-08-18 22:41:40]   Workspace: READY
+[2026-08-18 22:41:40]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:40]   Agent Runtime: READY
+[2026-08-18 22:41:40]   Workflow Engine: READY
+[2026-08-18 22:41:40]   Vision: READY
+[2026-08-18 22:41:40]   Voice: READY
+[2026-08-18 22:41:40] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:40]   total_memories: 10
+[2026-08-18 22:41:40]   num_categories: 5
+[2026-08-18 22:41:40]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:40]   indexed: YES
+[2026-08-18 22:41:40]   search_enabled: YES
+[2026-08-18 22:41:40]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:40]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:40]   exists: YES
+[2026-08-18 22:41:40]   files: 83630
+[2026-08-18 22:41:40]   folders: 11507
+[2026-08-18 22:41:40]   Conversation History: 4 turns
+[2026-08-18 22:41:40]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:40] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:40] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:40] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:40] Vision System: YES
+[2026-08-18 22:41:40] Voice System: YES
+[2026-08-18 22:41:40] Uptime: 0d 0h 2m 29s
+[2026-08-18 22:41:40] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:42] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:42]   Memory: READY
+[2026-08-18 22:41:42]   Knowledge: READY
+[2026-08-18 22:41:42]   Workspace: READY
+[2026-08-18 22:41:42]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:42]   Agent Runtime: READY
+[2026-08-18 22:41:42]   Workflow Engine: READY
+[2026-08-18 22:41:42]   Vision: READY
+[2026-08-18 22:41:42]   Voice: READY
+[2026-08-18 22:41:42] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:42]   total_memories: 10
+[2026-08-18 22:41:42]   num_categories: 5
+[2026-08-18 22:41:42]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:42]   indexed: YES
+[2026-08-18 22:41:42]   search_enabled: YES
+[2026-08-18 22:41:42]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:42]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:42]   exists: YES
+[2026-08-18 22:41:42]   files: 83630
+[2026-08-18 22:41:42]   folders: 11507
+[2026-08-18 22:41:42]   Conversation History: 4 turns
+[2026-08-18 22:41:42]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:42] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:42] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:42] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:42] Vision System: YES
+[2026-08-18 22:41:42] Voice System: YES
+[2026-08-18 22:41:42] Uptime: 0d 0h 2m 31s
+[2026-08-18 22:41:42] --------------------------------------------------------------------------------
+
+[2026-08-18 22:41:44] 
+--- COMPONENT STATUS ---
+[2026-08-18 22:41:44]   Memory: READY
+[2026-08-18 22:41:44]   Knowledge: READY
+[2026-08-18 22:41:44]   Workspace: READY
+[2026-08-18 22:41:44]   Plugins: READY - 0 loaded
+[2026-08-18 22:41:44]   Agent Runtime: READY
+[2026-08-18 22:41:44]   Workflow Engine: READY
+[2026-08-18 22:41:44]   Vision: READY
+[2026-08-18 22:41:44]   Voice: READY
+[2026-08-18 22:41:44] 
+--- SYSTEM STATISTICS ---
+[2026-08-18 22:41:44]   total_memories: 10
+[2026-08-18 22:41:44]   num_categories: 5
+[2026-08-18 22:41:44]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:44]   indexed: YES
+[2026-08-18 22:41:44]   search_enabled: YES
+[2026-08-18 22:41:44]   project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:44]   path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:44]   exists: YES
+[2026-08-18 22:41:44]   files: 83630
+[2026-08-18 22:41:44]   folders: 11507
+[2026-08-18 22:41:44]   Conversation History: 4 turns
+[2026-08-18 22:41:44]   LLM: Ready - openai/gpt-oss-120b
+[2026-08-18 22:41:44] 
+--- MONITORING SUMMARY ---
+[2026-08-18 22:41:44] Project: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:44] Workspace: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+[2026-08-18 22:41:44] Vision System: YES
+[2026-08-18 22:41:44] Voice System: YES
+[2026-08-18 22:41:44] Uptime: 0d 0h 2m 33s
+[2026-08-18 22:41:44] --------------------------------------------------------------------------------
 

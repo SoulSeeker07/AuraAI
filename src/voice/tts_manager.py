@@ -11,6 +11,7 @@ Fallback TTS engine: Edge-TTS (online / Microsoft)
 import asyncio
 import logging
 import threading
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
@@ -313,6 +314,97 @@ class ChunkedStreamPlayer:
             self._is_playing = False
 
 
+import concurrent.futures
+
+class OrderedStreamSynthesizer:
+    """Manages concurrent synthesis of text chunks while ensuring strict FIFO audio playback order."""
+
+    def __init__(
+        self,
+        synthesize_fn: Callable[[str], bytes | None],
+        player: ChunkedStreamPlayer,
+        max_workers: int = 2,
+    ):
+        self.synthesize_fn = synthesize_fn
+        self.player = player
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+        self._pending: dict[int, concurrent.futures.Future] = {}
+        self._next_submit_seq = 0
+        self._next_playback_seq = 0
+        self._lock = threading.Lock()
+        self._playback_thread: threading.Thread | None = None
+        self._done_submitting = False
+        self._active_gen_id = 0
+
+    def start(self, gen_id: int) -> bool:
+        with self._lock:
+            self._active_gen_id = gen_id
+            self._next_submit_seq = 0
+            self._next_playback_seq = 0
+            self._pending.clear()
+            self._done_submitting = False
+
+        if not self.player.start_utterance():
+            return False
+
+        self._playback_thread = threading.Thread(
+            target=self._playback_loop, daemon=True
+        )
+        self._playback_thread.start()
+        return True
+
+    def submit_chunk(self, text: str, gen_id: int) -> None:
+        with self._lock:
+            if gen_id != self._active_gen_id or not text.strip():
+                return
+            seq_id = self._next_submit_seq
+            self._next_submit_seq += 1
+            fut = self.executor.submit(self._synthesize_worker, text, gen_id)
+            self._pending[seq_id] = fut
+
+    def finish_submitting(self, gen_id: int) -> None:
+        with self._lock:
+            if gen_id == self._active_gen_id:
+                self._done_submitting = True
+
+    def _synthesize_worker(self, text: str, gen_id: int) -> bytes | None:
+        with self._lock:
+            if gen_id != self._active_gen_id:
+                return None
+        return self.synthesize_fn(text)
+
+    def _playback_loop(self) -> None:
+        while True:
+            with self._lock:
+                gen_id = self._active_gen_id
+                target_seq = self._next_playback_seq
+                fut = self._pending.get(target_seq)
+                is_done = self._done_submitting and (target_seq >= self._next_submit_seq)
+
+            if is_done:
+                self.player.finish()
+                break
+
+            if fut is None:
+                time.sleep(0.005)
+                continue
+
+            try:
+                # Per-chunk synthesis timeout (3.0s) prevents hangs from stalling playback
+                audio_bytes = fut.result(timeout=3.0)
+                with self._lock:
+                    if gen_id == self._active_gen_id and audio_bytes:
+                        self.player.feed(audio_bytes)
+            except Exception as e:
+                logger.warning(
+                    f"[OrderedStreamSynthesizer] Chunk #{target_seq} synthesis failed or timed out: {e}"
+                )
+
+            with self._lock:
+                self._pending.pop(target_seq, None)
+                self._next_playback_seq += 1
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Piper TTS  (primary — local / offline)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -330,6 +422,7 @@ class PiperTTSEngine(TTSEngine):
         super().__init__(settings)
         self.voice = None  # piper.voice.PiperVoice instance
         self.player: ChunkedStreamPlayer | None = None
+        self.synthesizer: OrderedStreamSynthesizer | None = None
         self._active_generation_id: int = 0
         self._lock = threading.Lock()
 
@@ -345,6 +438,23 @@ class PiperTTSEngine(TTSEngine):
             if default_model.exists():
                 return str(default_model)
         return _resolve_model_path(raw)
+
+    def _synthesize_chunk(self, text: str) -> bytes | None:
+        """Synthesize a single text chunk into 16-bit PCM bytes."""
+        if not self.voice or not text.strip():
+            return None
+        try:
+            from .tts_text_cleaner import clean_for_tts
+            cleaned = clean_for_tts(text)
+            if not cleaned:
+                return None
+            buf = bytearray()
+            for audio_chunk in self.voice.synthesize(cleaned):
+                buf.extend(audio_chunk.audio_int16_bytes)
+            return bytes(buf)
+        except Exception as e:
+            logger.error(f"[PiperTTSEngine] Synthesis chunk error: {e}")
+            return None
 
     # ── TTSEngine interface ────────────────────────────────────────────────
 
@@ -370,8 +480,9 @@ class PiperTTSEngine(TTSEngine):
             self.player = ChunkedStreamPlayer(sample_rate=sample_rate, channels=1)
             if self._playback_complete_callback or self._interrupt_callback:
                 self.player.set_callbacks(self._playback_complete_callback, self._interrupt_callback)
+            self.synthesizer = OrderedStreamSynthesizer(self._synthesize_chunk, self.player)
             self.is_active = True
-            logger.info("Piper TTS initialized with ChunkedStreamPlayer")
+            logger.info("Piper TTS initialized with ChunkedStreamPlayer and OrderedStreamSynthesizer")
             return True
 
         except ImportError:
@@ -434,6 +545,53 @@ class PiperTTSEngine(TTSEngine):
                 self._is_playing = False
 
         threading.Thread(target=_producer, daemon=True).start()
+        return True
+
+    def speak_stream(self, chunk_iterator: Any) -> bool:
+        """Stream chunks concurrently while ensuring strict FIFO audio playback order."""
+        if not self.is_active or not self.synthesizer or not self.player:
+            return False
+
+        with self._lock:
+            self._active_generation_id += 1
+            current_gen_id = self._active_generation_id
+
+        if not self.synthesizer.start(current_gen_id):
+            return False
+
+        self._is_playing = True
+
+        def _feed_loop():
+            try:
+                if hasattr(chunk_iterator, "__aiter__"):
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                    async def _consume_async():
+                        async for chunk in chunk_iterator:
+                            with self._lock:
+                                if self._active_generation_id != current_gen_id:
+                                    break
+                            self.synthesizer.submit_chunk(chunk, current_gen_id)
+
+                    loop.run_until_complete(_consume_async())
+                    loop.close()
+                else:
+                    for chunk in chunk_iterator:
+                        with self._lock:
+                            if self._active_generation_id != current_gen_id:
+                                break
+                        self.synthesizer.submit_chunk(chunk, current_gen_id)
+            except Exception as e:
+                logger.error(f"[PiperTTSEngine] speak_stream feed error: {e}")
+            finally:
+                with self._lock:
+                    if self._active_generation_id == current_gen_id:
+                        self.synthesizer.finish_submitting(current_gen_id)
+                self._is_playing = False
+
+        threading.Thread(target=_feed_loop, daemon=True).start()
         return True
 
     def stop(self) -> bool:
@@ -770,6 +928,42 @@ class TTSManger:
             return self.fallback_engine.speak()
 
         return False
+
+    def speak_stream(self, chunk_iterator: Any) -> bool:
+        """Stream chunks concurrently while ensuring strict FIFO audio playback order."""
+        if not self.engine and not self.fallback_engine:
+            if not self.initialize():
+                return False
+
+        if self.engine and self.engine.is_active:
+            if hasattr(self.engine, "speak_stream"):
+                try:
+                    if self.engine.speak_stream(chunk_iterator):
+                        self._last_added_text.clear()
+                        return True
+                except Exception as e:
+                    logger.warning(f"[TTS Fallback] Primary engine speak_stream() failed: {e}")
+
+        # Fallback: if engine doesn't support speak_stream or failed, accumulate and call speak()
+        try:
+            if hasattr(chunk_iterator, "__aiter__"):
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+                async def _consume():
+                    async for chunk in chunk_iterator:
+                        self.add_text(chunk)
+
+                loop.run_until_complete(_consume())
+                loop.close()
+            else:
+                for chunk in chunk_iterator:
+                    self.add_text(chunk)
+            return self.speak()
+        except Exception as e:
+            logger.error(f"[TTSManger] speak_stream fallback error: {e}")
+            return False
 
     def stop(self) -> bool:
         """Stop speaking."""

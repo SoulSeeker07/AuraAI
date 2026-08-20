@@ -123,7 +123,7 @@ class CodingCapabilityProvider(ICapabilityProvider):
                 rollback_capabilities=["code.rollback"],
                 tags=["editor", "filesystem", "backup"],
             ),
-            # 5. Automated Test Engine (Scaffolded Contract)
+            # 5. Automated Test Engine (Live Verification)
             Capability(
                 name="code.test",
                 domain=self.DOMAIN,
@@ -140,9 +140,9 @@ class CodingCapabilityProvider(ICapabilityProvider):
                 risk_level=ActionRisk.MEDIUM,
                 permissions=["process:execute"],
                 execution_backend="coding_backend",
-                is_live=False,
-                availability="scaffolded",
-                tags=["tests", "pytest", "scaffolded"],
+                is_live=True,
+                availability="online",
+                tags=["tests", "pytest", "verification"],
             ),
             # 6. Bug Repair Loop (Scaffolded Contract)
             Capability(
@@ -170,7 +170,27 @@ class CodingCapabilityProvider(ICapabilityProvider):
                 verifies=["code.test"],
                 tags=["repair", "loop", "scaffolded"],
             ),
-            # 7. General Coding Capability (Live Catch-All Fallback)
+            # 7. Quality & Architecture Report (Live)
+            Capability(
+                name="code.report",
+                domain=self.DOMAIN,
+                description="Generate comprehensive architecture quality, dependency, and maintainability reports.",
+                category="analysis",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "repository_path": {"type": "string"},
+                    },
+                },
+                output_schema={"type": "object", "properties": {"report": {"type": "object"}}},
+                risk_level=ActionRisk.LOW,
+                permissions=["filesystem:read"],
+                execution_backend="coding_backend",
+                is_live=True,
+                availability="online",
+                tags=["report", "quality", "dependencies"],
+            ),
+            # 8. General Coding Capability (Live Catch-All Fallback)
             # Retained defensively for unclassified natural-language coding intents emitted by
             # TaskDecomposer when a goal does not match specific code.analyze/edit/generate/debug keywords.
             Capability(

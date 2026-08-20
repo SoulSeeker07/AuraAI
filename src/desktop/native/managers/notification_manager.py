@@ -49,6 +49,8 @@ class NotificationManager(BaseNativeManager):
             "notify.clear",
             "notify.list",
             "notify.sound",
+            "notification.send",
+            "notification.show",
         ]
 
     def initialize(self) -> bool:
@@ -162,7 +164,7 @@ class NotificationManager(BaseNativeManager):
         cap = capability.lower()
 
         try:
-            if cap == "notify.toast":
+            if cap in ("notify.toast", "notification.send", "notification.show"):
                 title = args.get("title") or "Aura AI"
                 msg = args.get("message") or args.get("text") or goal
                 self._show_toast_ps(title, msg)

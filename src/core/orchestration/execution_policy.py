@@ -184,7 +184,23 @@ class ExecutionPolicy:
                 window_count=0,
             )
 
-        # App is already running — ask user
+        from .autonomy_mode import AutonomyLevel
+
+        # If autonomy level permits automatic reuse (ASSISTED or AUTONOMOUS), reuse existing window
+        if self._autonomy_level != AutonomyLevel.ASK and primary_hwnd:
+            logger.info(
+                f"ExecutionPolicy: '{app_name}' running ({window_count} windows) under "
+                f"{self._autonomy_level.value.upper()} autonomy → REUSE_EXISTING [hwnd={hex(primary_hwnd)}]"
+            )
+            return PolicyDecision(
+                action=PolicyAction.REUSE_EXISTING,
+                message=f"{app_name.title()} is already open — activating existing window.",
+                app_name=app_name,
+                window_count=window_count,
+                hwnd=primary_hwnd,
+            )
+
+        # App is already running in ASK mode — ask user
         win_word = "window" if window_count == 1 else "windows"
         msg = (
             f"{app_name.title()} is already open ({window_count} {win_word}). "

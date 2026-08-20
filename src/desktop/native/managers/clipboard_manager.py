@@ -464,15 +464,25 @@ class ClipboardManager(BaseNativeManager):
         """Write plain text to clipboard."""
         text = args.get("text", "")
         try:
+            previous_text = self._get_text_from_clipboard()
             with self._lock:
                 self._set_text_to_clipboard(text)
+
+            rollback = (
+                (lambda: self._set_text_to_clipboard(previous_text))
+                if previous_text is not None
+                else None
+            )
+
             return DesktopResult.create_success(
                 goal=goal,
                 capability="clipboard.write_text",
                 manager=self.name,
+                rollback=rollback,
                 data={
                     "text": text,
                     "length": len(text),
+                    "previous_text": previous_text,
                     "content_type": "text/plain",
                 },
             )
@@ -486,6 +496,7 @@ class ClipboardManager(BaseNativeManager):
 
     def _handle_clear(self, goal: str, args: dict) -> DesktopResult:
         """Clear the clipboard."""
+        previous_text = self._get_text_from_clipboard()
         self._in_memory_text = ""
         try:
             with self._lock:
@@ -494,21 +505,35 @@ class ClipboardManager(BaseNativeManager):
                     win32clipboard.EmptyClipboard()
                 finally:
                     win32clipboard.CloseClipboard()
+
+            rollback = (
+                (lambda: self._set_text_to_clipboard(previous_text))
+                if previous_text
+                else None
+            )
+
             return DesktopResult.create_success(
                 goal=goal,
                 capability="clipboard.clear",
                 manager=self.name,
-                data={"cleared": True},
+                rollback=rollback,
+                data={"cleared": True, "previous_text": previous_text},
             )
         except Exception as e:
             logger.warning(
                 f"OS Clipboard clear locked ({e}), using internal buffer fallback."
             )
+            rollback = (
+                (lambda: self._set_text_to_clipboard(previous_text))
+                if previous_text
+                else None
+            )
             return DesktopResult.create_success(
                 goal=goal,
                 capability="clipboard.clear",
                 manager=self.name,
-                data={"cleared": True, "fallback": True},
+                rollback=rollback,
+                data={"cleared": True, "fallback": True, "previous_text": previous_text},
             )
 
     # ==================== Image Handlers ====================
@@ -598,19 +623,18 @@ class ClipboardManager(BaseNativeManager):
                         manager=self.name,
                         error="Clipboard does not contain files",
                     )
-                win32clipboard.OpenClipboard()
+                self._open_clipboard()
                 try:
-                    drop_handle = win32clipboard.GetClipboardData(win32con.CF_HDROP)
-                    # CF_HDROP file list requires special ctypes handling
-                    # For now, return the raw handle info
+                    data = win32clipboard.GetClipboardData(win32con.CF_HDROP)
+                    file_list = list(data) if isinstance(data, (tuple, list)) else []
                     return DesktopResult.create_success(
                         goal=goal,
                         capability="clipboard.read_files",
                         manager=self.name,
                         data={
-                            "files": [],
+                            "files": file_list,
+                            "count": len(file_list),
                             "formats_available": ["CF_HDROP"],
-                            "note": "CF_HDROP file list requires ctypes extraction",
                         },
                     )
                 finally:

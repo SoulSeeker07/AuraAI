@@ -359,6 +359,13 @@ class DecisionEngine:
                 "turn on",
                 "enable",
                 "disable",
+                # Explicit capability & security dispatch
+                "execute capability",
+                "security.",
+                "network.",
+                "firewall",
+                "antivirus",
+                "vpn",
             ]
         )
 
@@ -701,6 +708,7 @@ class DecisionEngine:
                 IntentType.MULTIMODAL,
                 IntentType.DAEMON,
                 IntentType.SCHEDULER,
+                IntentType.DESKTOP_ACTION,
             ]
         ) and not (active_budget.local_only or active_budget.offline_mode)
 

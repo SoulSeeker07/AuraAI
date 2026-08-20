@@ -27,6 +27,21 @@ class ArtifactPayloadMissing(Exception):
         )
 
 
+class ArtifactLowConfidence(Exception):
+    """Raised when a required input artifact has confidence below the acceptable threshold."""
+
+    def __init__(self, task_id: str, artifact_id: str, confidence: float, min_confidence: float):
+        self.task_id = task_id
+        self.artifact_id = artifact_id
+        self.confidence = confidence
+        self.min_confidence = min_confidence
+        super().__init__(
+            f"Task '{task_id}' requires artifact '{artifact_id}' "
+            f"but its confidence ({confidence:.2f}) is below minimum threshold ({min_confidence:.2f}). "
+            f"Pipeline cannot continue with unverified data."
+        )
+
+
 class PipelineStageFailure(Exception):
     """Raised when a DAG stage fails and downstream stages cannot proceed."""
 

@@ -296,6 +296,25 @@ def set_display_brightness(level: int) -> dict[str, Any]:
     }
 
 
+def get_display_settings(device_name: str = "\\\\.\\DISPLAY1") -> dict[str, Any] | None:
+    """Get current DEVMODE settings for a specific display device."""
+    try:
+        devmode = win32api.EnumDisplaySettings(
+            device_name, win32con.ENUM_CURRENT_SETTINGS
+        )
+        if devmode:
+            return {
+                "width": devmode.PelsWidth,
+                "height": devmode.PelsHeight,
+                "orientation": devmode.DisplayOrientation,
+                "bits_per_pel": devmode.BitsPerPel,
+                "display_frequency": devmode.DisplayFrequency,
+            }
+    except Exception as e:
+        logger.debug(f"EnumDisplaySettings failed for {device_name}: {e}")
+    return None
+
+
 def set_display_resolution(device_name: str, width: int, height: int) -> bool:
     """
     Change display resolution using ChangeDisplaySettingsEx.

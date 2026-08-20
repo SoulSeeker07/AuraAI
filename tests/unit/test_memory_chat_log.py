@@ -64,14 +64,15 @@ def test_build_context_includes_recent_messages_and_facts(memory_fixture):
     assert "Preference:" in ctx or "theme" in ctx
 
 
-def test_memory_dynamic_getattr_and_setattr(memory_fixture):
-    # Dynamic preference set via __setattr__
-    memory_fixture.editor = "VS Code"
+def test_memory_explicit_preference_api(memory_fixture):
+    # Explicit preference storage via set_preference
+    memory_fixture.set_preference("editor", "VS Code")
 
-    # Dynamic preference retrieval via __getattr__
-    assert memory_fixture.editor == "VS Code"
+    # Explicit preference retrieval via get_preference
+    assert memory_fixture.get_preference("editor") == "VS Code"
 
-    # Nonexistent attribute raises AttributeError after checking categories
+    # Undefined attribute raises standard AttributeError without mutating SQLite or querying categories
     with pytest.raises(AttributeError) as exc_info:
         _ = memory_fixture.non_existent_attribute_xyz
     assert "non_existent_attribute_xyz" in str(exc_info.value)
+

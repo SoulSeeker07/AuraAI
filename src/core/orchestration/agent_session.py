@@ -11,10 +11,18 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+try:
+    from ...research.models import MIN_SYNTHESIS_CONFIDENCE_THRESHOLD
+except (ImportError, ValueError):
+    try:
+        from src.research.models import MIN_SYNTHESIS_CONFIDENCE_THRESHOLD
+    except (ImportError, ValueError):
+        MIN_SYNTHESIS_CONFIDENCE_THRESHOLD = 0.40
+
 from ..planning.execution_trace import ExecutionTrace
 from .artifact import Artifact
 from .observation import Observation
-from .pipeline_error import ArtifactPayloadMissing
+from .pipeline_error import ArtifactLowConfidence, ArtifactPayloadMissing
 
 if TYPE_CHECKING:
     from .confirmation import ActionPlanConfirmation
@@ -84,16 +92,38 @@ class AgentSession:
                 return art
         return None
 
-    def require_artifact(self, artifact_id: str, for_task: str) -> Artifact:
-        """Retrieve an artifact or raise ``ArtifactPayloadMissing``.
+    def require_artifact(
+        self, artifact_id: str, for_task: str, min_confidence: float | None = None
+    ) -> Artifact:
+        """Retrieve an artifact or raise ``ArtifactPayloadMissing`` / ``ArtifactLowConfidence``.
 
         This is the fail-loud contract: if an upstream stage did not produce
-        the expected artifact with a non-empty payload, the pipeline halts
-        immediately instead of silently continuing.
+        the expected artifact with a non-empty payload, or if the artifact's
+        confidence is below the applicable threshold, the pipeline halts immediately.
         """
         art = self.get_artifact(artifact_id)
         if art is None or not art.has_payload:
             raise ArtifactPayloadMissing(for_task, artifact_id)
+
+        # Scoped threshold: If min_confidence is not explicitly provided,
+        # apply MIN_SYNTHESIS_CONFIDENCE_THRESHOLD only for research artifacts.
+        threshold = min_confidence
+        if threshold is None and getattr(art, "artifact_type", None) == "research":
+            threshold = MIN_SYNTHESIS_CONFIDENCE_THRESHOLD
+
+        if threshold is not None:
+            # Check confidence if present on artifact, metadata, or verification report
+            art_conf = getattr(art, "confidence", None)
+            if art_conf is None and art.verification_report is not None:
+                art_conf = getattr(art.verification_report, "confidence", None)
+            if art_conf is None and "confidence_score" in art.metadata:
+                art_conf = art.metadata["confidence_score"]
+            if art_conf is None and "confidence" in art.metadata:
+                art_conf = art.metadata["confidence"]
+
+            if art_conf is not None and isinstance(art_conf, (int, float)) and art_conf < threshold:
+                raise ArtifactLowConfidence(for_task, artifact_id, float(art_conf), threshold)
+
         return art
 
     def to_dict(self) -> dict[str, Any]:

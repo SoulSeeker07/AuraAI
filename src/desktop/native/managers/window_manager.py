@@ -21,14 +21,12 @@ if __package__:
     from ..desktop_result import DesktopResult
     from ..native_exceptions import WindowError
     from ..native_execution_context import NativeExecutionContext
-    from ..native_result import NativeResult, ResultStatus
     from ..verification_layer import VerificationResult
     from .base_manager import BaseNativeManager
 else:
     from ..desktop_result import DesktopResult
     from ..native_exceptions import WindowError
     from ..native_execution_context import NativeExecutionContext
-    from ..native_result import NativeResult, ResultStatus
     from ..verification_layer import VerificationResult
     from .base_manager import BaseNativeManager
 
@@ -135,26 +133,29 @@ class WindowManager(BaseNativeManager):
             elif cap_clean == "get_window":
                 cap_clean = "window.get_info"
 
+            clean_args = dict(arguments or {})
+            clean_args.pop("goal", None)
+
             if cap_clean in ["app_open", "open_app", "app.launch", "window.open"]:
-                res = self._handle_app_open(**arguments)
+                res = self._handle_app_open(goal=goal, **clean_args)
             elif cap_clean == "window.activate":
-                res = self._handle_activate(**arguments)
+                res = self._handle_activate(goal=goal, **clean_args)
             elif cap_clean in ["window.close", "app_close", "close_app"]:
-                res = self._handle_close(**arguments)
+                res = self._handle_close(goal=goal, **clean_args)
             elif cap_clean == "window.resize":
-                res = self._handle_resize(**arguments)
+                res = self._handle_resize(goal=goal, **clean_args)
             elif cap_clean == "window.move":
-                res = self._handle_move(**arguments)
+                res = self._handle_move(goal=goal, **clean_args)
             elif cap_clean == "window.maximize":
-                res = self._handle_maximize(**arguments)
+                res = self._handle_maximize(goal=goal, **clean_args)
             elif cap_clean == "window.minimize":
-                res = self._handle_minimize(**arguments)
+                res = self._handle_minimize(goal=goal, **clean_args)
             elif cap_clean == "window.restore":
-                res = self._handle_restore(**arguments)
+                res = self._handle_restore(goal=goal, **clean_args)
             elif cap_clean == "window.list":
-                res = self._handle_list()
+                res = self._handle_list(goal=goal)
             elif cap_clean == "window.get_info":
-                res = self._handle_get_info(**arguments)
+                res = self._handle_get_info(goal=goal, **clean_args)
             else:
                 return DesktopResult.create_failure(
                     goal=goal,
@@ -163,25 +164,20 @@ class WindowManager(BaseNativeManager):
                     error=f"Unknown capability: {capability}",
                 )
 
-            if isinstance(res, NativeResult):
-                if res.status == ResultStatus.SUCCESS:
-                    return DesktopResult.create_success(
-                        goal=goal,
-                        capability=capability,
-                        manager=self.name,
-                        data=res.data,
-                        events=["window_action_completed"],
-                    )
-                else:
-                    return DesktopResult.create_failure(
-                        goal=goal,
-                        capability=capability,
-                        manager=self.name,
-                        error=res.error or "Operation failed",
-                    )
-            return DesktopResult.create_success(
-                goal=goal, capability=capability, manager=self.name, data=res
-            )
+            if isinstance(res, DesktopResult):
+                if not res.goal and goal:
+                    res.goal = goal
+                if not res.capability and capability:
+                    res.capability = capability
+                if not res.manager:
+                    res.manager = self.name
+                return res
+
+            if isinstance(res, dict):
+                return DesktopResult.create_success(
+                    goal=goal, capability=capability, manager=self.name, data=res
+                )
+            return res
 
         except Exception as e:
             self.logger.error(f"Error executing {capability}: {e}")
@@ -419,16 +415,19 @@ class WindowManager(BaseNativeManager):
             try:
                 win32api.keybd_event(win32con.VK_LWIN, 0, 0, 0)
                 win32api.keybd_event(win32con.VK_LWIN, 0, win32con.KEYEVENTF_KEYUP, 0)
-                return NativeResult(
-                    status=ResultStatus.SUCCESS,
-                    data={"app_name": "Start Menu", "reused": False, "system_action": True},
+                return DesktopResult.create_success(
+                    goal=goal,
                     capability="app_open",
+                    manager=self.name,
+                    data={"app_name": "Start Menu", "reused": False, "system_action": True},
+                    events=["start_menu_toggled"],
                 )
             except Exception as e:
-                return NativeResult(
-                    status=ResultStatus.FAILURE,
-                    error=f"Failed to toggle Start Menu: {e}",
+                return DesktopResult.create_failure(
+                    goal=goal,
                     capability="app_open",
+                    manager=self.name,
+                    error=f"Failed to toggle Start Menu: {e}",
                 )
 
         # 1. Inspect Windows OS state (Reuse existing window if open and no target file / force_new is requested)
@@ -442,8 +441,10 @@ class WindowManager(BaseNativeManager):
                 if hwnd:
                     focused = self._force_foreground(hwnd)
                     info = self._get_window_info(hwnd)
-                    return NativeResult(
-                        status=ResultStatus.SUCCESS,
+                    return DesktopResult.create_success(
+                        goal=goal,
+                        capability="app_open",
+                        manager=self.name,
                         data={
                             "window_handle": hwnd,
                             "process_id": info.get("process_id"),
@@ -451,7 +452,7 @@ class WindowManager(BaseNativeManager):
                             "focused": focused,
                             "title": info.get("title"),
                         },
-                        capability="app_open",
+                        events=["app_focused"],
                     )
             except Exception:
                 pass
@@ -460,32 +461,37 @@ class WindowManager(BaseNativeManager):
         res_type, target = self._resolve_app_executable(app)
 
         if res_type == "ambiguous":
-            return NativeResult(
-                status=ResultStatus.FAILURE,
-                error=target,
+            return DesktopResult.create_failure(
+                goal=goal,
                 capability="app_open",
+                manager=self.name,
+                error=target,
             )
 
         if res_type == "not_found":
-            return NativeResult(
-                status=ResultStatus.FAILURE,
-                error=target,
+            return DesktopResult.create_failure(
+                goal=goal,
                 capability="app_open",
+                manager=self.name,
+                error=target,
             )
 
         if res_type == "url":
             try:
                 webbrowser.open(target)
-                return NativeResult(
-                    status=ResultStatus.SUCCESS,
-                    data={"app_name": app, "web_url": target, "reused": False},
+                return DesktopResult.create_success(
+                    goal=goal,
                     capability="app_open",
+                    manager=self.name,
+                    data={"app_name": app, "web_url": target, "reused": False},
+                    events=["browser_opened"],
                 )
             except Exception as e:
-                return NativeResult(
-                    status=ResultStatus.FAILURE,
-                    error=f"Failed to open web URL '{target}': {e}",
+                return DesktopResult.create_failure(
+                    goal=goal,
                     capability="app_open",
+                    manager=self.name,
+                    error=f"Failed to open web URL '{target}': {e}",
                 )
 
         if res_type == "protocol":
@@ -508,16 +514,19 @@ class WindowManager(BaseNativeManager):
                     # Fallback to web app if protocol window didn't open
                     webbrowser.open(self.WEB_FALLBACK_MAP[app])
 
-                return NativeResult(
-                    status=ResultStatus.SUCCESS,
-                    data={"app_name": app, "protocol": target, "reused": False},
+                return DesktopResult.create_success(
+                    goal=goal,
                     capability="app_open",
+                    manager=self.name,
+                    data={"app_name": app, "protocol": target, "reused": False},
+                    events=["protocol_launched"],
                 )
             except Exception as e:
-                return NativeResult(
-                    status=ResultStatus.FAILURE,
-                    error=f"Failed to launch protocol '{target}': {e}",
+                return DesktopResult.create_failure(
+                    goal=goal,
                     capability="app_open",
+                    manager=self.name,
+                    error=f"Failed to launch protocol '{target}': {e}",
                 )
 
         # 3. Physical Executable Launch via Windows OS with Verification
@@ -544,32 +553,37 @@ class WindowManager(BaseNativeManager):
 
             # Verification poll: wait up to 1.0s for process/window to initialize
             time.sleep(0.4)
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="app_open",
+                manager=self.name,
                 data={
                     "process_id": proc.pid if proc else None,
                     "reused": False,
                     "app_name": app,
                     "target_file": str(target_file) if target_file else None,
                 },
-                capability="app_open",
+                events=["process_started"],
             )
         except Exception as e:
             # If local exe launch failed and a web fallback exists, try web fallback
             if app in self.WEB_FALLBACK_MAP:
                 try:
                     webbrowser.open(self.WEB_FALLBACK_MAP[app])
-                    return NativeResult(
-                        status=ResultStatus.SUCCESS,
-                        data={"app_name": app, "web_url": self.WEB_FALLBACK_MAP[app], "reused": False},
+                    return DesktopResult.create_success(
+                        goal=goal,
                         capability="app_open",
+                        manager=self.name,
+                        data={"app_name": app, "web_url": self.WEB_FALLBACK_MAP[app], "reused": False},
+                        events=["browser_opened"],
                     )
                 except Exception:
                     pass
-            return NativeResult(
-                status=ResultStatus.FAILURE,
-                error=f"Failed to launch physical OS application '{app}': {e}",
+            return DesktopResult.create_failure(
+                goal=goal,
                 capability="app_open",
+                manager=self.name,
+                error=f"Failed to launch physical OS application '{app}': {e}",
             )
 
     def _handle_activate(
@@ -597,6 +611,9 @@ class WindowManager(BaseNativeManager):
         if not window_handle:
             raise WindowError("No matching window found for activation")
 
+        # Capture previous foreground window for rollback
+        prev_hwnd = win32gui.GetForegroundWindow()
+
         # Activate window
         try:
             self._force_foreground(window_handle)
@@ -604,15 +621,23 @@ class WindowManager(BaseNativeManager):
             # Get window info
             info = self._get_window_info(window_handle)
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            def _rollback():
+                if prev_hwnd and win32gui.IsWindow(prev_hwnd):
+                    return self._force_foreground(prev_hwnd)
+                return True
+
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.activate",
+                manager=self.name,
                 data={
                     "window_handle": window_handle,
                     "window_title": info["title"],
                     "window_class": info["class_name"],
                     "process_id": info["process_id"],
                 },
-                capability="window.activate",
+                events=["window_activated"],
+                rollback=_rollback,
             )
 
         except Exception as e:
@@ -644,8 +669,11 @@ class WindowManager(BaseNativeManager):
             if target_title
             else None
         )
-        if not window_handle:
-            window_handle = win32gui.GetForegroundWindow()
+
+        if not window_handle and not target_title:
+            fg = win32gui.GetForegroundWindow()
+            if fg:
+                window_handle = fg
 
         if window_handle:
             info = self._get_window_info(window_handle)
@@ -665,7 +693,8 @@ class WindowManager(BaseNativeManager):
                     f"Safety constraint: AuraAI is prohibited from closing protected application '{target_title}'."
                 )
             t = target_title.lower().strip()
-            exe_resolved = os.path.basename(self._resolve_app_executable(t))
+            _, resolved_target = self._resolve_app_executable(t)
+            exe_resolved = os.path.basename(resolved_target or t)
             exe_base = os.path.splitext(exe_resolved)[0].lower()
 
             for name in {t, exe_base, f"{t}app", f"{exe_base}app"}:
@@ -676,10 +705,12 @@ class WindowManager(BaseNativeManager):
                     stderr=subprocess.DEVNULL,
                 )
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
-                data={"closed_via": "taskkill", "target": target_title},
+            return DesktopResult.create_success(
+                goal=goal,
                 capability="window.close",
+                manager=self.name,
+                data={"closed_via": "taskkill", "target": target_title},
+                events=["process_terminated"],
             )
 
         if not window_handle:
@@ -687,7 +718,8 @@ class WindowManager(BaseNativeManager):
 
         try:
             # Close window via WM_CLOSE
-            win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
+            if isinstance(window_handle, int) and window_handle > 0:
+                win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
 
             # Fallback/force kill app process if app_name is explicitly provided
             if target_title:
@@ -695,7 +727,8 @@ class WindowManager(BaseNativeManager):
                 import subprocess
 
                 t = target_title.lower().strip()
-                exe_resolved = os.path.basename(self._resolve_app_executable(t))
+                _, resolved_target = self._resolve_app_executable(t)
+                exe_resolved = os.path.basename(resolved_target or t)
                 exe_base = os.path.splitext(exe_resolved)[0].lower()
 
                 for name in {t, exe_base, f"{t}app", f"{exe_base}app"}:
@@ -706,13 +739,15 @@ class WindowManager(BaseNativeManager):
                         stderr=subprocess.DEVNULL,
                     )
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.close",
+                manager=self.name,
                 data={
                     "window_handle": window_handle,
                     "window_title": "Window closed",
                 },
-                capability="window.close",
+                events=["window_closed"],
             )
 
         except Exception as e:
@@ -727,6 +762,8 @@ class WindowManager(BaseNativeManager):
         height=600,
         left=None,
         top=None,
+        goal="",
+        **kwargs,
     ):
         """Handle window resize."""
         window_handle = self._find_window(window_title, window_class, process_id)
@@ -754,33 +791,85 @@ class WindowManager(BaseNativeManager):
                 win32con.SWP_NOACTIVATE | win32con.SWP_NOZORDER,
             )
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
-                data={
-                    "window_handle": window_handle,
-                    "previous_rect": {
-                        "left": rect[0],
-                        "top": rect[1],
-                        "right": rect[2],
-                        "bottom": rect[3],
-                    },
-                    "new_rect": {
-                        "left": left,
-                        "top": top,
-                        "right": left + width,
-                        "bottom": top + height,
-                    },
-                    "width": width,
-                    "height": height,
+            def _rollback():
+                if win32gui.IsWindow(window_handle):
+                    win32gui.SetWindowPos(
+                        window_handle,
+                        win32con.HWND_TOP,
+                        rect[0],
+                        rect[1],
+                        rect[2] - rect[0],
+                        rect[3] - rect[1],
+                        win32con.SWP_NOACTIVATE | win32con.SWP_NOZORDER,
+                    )
+                    return True
+                return False
+
+            import time
+            time.sleep(0.05)
+            actual_rect = win32gui.GetWindowRect(window_handle)
+            actual_w = actual_rect[2] - actual_rect[0]
+            actual_h = actual_rect[3] - actual_rect[1]
+            warnings = []
+
+            if self._is_zoomed(window_handle):
+                warnings.append("Window is maximized; resize applied to restored bounds but visual geometry constrained by maximized state")
+
+            if abs(actual_w - width) > 30 or abs(actual_h - height) > 30:
+                warnings.append(f"Requested dimensions ({width}x{height}) clamped by OS constraints to ({actual_w}x{actual_h})")
+
+            res_data = {
+                "window_handle": window_handle,
+                "previous_rect": {
+                    "left": rect[0],
+                    "top": rect[1],
+                    "right": rect[2],
+                    "bottom": rect[3],
                 },
+                "new_rect": {
+                    "left": left,
+                    "top": top,
+                    "right": actual_rect[2],
+                    "bottom": actual_rect[3],
+                },
+                "width": actual_w,
+                "height": actual_h,
+                "requested_width": width,
+                "requested_height": height,
+            }
+
+            if warnings:
+                return DesktopResult.create_partial(
+                    goal=goal,
+                    capability="window.resize",
+                    manager=self.name,
+                    data=res_data,
+                    warnings=warnings,
+                    events=["window_resized"],
+                    rollback=_rollback,
+                )
+
+            return DesktopResult.create_success(
+                goal=goal,
                 capability="window.resize",
+                manager=self.name,
+                data=res_data,
+                events=["window_resized"],
+                rollback=_rollback,
             )
 
         except Exception as e:
             raise WindowError(f"Failed to resize window: {e}")
 
     def _handle_move(
-        self, window_title=None, window_class=None, process_id=None, left=None, top=None
+        self,
+        window_title=None,
+        window_class=None,
+        process_id=None,
+        left=None,
+        top=None,
+        goal="",
+        **kwargs,
     ):
         """Handle window move."""
         window_handle = self._find_window(window_title, window_class, process_id)
@@ -808,8 +897,24 @@ class WindowManager(BaseNativeManager):
                 win32con.SWP_NOACTIVATE | win32con.SWP_NOZORDER | win32con.SWP_NOSIZE,
             )
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            def _rollback():
+                if win32gui.IsWindow(window_handle):
+                    win32gui.SetWindowPos(
+                        window_handle,
+                        win32con.HWND_TOP,
+                        rect[0],
+                        rect[1],
+                        rect[2] - rect[0],
+                        rect[3] - rect[1],
+                        win32con.SWP_NOACTIVATE | win32con.SWP_NOZORDER | win32con.SWP_NOSIZE,
+                    )
+                    return True
+                return False
+
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.move",
+                manager=self.name,
                 data={
                     "window_handle": window_handle,
                     "previous_rect": {
@@ -825,7 +930,8 @@ class WindowManager(BaseNativeManager):
                         "bottom": top + (rect[3] - rect[1]),
                     },
                 },
-                capability="window.move",
+                events=["window_moved"],
+                rollback=_rollback,
             )
 
         except Exception as e:
@@ -853,14 +959,16 @@ class WindowManager(BaseNativeManager):
             window_handle = win32gui.GetForegroundWindow()
 
         if not window_handle:
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.maximize",
+                manager=self.name,
                 data={
                     "window_handle": 0,
                     "was_maximized": True,
                     "is_now_maximized": True,
                 },
-                capability="window.maximize",
+                events=["window_maximized"],
             )
 
         try:
@@ -886,14 +994,24 @@ class WindowManager(BaseNativeManager):
                     break
                 is_maximized = self._is_zoomed(window_handle)
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            def _rollback():
+                if win32gui.IsWindow(window_handle):
+                    if not current_state:
+                        win32gui.ShowWindow(window_handle, win32con.SW_RESTORE)
+                    return True
+                return False
+
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.maximize",
+                manager=self.name,
                 data={
                     "window_handle": window_handle,
                     "was_maximized": current_state,
                     "is_now_maximized": is_maximized,
                 },
-                capability="window.maximize",
+                events=["window_maximized"],
+                rollback=_rollback,
             )
 
         except Exception as e:
@@ -920,15 +1038,17 @@ class WindowManager(BaseNativeManager):
 
         if not window_handle:
             # If no visible window handle found, assume window is already minimized or background UWP app
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.minimize",
+                manager=self.name,
                 data={
                     "window_handle": 0,
                     "was_minimized": True,
                     "is_now_minimized": True,
                     "already_minimized": True,
                 },
-                capability="window.minimize",
+                events=["window_minimized"],
             )
 
         try:
@@ -938,14 +1058,24 @@ class WindowManager(BaseNativeManager):
             # Minimize window
             win32gui.ShowWindow(window_handle, win32con.SW_MINIMIZE)
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            def _rollback():
+                if win32gui.IsWindow(window_handle):
+                    if not current_state:
+                        win32gui.ShowWindow(window_handle, win32con.SW_RESTORE)
+                    return True
+                return False
+
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.minimize",
+                manager=self.name,
                 data={
                     "window_handle": window_handle,
                     "was_minimized": current_state,
                     "is_now_minimized": True,
                 },
-                capability="window.minimize",
+                events=["window_minimized"],
+                rollback=_rollback,
             )
 
         except Exception as e:
@@ -971,13 +1101,15 @@ class WindowManager(BaseNativeManager):
             window_handle = win32gui.GetForegroundWindow()
 
         if not window_handle:
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.restore",
+                manager=self.name,
                 data={
                     "window_handle": 0,
                     "was_restored": True,
                 },
-                capability="window.restore",
+                events=["window_restored"],
             )
 
         try:
@@ -985,20 +1117,30 @@ class WindowManager(BaseNativeManager):
             win32gui.ShowWindow(window_handle, win32con.SW_RESTORE)
             self._force_foreground(window_handle)
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            def _rollback():
+                if win32gui.IsWindow(window_handle):
+                    if current_state:
+                        win32gui.ShowWindow(window_handle, win32con.SW_MINIMIZE)
+                    return True
+                return False
+
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.restore",
+                manager=self.name,
                 data={
                     "window_handle": window_handle,
                     "was_minimized": current_state,
                     "is_now_restored": True,
                 },
-                capability="window.restore",
+                events=["window_restored"],
+                rollback=_rollback,
             )
 
         except Exception as e:
             raise WindowError(f"Failed to restore window: {e}")
 
-    def _handle_list(self):
+    def _handle_list(self, goal=""):
         """Handle window list."""
         try:
             windows = []
@@ -1030,13 +1172,15 @@ class WindowManager(BaseNativeManager):
 
             win32gui.EnumWindows(enum_handler, None)
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.list",
+                manager=self.name,
                 data={
                     "count": len(windows),
                     "windows": windows,
                 },
-                capability="window.list",
+                events=["windows_listed"],
             )
 
         except Exception as e:
@@ -1048,6 +1192,7 @@ class WindowManager(BaseNativeManager):
         window_title=None,
         window_class=None,
         process_id=None,
+        goal="",
         **kwargs,
     ):
         """Handle window info retrieval."""
@@ -1059,8 +1204,10 @@ class WindowManager(BaseNativeManager):
                 )
 
             if not window_handle:
-                return NativeResult(
-                    status=ResultStatus.SUCCESS,
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability="window.get_info",
+                    manager=self.name,
                     data={
                         "handle": 0,
                         "title": "Active Desktop",
@@ -1076,14 +1223,16 @@ class WindowManager(BaseNativeManager):
                         "style": 0,
                         "ex_style": 0,
                     },
-                    capability="window.get_info",
+                    events=["window_info_retrieved"],
                 )
 
             try:
                 info = self._get_window_info(window_handle)
             except Exception:
-                return NativeResult(
-                    status=ResultStatus.SUCCESS,
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability="window.get_info",
+                    manager=self.name,
                     data={
                         "handle": window_handle,
                         "title": "Active Desktop",
@@ -1099,11 +1248,13 @@ class WindowManager(BaseNativeManager):
                         "style": 0,
                         "ex_style": 0,
                     },
-                    capability="window.get_info",
+                    events=["window_info_retrieved"],
                 )
 
-            return NativeResult(
-                status=ResultStatus.SUCCESS,
+            return DesktopResult.create_success(
+                goal=goal,
+                capability="window.get_info",
+                manager=self.name,
                 data={
                     "handle": window_handle,
                     "title": info["title"],
@@ -1124,8 +1275,11 @@ class WindowManager(BaseNativeManager):
                     "style": info["style"],
                     "ex_style": info["ex_style"],
                 },
-                capability="window.get_info",
+                events=["window_info_retrieved"],
             )
+
+        except Exception as e:
+            raise WindowError(f"Failed to get window info: {e}")
 
         except Exception as e:
             raise WindowError(f"Failed to get window info: {e}")
@@ -1288,6 +1442,19 @@ class WindowManager(BaseNativeManager):
         Returns:
             Dict with window information.
         """
+        if not hwnd or not isinstance(hwnd, int):
+            return {
+                "title": "",
+                "class_name": "",
+                "process_id": None,
+                "process_name": "Unknown",
+                "hwnd": 0,
+                "rect": (0, 0, 0, 0),
+                "is_visible": False,
+                "is_minimized": False,
+                "is_maximized": False,
+            }
+
         try:
             # Get window info
             title = win32gui.GetWindowText(hwnd)

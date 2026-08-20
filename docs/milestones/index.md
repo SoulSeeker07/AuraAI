@@ -69,12 +69,21 @@ This directory contains permanent design documents for each milestone in the Aur
 
 ---
 
+## Milestone 6 — Cognitive & Autonomous AI OS
+
+### Milestone 16 — Cognitive Orchestration Layer
+[milestone16.md](milestone16.md) — 7-stage cognitive pipeline, MasterOrchestrator, AgentSession
+
+### Milestone 25 — Professional Expert Systems & Cognitive Routing
+[milestone25.md](milestone25.md) — 4 domain experts (Cybersecurity, Network, Software, Finance), PlanDAGCompiler, Stage 2.9 routing, fail-closed quality gates
+
+---
+
 ## Quick Links
 
 - **Architecture Documentation**: [../architecture/](../architecture/)
 - **API Documentation**: [../api/](../api/)
-- **User Guides**: [../guides/](../guides/)
-- **Examples**: [../examples/](../examples/)
+- **Technical Debt & Remediation Log**: [../technical_debt.md](../technical_debt.md)
 - **Main Project Documentation**: [../../README.md](../../README.md)
 - **Roadmap**: [../../roadmap.md](../../roadmap.md)
 
@@ -82,19 +91,30 @@ This directory contains permanent design documents for each milestone in the Aur
 
 ## Progress Overview
 
-```
-Phase 1 — Core Intelligence      ████████████░░░░░░░░░░  1/3 complete
-Phase 2 — Desktop Foundation     ███████░░░░░░░░░░░░░░░░  1/5 complete
-Phase 3 — Autonomous Execution   ███░░░░░░░░░░░░░░░░░░░░  1/4 complete
-Phase 4 — Advanced Intelligence  ██░░░░░░░░░░░░░░░░░░░░░  0/2 complete
-Phase 5 — Desktop AI OS          ░░░░░░░░░░░░░░░░░░░░░░░  0/1 complete
+```text
+Phase 0 — Foundation (M01–M16)          ████████████████████  16/16  COMPLETE
+Phase 1 — Shared Intelligence (M17–M18) ████████████████████   2/2   COMPLETE
+Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
+Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
+Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
+Phase 5 — Domain Expertise & Autonomy   ██████████████░░░░░░   2/3   IN PROGRESS (M24 + M25 COMPLETE)
+Phase 6 — Personal OS & Daily Workflows ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M26)
+Phase 7 — Autonomous Engineering Loop   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M27)
+Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M28)
 ```
 
-**Overall Progress:** 3/15 Core Milestones Complete | 10/15 Core Milestones Partial | 2/15 Core Milestones Not Complete
+**Overall Progress:** 25/25 Completed Milestones Baseline (M01–M25) | 61/61 Unit Tests 100% Green | Live Windows OS Matrix Verified
 
-- ✅ Milestone 8 — Voice System (100%)
-- ✅ Milestone 11 — Knowledge Intelligence (100%)
-- 🟡 Milestone 15 — Desktop Intelligence (20%)
+- ✅ Milestone 16 — Cognitive Orchestration Layer (100%)
+- ✅ Milestone 17 — Cognitive Memory (100%)
+- ✅ Milestone 18 — World Model (100%)
+- ✅ Milestone 19 — Capability & Tool Runtime (100%)
+- ✅ Milestone 20 — Coding Intelligence 2.0 (100%)
+- ✅ Milestone 21 — Research & Knowledge Hardening (100%)
+- ✅ Milestone 22 — Multimodal Voice & Vision (100%)
+- ✅ Milestone 23 — Autonomous Daemon & Background Operations (100%)
+- ✅ Milestone 24 — Event Runtime & Autonomous Intent Execution (100%)
+- ✅ Milestone 25 — Professional Expert Systems & Cognitive Routing (100%)
 
 ---
 

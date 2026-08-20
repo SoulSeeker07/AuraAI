@@ -52,7 +52,10 @@ class BrowserGoalPlanner(BasePlanner):
         capability: str | None = None,
         parameters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        from browser.world_model import BrowserStateProbe, BrowserWorldModel
+        try:
+            from browser.world_model import BrowserStateProbe, BrowserWorldModel
+        except (ModuleNotFoundError, ImportError):
+            from src.browser.world_model import BrowserStateProbe, BrowserWorldModel
 
         params = parameters or {}
         world_model: BrowserWorldModel = (

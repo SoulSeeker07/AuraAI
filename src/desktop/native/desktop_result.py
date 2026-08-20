@@ -88,6 +88,8 @@ class DesktopResult:
             self.status = (
                 DesktopStatus.SUCCESS if self.success else DesktopStatus.FAILURE
             )
+        else:
+            self.success = self.status in (DesktopStatus.SUCCESS, DesktopStatus.PARTIAL)
         if self.rollback is not None:
             self.rollback_available = True
 
@@ -166,6 +168,7 @@ class DesktopResult:
         warnings: list[str] | None = None,
         events: list[str] | None = None,
         metrics: dict[str, Any] | None = None,
+        rollback: Any = None,
     ) -> "DesktopResult":
         """Create a partial success DesktopResult."""
         return cls(
@@ -178,6 +181,7 @@ class DesktopResult:
             events=events or [],
             metrics=metrics or {},
             warnings=warnings or [],
+            rollback=rollback,
         )
 
     @classmethod

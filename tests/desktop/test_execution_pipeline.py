@@ -35,6 +35,7 @@ from desktop.native.desktop_execution_engine import (
     ExecutionStage,
 )
 from desktop.native.desktop_result import DesktopResult, DesktopStatus
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 from desktop.native.mock_manager import MockManager, MockWindowState
 
 # ==================== Fixtures ====================
@@ -55,8 +56,12 @@ def registry():
 @pytest.fixture
 def engine(mock_manager, registry):
     """Create a DesktopExecutionEngine with mock manager."""
+    isolated_mgr_registry = NativeManagerRegistry()
+    mock_manager.PRIORITY = 1
+    isolated_mgr_registry.register(mock_manager)
     return DesktopExecutionEngine(
         manager=mock_manager,
+        manager_registry=isolated_mgr_registry,
         registry=registry,
         config=ExecutionConfig(enable_verification=True, enable_context_updates=True),
     )

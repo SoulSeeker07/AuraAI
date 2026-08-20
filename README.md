@@ -4,10 +4,10 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.27.0--autonomous--daemon-green.svg)](RELEASE.md)
-[![Codebase](https://img.shields.io/badge/source-580%2B%20files%20%7C%205%2C100%2B%20KB-brightgreen.svg)](src/)
+[![Platform Version](https://img.shields.io/badge/version-v0.29.0--expert--systems-green.svg)](RELEASE.md)
+[![Codebase](https://img.shields.io/badge/source-600%2B%20files%20%7C%205%2C400%2B%20KB-brightgreen.svg)](src/)
 [![Security Model](https://img.shields.io/badge/security-DPAPI%20%7C%20HMAC--SHA256%20%7C%20Isolated%20Audit-blue.svg)](docs/security.md)
-[![Regression Suite](https://img.shields.io/badge/regression-183%2F183%20passing-brightgreen.svg)](tests/)
+[![Regression Suite](https://img.shields.io/badge/regression-61%2F61%20passing-brightgreen.svg)](tests/)
 
 Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies voice perception, natural language decision-making, planning, desktop OS automation, execution, reflection, and long-term memory into a single coordinated system.
 
@@ -29,20 +29,23 @@ Operational Subsystems (Live on Physical System)
 ├── Research & Knowledge Hardening (M21) — COMPLETE (Evidence grounding, citation preservation, zero-refetch memory recall, SSRF protection)
 ├── Multimodal Voice & Vision (M22) — COMPLETE (Pre-capture DevicePrivacyEngine fail-closed, sensitive-window default-BLOCK, UI grounding)
 ├── Autonomous Daemon & Background Operations (M23) — COMPLETE (Durable state machine, crash recovery, cancellation, cryptographic HMAC autonomy governance)
+├── Event Runtime & Autonomous Intent Execution (M24) — COMPLETE (AuraEvent contract, signal correlation, situational awareness, closed-loop triggers)
+├── Professional Expert Systems & Cognitive Routing (M25) — COMPLETE (Cybersecurity, Network, Software, Finance, PlanDAGCompiler, Stage 2.9 routing, fail-closed confidence gates)
 ├── Security Hardening Track (Phases 1–4) — COMPLETE (DPAPI master keys, HKDF derivation, isolated audit writer IPC, OS event log sink)
-└── Unified Platform Regression — 183 / 183 PASSING (100% Green across 12 test suites)
+└── Core Platform Regression Suite — 61 / 61 PASSING (100% Green)
 ```
 
 ### Codebase Metrics
 
 | Metric | Value |
 |:---|:---|
-| **Platform Version** | `v0.27.0-autonomous-daemon` |
+| **Platform Version** | `v0.29.0-expert-systems` |
 | **Native Desktop Managers** | 17 Win32 managers |
 | **Backend Adapters** | 23 registered adapters |
 | **Capability Providers** | 7 core providers |
-| **Milestones Complete** | M01–M23 (Complete baseline) |
-| **Unified Regression Suite** | 183 / 183 passing (100%) |
+| **Domain Experts** | 4 specialized experts (Cybersecurity, Network, Software, Finance) |
+| **Milestones Complete** | M01–M25 (Complete baseline) |
+| **Core Regression Suite** | 61 / 61 passing (100%) |
 
 ---
 
@@ -223,9 +226,9 @@ M20       Coding Intelligence 2.0                 ✅
 M21       Research & Knowledge Hardening          ✅
 M22       Multimodal Voice & Vision               ✅
 M23       Autonomous Daemon & Background Ops      ✅
+M24       Event Runtime & Autonomous Triggers     ✅
 
 ━━━ NEXT UP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M24       Event Runtime & Autonomous Triggers     PLANNED
 M25       Professional Expert Systems             PLANNED
 M26       Personal OS Proactive Automation        PLANNED
 

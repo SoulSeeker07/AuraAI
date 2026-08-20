@@ -62,7 +62,22 @@ class ResultMerger:
                     user_facing_sys_obs.append(obs.content)
 
         if not success:
-            obs_texts = task_obs if task_obs else (user_facing_sys_obs if user_facing_sys_obs else ["I was unable to complete that action."])
+            fail_obs = [
+                obs
+                for obs in user_facing_sys_obs
+                if obs.startswith("❌")
+                or "error" in obs.lower()
+                or "failed" in obs.lower()
+                or "stopped" in obs.lower()
+            ]
+            if task_obs and fail_obs:
+                obs_texts = task_obs + fail_obs
+            elif task_obs:
+                obs_texts = task_obs
+            elif user_facing_sys_obs:
+                obs_texts = user_facing_sys_obs
+            else:
+                obs_texts = ["I was unable to complete that action."]
         else:
             obs_texts = task_obs if task_obs else user_facing_sys_obs
         artifacts_dict = [art.to_dict() for art in session.artifacts]

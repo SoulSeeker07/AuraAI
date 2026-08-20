@@ -52,7 +52,7 @@ async def test_remember_favorite_editor_routing():
     assert result.success is True
 
     memory = Memory()
-    assert memory.favorite_editor == "VS Code"
+    assert memory.get_preference("favorite_editor") == "VS Code"
 
     # Verify no coding/desktop backend was called
     assert result.planner == "memory"
@@ -139,7 +139,7 @@ async def test_favorite_editor_question_slot_filling():
     assert result.success is True
 
     memory = Memory()
-    assert memory.favorite_editor == "VS Code"
+    assert memory.get_preference("favorite_editor") == "VS Code"
     assert pending_question.slot_value == "VS Code"
     assert result.planner == "none"
     assert result.data["backend"] == "none"
@@ -160,7 +160,7 @@ async def test_pending_question_context():
     assert context.slot_value == "VS Code"
 
     memory = Memory()
-    assert memory.favorite_editor == "VS Code"
+    assert memory.get_preference("favorite_editor") == "VS Code"
     assert result.planner == "none"
     assert result.data["backend"] == "none"
 

@@ -59,6 +59,12 @@ class FavoriteEditorQuestion(PendingQuestion):
 
 
 class Memory:
+    """
+    Aura Core Conversational and Fact Memory System.
+
+    Manages persistent SQLite memory facts, preferences, profiles,
+    and conversational chat history with cognitive memory synchronization.
+    """
     def __init__(
         self,
         db_path: Path | str = MEMORY_DB,
@@ -513,6 +519,17 @@ class Memory:
         """
         return self.fact_value(str(MemoryCategory.PREFERENCE.value), preference_type)
 
+    def set_preference(self, preference_type: str, value: str) -> None:
+        """
+        Store a specific preference by type.
+        Example: set_preference("editor", "VS Code")
+
+        Args:
+            preference_type: Type/key of preference to store
+            value: The preference value
+        """
+        self.upsert_fact(str(MemoryCategory.PREFERENCE.value), preference_type, str(value))
+
     def fact_value(self, category: str, key: str) -> str | None:
         with self._connect() as conn:
             row = conn.execute(
@@ -648,30 +665,6 @@ class Memory:
         words = value.split()
         titled = [word if not word.islower() else word.capitalize() for word in words]
         return " ".join(titled)
-
-    def __getattr__(self, name: str) -> Any:
-        if name.startswith("_"):
-            raise AttributeError(f"'Memory' object has no attribute '{name}'")
-        # Try to resolve dynamically as preference or important fact
-        for category in [
-            "preference",
-            "important",
-            "profile",
-            "skill",
-            "project",
-            "goal",
-        ]:
-            val = self.fact_value(category, name)
-            if val is not None:
-                return val
-        raise AttributeError(f"'Memory' object has no attribute '{name}'")
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        standard_attrs = ["db_path", "chat_log_path", "cognitive"]
-        if name in standard_attrs or name.startswith("_"):
-            super().__setattr__(name, value)
-        else:
-            self.upsert_fact("preference", name, str(value))
 
     def get_pending_question(self) -> dict | None:
         with self._connect() as conn:

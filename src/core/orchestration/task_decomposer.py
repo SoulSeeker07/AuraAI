@@ -63,7 +63,13 @@ class TaskDecomposer:
 
         # Direct Capability Dispatch: check if goal is an exact registered capability name
         from core.capabilities.capability_registry import CapabilityRegistry
-        cap_obj = CapabilityRegistry.get_instance().get(goal_trimmed)
+        cap_candidate = goal_trimmed
+        if cap_candidate.lower().startswith("execute capability "):
+            cap_candidate = cap_candidate[19:].strip()
+        elif cap_candidate.lower().startswith("execute "):
+            cap_candidate = cap_candidate[8:].strip()
+
+        cap_obj = CapabilityRegistry.get_instance().get(cap_candidate) or CapabilityRegistry.get_instance().get(goal_trimmed)
         if cap_obj is not None:
             role_map = {
                 "desktop": PlannerRole.DESKTOP,
@@ -446,8 +452,8 @@ class TaskDecomposer:
         Classifies natural language into canonical capabilities and extracts parameters & context.
         """
         try:
-            from browser.context_store import ContextStore
-        except ModuleNotFoundError:
+            from src.browser.context_store import ContextStore
+        except (ModuleNotFoundError, ImportError):
             from browser.context_store import ContextStore
 
         store = ContextStore.get_instance()

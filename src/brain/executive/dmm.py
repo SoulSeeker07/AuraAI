@@ -100,11 +100,65 @@ _BROWSER_URLS: dict[str, str] = {
     "instagram": "https://www.instagram.com",
     "amazon": "https://www.amazon.com",
     "stackoverflow": "https://stackoverflow.com",
-    "google drive": "https://drive.google.com",
-    "netflix": "https://www.netflix.com",
 }
 
 _BROWSER_APPS = {"chrome", "msedge", "firefox", "opera", "brave"}
+
+_ACTION_VERB_PREFIXES: tuple[str, ...] = (
+    "open ",
+    "launch ",
+    "start ",
+    "run ",
+    "close ",
+    "kill ",
+    "switch to ",
+    "focus ",
+    "type text ",
+    "type ",
+    "write text ",
+    "write ",
+    "enter text ",
+    "enter ",
+    "input ",
+    "press ",
+    "paste ",
+    "navigate to ",
+    "go to ",
+    "visit ",
+    "browse ",
+    "search for ",
+    "search ",
+    "research ",
+    "look up ",
+    "find info on ",
+    "find out ",
+    "find information ",
+    "remember that ",
+    "remember ",
+    "store ",
+    "save in memory ",
+    "recall ",
+    "summarize ",
+    "calculate ",
+    "implement ",
+    "code ",
+    "refactor ",
+    "debug ",
+    "unit test ",
+    "create ",
+)
+
+_CONNECTORS_PRIORITY: list[str] = [
+    " and then ",
+    " then ",
+    " after that ",
+    " and also ",
+    " followed by ",
+    " next ",
+    ";",
+    "\n",
+    " and ",
+]
 
 
 class DecisionMakingModule:
@@ -153,19 +207,30 @@ class DecisionMakingModule:
         context = context or {}
         text = user_input.strip()
 
-        # 1. Understand the goal
-        goal, modifiers = self._understand_goal(text, context)
+        # 1. Segment compound goal into discrete intent clauses
+        clauses = self._segment_intent_clauses(text, context)
 
-        # 2. Check learned behavior rules (consult before planning)
-        learned_rule = self._consult_learned_rules(text, context)
-        if learned_rule:
-            logger.info(f"DMM consulting learned rule: {learned_rule}")
-            goal = learned_rule.get("resolved_goal", goal)
+        if len(clauses) > 1:
+            maps: list[ExecutionMap] = []
+            for clause in clauses:
+                goal, modifiers = self._understand_goal(clause, context)
+                learned_rule = self._consult_learned_rules(clause, context)
+                if learned_rule:
+                    goal = learned_rule.get("resolved_goal", goal)
+                clause_map = self._build_execution_map(goal, clause, modifiers, context)
+                maps.append(clause_map)
 
-        # 3. Build the execution map
-        execution_map = self._build_execution_map(goal, text, modifiers, context)
+            execution_map = self._compose_execution_maps(maps, text)
+        else:
+            # Single intent pipeline
+            goal, modifiers = self._understand_goal(text, context)
+            learned_rule = self._consult_learned_rules(text, context)
+            if learned_rule:
+                logger.info(f"DMM consulting learned rule: {learned_rule}")
+                goal = learned_rule.get("resolved_goal", goal)
+            execution_map = self._build_execution_map(goal, text, modifiers, context)
 
-        # 4. Validate the map
+        # Validate the map
         valid, errors = execution_map.validate()
         if not valid:
             logger.warning(f"DMM produced invalid ExecutionMap: {errors}")
@@ -174,6 +239,98 @@ class DecisionMakingModule:
 
         logger.info(f"DMM produced {execution_map.log_summary()}")
         return execution_map
+
+    # ── Clause Segmentation ─────────────────────────────────────────────────
+
+    def _segment_intent_clauses(
+        self, text: str, context: dict[str, Any] | None = None
+    ) -> list[str]:
+        """
+        Segment compound input into discrete atomic intent clauses.
+        Uses verb-gating on suffix and intent coherence on prefix to avoid
+        false-positive splits on noun phrases (e.g. 'bread and butter').
+        """
+        if not text or len(text.strip()) < 5:
+            return [text.strip()] if text and text.strip() else []
+
+        # 1. Quote masking
+        quotes_map: dict[str, str] = {}
+        quote_counter = 0
+
+        def _quote_repl(match: re.Match[str]) -> str:
+            nonlocal quote_counter
+            token = f"__Q_{quote_counter}__"
+            quotes_map[token] = match.group(0)
+            quote_counter += 1
+            return token
+
+        masked_text = re.sub(r'"[^"]*"|\'[^\']*\'', _quote_repl, text)
+
+        # 2. Recursive segmentation with connector priority
+        def _unmask(s: str) -> str:
+            for token, original in quotes_map.items():
+                s = s.replace(token, original)
+            return s
+
+        def _split_segment(segment: str) -> list[str]:
+            for conn in _CONNECTORS_PRIORITY:
+                pos = 0
+                conn_lower = conn.lower()
+                seg_lower = segment.lower()
+                while True:
+                    idx = seg_lower.find(conn_lower, pos)
+                    if idx == -1:
+                        break
+
+                    prefix_candidate = segment[:idx].strip()
+                    suffix_candidate = segment[idx + len(conn):].strip()
+
+                    prefix_unmasked = _unmask(prefix_candidate)
+                    suffix_unmasked = _unmask(suffix_candidate)
+
+                    if self._is_actionable_clause_start(suffix_unmasked) and self._is_coherent_intent_prefix(prefix_unmasked, context):
+                        left_clauses = _split_segment(prefix_candidate)
+                        right_clauses = _split_segment(suffix_candidate)
+                        return left_clauses + right_clauses
+
+                    pos = idx + len(conn)
+
+            return [segment]
+
+        raw_clauses = _split_segment(masked_text)
+        final_clauses = [_unmask(c).strip() for c in raw_clauses if _unmask(c).strip()]
+        return final_clauses if final_clauses else [text]
+
+    def _is_actionable_clause_start(self, suffix: str) -> bool:
+        """Check if suffix begins with an actionable intent verb or trigger."""
+        if not suffix:
+            return False
+        s_lower = suffix.lower().strip()
+        return any(s_lower.startswith(verb) for verb in _ACTION_VERB_PREFIXES)
+
+    def _is_coherent_intent_prefix(
+        self, prefix: str, context: dict[str, Any] | None = None
+    ) -> bool:
+        """Check if candidate prefix represents a complete, coherent intent."""
+        if not prefix or len(prefix.strip()) < 3:
+            return False
+        p_clean = prefix.strip()
+        _, modifiers = self._understand_goal(p_clean, context or {})
+        if modifiers.get("chat"):
+            return False
+
+        # Non-empty actionable intent
+        dangling_preps = ("that", "for", "with", "in", "to", "the", "a", "an", "of", "and", "or")
+        p_lower = p_clean.lower()
+        if p_lower.endswith(dangling_preps):
+            return False
+
+        if modifiers.get("research_topic"):
+            topic = str(modifiers["research_topic"]).strip().lower()
+            if not topic or topic.endswith(dangling_preps) or topic in dangling_preps:
+                return False
+
+        return True
 
     # ── Goal Understanding ──────────────────────────────────────────────────
 
@@ -226,6 +383,41 @@ class DecisionMakingModule:
         if url_match:
             modifiers["url"] = url_match.group(0)
 
+        # ── Desktop Keyboard Typing ─────────────────────────────────────────
+        # "type hello world", "write meeting notes", "enter 1234"
+        typing_indicators = [
+            "type text ",
+            "type ",
+            "write text ",
+            "write ",
+            "enter text ",
+            "enter ",
+            "input ",
+        ]
+        # Exclude engineering / coding indicators which use "write script" or "code"
+        coding_indicators = [
+            "implement",
+            "code",
+            "refactor",
+            "fix bug",
+            "unit test",
+            "debug",
+            "create function",
+            "write script",
+            "build feature",
+        ]
+        is_coding = any(ind in text_lower for ind in coding_indicators)
+        if not is_coding:
+            for ind in typing_indicators:
+                if text_lower.startswith(ind):
+                    text_to_type = text[len(ind) :].strip()
+                    if (text_to_type.startswith('"') and text_to_type.endswith('"')) or (
+                        text_to_type.startswith("'") and text_to_type.endswith("'")
+                    ):
+                        text_to_type = text_to_type[1:-1]
+                    modifiers["type_text"] = text_to_type
+                    break
+
         # ── Research / Search ───────────────────────────────────────────────
         research_indicators = [
             "research",
@@ -238,14 +430,14 @@ class DecisionMakingModule:
             "currency",
             "usd to inr",
         ]
-        
+
         # Don't classify as research if they just want the definition
         is_definition = any(
             w in text_lower for w in ["what does", "what is the meaning of", "mean?", " mean"]
         ) and not any(
             w in text_lower for w in ["current", "today", "now", "latest"]
         )
-        
+
         if not is_definition and any(ind in text_lower for ind in research_indicators):
             # Extract the topic
             for ind in research_indicators:
@@ -263,18 +455,7 @@ class DecisionMakingModule:
                     break
 
         # ── Engineering / Coding ────────────────────────────────────────────
-        coding_indicators = [
-            "implement",
-            "code",
-            "refactor",
-            "fix bug",
-            "unit test",
-            "debug",
-            "create function",
-            "write script",
-            "build feature",
-        ]
-        if any(ind in text_lower for ind in coding_indicators):
+        if is_coding:
             modifiers["engineering"] = True
             modifiers["task"] = text
 
@@ -329,8 +510,12 @@ class DecisionMakingModule:
             return self._map_browser_navigation(modifiers, original_text)
 
         # ── Desktop App Launch ──────────────────────────────────────────────
-        if modifiers.get("app") and not modifiers.get("url"):
+        if modifiers.get("app") and not modifiers.get("url") and not modifiers.get("type_text"):
             return self._map_app_launch(modifiers, original_text)
+
+        # ── Desktop Keyboard Typing ─────────────────────────────────────────
+        if modifiers.get("type_text"):
+            return self._map_keyboard_type(modifiers, original_text)
 
         # ── Direct browser navigation ───────────────────────────────────────
         if modifiers.get("url") and not modifiers.get("app"):
@@ -359,6 +544,120 @@ class DecisionMakingModule:
         return self._map_chat(modifiers, original_text)
 
     # ── Specific Map Builders ───────────────────────────────────────────────
+
+    def _map_keyboard_type(
+        self, modifiers: dict[str, Any], original: str, target_app: str | None = None
+    ) -> ExecutionMap:
+        """Type text into an application window."""
+        text_content = modifiers.get("type_text", original)
+        app = target_app or modifiers.get("app") or ""
+        params: dict[str, Any] = {
+            "capability": "keyboard.type",
+            "text": text_content,
+        }
+        if app:
+            params["app_name"] = app
+
+        target_desc = f" into {app}" if app else ""
+        steps: list[ExecutionStep] = [
+            ExecutionStep(
+                step_type=StepType.WRITE,
+                description=f"Type text: '{text_content}'{target_desc}",
+                capability=Capability.DESKTOP,
+                parameters=params,
+                retries=1,
+                timeout=15,
+            )
+        ]
+
+        return ExecutionMap(
+            goal=f"Type text '{text_content}'{target_desc}",
+            required_capabilities=[Capability.DESKTOP],
+            execution_plan=steps,
+            expected_result=f"Text '{text_content}' entered successfully",
+            verification=SuccessCriteria(
+                checks=[f"Text '{text_content}' typed"],
+                require_all=True,
+            ),
+            fallbacks=[
+                FallbackOption(
+                    trigger="Typing failed",
+                    action=f"Retry typing '{text_content}'",
+                    description="Keystroke simulation failed — retry once",
+                )
+            ],
+            metadata={"original_request": original, "text": text_content, "app": app},
+        )
+
+    def _compose_execution_maps(
+        self, maps: list[ExecutionMap], original_text: str
+    ) -> ExecutionMap:
+        """
+        Compose multiple ExecutionMaps sequentially into a single unified ExecutionMap.
+        Chains dependencies between consecutive clauses and propagates app target context.
+        """
+        if not maps:
+            return self._map_chat({}, original_text)
+        if len(maps) == 1:
+            return maps[0]
+
+        combined_goals: list[str] = []
+        combined_caps: list[Capability] = []
+        combined_steps: list[ExecutionStep] = []
+        combined_checks: list[str] = []
+        combined_fallbacks: list[FallbackOption] = []
+        combined_metadata: dict[str, Any] = {
+            "original_request": original_text,
+            "compound": True,
+            "clause_count": len(maps),
+        }
+
+        last_step_id: str | None = None
+        last_target_app: str | None = None
+
+        for idx, em in enumerate(maps):
+            combined_goals.append(em.goal)
+
+            # Union capabilities preserving order
+            for cap in em.required_capabilities:
+                if cap not in combined_caps:
+                    combined_caps.append(cap)
+
+            # Check if this map establishes a target app (e.g. app launch)
+            target_app_in_map = em.metadata.get("app") or em.metadata.get("app_name")
+            if target_app_in_map:
+                last_target_app = target_app_in_map
+
+            # Steps wiring
+            for s_idx, step in enumerate(em.execution_plan):
+                # Propagate target app to typing / desktop actions if missing
+                if last_target_app and step.capability == Capability.DESKTOP:
+                    if "app_name" not in step.parameters:
+                        step.parameters["app_name"] = last_target_app
+
+                # If this is the first step of a subsequent clause, wire depends_on to previous clause's final step
+                if idx > 0 and s_idx == 0 and last_step_id:
+                    if last_step_id not in step.depends_on:
+                        step.depends_on.append(last_step_id)
+
+                combined_steps.append(step)
+                last_step_id = step.step_id
+
+            combined_checks.extend(em.verification.checks)
+            combined_fallbacks.extend(em.fallbacks)
+
+        return ExecutionMap(
+            goal=" and ".join(combined_goals),
+            required_capabilities=combined_caps,
+            execution_plan=combined_steps,
+            expected_result="; ".join(m.expected_result for m in maps if m.expected_result),
+            verification=SuccessCriteria(
+                checks=combined_checks,
+                require_all=True,
+            ),
+            fallbacks=combined_fallbacks,
+            metadata=combined_metadata,
+        )
 
     def _map_browser_navigation(
         self, modifiers: dict[str, Any], original: str

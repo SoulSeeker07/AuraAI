@@ -77,11 +77,13 @@ class NetworkManager(BaseNativeManager):
             # Information
             "list_network_interfaces",
             "network.interfaces",
+            "network.interface_list",
             "network.default_interface",
             "network.public_ip",
             "network.local_ip",
             "network.gateway",
             "network.dns",
+            "network.dns_query",
             "network.mac",
             "network.hostname",
             "network.connection_type",
@@ -92,6 +94,7 @@ class NetworkManager(BaseNativeManager):
             "network.traceroute",
             "network.lookup",
             "network.port_check",
+            "network.socket_probe",
             "network.internet",
             "network.speed",
             "network.latency",
@@ -104,6 +107,8 @@ class NetworkManager(BaseNativeManager):
             "network.flush_dns",
             "network.disconnect_wifi",
             "network.connect_wifi",
+            "network.route_inspect",
+            "network.remediate",
         ]
 
     def health_check(self) -> HealthCheckResult:
@@ -139,15 +144,8 @@ class NetworkManager(BaseNativeManager):
                 "latency_ms": latency_info.get("latency_ms", 0),
             }
         except Exception as e:
-            logger.warning(f"NetworkManager health details probe failed: {e}")
-            details = {
-                "active_adapter": active_adapter.name,
-                "internet": "Unknown",
-                "wifi": "Unknown",
-                "gateway": "Unknown",
-                "dns": "Unknown",
-                "latency_ms": 0,
-            }
+            details = {"error": str(e)}
+            status = HealthStatus.DEGRADED
 
         return HealthCheckResult(
             manager_name=self.name,
@@ -180,7 +178,7 @@ class NetworkManager(BaseNativeManager):
             cap_clean = capability.lower()
 
             # Information Handlers
-            if cap_clean in ("list_network_interfaces", "network.interfaces"):
+            if cap_clean in ("list_network_interfaces", "network.interfaces", "network.interface_list"):
                 return self._handle_get_interfaces(goal=goal, capability=capability)
             elif cap_clean == "network.default_interface":
                 return self._handle_get_default_interface(
@@ -192,7 +190,7 @@ class NetworkManager(BaseNativeManager):
                 return self._handle_get_local_ip(goal=goal, capability=capability)
             elif cap_clean == "network.gateway":
                 return self._handle_get_gateway(goal=goal, capability=capability)
-            elif cap_clean == "network.dns":
+            elif cap_clean in ("network.dns", "network.dns_query"):
                 return self._handle_get_dns(goal=goal, capability=capability)
             elif cap_clean == "network.mac":
                 return self._handle_get_mac(goal=goal, capability=capability)
@@ -222,7 +220,7 @@ class NetworkManager(BaseNativeManager):
                 return self._handle_lookup(
                     goal=goal, capability=capability, arguments=arguments
                 )
-            elif cap_clean == "network.port_check":
+            elif cap_clean in ("network.port_check", "network.socket_probe"):
                 return self._handle_port_check(
                     goal=goal, capability=capability, arguments=arguments
                 )
@@ -237,6 +235,25 @@ class NetworkManager(BaseNativeManager):
             elif cap_clean == "network.packet_loss":
                 return self._handle_measure_packet_loss(
                     goal=goal, capability=capability, arguments=arguments
+                )
+            elif cap_clean in ("network.route_inspect", "route_inspect"):
+                import subprocess
+                proc = subprocess.run(["route", "print"], capture_output=True, text=True, timeout=10)
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability=capability,
+                    manager=self.name,
+                    data={"routing_table": proc.stdout, "exit_code": proc.returncode},
+                    events=["network_route_inspected"],
+                )
+            elif cap_clean in ("network.remediate", "remediate"):
+                ok = self.adapter.flush_dns()
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability=capability,
+                    manager=self.name,
+                    data={"remediation_applied": True, "dns_flushed": ok},
+                    events=["network_remediated"],
                 )
 
             # Control Handlers (HMAC Human Approval Gate Enforced)

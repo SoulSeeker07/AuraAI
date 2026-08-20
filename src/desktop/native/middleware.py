@@ -31,13 +31,17 @@ class MiddlewareType(Enum):
     DIAGNOSTICS = "diagnostics"
 
 
-class ExecutionResult(Enum):
-    """Result of middleware execution"""
+class MiddlewareAction(Enum):
+    """Result action of middleware execution"""
 
     CONTINUE = "continue"
     SKIP = "skip"
     HALT = "halt"  # Stop execution
     ABORT = "abort"  # Abort with error
+
+
+# Deprecation / backward compatibility alias to avoid symbol shadowing with core.planning.ExecutionResult
+ExecutionResult = MiddlewareAction
 
 
 @dataclass
@@ -48,7 +52,7 @@ class MiddlewareResult:
     Contains whether to continue execution and any messages.
     """
 
-    action: ExecutionResult = ExecutionResult.CONTINUE
+    action: MiddlewareAction = MiddlewareAction.CONTINUE
     message: str | None = None
     error: Exception | None = None
     context_update: dict | None = None

@@ -21,9 +21,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from ..desktop_result import DesktopResult
 from ..native_exceptions import NativeError
 from ..native_execution_context import NativeExecutionContext
-from ..native_result import NativeResult
 from ..rollback_framework import RollbackFunctions
 from ..verification_layer import VerificationLayer
 
@@ -257,7 +257,7 @@ class BaseNativeManager(ABC):
         self,
         capability: str,
         context: NativeExecutionContext,
-    ) -> NativeResult:
+    ) -> DesktopResult:
         """
         Execute the native operation for the given capability.
 
@@ -269,7 +269,7 @@ class BaseNativeManager(ABC):
             context: NativeExecutionContext with permission, metrics, and verification state.
 
         Returns:
-            NativeResult with execution status and result data.
+            DesktopResult with execution status and result data.
 
         Raises:
             NativeError: If capability not supported or execution fails.
@@ -305,7 +305,7 @@ class BaseNativeManager(ABC):
         """
         return capability in self.capabilities
 
-    def verify(self, result: NativeResult) -> bool:
+    def verify(self, result: DesktopResult) -> bool:
         """
         Verify that the action completed successfully.
 
@@ -313,7 +313,7 @@ class BaseNativeManager(ABC):
         Most managers will rely on the automatic verification layer.
 
         Args:
-            result: NativeResult from execute().
+            result: DesktopResult from execute().
 
         Returns:
             True if verification passed, False otherwise.
@@ -325,7 +325,7 @@ class BaseNativeManager(ABC):
         """
         return result.success
 
-    def rollback(self, result: NativeResult, context: NativeExecutionContext) -> bool:
+    def rollback(self, result: DesktopResult, context: NativeExecutionContext) -> bool:
         """
         Rollback the action if it was successful.
 
@@ -333,7 +333,7 @@ class BaseNativeManager(ABC):
         Most managers will rely on the automatic rollback framework.
 
         Args:
-            result: NativeResult from execute().
+            result: DesktopResult from execute().
             context: NativeExecutionContext for rollback context.
 
         Returns:

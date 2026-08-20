@@ -384,7 +384,79 @@ class DesktopCapabilityProvider(ICapabilityProvider):
             ),
         ]
 
-        for ncap in network_caps + security_caps + finance_caps:
+        # First-class keyboard and input capabilities
+        input_caps = [
+            Capability(
+                name="keyboard.type",
+                domain=self.DOMAIN,
+                description="Type text string into active or targeted desktop window.",
+                category="input",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["desktop", "keyboard", "type", "input"],
+            ),
+            Capability(
+                name="keyboard.press",
+                domain=self.DOMAIN,
+                description="Press a keyboard key or hotkey combination (e.g. enter, tab, ctrl+s).",
+                category="input",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["desktop", "keyboard", "press", "hotkey"],
+            ),
+            Capability(
+                name="keyboard.hotkey",
+                domain=self.DOMAIN,
+                description="Trigger keyboard hotkey combination.",
+                category="input",
+                risk_level=ActionRisk.LOW,
+                availability="online",
+                tags=["desktop", "keyboard", "hotkey"],
+            ),
+        ]
+
+        # Document generation and notification capabilities
+        document_and_notif_caps = [
+            Capability(
+                name="document.generate",
+                domain=self.DOMAIN,
+                description="Transform research and telemetry artifacts into a formatted markdown document.",
+                category="generation",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["desktop", "document", "generate", "markdown"],
+            ),
+            Capability(
+                name="notification.send",
+                domain=self.DOMAIN,
+                description="Send an interactive or toast desktop notification to the user.",
+                category="notification",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["desktop", "notification", "toast", "alert"],
+            ),
+            Capability(
+                name="notification.show",
+                domain=self.DOMAIN,
+                description="Show a desktop notification banner.",
+                category="notification",
+                risk_level=ActionRisk.LOW,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["desktop", "notification", "banner"],
+            ),
+        ]
+
+        for ncap in network_caps + security_caps + finance_caps + input_caps + document_and_notif_caps:
             if ncap.name not in built_in_names:
                 available_caps.append(ncap)
 

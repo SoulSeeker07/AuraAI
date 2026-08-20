@@ -255,13 +255,32 @@ class DisplayManager(BaseNativeManager):
                 error="Argument 'level' (0-100) is required",
             )
 
+        prev_info = display_helpers.get_display_brightness()
+        prev_level = prev_info.get("level")
+
         res = display_helpers.set_display_brightness(level)
         if res.get("success"):
+            rollback = (
+                (lambda: display_helpers.set_display_brightness(prev_level))
+                if prev_info.get("supported") and prev_level is not None
+                else None
+            )
+
+            curr_info = display_helpers.get_display_brightness()
+            verification = {
+                "verified": curr_info.get("level") == int(level),
+                "method": "wmi_brightness_query",
+                "current_level": curr_info.get("level"),
+                "target_level": int(level),
+            }
+
             return DesktopResult.create_success(
                 goal=goal,
                 capability=capability,
                 manager=self.name,
-                data=res,
+                data={**res, "previous_level": prev_level},
+                rollback=rollback,
+                verification=verification,
                 events=["brightness_changed"],
             )
         else:
@@ -287,13 +306,46 @@ class DisplayManager(BaseNativeManager):
                 error="Arguments 'width' and 'height' required",
             )
 
+        prev_settings = display_helpers.get_display_settings(device_name)
+        prev_width = prev_settings.get("width") if prev_settings else None
+        prev_height = prev_settings.get("height") if prev_settings else None
+
         ok = display_helpers.set_display_resolution(device_name, width, height)
         if ok:
+            rollback = (
+                (lambda: display_helpers.set_display_resolution(device_name, prev_width, prev_height))
+                if prev_width and prev_height
+                else None
+            )
+
+            curr_settings = display_helpers.get_display_settings(device_name)
+            is_verified = (
+                curr_settings.get("width") == int(width)
+                and curr_settings.get("height") == int(height)
+            ) if curr_settings else True
+
+            verification = {
+                "verified": is_verified,
+                "method": "win32_enum_display_settings",
+                "current_width": curr_settings.get("width") if curr_settings else width,
+                "current_height": curr_settings.get("height") if curr_settings else height,
+                "target_width": width,
+                "target_height": height,
+            }
+
             return DesktopResult.create_success(
                 goal=goal,
                 capability=capability,
                 manager=self.name,
-                data={"device_name": device_name, "width": width, "height": height},
+                data={
+                    "device_name": device_name,
+                    "width": width,
+                    "height": height,
+                    "previous_width": prev_width,
+                    "previous_height": prev_height,
+                },
+                rollback=rollback,
+                verification=verification,
                 events=["resolution_changed"],
             )
         else:
@@ -301,7 +353,7 @@ class DisplayManager(BaseNativeManager):
                 goal=goal,
                 capability=capability,
                 manager=self.name,
-                error="Failed to change resolution",
+                error="Failed to change resolution (mode unsupported or access denied)",
             )
 
     def _handle_set_orientation(
@@ -310,13 +362,40 @@ class DisplayManager(BaseNativeManager):
         orientation = arguments.get("orientation", 0)
         device_name = arguments.get("device_name", "\\\\.\\DISPLAY1")
 
+        prev_settings = display_helpers.get_display_settings(device_name)
+        prev_orientation = prev_settings.get("orientation") if prev_settings else None
+
         ok = display_helpers.set_display_orientation(device_name, orientation)
         if ok:
+            rollback = (
+                (lambda: display_helpers.set_display_orientation(device_name, prev_orientation))
+                if prev_orientation is not None
+                else None
+            )
+
+            curr_settings = display_helpers.get_display_settings(device_name)
+            is_verified = (
+                curr_settings.get("orientation") == int(orientation)
+            ) if curr_settings else True
+
+            verification = {
+                "verified": is_verified,
+                "method": "win32_enum_display_settings",
+                "current_orientation": curr_settings.get("orientation") if curr_settings else orientation,
+                "target_orientation": orientation,
+            }
+
             return DesktopResult.create_success(
                 goal=goal,
                 capability=capability,
                 manager=self.name,
-                data={"device_name": device_name, "orientation": orientation},
+                data={
+                    "device_name": device_name,
+                    "orientation": orientation,
+                    "previous_orientation": prev_orientation,
+                },
+                rollback=rollback,
+                verification=verification,
                 events=["orientation_changed"],
             )
         else:
@@ -324,5 +403,5 @@ class DisplayManager(BaseNativeManager):
                 goal=goal,
                 capability=capability,
                 manager=self.name,
-                error="Failed to change orientation",
+                error="Failed to change orientation (mode unsupported or access denied)",
             )

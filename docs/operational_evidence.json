@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-08-18T16:21:23.970142+00:00",
-  "release": "v0.27.0-autonomous-daemon",
+  "timestamp": "2026-08-18T17:56:55.065531+00:00",
+  "release": "v0.28.0-event-runtime",
   "environment": {
     "os": "Windows-10-10.0.26300-SP0",
     "python": "3.11.9",
@@ -11,7 +11,7 @@
   "pillars": {
     "Pillar 1: Process Startup & Registries": {
       "passed": true,
-      "timestamp": "2026-08-18T16:21:28.046600+00:00",
+      "timestamp": "2026-08-18T17:56:58.991320+00:00",
       "details": {
         "backend_adapters_count": 23,
         "capabilities_count": 244,
@@ -23,10 +23,10 @@
     },
     "Pillar 2: Real Voice Loop": {
       "passed": true,
-      "timestamp": "2026-08-18T16:21:30.595512+00:00",
+      "timestamp": "2026-08-18T17:56:59.706711+00:00",
       "details": {
         "microphone_evaluation_allowed": true,
-        "microphone_permission_state": "allowed",
+        "microphone_reason": "Microphone audio acquisition permitted.",
         "tts_synthesis_initiated": true,
         "orchestrator_voice_turn_success": true,
         "orchestrator_planner": "memory"
@@ -34,18 +34,18 @@
     },
     "Pillar 3: Real Screen Grounding": {
       "passed": true,
-      "timestamp": "2026-08-18T16:21:30.683316+00:00",
+      "timestamp": "2026-08-18T17:56:59.780956+00:00",
       "details": {
         "screen_capture_allowed": true,
         "physical_display_geometry": "1920x1080",
         "metrics_detected": true,
         "grounding_orchestration_success": true,
-        "grounding_data_present": false
+        "grounding_data_present": true
       }
     },
     "Pillar 4: Research -> Memory -> Zero-Refetch": {
       "passed": true,
-      "timestamp": "2026-08-18T16:21:30.857940+00:00",
+      "timestamp": "2026-08-18T17:56:59.788163+00:00",
       "details": {
         "research_query_success": true,
         "citations_extracted": 1,
@@ -56,7 +56,7 @@
     },
     "Pillar 5: Daemon Crash Recovery": {
       "passed": true,
-      "timestamp": "2026-08-18T16:21:30.892701+00:00",
+      "timestamp": "2026-08-18T17:56:59.821113+00:00",
       "details": {
         "pre_crash_status": "running",
         "post_restart_recovered_count": 1,
@@ -64,11 +64,24 @@
         "crash_error_reason": "INTERRUPTED_BY_CRASH",
         "duplicate_idempotency_blocked": true
       }
+    },
+    "Pillar 6: Event Runtime & Autonomous Intent Execution": {
+      "passed": true,
+      "timestamp": "2026-08-18T17:57:01.138686+00:00",
+      "details": {
+        "event_id": "evt_b992c62babdd49348aba9d4650585bef",
+        "correlation_id": "corr_operational_diag_001",
+        "assessment_id": "asm_355c5c03bb1b4faf9ef74e4a929d004c",
+        "candidate_intent": "Diagnose failure in build/test process 'pytest.exe' (exit code 1)",
+        "policy_decision_id": "pol_ea85668caa524db88310f5275fa94c68",
+        "decision": "ALLOWED",
+        "is_authorized": true
+      }
     }
   },
   "summary": {
-    "total": 5,
-    "passed": 5,
+    "total": 6,
+    "passed": 6,
     "failed": 0
   }
 }

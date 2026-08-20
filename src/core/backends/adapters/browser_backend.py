@@ -16,13 +16,16 @@ from typing import Any
 try:
     from browser.engine import BrowserEngine
     from browser.shopping import ShoppingManager
+    from browser.context_store import ContextStore
 except (ModuleNotFoundError, ImportError):
     try:
         from src.browser.engine import BrowserEngine
         from src.browser.shopping import ShoppingManager
+        from src.browser.context_store import ContextStore
     except Exception:
         BrowserEngine = None  # type: ignore
         ShoppingManager = None  # type: ignore
+        ContextStore = None  # type: ignore
 
 try:
     from ...planning.execution_result import ExecutionResult
@@ -585,10 +588,10 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             )
         elif cap_clean.startswith("media."):
             action = cap_clean.split(".")[-1]
-            from browser.context_store import ContextStore
-
-            ctx = ContextStore.get_instance().media
-            obs_msg = f"✓ Executed media action: {action} on {ctx.platform}"
+            store_inst = ContextStore.get_instance() if ContextStore else None
+            ctx = store_inst.media if store_inst else None
+            platform_name = ctx.platform if ctx else "browser"
+            obs_msg = f"✓ Executed media action: {action} on {platform_name}"
 
             if action in ["play", "pause", "resume"]:
                 if action == "play":
@@ -654,9 +657,7 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 data={"backend": self.name, "media_context": ctx.to_dict()},
             )
         elif cap_clean in ["browser.comments", "shopping.reviews"]:
-            from browser.context_store import ContextStore
-
-            store = ContextStore.get_instance()
+            store = ContextStore.get_instance() if ContextStore else None
             obs_msg = "✓ Collected and summarized visible user feedback/reviews."
             if "comment" in cap_clean:
                 content_snippet = "Top comments: 1. 'Super helpful explanation!' 2. 'Great tutorial, learned a lot.' 3. 'Clear and concise.'"
@@ -674,11 +675,9 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 data={"backend": self.name, "summary": content_snippet},
             )
         elif cap_clean in ["shopping.search", "shopping.compare", "shopping.filter"]:
-            from browser.context_store import ContextStore
-
-            store = ContextStore.get_instance()
+            store = ContextStore.get_instance() if ContextStore else None
             constraints = (
-                arguments.get("constraints") or store.shopping.constraints.to_dict()
+                arguments.get("constraints") or (store.shopping.constraints.to_dict() if store else {})
             )
 
             query = (
@@ -712,10 +711,8 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 },
             )
         elif cap_clean in ["shopping.cart", "shopping.cart.add"]:
-            from browser.context_store import ContextStore
-
-            store = ContextStore.get_instance()
-            prod = arguments.get("product") or store.shopping.selected_product
+            store = ContextStore.get_instance() if ContextStore else None
+            prod = arguments.get("product") or (store.shopping.selected_product if store else None)
             product_url = (prod or {}).get("url") if isinstance(prod, dict) else None
 
             if self._engine._page:

@@ -55,6 +55,7 @@ class MasterOrchestrator:
         supervisor_agent: SupervisorAgent | None = None,
         result_merger: ResultMerger | None = None,
         memory_db_path: Path | str | None = None,
+        expert_routing_enabled: bool = False,
     ):
         self.planner_registry = planner_registry or PlannerRegistry.get_instance()
         self.backend_registry = backend_registry or BackendRegistry.get_instance()
@@ -63,6 +64,7 @@ class MasterOrchestrator:
         self.supervisor = supervisor_agent or SupervisorAgent(self.planner_registry)
         self.result_merger = result_merger or ResultMerger()
         self.memory_db_path = memory_db_path
+        self.expert_routing_enabled = expert_routing_enabled
         self._last_result: Any = None
         self._last_session: Any = (
             None  # AgentSession — used for session-scoped confirmation
@@ -86,13 +88,22 @@ class MasterOrchestrator:
             self._identity_context = "(identity layer unavailable)"
 
         logger.info(
-            "MasterOrchestrator initialized (Cognitive Orchestration Layer v17.0)"
+            f"MasterOrchestrator initialized (Cognitive Orchestration Layer v17.0, expert_routing={self.expert_routing_enabled})"
         )
 
     @classmethod
-    def get_instance(cls, memory_db_path: Path | str | None = None) -> "MasterOrchestrator":
+    def get_instance(
+        cls,
+        memory_db_path: Path | str | None = None,
+        expert_routing_enabled: bool | None = None,
+    ) -> "MasterOrchestrator":
         if cls._instance is None or memory_db_path is not None:
-            cls._instance = cls(memory_db_path=memory_db_path)
+            cls._instance = cls(
+                memory_db_path=memory_db_path,
+                expert_routing_enabled=expert_routing_enabled if expert_routing_enabled is not None else False,
+            )
+        elif expert_routing_enabled is not None:
+            cls._instance.expert_routing_enabled = expert_routing_enabled
         return cls._instance
 
     @classmethod
@@ -724,6 +735,56 @@ class MasterOrchestrator:
                 self._last_result = res
                 return res
 
+        # Stage 2.9: Domain Expert Routing (Opt-in Gate for M25 Professional Experts)
+        if self.expert_routing_enabled and task_graph is None:
+            expert = None
+            try:
+                expert, assessment, rationale = await self.planner_registry.route_to_expert(
+                    effective_goal,
+                    context={
+                        "session_id": session.session_id,
+                        "memory_context": session.memory_context,
+                    },
+                )
+                if (
+                    expert is not None
+                    and assessment is not None
+                    and assessment.confidence >= 0.50
+                ):
+                    plan_dag = await expert.generate_plan(effective_goal, assessment)
+                    from experts.compiler import PlanDAGCompiler
+
+                    compiler = PlanDAGCompiler()
+                    compiled_graph = compiler.compile(plan_dag)
+                    task_graph = compiled_graph
+
+                    # Write telemetry and system observation only after successful compilation
+                    session.metrics["expert_domain"] = expert.domain
+                    session.metrics["expert_assessment_id"] = assessment.assessment_id
+                    session.metrics["expert_confidence"] = assessment.confidence
+                    session.add_observation(
+                        Observation(
+                            obs_type="system",
+                            source=f"ExpertRouter:{expert.domain}",
+                            confidence=assessment.confidence,
+                            content=(
+                                f"Routed to {expert.domain} expert (Confidence: {assessment.confidence:.2f}): "
+                                f"{assessment.recommended_strategy}"
+                            ),
+                        )
+                    )
+                    logger.info(
+                        f"[MasterOrchestrator] Successfully compiled PlanDAG from '{expert.domain}' "
+                        f"into TaskGraph ({len(task_graph.subtasks)} subtasks)."
+                    )
+            except Exception as exc:
+                logger.warning(
+                    f"[MasterOrchestrator] Domain expert routing to '{getattr(expert, 'domain', 'unknown')}' "
+                    f"failed downstream ({exc}); falling back gracefully to TaskDecomposer.",
+                    exc_info=True,
+                )
+                task_graph = None
+
         # Stage 3: Task Graph Decomposition
         t2 = datetime.now().timestamp()
         task_graph = task_graph or self.decomposer.decompose(goal_text, decision=decision)
@@ -975,7 +1036,7 @@ class MasterOrchestrator:
                         v_report = VerificationReport(
                             success=res.success,
                             checks=checks,
-                            confidence=res.confidence or 1.0,
+                            confidence=res.confidence if res.confidence is not None else 1.0,
                             observations=res.observations,
                         )
 
@@ -1002,28 +1063,29 @@ class MasterOrchestrator:
 
                         from .artifact import VerificationReport
 
+                        checks = {}
+                        art_type = art_data.artifact_type if isinstance(art_data, Artifact) else art_data.get("artifact_type", "file")
+                        if art_type == "research":
+                            checks = {
+                                "sources_reachable": True,
+                                "structured_payload": True,
+                            }
+                        elif art_type == "document":
+                            checks = {
+                                "markdown_generated": True,
+                                "content_valid": True,
+                            }
+                        else:
+                            checks = {"valid": True}
+
+                        v_report = VerificationReport(
+                            success=res.success,
+                            checks=checks,
+                            confidence=res.confidence if res.confidence is not None else 1.0,
+                            observations=res.observations,
+                        )
+
                         if isinstance(art_data, Artifact):
-                            checks = {}
-                            if art_data.artifact_type == "research":
-                                checks = {
-                                    "sources_reachable": True,
-                                    "structured_payload": True,
-                                }
-                            elif art_data.artifact_type == "document":
-                                checks = {
-                                    "markdown_generated": True,
-                                    "content_valid": True,
-                                }
-                            else:
-                                checks = {"valid": True}
-
-                            v_report = VerificationReport(
-                                success=res.success,
-                                checks=checks,
-                                confidence=res.confidence or 1.0,
-                                observations=res.observations,
-                            )
-
                             updated_art = dataclasses.replace(
                                 art_data,
                                 session_id=session.session_id,
@@ -1042,6 +1104,8 @@ class MasterOrchestrator:
                                     mime_type=art_data.get("mime_type", "text/plain"),
                                     creator=res_data.get("backend", res.planner),
                                     session_id=session.session_id,
+                                    metadata=art_data.get("metadata", art_data.get("data", {})),
+                                    verification_report=v_report,
                                 )
                             )
 

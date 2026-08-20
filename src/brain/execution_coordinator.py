@@ -441,7 +441,7 @@ class ExecutionCoordinator:
     ) -> Any:
         """Delegate a step to the MasterOrchestrator."""
         # Build a goal description for the orchestrator
-        goal = f"{action}"
+        goal = params.get("goal") or f"{action}"
         if params.get("url"):
             goal = f"Navigate to {params['url']}"
         elif params.get("application") and action in (
@@ -456,6 +456,8 @@ class ExecutionCoordinator:
             goal = f"Research: {params['query']}"
         elif params.get("task"):
             goal = str(params["task"])
+        elif "." in action and not params.get("goal"):
+            goal = f"Execute capability {action}"
 
         if hasattr(self.orchestrator, "process_request_async"):
             return await self.orchestrator.process_request_async(goal, None, params)

@@ -100,7 +100,7 @@ A milestone may ship across one or more releases.
 | M21 | `v0.25.0` | Phase 3 — Intelligence Expansion (Research Hardening) | `COMPLETE` |
 | M22 | `v0.26.0` | Phase 3 — Intelligence Expansion (Multimodal Hardening) | `COMPLETE` |
 | M23 | `v0.27.0` | Phase 4 — Autonomy & Persistent Daemon | `COMPLETE` |
-| M24 | `v0.28.0` | Phase 5 — Autonomy | `PLANNED` |
+| M24 | `v0.28.0` | Phase 5 — Autonomy (Event Runtime & Autonomous Execution) | `COMPLETE` |
 | M25 | `v0.29.0` | Phase 5 — Autonomy | `PLANNED` |
 | M26 | `v0.30.0` | Phase 5 — Autonomy | `PLANNED` |
 | M27 | `v0.31.0` | Phase 6 — Autonomous Engineering | `PLANNED` |
@@ -1090,63 +1090,152 @@ GitHub · Google Drive · Calendar · Gmail · Notion · Canva
 
 ---
 
-### M24 — Event Runtime
+### M24 — Event Runtime & Autonomous Intent Execution
 
-**Status:** `PLANNED`
-**Priority:** 🔴 Very High
+**Status:** `COMPLETE`
+**Priority:** 🟢 Delivered in v0.28.0 (Phase 1–6 + Closed Loop Acceptance Verified)
 
-This is where Aura stops being purely reactive.
+This is where Aura fundamentally transitions from a reactive assistant into an autonomous operating runtime.
 
 ```text
-Before:  User → Aura → Action
+M01–M23 (Reactive):
+  Prompt ───────────────────────────────► Agent ──────► Action
 
-After:
-                    EVENT RUNTIME
-                         │
-       ┌─────────────────┼─────────────────┐
-       ▼                 ▼                 ▼
-    Schedule           Event            Condition
-       ▼                 ▼                 ▼
-    9:00 AM          Email arrived     Build failed
-       │                 │                 │
-       └─────────────────┼─────────────────┘
-                         ▼
-                       Aura
-                         ▼
-                      Decide
-                         ▼
-                     Execute
+M24+ (Autonomous Event-Driven):
+  Event ──► Normalization ──► Interpretation ──► Policy Gate ──► MasterOrchestrator ──► Execution ──► Observation
+                                  ▲                                                         │
+                                  └───────────────────── World Model ───────────────────────┘
 ```
 
-**Build:**
+> **Core Architectural Contract for M24:**
+> 1. **Dumb Producers Invariant**: Event sources (`FilesystemWatcher`, `ProcessMonitor`, `NetworkListener`) are strictly telemetry producers that emit raw `AuraEvent` envelopes. They **never** make autonomous decisions or spawn mini-agents.
+> 2. **Relevance & Suppression Boundary**: Raw events do **not** automatically become executable intents. The `EventInterpreter` enforces relevance evaluation, windowed deduplication, burst throttling, and multi-signal correlation before emitting a candidate intent.
+> 3. **Unified Single Pipeline**: All evaluated events flow through `AutonomyPolicyGate` $\to$ `MasterOrchestrator` $\to$ `CapabilityRegistry` $\to$ `WorldModel` update.
+> 4. **Immutable Causal Traceability Chain**: No event can directly execute. No autonomous action can bypass orchestration. No autonomous action can lack an immutable, append-only causal trace:
+>    ```text
+>    event_id ──► correlation_id ──► assessment_id ──► policy_decision_id ──► plan_id ──► execution_id ──► observation_id
+>    ```
+>    *(Captures: WHO/WHAT triggered it, WHY it was relevant, WHAT context was known, WHAT policy was applied, WHAT risk was calculated, WHAT plan executed, and WHAT actually happened).*
+
+**Disciplined 6-Phase Dependency & Implementation Architecture:**
+
 ```text
-Event bus (extend existing EventBus)
-Schedule manager
-Condition evaluator
-Trigger registry
-Event queue
-Worker pool
-Retry logic
-State persistence across restarts
+                     v0.27.0 FROZEN BASELINE
+                               │
+                               ▼
+                 Phase 1: AuraEvent Contract
+                 (Canonical typed event envelope)
+                               │
+                               ▼
+                 Phase 2: EventRuntime Core
+                 (ingest · dedup · correlate · dispatch)
+                               │
+                               ▼
+                 Phase 3: EventInterpreter
+                 (EventAssessment · relevance & context filter)
+                               │
+                               ▼
+                 Phase 4: AutonomyPolicyGate
+                 (HMAC-backed immutable risk decision)
+                               │
+                    ┌──────────┴──────────┐
+                    ▼                     ▼
+          Phase 5: FilesystemWatcher   Phase 6: ProcessMonitor
+          (High-volume deduplication)  (Failure correlation exit=1)
+                    │                     │
+                    └──────────┬──────────┘
+                               ▼
+                       MasterOrchestrator
+                               ▼
+                       CapabilityRegistry
+                               ▼
+                      Native OS Execution
+                               ▼
+                          Observation
+                               ▼
+                          World Model
+                               ▼
+                        Cognitive Memory
 ```
 
-**Examples:**
-- *"Every morning summarize my project status."*
-- *"When the build fails, investigate it."*
-- *"When a new GitHub issue appears, categorize it."*
+**The 5 Core Primitives of M24:**
+
+1. **Event Ingestion Engines (Dumb Producers):**
+   - `FilesystemWatcher`: File create, modify, delete, directory drop (e.g. `Downloads/`)
+   - `ProcessMonitor`: Process launch, crash, exit code tracking (e.g. build failure `python.exe exit=1`)
+   - `NetworkListener`: Port activity, webhook reception, socket state changes
+   - `ApplicationObserver`: Focus change, window creation/destruction, IDE workspace shifts
+   - `SystemStateWatcher`: Power state, battery threshold, network connectivity toggles
+   - `TemporalScheduler`: Cron schedules, intervals, one-shot timers (integrating M23 `SchedulerBackendAdapter`)
+
+2. **Event Normalization (`AuraEvent`):**
+   - Standardized typed event envelope:
+     ```python
+     class AuraEvent:
+         event_id: str
+         event_type: EventType
+         source: EventSource
+         timestamp: str
+         payload: dict[str, Any]
+         correlation_id: str
+         urgency: EventUrgency
+     ```
+
+3. **Event $\to$ Intent Translation & Relevance Filter (`EventInterpreter`):**
+   - **Relevance & Noise Filter**: Windowed deduplication, rapid-burst suppression, and noise dampening.
+   - **Context Resolution**: Queries `WorldModel` (active project, repo status, user preferences) to determine if the event matters.
+   - **Intent Synthesis**: Translates meaningful signals into structured `IntentType` goal DAGs before sending to `MasterOrchestrator`.
+
+4. **Autonomous Policy Gate (`AutonomyPolicyGate`):**
+   - Strict 4-tier decision gate before autonomous execution:
+     - `ALLOWED`: Low-risk read/analyze/query actions proceed unattended.
+     - `RATE_LIMITED`: Throttled recurring events to prevent loop exhaustion.
+     - `APPROVAL_REQUIRED`: Triggers HMAC-SHA256 human ticket approval for high-risk actions.
+     - `BLOCKED`: Unconditionally halted prohibited actions.
+
+5. **Durable Lifecycle & Crash Resilience:**
+   - Reuses M23 `DaemonStateStore` and `DaemonRuntime` state machine:
+     ```text
+     EVENT_RECEIVED ──► EVALUATED ──► SCHEDULED ──► CLAIMED ──► RUNNING ──► COMPLETED
+                                                                    │
+                                                      ┌─────────────┴─────────────┐
+                                                      ▼                           ▼
+                                              RECOVERY_REQUIRED                FAILED
+     ```
+
+**Closed Autonomous Loop (M24 Definition of Done):**
+```text
+PERCEIVE (AuraEvent)
+   ↓
+UNDERSTAND (EventInterpreter + WorldModel)
+   ↓
+DECIDE (MasterOrchestrator)
+   ↓
+AUTHORIZE (AutonomyPolicyGate HMAC)
+   ↓
+ACT (CapabilityRegistry Native Execution)
+   ↓
+OBSERVE (Result & State Verification)
+   ↓
+UPDATE WORLD MODEL (Incremental Sync)
+   ↓
+LEARN / CONTINUE
+```
 
 **Acceptance criteria:**
-- Scheduled trigger fires at correct time with < 5s jitter
-- Event trigger fires within 2s of observed event
-- Condition trigger evaluates correctly before firing
-- Worker failure retried N times before escalating
-- Event runtime state survives process restart
+- No autonomous action originates directly from an event producer without the complete causal chain.
+- Filesystem event (e.g. zip file dropped into Downloads) triggers automated inspection pipeline through `MasterOrchestrator`.
+- All incoming events normalized to `AuraEvent` schema with unique `correlation_id`.
+- Rapid burst events (e.g. 1,000 file touch events during `git checkout`) are deduplicated and throttled without flooding the orchestrator.
+- Multi-signal correlation scenario (`file modified` + `python.exe exit=1` + `stderr`) successfully triggers automated diagnostic inspection via `CodingIntelligence`.
+- High-risk autonomous actions trigger `APPROVAL_REQUIRED` and halt for HMAC token.
+- In-flight event processing survives sudden process restart without duplicate task execution.
+- Closed loop successfully updates `WorldModel` state post-execution.
 
-**Existing foundations:** `src/core/event_bus.py`, `src/workflows/trigger_manager.py`,
-`src/workflows/workflow_scheduler.py`
+**Existing foundations:** `src/core/event_bus.py`, `src/daemon/daemon_runtime.py`, `src/daemon/state_store.py`, `src/workflows/trigger_manager.py`
 
 **Depends on:** M23
-**Enables:** M27 (Autonomous Engineering requires event loop)
+**Enables:** M25 (Expert Systems), M26 (Personal OS), M27 (Autonomous Engineering Platform)
 
 ---
 

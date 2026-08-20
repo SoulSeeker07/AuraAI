@@ -16,6 +16,7 @@ All clients (CLI, GUI, Voice, API) communicate with Aura Core.
 import asyncio
 import os
 import sys
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -463,6 +464,49 @@ class AuraCore:
             # Fallback to standard pipeline
             return await self.process_request(user_goal)
 
+    async def get_ai_response_stream(
+        self, user_message: str
+    ) -> AsyncGenerator[str, None]:
+        """
+        Streaming variant of get_ai_response: yields token chunks directly from Groq/provider.
+        """
+        if not self.llm_enabled or self.groq_client is None:
+            yield (
+                "⚠ AI is not configured. Set GROQ_API_KEY in your environment "
+                "or .env file and make sure the 'groq' package is installed."
+            )
+            return
+
+        try:
+            # Use Groq streaming API directly
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are Aura, a fast, helpful, concise desktop AI assistant.",
+                },
+                {"role": "user", "content": user_message},
+            ]
+
+            completion = self.groq_client.chat.completions.create(
+                model=getattr(self, "llm_model", "llama-3.3-70b-versatile"),
+                messages=messages,
+                stream=True,
+                temperature=0.7,
+                max_tokens=1024,
+            )
+            for chunk in completion:
+                if (
+                    chunk.choices
+                    and chunk.choices[0].delta
+                    and chunk.choices[0].delta.content
+                ):
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            logger.error(f"get_ai_response_stream error: {e}", exc_info=True)
+            # Fallback to non-streaming response
+            resp = await self.get_ai_response(user_message)
+            yield resp
+
     async def get_ai_response(self, user_message: str) -> str:
         """
         Send the user's message through the ConversationEngine,
@@ -490,6 +534,98 @@ class AuraCore:
         except Exception as e:
             logger.error(f"ConversationEngine processing failed: {e}", exc_info=True)
             return f"✗ Error processing message: {e}"
+
+    async def process_request_stream(
+        self, user_goal: str
+    ) -> AsyncGenerator[str, None]:
+        """
+        Unified OS Kernel streaming request entry point.
+        Streams conversational tokens or yields progressive orchestration feedback.
+        """
+        raw = user_goal.strip().lower()
+        if raw in [
+            "yes", "y", "yeah", "yep", "sure", "ok", "okay", "no", "n", "nope", "nah"
+        ]:
+            resp = await self.process_request(user_goal)
+            yield resp
+            return
+
+        try:
+            from core.orchestration import MasterOrchestrator
+            orchestrator = MasterOrchestrator.get_instance()
+
+            # Check if pending confirmation is active before execution
+            pending_conf = orchestrator.check_pending_confirmation()
+            if pending_conf is not None:
+                yield f"I need your confirmation to {pending_conf.plan.goal}. Should I proceed?"
+                return
+
+            # Tool / Orchestration Execution
+            result = await orchestrator.process_request_async(user_goal)
+
+            # Check if pending confirmation was generated during execution (Hard-Block invariant)
+            pending_conf = orchestrator.check_pending_confirmation()
+            if pending_conf is not None:
+                yield f"I need your confirmation to {pending_conf.plan.goal}. Should I proceed?"
+                return
+
+            decision = (
+                result.data.get("decision", {})
+                if hasattr(result, "data") and isinstance(result.data, dict)
+                else {}
+            )
+            intent_type = decision.get("intent_type")
+            can_from_sys = decision.get("can_answer_from_system", False)
+            needs_planner = decision.get("needs_planner", True)
+
+            # System Self-Knowledge Queries
+            if intent_type == "system_query" or can_from_sys:
+                from core.system.system_knowledge_resolver import SystemKnowledgeResolver
+                yield SystemKnowledgeResolver.resolve(user_goal)
+                return
+
+            # Conversational Chat Queries -> Stream directly from LLM
+            if (intent_type == "chat" or not needs_planner) and self.llm_enabled and self.groq_client is not None:
+                async for token in self.get_ai_response_stream(user_goal):
+                    yield token
+                return
+
+            if hasattr(result, "final_output") and getattr(result, "final_output"):
+                yield str(getattr(result, "final_output"))
+            elif result.observations or result.data:
+                if (
+                    self.llm_enabled 
+                    and self.groq_client is not None 
+                    and intent_type in ["browser", "research"]
+                ):
+                    obs_text = "\n".join(result.observations) if result.observations else ""
+                    synth_prompt = (
+                        f"The user originally asked: '{user_goal}'.\n\n"
+                        f"The system found:\n{obs_text}\n\n"
+                        f"Please provide a direct, helpful conversational answer."
+                    )
+                    async for token in self.get_ai_response_stream(synth_prompt):
+                        yield token
+                else:
+                    filtered_obs = []
+                    for obs in (result.observations or []):
+                        if "pre-execution decision:" in obs.lower():
+                            continue
+                        if "no backend available for capability" in obs.lower():
+                            filtered_obs.append("I don't know how to perform that specific action on your desktop yet.")
+                        else:
+                            filtered_obs.append(obs)
+                    if filtered_obs:
+                        yield "\n".join(filtered_obs)
+                    elif result.success:
+                        yield "Action completed successfully."
+                    else:
+                        yield "I was unable to complete that action."
+            else:
+                yield "Action completed successfully." if result.success else "I was unable to complete that action."
+        except Exception as e:
+            logger.error(f"process_request_stream failed: {e}", exc_info=True)
+            yield f"I encountered an error: {e}"
 
     async def process_request(self, user_goal: str) -> str:
         """

@@ -479,7 +479,7 @@ class ContinuousVoiceLoop:
     # ------------------------------------------------------------------------
 
     def _process_transcript(self, transcript: str):
-        """Hand the finalized voice transcript off to AuraCore and speak the response."""
+        """Hand the finalized voice transcript off to AuraCore via streaming pipeline."""
         self._set_state(VoiceState.UNDERSTANDING)
         self._turn_telemetry["T5_reasoning_start"] = time.time()
         logger.info(
@@ -500,58 +500,79 @@ class ContinuousVoiceLoop:
             return
 
         self._set_state(VoiceState.EXECUTING)
+        _safe_print("\n🤔 Aura is thinking...\n")
 
-        spoken_summary: str | None = None
-        success = False
+        from .prosody_chunker import ProsodyAwareChunker
+        chunker = ProsodyAwareChunker()
 
-        try:
-            aura_core.add_to_conversation("user", transcript)
-            _safe_print("\n🤔 Aura is thinking...\n")
+        full_response_parts: list[str] = []
+        first_audio_logged = False
 
-            response: str = asyncio.run(aura_core.process_request(transcript))
-            self._turn_telemetry["T6_response_ready"] = time.time()
+        async def _stream_turn():
+            nonlocal first_audio_logged
+            try:
+                aura_core.add_to_conversation("user", transcript)
+                _safe_print("Aura > ")
 
-            aura_core.add_to_conversation("assistant", response)
-            _safe_print(f"\nAura > {response}\n")
-            spoken_summary = response
-            success = True
+                # Async token generator from AuraCore
+                if hasattr(aura_core, "process_request_stream"):
+                    token_gen = aura_core.process_request_stream(transcript)
+                else:
+                    async def _fallback_gen():
+                        resp = await aura_core.process_request(transcript)
+                        yield resp
+                    token_gen = _fallback_gen()
 
-            t0 = self._turn_telemetry.get("T0_wake", self._turn_telemetry["T5_reasoning_start"])
-            t6 = self._turn_telemetry["T6_response_ready"]
-            reasoning_ms = (t6 - self._turn_telemetry["T5_reasoning_start"]) * 1000
-            total_ms = (t6 - t0) * 1000
-            logger.info(
-                f"[ContinuousVoiceLoop Turn #{self.turn_count}] Response ready ({len(response)} chars) | "
-                f"Core: {reasoning_ms:.1f}ms | Total from trigger: {total_ms:.1f}ms"
-            )
-        except Exception as e:
-            logger.error(
-                f"[ContinuousVoiceLoop] aura_core.process_request failed: {e}",
-                exc_info=True,
-            )
-            spoken_summary = f"Sorry, I ran into a problem: {e}"
-            success = False
+                # Stream prosody chunks to TTS
+                async def _chunk_stream():
+                    nonlocal first_audio_logged
+                    async for chunk in chunker.stream_chunks(token_gen):
+                        full_response_parts.append(chunk)
+                        _safe_print(f"{chunk} ", stream=None)
 
-        if not spoken_summary:
-            spoken_summary = "Sorry, I couldn't process that."
+                        if not first_audio_logged:
+                            first_audio_logged = True
+                            ttfa_ms = (time.time() - self._turn_telemetry["T5_reasoning_start"]) * 1000
+                            self._turn_telemetry["T6_first_audio"] = time.time()
+                            logger.info(f"[ContinuousVoiceLoop Turn #{self.turn_count}] TTFA: {ttfa_ms:.1f}ms")
 
-        # If user interrupted while thinking / executing, discard old response and allow new turn to proceed
-        if self.state not in (VoiceState.UNDERSTANDING, VoiceState.EXECUTING):
-            logger.info("[ContinuousVoiceLoop] Response discarded — turn was interrupted by wake word during thinking")
-            return
+                        yield chunk
 
-        self.history.append({
-            "turn": self.turn_count,
-            "transcript": transcript,
-            "success": success,
-            "spoken_summary": spoken_summary,
-        })
+                # Transition to SPEAKING state as soon as TTS stream begins
+                self._set_state(VoiceState.SPEAKING)
+                self._turn_telemetry["T7_tts_start"] = time.time()
 
-        self._set_state(VoiceState.SPEAKING)
-        self._turn_telemetry["T7_tts_start"] = time.time()
+                if self._running:
+                    self.voice_manager.tts_manager.speak_stream(_chunk_stream())
 
-        if self._running:
-            self.voice_manager.speak(spoken_summary)
+            except Exception as e:
+                logger.error(f"[ContinuousVoiceLoop] Streaming turn failed: {e}", exc_info=True)
+                err_msg = f"Sorry, I ran into a problem: {e}"
+                full_response_parts.append(err_msg)
+                self.voice_manager.speak(err_msg)
+
+        # Run the async turn on a dedicated thread with its own loop to prevent blocking
+        def _run_turn_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(_stream_turn())
+            finally:
+                loop.close()
+
+                complete_resp = " ".join(full_response_parts)
+                _safe_print("\n")
+                if complete_resp:
+                    aura_core.add_to_conversation("assistant", complete_resp)
+
+                self.history.append({
+                    "turn": self.turn_count,
+                    "transcript": transcript,
+                    "success": bool(complete_resp),
+                    "spoken_summary": complete_resp,
+                })
+
+        threading.Thread(target=_run_turn_thread, daemon=True).start()
 
     def _on_followup_timeout(self):
         """Follow-up window (5s) expired without user speech — return to wake-word standby."""

@@ -12,18 +12,19 @@ Phase 1 — Shared Intelligence (M17–M18) ████████████
 Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
 Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
 Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
-Phase 5 — Autonomy (M24–M26)            ░░░░░░░░░░░░░░░░░░░░   0/3   PLANNED
-Phase 6 — Autonomous Engineering (M27)  ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 7 — Aura OS (M28)                 ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 8 — Natural Interaction (M29)     ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 9 — Aura GUI (M30)               ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 5 — Domain Expertise & Autonomy   ██████████████░░░░░░   2/3   IN PROGRESS (M24 + M25 COMPLETE)
+Phase 6 — Personal OS & Daily Workflows ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M26)
+Phase 7 — Autonomous Engineering Loop   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M27)
+Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M28)
+Phase 9 — Multimodal Voice Interaction  ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M29)
+Phase 10 — Aura OS Native GUI Interface ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M30)
 ```
 
 ---
 
-## Current Platform Status (`v0.27.0-autonomous-daemon`)
+## Current Platform Status (`v0.29.0-expert-systems`)
 
-### Completed Milestones (M01–M23)
+### Completed Milestones (M01–M25)
 
 - ✅ **M01–M16 — Core Foundation & Orchestration**: MasterOrchestrator 7-stage cognitive pipeline, 17 native Win32 desktop managers, 23 backend adapters, unified RuntimeSession.
 - ✅ **M17 — Cognitive Memory**: 8 typed memory stores (Working, Short-Term, Long-Term, Episodic, Semantic, Procedural, Preference, Project) with decay, consolidation, and project-scoped isolation.
@@ -33,37 +34,34 @@ Phase 9 — Aura GUI (M30)               ░░░░░░░░░░░░░
 - ✅ **M21 — Research & Knowledge Hardening**: Evidence grounding (`claim_id` $\leftrightarrow$ `citation_key` $\leftrightarrow$ URL), citation preservation through `ResultMerger`, zero-refetch memory recall, and SSRF/egress filtering.
 - ✅ **M22 — Multimodal Voice & Vision**: `DevicePrivacyEngine` pre-acquisition gating, sensitive-window default-BLOCK (credential dialogs), coordinate grounding, and multi-engine speech fallback.
 - ✅ **M23 — Autonomous Daemon & Background Operations**: Bounded worker pool, SQLite `DaemonStateStore`, interval/cron scheduling, cooperative cancellation, crash recovery (`RECOVERY_REQUIRED`), and HMAC autonomy governance.
+- ✅ **M24 — Event Runtime & Autonomous Intent Execution**: Canonical `AuraEvent` contract, `EventRuntime` deduplication & multi-signal correlation engine, `EventInterpreter` situational awareness, `AutonomyPolicyGate` cryptographic authorization, `FilesystemWatcher` & `ProcessMonitor` telemetry producers, and closed-loop autonomous execution.
+- ✅ **M25 — Professional Expert Systems & Cognitive Routing**: 4 Domain Experts (Cybersecurity, Network Engineering, Software Engineering, Financial Analysis), `PlanDAGCompiler` reasoning-to-execution translation, Stage 2.9 opt-in router in `MasterOrchestrator`, fail-closed artifact/confidence threshold gates (`ArtifactLowConfidence`, `ArtifactPayloadMissing`), and domain-specific observation formatting.
 - ✅ **Security Hardening Track (Phases 1–4)**: DPAPI master keys, HKDF-SHA256 derivation, out-of-process `AuditWriterService` over authenticated Windows Named Pipe IPC, and Windows Event Log OS sink.
+- ✅ **Live OS Validation (Tracks A, B, B2)**: 100% verified live on Windows OS across compound goals, organic PARTIAL boundaries, coordinator triggers, 5-role DAG handoffs, and low-confidence fail-closed blocks.
 
 ---
 
-## Target Milestones (Upcoming)
+## Target Milestones (Future Roadmap)
 
-### Milestone 24 — Event Runtime & Autonomous Triggers (`v0.28.0`) [PLANNED]
-- 🎯 Asynchronous EventBus triggers (file system, process, network, time)
-- 🎯 Condition evaluator engine for trigger firing
-- 🎯 Persistent event queue and background reactive workers
-
-### Milestone 25 — Professional Expert Systems (`v0.29.0`) [PLANNED]
-- 🎯 Specialized domain planners: Software Engineering, Network Engineering, Cybersecurity, Finance
-- 🎯 Domain-specific analysis heuristics and structured deliverables
-
-### Milestone 26 — Personal Operating System (`v0.30.0`) [PLANNED]
-- 🎯 Proactive daily agenda, calendar tracking, file organization
-- 🎯 Repetitive desktop workflow automation
+### Milestone 26 — Personal Operating System (`v0.30.0`) [NEXT]
+- 🎯 **Proactive Daily Agenda & Context**: Proactive calendar tracking, meeting prep briefs, daily agenda assembly, and priority queuing.
+- 🎯 **Intelligent File Organization**: Automated desktop sorting, downloads taxonomy, archive management, and duplicate deduplication.
+- 🎯 **Repetitive Desktop Workflow Automation**: Multi-app macro synthesis, window snapping presets, and routine task triggers.
 
 ### Milestone 27 — Autonomous Engineering Platform (`v0.31.0`) [PLANNED]
-- 🎯 Autonomous issue-to-PR development loop with human-in-the-loop gates
+- 🎯 **Autonomous Issue-to-PR Development Loop**: Automatic GitHub/GitLab issue intake, workspace replication, test-driven implementation, and pull request generation with human-in-the-loop gates.
+- 🎯 **Automated Regression & Self-Healing**: Continuous test execution, automated bug localisation, and validated patch synthesis with rollback safety.
 
-### Milestone 28 — Aura OS Runtime (`v1.0.0`) [PLANNED]
-- 🎯 Fully integrated persistent AI operating system environment
+### Milestone 28 — Integrated Aura OS Runtime (`v1.0.0`) [PLANNED]
+- 🎯 **Persistent System Daemon**: Low-overhead Windows system service lifecycle with zero-downtime hot reloading.
+- 🎯 **Multi-User & Enterprise Policy Governance**: Multi-tenant memory partitions, role-based capability permissions, and corporate compliance telemetry sinks.
 
-### Milestone 29 — Natural Interaction Layer (`v1.1.0`) [PLANNED]
-- 🎯 Full-duplex conversational voice, real-time barge-in interruption, acoustic echo cancellation
+### Milestone 29 — Natural Voice & Ambient Interaction (`v1.1.0`) [PLANNED]
+- 🎯 **Continuous Low-Latency Voice Interface**: Wake-word activation (`AuraWake`), streaming STT/TTS pipeline, and conversational turn-taking with ambient barge-in support.
 
-### Milestone 30 — Aura Command Center GUI (`v1.2.0`) [PLANNED]
-- 🎯 Comprehensive desktop dashboard and visual cognitive monitor
+### Milestone 30 — Native Aura GUI & Management Console (`v1.2.0`) [PLANNED]
+- 🎯 **Aura OS Dashboard**: System tray telemetry, live cognitive DAG visualization, task history audit viewer, and real-time permission approval prompt dialogs.
 
 ---
 
-*Last Updated: August 18, 2026 — See master [roadmap.md](../roadmap.md) for full specifications.*
+*For detailed specifications, see [docs/milestones/](milestones/).*

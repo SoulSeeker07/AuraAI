@@ -180,13 +180,13 @@
 | Research & Knowledge Hardening (Evidence grounding, zero-refetch, SSRF filter) | **ACTIVE** | M21 ✅ |
 | Multimodal Voice & Vision (Privacy gating, coordinate grounding, multi-engine fallback) | **ACTIVE** | M22 ✅ |
 | Autonomous Daemon & Background Operations (Durable state, crash recovery, HMAC tokens) | **ACTIVE** | M23 ✅ |
+| Event Runtime & Autonomous Intent Execution (AuraEvent, EventRuntime, Interpreter, PolicyGate, Watchers) | **ACTIVE** | M24 ✅ |
 | Security Hardening Track (Phases 1–4, DPAPI, HKDF, Isolated Audit Writer IPC) | **ACTIVE** | Core Security ✅ |
 
 ## Missing — Future Milestones
 
 | Module | Classification | Milestone |
 |:---|:---|:---|
-| Event Runtime (autonomous triggers, condition evaluators, event loops) | **MISSING** | M24 |
 | Professional Expert Systems (Specialized planners for NetEng, Security, Finance) | **MISSING** | M25 |
 | Personal OS (Proactive task & schedule management, daily workflows) | **MISSING** | M26 |
 | Autonomous Engineering Platform (End-to-end issue to PR pipeline) | **MISSING** | M27 |

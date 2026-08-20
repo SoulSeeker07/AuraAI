@@ -13,6 +13,7 @@ from typing import Any
 
 from .capability_registry import PermissionRequired
 from .desktop_context import DesktopContext, get_desktop_context
+from .desktop_result import DesktopResult
 from .metrics import MetricsLevel, MetricsRecorder
 from .native_result import NativeResult
 
@@ -70,7 +71,7 @@ class NativeExecutionContext:
     metrics_level: MetricsLevel = MetricsLevel.STANDARD
 
     # Execution state
-    result: NativeResult | None = None
+    result: DesktopResult | NativeResult | None = None
     exception: Exception | None = None
     rollback_function: Callable[[], Any] | None = None
 
@@ -96,33 +97,42 @@ class NativeExecutionContext:
     verification_error: str | None = None
 
     def __post_init__(self):
-        """Initialize desktop context if not provided"""
+        """Initialize context after creation"""
         if self.desktop_context is None:
             self.desktop_context = get_desktop_context()
 
-    # ==================== Stage Management ====================
+    # ==================== State Management ====================
 
     def set_stage(self, stage: ExecutionStage) -> None:
-        """Set the current execution stage"""
+        """Set current execution stage"""
         self.stage = stage
 
-    def advance_stage(self) -> None:
-        """Advance to next stage in pipeline"""
-        stages = list(ExecutionStage)
-        current_index = stages.index(self.stage)
-        if current_index + 1 < len(stages):
-            self.stage = stages[current_index + 1]
+    def set_status(self, status: ExecutionStatus) -> None:
+        """Set execution status"""
+        self.status = status
+
+    def abort(self, reason: str) -> None:
+        """Abort execution"""
+        self.aborted = True
+        self.abort_reason = reason
+        self.status = ExecutionStatus.CANCELLED
 
     # ==================== Permission Management ====================
+
+    def grant_permission(self) -> None:
+        """Grant permission for execution"""
+        self.permission_granted = True
+        self.permission_denied_reason = None
+
+    def deny_permission(self, reason: str) -> None:
+        """Deny permission for execution"""
+        self.permission_granted = False
+        self.permission_denied_reason = reason
+        self.status = ExecutionStatus.FAILED
 
     def set_permission_required(self, permission: PermissionRequired) -> None:
         """Set the required permission for this execution"""
         self.permission = permission
-
-    def set_permission_granted(self, granted: bool, reason: str | None = None) -> None:
-        """Set permission grant status"""
-        self.permission_granted = granted
-        self.permission_denied_reason = reason
 
     def check_permission(self) -> bool:
         """Check if permission is granted (placeholder for permission system)"""
@@ -130,23 +140,27 @@ class NativeExecutionContext:
 
     # ==================== Metrics Management ====================
 
-    def start_metrics(self) -> None:
-        """Start timing for the operation"""
-        if self.metrics_recorder is None:
-            self.metrics_recorder = MetricsRecorder(self.metrics_level)
+    def start_timing(self) -> None:
+        """Start execution timing"""
         self.operation_started_at = datetime.now()
+        if self.metrics_recorder:
+            self.metrics_recorder.start_operation(
+                self.capability,
+                getattr(self, "manager_name", "unknown"),
+                getattr(self, "action_name", self.capability),
+            )
 
-    def complete_metrics(self) -> None:
-        """Complete timing for the operation"""
-        if self.operation_started_at:
-            self.operation_completed_at = datetime.now()
+    def stop_timing(self, success: bool = True, error: str | None = None) -> None:
+        """Stop execution timing"""
+        self.operation_completed_at = datetime.now()
+        if self.metrics_recorder:
+            self.metrics_recorder.record_metrics(success=success, error=error)
 
     def get_duration_ms(self) -> float:
-        """Get duration in milliseconds"""
+        """Get execution duration in milliseconds"""
         if self.operation_started_at and self.operation_completed_at:
-            return (
-                self.operation_completed_at - self.operation_started_at
-            ).total_seconds() * 1000
+            delta = self.operation_completed_at - self.operation_started_at
+            return delta.total_seconds() * 1000
         return 0.0
 
     def get_metrics(self) -> dict[str, Any] | None:
@@ -157,10 +171,18 @@ class NativeExecutionContext:
 
     # ==================== Result Management ====================
 
-    def set_result(self, result: NativeResult) -> None:
+    def set_result(self, result: DesktopResult | NativeResult) -> None:
         """Set the execution result"""
         self.result = result
-        self.status = result.status
+        if hasattr(result, "status"):
+            if isinstance(result.status, ExecutionStatus):
+                self.status = result.status
+            elif hasattr(result.status, "name") and result.status.name in ExecutionStatus.__members__:
+                self.status = ExecutionStatus[result.status.name]
+            else:
+                self.status = ExecutionStatus.SUCCESS if getattr(result, "success", False) else ExecutionStatus.FAILED
+        else:
+            self.status = ExecutionStatus.SUCCESS if getattr(result, "success", False) else ExecutionStatus.FAILED
 
     def set_exception(self, exception: Exception) -> None:
         """Set exception that occurred during execution"""

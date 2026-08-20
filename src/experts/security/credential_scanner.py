@@ -74,3 +74,49 @@ class CredentialScanner:
             "findings": findings,
             "max_severity": max_sev,
         }
+
+    def scan_directory(self, directory_path: str, max_files: int = 50) -> dict[str, Any]:
+        """Scans source and configuration files in a directory for exposed credentials."""
+        import os
+        from pathlib import Path
+
+        all_findings = []
+        dir_p = Path(directory_path)
+        if dir_p.is_file():
+            try:
+                content = dir_p.read_text(encoding="utf-8", errors="ignore")
+                return self.scan_content(content, source_label=dir_p.name)
+            except Exception:
+                return {"exposed_count": 0, "findings": [], "max_severity": "NONE"}
+
+        count = 0
+        if dir_p.exists():
+            for root, dirs, files in os.walk(directory_path):
+                # Skip .git and venv directories
+                dirs[:] = [d for d in dirs if d not in (".git", ".venv", "__pycache__", "node_modules")]
+                for file in files:
+                    if file.endswith((".py", ".json", ".yaml", ".yml", ".env", ".toml", ".txt", ".md")):
+                        file_path = os.path.join(root, file)
+                        try:
+                            content = Path(file_path).read_text(encoding="utf-8", errors="ignore")
+                            res = self.scan_content(content, source_label=file)
+                            all_findings.extend(res.get("findings", []))
+                        except Exception:
+                            pass
+                        count += 1
+                        if count >= max_files:
+                            break
+                if count >= max_files:
+                    break
+
+        severity_ranks = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+        max_sev = "NONE"
+        for f in all_findings:
+            if severity_ranks.get(f.get("severity", "NONE"), 0) > severity_ranks.get(max_sev, 0):
+                max_sev = f.get("severity", "NONE")
+
+        return {
+            "exposed_count": len(all_findings),
+            "findings": all_findings,
+            "max_severity": max_sev,
+        }

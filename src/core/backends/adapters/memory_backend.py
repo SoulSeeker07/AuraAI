@@ -27,7 +27,15 @@ class MemoryBackend(BaseBackendAdapter):
 
     @property
     def capabilities(self) -> list[str]:
-        return ["memory_write", "memory_read", "memory.write", "memory.read"]
+        return [
+            "memory_write",
+            "memory_read",
+            "memory.write",
+            "memory.read",
+            "memory.store",
+            "memory.recall",
+            "memory.search",
+        ]
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -62,11 +70,15 @@ class MemoryBackend(BaseBackendAdapter):
             from Memory import Memory
         mem = Memory()
 
-        if capability in ["memory_read", "memory.read"]:
-            facts = mem.search(goal)
+        args = arguments or {}
+
+        # Read / Recall / Search Operations
+        if capability in ["memory_read", "memory.read", "memory.recall", "memory.search"]:
+            search_query = args.get("query") or args.get("key") or goal
+            facts = mem.search(search_query)
             if not facts:
                 # Fallback: search key from goal
-                goal_clean = goal.lower().replace(" ", "_")
+                goal_clean = search_query.lower().replace(" ", "_")
                 for cat in [
                     "preference",
                     "profile",
@@ -108,28 +120,47 @@ class MemoryBackend(BaseBackendAdapter):
                 },
             )
 
-        # Extract facts from goal (memory_write)
-        facts = mem.extract_facts(goal)
-        for fact in facts:
-            mem.upsert_fact(fact.category, fact.key, fact.value)
+        # Write / Store Operations
+        elif capability in ["memory_write", "memory.write", "memory.store"]:
+            facts = []
+            if "key" in args and "value" in args:
+                cat = args.get("category", "preference")
+                mem.upsert_fact(cat, str(args["key"]), str(args["value"]))
+                from Memory import MemoryFact
+                facts.append(MemoryFact(category=cat, key=str(args["key"]), value=str(args["value"])))
 
-        if facts:
-            saved = [f"{f.key.replace('_', ' ')}: {f.value}" for f in facts]
-            obs = [f"I remembered: {', '.join(saved)}."]
-        else:
-            obs = ["I noted that."]
+            extracted = mem.extract_facts(goal)
+            for fact in extracted:
+                mem.upsert_fact(fact.category, fact.key, fact.value)
+                facts.append(fact)
 
+            if facts:
+                saved = [f"{f.key.replace('_', ' ')}: {f.value}" for f in facts]
+                obs = [f"I remembered: {', '.join(saved)}."]
+            else:
+                obs = ["I noted that."]
+
+            return ExecutionResult(
+                success=True,
+                planner="memory",
+                goal=goal,
+                confidence=1.0,
+                observations=obs,
+                data={
+                    "backend": self.name,
+                    "capability": capability,
+                    "facts": [f.value for f in facts],
+                },
+            )
+
+        # Unknown / Unhandled Capability (Fail-Closed)
         return ExecutionResult(
-            success=True,
+            success=False,
             planner="memory",
             goal=goal,
-            confidence=1.0,
-            observations=obs,
-            data={
-                "backend": self.name,
-                "capability": capability,
-                "facts": [f.value for f in facts],
-            },
+            confidence=0.0,
+            observations=[f"MemoryBackend does not support capability '{capability}'."],
+            data={"backend": self.name, "capability": capability, "error": "unsupported_capability"},
         )
 
 
