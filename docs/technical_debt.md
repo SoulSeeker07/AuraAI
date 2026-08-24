@@ -278,3 +278,13 @@ This document tracks identified architectural debt, interim compatibility shims,
 * **Resolution**: Guarded `self._last_session = session` with `if source == RequestSource.HUMAN_INTERACTIVE:`. Non-interactive sources (`TRIGGER_AUTONOMOUS`, `DAEMON_BACKGROUND`, `AGENT_DELEGATED`) execute with isolated session context and cannot pollute the interactive confirmation channel.
 * **Verification**: `tests/unit/test_cross_channel_session_isolation.py` (4/4 passed).
 
+---
+
+## 20. `ExecutionTraceModel` Dynamic Replan Graph Node Splicing (TD-M26-03)
+* **Location**: [`src/gui/models/execution_trace_model.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/gui/models/execution_trace_model.py)
+* **Status**: ⚠️ **OPEN / TRACKED**
+* **Context**: When `MasterOrchestrator` or a domain supervisor triggers an adaptive replan mid-stream, `ReplanTriggeredEvent` is currently consumed by `ExecutionTraceModel` to log the event and increment `replan_count`. Dynamic in-flight node splicing (reconciling completed/verified ancestor nodes with a regenerated subtask graph) is deferred; the model preserves the initially decomposed graph structure during execution.
+* **Remediation**: Implement a full DAG reconciliation handler in `ExecutionTraceModel._handle_replan_triggered()` to dynamically replace remaining pending nodes with the newly decomposed plan while retaining completed ancestor state.
+
+
+

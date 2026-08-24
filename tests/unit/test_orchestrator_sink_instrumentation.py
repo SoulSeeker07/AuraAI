@@ -239,3 +239,35 @@ async def test_circuit_breaker_detaches_sink_after_three_strikes(caplog):
     res2 = await orchestrator.process_request_async("Open Notepad")
     assert res2.success is True
     assert call_count == call_count_before  # No more calls to detached sink
+
+
+@pytest.mark.asyncio
+async def test_synchronous_process_request_inside_running_event_loop():
+    """
+    CRITICAL QASYNC RETROFIT TEST (Site 1):
+    Verify that calling synchronous `orchestrator.process_request()` from inside
+    an active running event loop (e.g. qasync GUI loop) does not raise
+    RuntimeError: asyncio.run() cannot be called from a running event loop.
+    """
+    orchestrator = MasterOrchestrator.get_instance(expert_routing_enabled=False)
+
+    mock_backend = create_mock_backend(goal="Open Notepad", success=True)
+    orchestrator.backend_registry.select_best_backend = MagicMock(return_value=mock_backend)
+
+    # We are inside an active async test (running event loop).
+    # Calling process_request() synchronously must succeed cleanly via ThreadPool offload.
+    res = orchestrator.process_request("Open Notepad")
+    assert res.success is True
+    assert res.goal == "Open Notepad"
+
+
+def test_synchronous_process_request_without_event_loop():
+    """Verify that synchronous process_request() works directly when no event loop exists."""
+    orchestrator = MasterOrchestrator.get_instance(expert_routing_enabled=False)
+
+    mock_backend = create_mock_backend(goal="Open Notepad", success=True)
+    orchestrator.backend_registry.select_best_backend = MagicMock(return_value=mock_backend)
+
+    res = orchestrator.process_request("Open Notepad")
+    assert res.success is True
+    assert res.goal == "Open Notepad"

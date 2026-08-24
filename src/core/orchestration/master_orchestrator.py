@@ -14,6 +14,7 @@ Operates natively on AgentSession processes across the 7-stage cognitive pipelin
 """
 
 import asyncio
+import concurrent.futures
 import dataclasses
 import logging
 from datetime import datetime
@@ -297,12 +298,26 @@ class MasterOrchestrator:
         context: Any = None,
         source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
     ) -> ExecutionResult:
-        """Synchronous entry point for processing a request."""
-        return asyncio.run(
-            self.process_request_async(
-                goal_text, preferred_planner, parameters, budget, context, source=source
-            )
+        """
+        Synchronous entry point for processing a request.
+        Loop-safe: handles execution from threads with or without an active running event loop.
+        """
+        coro = self.process_request_async(
+            goal_text, preferred_planner, parameters, budget, context, source=source
         )
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None or not loop.is_running():
+            return asyncio.run(coro)
+
+        # A loop is already running in this thread. Offload to a dedicated worker thread
+        # so asyncio.run() can execute the coroutine without nested event loop collisions.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(asyncio.run, coro)
+            return future.result()
 
     async def run(
         self,
