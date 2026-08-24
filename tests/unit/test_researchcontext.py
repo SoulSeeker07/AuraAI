@@ -2,9 +2,9 @@
 Test ResearchContext implementation
 """
 
-from src.research.citation_builder import CitationBuilder, CitationStyle
-from src.research.models import Evidence, SourceTrustLevel
-from src.research.research_context import ResearchContext, ResearchMode
+from research.citation_builder import CitationBuilder, CitationStyle
+from research.models import Evidence, SourceTrustLevel
+from research.research_context import ResearchContext, ResearchMode
 
 print("=" * 60)
 print("RESEARCHCONTEXT TEST")

@@ -129,8 +129,7 @@ from transformers import pipeline
         pdf_content = b"%PDF-1.4\n1 0 obj\n<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj\n<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\ntrailer\n<</Size 4/Root 1 0 R>>\nstartxref\n167\n%%EOF"
 
         # Mock PyPDF2
-        mocker.patch(
-            "src.brain.page_reader.PyPDF2.PdfReader", return_value=mocker.Mock()
+        mocker.patch("brain.page_reader.PyPDF2.PdfReader", return_value=mocker.Mock()
         )
 
         text = page_reader._extract_pdf(pdf_content, "https://example.com/doc.pdf")
@@ -169,7 +168,7 @@ print("Hello")
         """
         mock_response.getheader.return_value = "text/html"
 
-        mocker.patch("src.brain.page_reader.urlopen", return_value=mock_response)
+        mocker.patch("brain.page_reader.urlopen", return_value=mock_response)
 
         page = page_reader.read_page(url)
 
@@ -200,7 +199,7 @@ print("Hello")
             call_order.append(index)
             return mock_responses[index]
 
-        mocker.patch("src.brain.page_reader.urlopen", side_effect=mock_urlopen)
+        mocker.patch("brain.page_reader.urlopen", side_effect=mock_urlopen)
 
         pages = await page_reader.read_pages_parallel(urls)
 
@@ -227,8 +226,7 @@ print("Hello")
             )
         ]
 
-        mocker.patch(
-            "src.brain.intent_analyzer.client.chat.completions.create",
+        mocker.patch("brain.intent_analyzer.client.chat.completions.create",
             return_value=mock_response,
         )
 
@@ -253,8 +251,7 @@ print("Hello")
             )
         ]
 
-        mocker.patch(
-            "src.brain.intent_analyzer.client.chat.completions.create",
+        mocker.patch("brain.intent_analyzer.client.chat.completions.create",
             return_value=mock_response,
         )
 
@@ -279,8 +276,7 @@ print("Hello")
             )
         ]
 
-        mocker.patch(
-            "src.brain.intent_analyzer.client.chat.completions.create",
+        mocker.patch("brain.intent_analyzer.client.chat.completions.create",
             return_value=mock_response,
         )
 
@@ -305,8 +301,7 @@ print("Hello")
             )
         ]
 
-        mocker.patch(
-            "src.brain.intent_analyzer.client.chat.completions.create",
+        mocker.patch("brain.intent_analyzer.client.chat.completions.create",
             return_value=mock_response,
         )
 
@@ -331,8 +326,7 @@ print("Hello")
             )
         ]
 
-        mocker.patch(
-            "src.brain.intent_analyzer.client.chat.completions.create",
+        mocker.patch("brain.intent_analyzer.client.chat.completions.create",
             return_value=mock_response,
         )
 
@@ -357,8 +351,7 @@ print("Hello")
             )
         ]
 
-        mocker.patch(
-            "src.brain.intent_analyzer.client.chat.completions.create",
+        mocker.patch("brain.intent_analyzer.client.chat.completions.create",
             return_value=mock_response,
         )
 

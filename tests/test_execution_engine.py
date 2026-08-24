@@ -8,7 +8,7 @@ from datetime import datetime
 
 import pytest
 
-from src.execution import (
+from execution import (
     BaseToolAdapter,
     CancellationToken,
     ExecutionEngine,
@@ -28,7 +28,7 @@ from src.execution import (
     adapt_existing_tool,
     adapt_function,
 )
-from src.execution.exceptions import (
+from execution.exceptions import (
     CancellationError,
     PermissionDeniedError,
     TimeoutError,
@@ -796,7 +796,7 @@ def test_existing_tool_adapter():
             self.description = "Test tool"
 
         def get_metadata(self):
-            from src.execution import ToolCategory, ToolMetadata
+            from execution import ToolCategory, ToolMetadata
 
             return ToolMetadata(
                 name=self.name,

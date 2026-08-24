@@ -17,10 +17,10 @@ src_path = REPO_ROOT / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from src.desktop.native.sandbox.base_sandbox import IsolationLevel
-from src.desktop.native.sandbox.sandbox_manager import SandboxManager
-from src.desktop.native.sandbox.win32_job_sandbox import Win32JobSandbox
-from src.desktop.native.sandbox.workspace_jail import WorkspaceJail
+from desktop.native.sandbox.base_sandbox import IsolationLevel
+from desktop.native.sandbox.sandbox_manager import SandboxManager
+from desktop.native.sandbox.win32_job_sandbox import Win32JobSandbox
+from desktop.native.sandbox.workspace_jail import WorkspaceJail
 
 
 class TestWorkspaceJail:
@@ -95,7 +95,7 @@ class TestSandboxManagerAndCallerAwareness:
 
 
     def test_terminal_manager_caller_tier_awareness_enforces_gauntlet(self):
-        from src.desktop.native.managers.terminal_manager import TerminalManager
+        from desktop.native.managers.terminal_manager import TerminalManager
 
         term_mgr = TerminalManager()
         term_mgr.initialize()

@@ -5,8 +5,8 @@ import threading
 import logging
 import math
 
-from src.voice.models import STTSettings
-from src.voice.stt_manager import FasterWhisperSTTEngine
+from voice.models import STTSettings
+from voice.stt_manager import FasterWhisperSTTEngine
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -33,7 +33,7 @@ def mock_run_partial(self, audio_snapshot: bytes, offset_s: float, utterance_id:
 FasterWhisperSTTEngine._run_partial_transcribe = mock_run_partial
 
 # Monkey-patch Stabilizer to simulate 0% agreement (worst-case audio)
-from src.voice.stt_manager import LocalAgreementStabilizer
+from voice.stt_manager import LocalAgreementStabilizer
 original_update = LocalAgreementStabilizer.update
 def mock_update(self, words_with_timestamps):
     res = original_update(self, words_with_timestamps)

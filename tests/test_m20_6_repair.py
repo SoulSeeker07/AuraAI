@@ -1,9 +1,9 @@
 import tempfile
 import sys
 from pathlib import Path
-from src.engineering.test_engine import TestEngine
-from src.engineering.code_editor import CodeEditor
-from src.engineering.bug_repair import BugRepairLoop
+from engineering.test_engine import TestEngine
+from engineering.code_editor import CodeEditor
+from engineering.bug_repair import BugRepairLoop
 
 class MockBridge:
     def execute_capability(self, capability, arguments):

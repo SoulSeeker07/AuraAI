@@ -29,12 +29,12 @@ src_path = REPO_ROOT / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from src.desktop.native.managers.file_manager import FileManager
-from src.desktop.native.managers.security_manager import SecurityManager
-from src.desktop.native.managers.settings_manager import SettingsManager
-from src.desktop.native.managers.software_manager import SoftwareManager
-from src.desktop.native.managers.terminal_manager import TerminalManager
-from src.desktop.native.security.approval_authority import (
+from desktop.native.managers.file_manager import FileManager
+from desktop.native.managers.security_manager import SecurityManager
+from desktop.native.managers.settings_manager import SettingsManager
+from desktop.native.managers.software_manager import SoftwareManager
+from desktop.native.managers.terminal_manager import TerminalManager
+from desktop.native.security.approval_authority import (
     ApprovalTicket,
     CryptographicApprovalAuthority,
 )

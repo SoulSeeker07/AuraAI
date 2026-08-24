@@ -174,7 +174,7 @@ class PageReader:
         timeout = timeout_seconds or self.timeout_seconds
         from urllib.error import HTTPError, URLError
         from urllib.request import Request, build_opener
-        from src.desktop.native.security.network_policy import (
+        from desktop.native.security.network_policy import (
             EgressDecision,
             NetworkPolicyEngine,
             SafeHTTPRedirectHandler,
@@ -550,25 +550,37 @@ class PageReader:
         if any(ext in url_lower for ext in [".md", ".markdown"]):
             return "markdown"
 
+        # Check for Microsoft Learn / Docs
+        if "learn.microsoft.com" in url_lower or "docs.microsoft.com" in url_lower:
+            return "MICROSOFT_LEARN"
+
+        # Check for Cisco docs
+        if "cisco.com" in url_lower:
+            return "CISCO_DOCS"
+
+        # Check for Python docs
+        if "docs.python.org" in url_lower:
+            return "PYTHON_DOCS"
+
         # Check for GitHub
-        if any(domain in url_lower for domain in DOCUMENT_PATTERNS["github"]):
+        if any(domain in url_lower for domain in self.DOCUMENT_PATTERNS.get("github", [])):
             return "github"
 
         # Check for GitLab
-        if any(domain in url_lower for domain in DOCUMENT_PATTERNS["gitlab"]):
+        if any(domain in url_lower for domain in self.DOCUMENT_PATTERNS.get("gitlab", [])):
             return "gitlab"
 
         # Check for documentation sites
-        for doc_type, domains in DOCUMENT_PATTERNS["readthedocs"].items():
-            if any(domain in url_lower for domain in domains):
+        for domain in self.DOCUMENT_PATTERNS.get("readthedocs", []):
+            if domain in url_lower:
                 return "documentation"
 
         # Check for academic sites
-        if any(domain in url_lower for domain in DOCUMENT_PATTERNS["academic"]):
+        if any(domain in url_lower for domain in self.DOCUMENT_PATTERNS.get("academic", [])):
             return "academic"
 
         # Check for government sites
-        if any(domain in url_lower for domain in DOCUMENT_PATTERNS["gov"]):
+        if any(domain in url_lower for domain in self.DOCUMENT_PATTERNS.get("gov", [])):
             return "gov"
 
         # Default to HTML
@@ -608,19 +620,18 @@ class PageReader:
         # Try to parse as markdown
         import re
 
-        import markdown
-
         # Clean content
         content = re.sub(r"\r\n", "\n", content)
         content = re.sub(r"\n{3,}", "\n\n", content)
 
-        # Parse markdown
-        md = markdown.Markdown(
-            extensions=["codehilite", "fenced_code", "tables"],
-            extension_configs={"codehilite": {"linenums": True, "guess_lang": False}},
-        )
-
         try:
+            import markdown
+
+            # Parse markdown
+            md = markdown.Markdown(
+                extensions=["codehilite", "fenced_code", "tables"],
+                extension_configs={"codehilite": {"linenums": True, "guess_lang": False}},
+            )
             html = md.convert(content)
             # Extract code blocks
             code_blocks = []

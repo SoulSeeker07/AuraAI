@@ -16,18 +16,18 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-import src.desktop.native.managers.audio_manager as am_module
-from src.desktop.native.adapters.audio_adapter import (
+import desktop.native.managers.audio_manager as am_module
+from desktop.native.adapters.audio_adapter import (
     AudioAdapter,
     AudioAdapterFactory,
     DummyAudioAdapter,
     PyCAWAudioAdapter,
     WinMMAudioAdapter,
 )
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-from src.desktop.native.managers.audio_manager import AudioManager
-from src.desktop.native.managers.base_manager import HealthStatus
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from desktop.native.desktop_execution_engine import DesktopExecutionEngine
+from desktop.native.managers.audio_manager import AudioManager
+from desktop.native.managers.base_manager import HealthStatus
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 
 
 def setup_function():
@@ -94,7 +94,7 @@ def test_audio_manager_native_structure():
 def test_audio_manager_auto_discovery_and_health():
     """Test AudioManager auto-discovery and health checks."""
     registry = NativeManagerRegistry.get_instance()
-    discovered = registry.discover("src.desktop.native.managers")
+    discovered = registry.discover("desktop.native.managers")
 
     assert "audio" in discovered
     audio_manager = registry.get("audio")
@@ -112,7 +112,7 @@ def test_audio_manager_auto_discovery_and_health():
 def test_audio_capabilities_execution():
     """Test executing audio capabilities through DesktopExecutionEngine."""
     registry = NativeManagerRegistry.get_instance()
-    registry.discover("src.desktop.native.managers")
+    registry.discover("desktop.native.managers")
 
     engine = DesktopExecutionEngine(manager_registry=registry)
 

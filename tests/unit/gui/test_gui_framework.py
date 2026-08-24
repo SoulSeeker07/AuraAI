@@ -14,10 +14,10 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PySide6.QtWidgets import QApplication
 
-from src.gui.main_window import MainWindow
-from src.gui.overlay import OverlayWindow
-from src.gui.signals import ExecutionStep, StepStatus, app_signals
-from src.gui.widgets import (
+from gui.main_window import MainWindow
+from gui.overlay import OverlayWindow
+from gui.signals import ExecutionStep, StepStatus, app_signals
+from gui.widgets import (
     ChatStreamWidget,
     DagVisualizer,
     InspectorDrawer,

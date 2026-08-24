@@ -12,28 +12,81 @@ from pathlib import Path
 from typing import Any
 
 
+from collections.abc import Iterable
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class WorkspaceJail:
     """
-    Confines execution paths and command arguments strictly within an allowed workspace directory.
+    Confines execution paths and command arguments strictly within allowed workspace directories.
     """
 
-    def __init__(self, workspace_root: str | None = None):
+    # Path segments that stay strictly blocked inside allowed roots (credentials, private keys, cloud tokens, appdata, git metadata in external roots)
+    _BLOCKED_SEGMENTS = frozenset({
+        ".ssh", ".aws", ".gnupg", ".azure", ".kube", ".docker",
+        ".git", ".npmrc", ".netrc", "appdata",
+    })
+
+    def __init__(
+        self,
+        workspace_root: str | None = None,
+        allowed_roots: Iterable[str | Path] | None = None,
+    ):
         self._workspace_root = Path(workspace_root or os.getcwd()).resolve()
+        roots = {self._workspace_root}
+        if allowed_roots:
+            roots.update(Path(r).resolve() for r in allowed_roots)
+        self._allowed_roots: set[Path] = roots
 
     @property
     def workspace_root(self) -> Path:
         return self._workspace_root
 
+    @property
+    def allowed_roots(self) -> frozenset[Path]:
+        return frozenset(self._allowed_roots)
+
     def set_workspace_root(self, root: str) -> None:
         self._workspace_root = Path(root).resolve()
+        self._allowed_roots.add(self._workspace_root)
+
+    def add_allowed_root(self, root: str | Path) -> None:
+        """Grant access to an additional directory root. Fails eagerly if root does not exist."""
+        resolved = Path(root).resolve()
+        if not resolved.exists():
+            raise ValueError(f"Cannot allow-list nonexistent root: {resolved}")
+        logger.info(f"WorkspaceJail: granting access to additional root: {resolved}")
+        self._allowed_roots.add(resolved)
+
+    def _is_blocked_segment(self, resolved: Path, root: Path) -> bool:
+        """Check if relative path from root contains any forbidden credential or system configuration segment."""
+        try:
+            rel_parts = resolved.relative_to(root).parts
+        except Exception:
+            return True
+        # In the primary workspace root, allow .git (project version control), while keeping all other credential segments blocked
+        blocked = (
+            (self._BLOCKED_SEGMENTS - {".git"})
+            if root == self._workspace_root
+            else self._BLOCKED_SEGMENTS
+        )
+        return any(part.lower() in blocked for part in rel_parts)
 
     def is_path_inside_workspace(self, target_path: str | Path) -> bool:
-        """Check if target_path resolves strictly within the workspace directory tree."""
+        """Check if target_path resolves strictly within any allowed workspace root and contains no blocked segments."""
         try:
             resolved = Path(target_path).resolve()
-            return resolved == self._workspace_root or self._workspace_root in resolved.parents
         except Exception:
             return False
+
+        for root in self._allowed_roots:
+            if resolved == root or root in resolved.parents:
+                if not self._is_blocked_segment(resolved, root):
+                    return True
+
+        return False
 
     def validate_command_paths(self, command: str, cwd: str) -> tuple[bool, str]:
         """

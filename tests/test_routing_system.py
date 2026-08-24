@@ -6,15 +6,15 @@ Tests the complete Capability Router system with all three routing levels.
 
 import pytest
 
-from src.routing.capability_router import CapabilityRouter
-from src.routing.capability_types import CapabilityType
-from src.routing.intent_classifier import IntentClassifier
-from src.routing.keyword_router import KeywordRouter
-from src.routing.permission_analyzer import PermissionAnalyzer
-from src.routing.plugin_registry import PluginCapability, PluginRegistry
-from src.routing.risk_levels import RiskLevel
-from src.routing.routing_result import RoutingResult
-from src.routing.workflow_orchestrator import WorkflowOrchestrator
+from routing.capability_router import CapabilityRouter
+from routing.capability_types import CapabilityType
+from routing.intent_classifier import IntentClassifier
+from routing.keyword_router import KeywordRouter
+from routing.permission_analyzer import PermissionAnalyzer
+from routing.plugin_registry import PluginCapability, PluginRegistry
+from routing.risk_levels import RiskLevel
+from routing.routing_result import RoutingResult
+from routing.workflow_orchestrator import WorkflowOrchestrator
 
 
 class TestKeywordRouter:

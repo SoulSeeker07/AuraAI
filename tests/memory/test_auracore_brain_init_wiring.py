@@ -41,7 +41,7 @@ def test_brain_init_wiring_identity_check(tmp_path):
     mock_provider_manager = MagicMock()
     mock_memory_instance = MagicMock()
 
-    with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
+    with patch("ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_provider_manager), \
          patch("core.aura_core.Memory", return_value=mock_memory_instance):
 
@@ -85,7 +85,7 @@ def test_brain_init_failure_is_loud():
     AuraCore.reset_instance()
 
     # Force GroqProvider to blow up
-    with patch("src.ai.groq_provider.GroqProvider", side_effect=RuntimeError("no key")):
+    with patch("ai.groq_provider.GroqProvider", side_effect=RuntimeError("no key")):
         config = {"groq_model": "mock", "voice_enabled": False}
         core = AuraCore(config)
 

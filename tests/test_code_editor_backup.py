@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-from src.engineering.code_editor import CodeEditor
+from engineering.code_editor import CodeEditor
 
 def test_code_editor_backup_roundtrip():
     with tempfile.TemporaryDirectory() as temp_repo:

@@ -8,9 +8,9 @@ sys.path.insert(1, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI/src")
 
 import time
 
-from src.agents.permission_manager import PermissionLevel, PermissionManager
-from src.agents.process_manager import ProcessManager
-from src.agents.task_model import Task, TaskInput, TaskType
+from agents.permission_manager import PermissionLevel, PermissionManager
+from agents.process_manager import ProcessManager
+from agents.task_model import Task, TaskInput, TaskType
 
 
 def test_permission_manager_basic():

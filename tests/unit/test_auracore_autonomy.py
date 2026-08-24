@@ -37,7 +37,7 @@ async def test_auracore_autonomy_wiring_and_inactive_default(tmp_path):
     mock_provider_manager = MagicMock()
     mock_memory_instance = MagicMock()
 
-    with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
+    with patch("ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_provider_manager), \
          patch("core.aura_core.Memory", return_value=mock_memory_instance):
 
@@ -75,7 +75,7 @@ async def test_auracore_start_and_stop_autonomy_lifecycle(tmp_path):
     mock_provider_manager = MagicMock()
     mock_memory_instance = MagicMock()
 
-    with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
+    with patch("ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_provider_manager), \
          patch("core.aura_core.Memory", return_value=mock_memory_instance):
 
@@ -108,7 +108,7 @@ async def test_auracore_autonomy_dispatches_trigger(tmp_path):
     mock_provider_manager = MagicMock()
     mock_memory_instance = MagicMock()
 
-    with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
+    with patch("ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_provider_manager), \
          patch("core.aura_core.Memory", return_value=mock_memory_instance):
 
@@ -136,7 +136,7 @@ async def test_auracore_autonomy_dispatches_trigger(tmp_path):
             "steps": [
                 {
                     "engine": "desktop",
-                    "action": "open_app",
+                    "action": "app_open",
                     "parameters": {"application": "Calculator"},
                 }
             ]
@@ -158,7 +158,7 @@ async def test_auracore_autonomy_dispatches_trigger(tmp_path):
     # Assert trigger was evaluated and dispatched to coordinator
     assert mock_coord.called, "Trigger was not dispatched through AuraCore coordinator!"
     call_args = mock_coord.call_args[0][0]
-    assert call_args["steps"][0]["action"] == "open_app"
+    assert call_args["steps"][0]["action"] == "app_open"
     assert call_args["steps"][0]["parameters"]["application"] == "Calculator"
 
 
@@ -171,7 +171,7 @@ async def test_auracore_shutdown_drains_autonomy_and_voice(tmp_path):
     mock_provider_manager = MagicMock()
     mock_memory_instance = MagicMock()
 
-    with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
+    with patch("ai.groq_provider.GroqProvider", return_value=mock_groq_provider), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_provider_manager), \
          patch("core.aura_core.Memory", return_value=mock_memory_instance):
 

@@ -1,6 +1,6 @@
 import os
 import time
-from src.voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
+from voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
 
 os.environ["PIPER_MODEL_PATH"] = "models/tts/piper/en_US-lessac-medium.onnx"
 

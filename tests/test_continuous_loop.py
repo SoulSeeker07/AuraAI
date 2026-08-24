@@ -87,8 +87,8 @@ def test_continuous_voice_loop_wake_word_real_audio():
     """
     import wave
     from pathlib import Path
-    from src.voice.continuous_loop import ContinuousVoiceLoop, VoiceState
-    from src.voice.voice_manager import VoiceManager
+    from voice.continuous_loop import ContinuousVoiceLoop, VoiceState
+    from voice.voice_manager import VoiceManager
 
     wav_path = Path("AuraWakeWord/test_recordings/20260814_135424_DETECTED.wav")
     assert wav_path.exists(), "Test recording wav file missing"
@@ -125,8 +125,8 @@ def test_full_chain_error_bubbling_to_stderr(capsys):
     AuraWakeDetector.on_error -> WakeWordManager.on_error -> VoiceManager._on_wake_word_error ->
     ContinuousVoiceLoop._on_voice_error -> sys.stderr output.
     """
-    from src.voice.continuous_loop import ContinuousVoiceLoop
-    from src.voice.voice_manager import VoiceManager
+    from voice.continuous_loop import ContinuousVoiceLoop
+    from voice.voice_manager import VoiceManager
 
     vm = VoiceManager()
     vm.audio_manager.start_recording = MagicMock(return_value=True)
@@ -196,7 +196,7 @@ def test_whisper_initial_prompt_consistency():
     Test that FasterWhisperSTTEngine uses the exact same immutable DESKTOP_VOCABULARY_PROMPT
     across all transcribe calls to prevent LocalAgreementStabilizer hypothesis drift.
     """
-    from src.voice.stt_manager import DESKTOP_VOCABULARY_PROMPT, FasterWhisperSTTEngine, STTSettings
+    from voice.stt_manager import DESKTOP_VOCABULARY_PROMPT, FasterWhisperSTTEngine, STTSettings
     assert isinstance(DESKTOP_VOCABULARY_PROMPT, str)
     assert len(DESKTOP_VOCABULARY_PROMPT) > 10
 
@@ -225,7 +225,7 @@ def test_two_tier_fuzzy_app_resolver():
     - Tier 2: general close matches ("goat pad" -> notepad, "chrom" -> chrome)
     - Ambiguous: confidence gap check returns clarification error.
     """
-    from src.desktop.native.managers.window_manager import WindowManager
+    from desktop.native.managers.window_manager import WindowManager
     wm = WindowManager()
 
     # Tier 1 & Tier 2 positive resolutions
@@ -255,8 +255,8 @@ def test_standby_watchdog_rearms_if_tts_callback_drops():
     the 8-second watchdog timer automatically recovers ContinuousVoiceLoop to IDLE/WAITING_FOR_WAKE.
     """
     import time
-    from src.voice.continuous_loop import ContinuousVoiceLoop, VoiceState
-    from src.voice.voice_manager import VoiceManager
+    from voice.continuous_loop import ContinuousVoiceLoop, VoiceState
+    from voice.voice_manager import VoiceManager
 
     vm = VoiceManager()
     vm.audio_manager.start_recording = MagicMock(return_value=True)

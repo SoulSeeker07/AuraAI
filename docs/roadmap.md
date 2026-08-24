@@ -37,23 +37,15 @@ Phase 10 — Aura OS Native GUI Interface ░░░░░░░░░░░░�
 - ✅ **M24 — Event Runtime & Autonomous Intent Execution**: Canonical `AuraEvent` contract, `EventRuntime` deduplication & multi-signal correlation engine, `EventInterpreter` situational awareness, `AutonomyPolicyGate` cryptographic authorization, `FilesystemWatcher` & `ProcessMonitor` telemetry producers, and closed-loop autonomous execution.
 - ✅ **M25 — Professional Expert Systems & Cognitive Routing**: 4 Domain Experts (Cybersecurity, Network Engineering, Software Engineering, Financial Analysis), `PlanDAGCompiler` reasoning-to-execution translation, Stage 2.9 opt-in router in `MasterOrchestrator`, fail-closed artifact/confidence threshold gates (`ArtifactLowConfidence`, `ArtifactPayloadMissing`), and domain-specific observation formatting.
 - ✅ **Security Hardening Track (Phases 1–4)**: DPAPI master keys, HKDF-SHA256 derivation, out-of-process `AuditWriterService` over authenticated Windows Named Pipe IPC, and Windows Event Log OS sink.
-- ✅ **Live OS Validation (Tracks A, B, B2)**: 100% verified live on Windows OS across compound goals, organic PARTIAL boundaries, coordinator triggers, 5-role DAG handoffs, and low-confidence fail-closed blocks.
+- ✅ **M26 — Personal Operating System (`v0.30.0`)**: Proactive daily context synthesis (`DailyContextEngine`), sub-second workspace search index (`WorkspaceSearchEngine`), autonomous trigger dispatch (`TriggerScheduler`), `RequestSource` classification with `ContextVar`-scoped autonomy isolation, and persistent OS state store (`PersonalOSStateStore`).
+- ✅ **M27 — Autonomous Engineering Platform (`v0.31.0`)**: Closed-loop bug fixing, test-driven repair, and PR assembly; protected safety ceiling (`PROTECTED_SAFETY_CEILING`); AST fault localization; single-write gate enforcement (`WorkspacePolicy`); binary byte-exact baseline snapshot/rollback; fail-closed human cryptographic merge gate (`PatchBundleAssembler.authorize_git_operation`).
 
 ---
 
 ## Target Milestones (Future Roadmap)
 
-### Milestone 26 — Personal Operating System (`v0.30.0`) [NEXT]
-- 🎯 **Proactive Daily Agenda & Context**: Proactive calendar tracking, meeting prep briefs, daily agenda assembly, and priority queuing.
-- 🎯 **Intelligent File Organization**: Automated desktop sorting, downloads taxonomy, archive management, and duplicate deduplication.
-- 🎯 **Repetitive Desktop Workflow Automation**: Multi-app macro synthesis, window snapping presets, and routine task triggers.
-
-### Milestone 27 — Autonomous Engineering Platform (`v0.31.0`) [PLANNED]
-- 🎯 **Autonomous Issue-to-PR Development Loop**: Automatic GitHub/GitLab issue intake, workspace replication, test-driven implementation, and pull request generation with human-in-the-loop gates.
-- 🎯 **Automated Regression & Self-Healing**: Continuous test execution, automated bug localisation, and validated patch synthesis with rollback safety.
-
-### Milestone 28 — Integrated Aura OS Runtime (`v1.0.0`) [PLANNED]
-- 🎯 **Persistent System Daemon**: Low-overhead Windows system service lifecycle with zero-downtime hot reloading.
+### Milestone 28 — Integrated Aura OS Runtime (`v1.0.0`) [NEXT]
+- 🎯 **Persistent System Daemon**: Low-overhead Windows system service lifecycle (`AuraService`) with zero-downtime hot reloading.
 - 🎯 **Multi-User & Enterprise Policy Governance**: Multi-tenant memory partitions, role-based capability permissions, and corporate compliance telemetry sinks.
 
 ### Milestone 29 — Natural Voice & Ambient Interaction (`v1.1.0`) [PLANNED]
@@ -65,3 +57,4 @@ Phase 10 — Aura OS Native GUI Interface ░░░░░░░░░░░░�
 ---
 
 *For detailed specifications, see [docs/milestones/](milestones/).*
+

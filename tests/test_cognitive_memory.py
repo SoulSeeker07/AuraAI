@@ -30,8 +30,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from Memory import Memory as LegacyMemoryFacade
-from src.memory.cognitive_memory import CognitiveMemoryEngine
-from src.memory.models import MemoryItem, MemoryProvenance, MemoryType, ProvenanceSource
+from memory.cognitive_memory import CognitiveMemoryEngine
+from memory.models import MemoryItem, MemoryProvenance, MemoryType, ProvenanceSource
 
 
 @pytest.fixture

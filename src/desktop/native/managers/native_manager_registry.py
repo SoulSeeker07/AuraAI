@@ -75,27 +75,19 @@ class NativeManagerRegistry:
         Returns:
             List of registered manager names.
         """
+        if package_name.startswith("src."):
+            package_name = package_name.replace("src.", "", 1)
+
         logger.info(f"Starting native manager discovery in package: '{package_name}'")
         discovered_classes: list[type[BaseNativeManager]] = []
 
         try:
             package = importlib.import_module(package_name)
         except ImportError as e:
-            if package_name.startswith("src."):
-                alt_name = package_name.replace("src.", "", 1)
-                try:
-                    package = importlib.import_module(alt_name)
-                    package_name = alt_name
-                except ImportError:
-                    logger.warning(
-                        f"Could not import package '{package_name}' or '{alt_name}' for discovery: {e}"
-                    )
-                    return []
-            else:
-                logger.warning(
-                    f"Could not import package '{package_name}' for discovery: {e}"
-                )
-                return []
+            logger.warning(
+                f"Could not import package '{package_name}' for discovery: {e}"
+            )
+            return []
 
         package_path = getattr(package, "__path__", None)
         if not package_path:

@@ -146,7 +146,7 @@ def test_execution_simulation_intercepts_destructive_actions(engine):
 
 def test_manager_purity_audit():
     """Verify native managers do NOT import or execute cross-cutting pipeline concerns."""
-    pkg = importlib.import_module("src.desktop.native.managers")
+    pkg = importlib.import_module("desktop.native.managers")
     pkg_path = getattr(pkg, "__path__")
 
     forbidden_tokens = [
@@ -160,7 +160,7 @@ def test_manager_purity_audit():
     leaks = []
 
     for _, module_name, is_pkg in pkgutil.walk_packages(
-        pkg_path, prefix="src.desktop.native.managers."
+        pkg_path, prefix="desktop.native.managers."
     ):
         if is_pkg or module_name.endswith(".base_manager"):
             continue

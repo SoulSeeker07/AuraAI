@@ -1,0 +1,128 @@
+{
+  "first_attempt_rate": 80.0,
+  "two_attempt_rate": 93.33333333333333,
+  "total_success_rate": 93.33333333333333,
+  "avg_latency_ms": 12821.066666666668,
+  "results": [
+    {
+      "goal": "Create a 3-slide PowerPoint presentation about AuraAI milestones with titles and bullet points",
+      "output_filename": "milestones.pptx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 3245,
+      "final_error": null
+    },
+    {
+      "goal": "Create a Word document containing a professional project status report with headings and paragraphs",
+      "output_filename": "status_report.docx",
+      "status": "success",
+      "attempts_used": 2,
+      "duration_ms": 34416,
+      "final_error": null
+    },
+    {
+      "goal": "Create an Excel spreadsheet listing monthly expenses with Category, Budget, and Actual columns",
+      "output_filename": "expenses.xlsx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 10812,
+      "final_error": null
+    },
+    {
+      "goal": "Generate a CSV file with 10 rows of mock employee data with Name, Department, and Salary columns",
+      "output_filename": "employees.csv",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 7856,
+      "final_error": null
+    },
+    {
+      "goal": "Create a comprehensive markdown document with a Python cheat sheet including code blocks and explanations",
+      "output_filename": "python_cheatsheet.md",
+      "status": "rejected",
+      "attempts_used": 0,
+      "duration_ms": 36250,
+      "final_error": "Static safety check failed repeatedly: Code fails Python syntax validation: unterminated triple-quoted string literal (detected at line 20) (<unknown>, line 2)"
+    },
+    {
+      "goal": "Create a JSON configuration file containing nested database connection and pool settings",
+      "output_filename": "db_config.json",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 13340,
+      "final_error": null
+    },
+    {
+      "goal": "Create a 4-slide presentation on System Architecture with title, components, data flow, and security slides",
+      "output_filename": "architecture.pptx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 7585,
+      "final_error": null
+    },
+    {
+      "goal": "Create an Excel workbook with 2 sheets named 'Summary' and 'Details', with header rows on each",
+      "output_filename": "two_sheets.xlsx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 6251,
+      "final_error": null
+    },
+    {
+      "goal": "Create a Word document containing a formal leave application letter for 3 days leave",
+      "output_filename": "leave_application.docx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 6159,
+      "final_error": null
+    },
+    {
+      "goal": "Generate a plaintext release notes document for v1.0.0 detailing new features and bug fixes",
+      "output_filename": "release_notes.txt",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 14912,
+      "final_error": null
+    },
+    {
+      "goal": "Read raw_sales.csv and calculate total sales grouped by Category, writing the aggregated results to summary.csv",
+      "output_filename": "summary.csv",
+      "status": "success",
+      "attempts_used": 2,
+      "duration_ms": 16779,
+      "final_error": null
+    },
+    {
+      "goal": "Create a 2-slide presentation summarizing Q3 financial highlights",
+      "output_filename": "q3_highlights.pptx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 10486,
+      "final_error": null
+    },
+    {
+      "goal": "Create an Excel sheet with 5 item rows and a total row at the bottom with a SUM formula",
+      "output_filename": "budget_totals.xlsx",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 7346,
+      "final_error": null
+    },
+    {
+      "goal": "Create a formatted markdown document summarizing modern microservices best practices",
+      "output_filename": "microservices.md",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 9505,
+      "final_error": null
+    },
+    {
+      "goal": "Read sample_notes.md, count the total number of words and lines, and write a stats JSON file with word_count and line_count keys",
+      "output_filename": "file_stats.json",
+      "status": "success",
+      "attempts_used": 1,
+      "duration_ms": 7374,
+      "final_error": null
+    }
+  ]
+}

@@ -198,6 +198,7 @@ class BackendRegistry:
         from .adapters.email_backend import EmailBackendAdapter
         from .adapters.calendar_backend import CalendarBackendAdapter
         from .adapters.office_backend import OfficeBackendAdapter
+        from .adapters.codeact_backend import CodeActBackendAdapter
         from .adapters.docker_backend import DockerBackendAdapter
         from .adapters.mcp_backend import MCPBackendAdapter
 
@@ -207,6 +208,7 @@ class BackendRegistry:
         from .adapters.vision_backend import VisionEngineBackend
         from .adapters.voice_backend import VoiceEngineBackend
         from .adapters.daemon_backend import DaemonEngineBackend
+        from .adapters.personal_os_backend import PersonalOSBackendAdapter
 
         self.register(DesktopEngineBackend())
         self.register(DefaultNativeDesktopAdapter())
@@ -223,9 +225,11 @@ class BackendRegistry:
         self.register(VisionEngineBackend())
         self.register(VoiceEngineBackend())
         self.register(DaemonEngineBackend())
+        self.register(PersonalOSBackendAdapter())
         self.register(EmailBackendAdapter())
         self.register(CalendarBackendAdapter())
         self.register(OfficeBackendAdapter())
+        self.register(CodeActBackendAdapter())
         self.register(DockerBackendAdapter())
         self.register(MCPBackendAdapter())
         self.register(SettingsBackendAdapter())

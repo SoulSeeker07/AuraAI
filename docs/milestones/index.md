@@ -74,8 +74,11 @@ This directory contains permanent design documents for each milestone in the Aur
 ### Milestone 16 — Cognitive Orchestration Layer
 [milestone16.md](milestone16.md) — 7-stage cognitive pipeline, MasterOrchestrator, AgentSession
 
-### Milestone 25 — Professional Expert Systems & Cognitive Routing
-[milestone25.md](milestone25.md) — 4 domain experts (Cybersecurity, Network, Software, Finance), PlanDAGCompiler, Stage 2.9 routing, fail-closed quality gates
+### Milestone 26 — Personal Operating System
+[milestone26.md](milestone26.md) — Proactive daily context, sub-second workspace search, autonomous triggers, and persistent OS state store
+
+### Milestone 27 — Autonomous Engineering Platform
+[milestone27.md](milestone27.md) — Closed-loop repair, AST fault localization, protected safety ceiling, byte-exact rollback, human cryptographic merge gate
 
 ---
 
@@ -97,13 +100,13 @@ Phase 1 — Shared Intelligence (M17–M18) ████████████
 Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
 Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
 Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
-Phase 5 — Domain Expertise & Autonomy   ██████████████░░░░░░   2/3   IN PROGRESS (M24 + M25 COMPLETE)
-Phase 6 — Personal OS & Daily Workflows ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M26)
-Phase 7 — Autonomous Engineering Loop   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M27)
-Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M28)
+Phase 5 — Domain Expertise & Autonomy   ████████████████████   2/2   COMPLETE (M24 + M25)
+Phase 6 — Personal OS & Daily Workflows ████████████████████   1/1   COMPLETE (M26)
+Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
+Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░░░░░░░░░   0/1   NEXT (M28)
 ```
 
-**Overall Progress:** 25/25 Completed Milestones Baseline (M01–M25) | 61/61 Unit Tests 100% Green | Live Windows OS Matrix Verified
+**Overall Progress:** 27/27 Completed Milestones Baseline (M01–M27) | 225/225 Deterministic Tests 100% Green
 
 - ✅ Milestone 16 — Cognitive Orchestration Layer (100%)
 - ✅ Milestone 17 — Cognitive Memory (100%)
@@ -115,6 +118,9 @@ Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░�
 - ✅ Milestone 23 — Autonomous Daemon & Background Operations (100%)
 - ✅ Milestone 24 — Event Runtime & Autonomous Intent Execution (100%)
 - ✅ Milestone 25 — Professional Expert Systems & Cognitive Routing (100%)
+- ✅ Milestone 26 — Personal Operating System (100%)
+- ✅ Milestone 27 — Autonomous Engineering Platform (100%)
+
 
 ---
 

@@ -24,11 +24,19 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from .autonomy_mode import AutonomyLevel
+
 logger = logging.getLogger(__name__)
+
+# Request/Coroutine-scoped Autonomy Level context
+_autonomy_level_ctx: ContextVar[AutonomyLevel] = ContextVar(
+    "_autonomy_level_ctx", default=AutonomyLevel.ASSISTED
+)
 
 
 class PolicyAction(Enum):
@@ -69,7 +77,7 @@ class PendingConfirmation:
 class ExecutionPolicy:
     """
     Singleton that evaluates desktop action requests, autonomy modes (ASK, ASSISTED, AUTONOMOUS),
-    and action risk levels.
+    and action risk levels with request-scoped ContextVar isolation.
 
     Holds pending confirmations across turns.
     """
@@ -77,9 +85,7 @@ class ExecutionPolicy:
     _instance: ExecutionPolicy | None = None
 
     def __init__(self) -> None:
-        from .autonomy_mode import AutonomyLevel
         self._pending: dict[str, PendingConfirmation] = {}
-        self._autonomy_level: AutonomyLevel = AutonomyLevel.ASSISTED
 
     @classmethod
     def get_instance(cls) -> ExecutionPolicy:
@@ -91,17 +97,24 @@ class ExecutionPolicy:
     def reset_instance(cls) -> None:
         cls._instance = None
 
-    # ── Autonomy Level API ──────────────────────────────────────────────────
+    # ── Autonomy Level API (Coroutine & Thread-Safe via ContextVar) ──────────
 
-    def set_autonomy_level(self, level: Any) -> None:
-        from .autonomy_mode import AutonomyLevel
+    def set_autonomy_level(self, level: Any) -> Token:
         if isinstance(level, str):
             level = AutonomyLevel(level.lower())
-        self._autonomy_level = level
-        logger.info(f"ExecutionPolicy autonomy level set to: {self._autonomy_level.value}")
+        token = _autonomy_level_ctx.set(level)
+        logger.info(f"ExecutionPolicy autonomy level set to: {level.value} (ctx token: {token})")
+        return token
 
-    def get_autonomy_level(self) -> Any:
-        return self._autonomy_level
+    def reset_autonomy_level(self, token: Token) -> None:
+        """Reset the request-scoped autonomy level using the token returned by set_autonomy_level."""
+        try:
+            _autonomy_level_ctx.reset(token)
+        except Exception as e:
+            logger.warning(f"Could not reset autonomy level token: {e}")
+
+    def get_autonomy_level(self) -> AutonomyLevel:
+        return _autonomy_level_ctx.get()
 
     def evaluate_action(
         self, engine: str, action: str, params: dict[str, Any] | None = None
@@ -113,14 +126,15 @@ class ExecutionPolicy:
         """
         from .autonomy_mode import classify_action_risk, should_require_confirmation
 
+        autonomy_level = self.get_autonomy_level()
         risk = classify_action_risk(engine, action, params)
-        requires_conf = should_require_confirmation(self._autonomy_level, risk)
+        requires_conf = should_require_confirmation(autonomy_level, risk)
 
         if requires_conf:
             key = self._make_key(f"{engine}_{action}_{params}")
             msg = (
                 f"Action [{engine}] '{action}' carries {risk.value.upper()} risk under "
-                f"{self._autonomy_level.value.upper()} autonomy. Require confirmation? (yes/no)"
+                f"{autonomy_level.value.upper()} autonomy. Require confirmation? (yes/no)"
             )
             self._pending[key] = PendingConfirmation(
                 key=key, app_name=f"{engine}.{action}", goal=f"Execute {action}"
@@ -135,7 +149,7 @@ class ExecutionPolicy:
 
         return PolicyDecision(
             action=PolicyAction.LAUNCH_NEW,
-            message=f"Action [{engine}] '{action}' approved under {self._autonomy_level.value.upper()} autonomy.",
+            message=f"Action [{engine}] '{action}' approved under {autonomy_level.value.upper()} autonomy.",
             app_name=f"{engine}.{action}",
         )
 
@@ -186,11 +200,13 @@ class ExecutionPolicy:
 
         from .autonomy_mode import AutonomyLevel
 
+        autonomy_level = self.get_autonomy_level()
+
         # If autonomy level permits automatic reuse (ASSISTED or AUTONOMOUS), reuse existing window
-        if self._autonomy_level != AutonomyLevel.ASK and primary_hwnd:
+        if autonomy_level != AutonomyLevel.ASK and primary_hwnd:
             logger.info(
                 f"ExecutionPolicy: '{app_name}' running ({window_count} windows) under "
-                f"{self._autonomy_level.value.upper()} autonomy → REUSE_EXISTING [hwnd={hex(primary_hwnd)}]"
+                f"{autonomy_level.value.upper()} autonomy → REUSE_EXISTING [hwnd={hex(primary_hwnd)}]"
             )
             return PolicyDecision(
                 action=PolicyAction.REUSE_EXISTING,

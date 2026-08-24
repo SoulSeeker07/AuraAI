@@ -6,13 +6,15 @@ import time
 import pytest
 import websockets
 
-from src.aura.client.connection_manager import ConnectionManager
+from aura.client.connection_manager import ConnectionManager
+from aura.shared.enums import MessageType
+from aura.shared.message import AuraMessage
 
 PORT = 8766
 PATH = "/ws"
 
 
-async def _echo_ws_handler(websocket, path):
+async def _echo_ws_handler(websocket, *args, **kwargs):
     # simple handler: echo back and respond to heartbeat
     async for message in websocket:
         try:
@@ -23,15 +25,23 @@ async def _echo_ws_handler(websocket, path):
         if isinstance(data, dict) and data.get("type") == "heartbeat":
             await websocket.send(json.dumps({"type": "heartbeat_ack"}))
         else:
-            # echo with a small wrapper
-            await websocket.send(json.dumps({"type": "echo", "original": data}))
+            # echo with a valid AuraMessage schema
+            echo_msg = {
+                "id": data.get("id", "1"),
+                "type": "chat.response",
+                "source": "server",
+                "target": "client",
+                "payload": data.get("payload", {}),
+            }
+            await websocket.send(json.dumps(echo_msg))
 
 
 def _start_server(loop):
     asyncio.set_event_loop(loop)
-    server = websockets.serve(_echo_ws_handler, "127.0.0.1", PORT)
-    loop.run_until_complete(server)
-    loop.run_forever()
+    async def serve():
+        async with websockets.serve(_echo_ws_handler, "127.0.0.1", PORT):
+            await asyncio.Future()
+    loop.run_until_complete(serve())
 
 
 @pytest.fixture(scope="module")
@@ -47,7 +57,9 @@ def ws_server():
 
 
 def test_connection_and_echo(ws_server):
-    mgr = ConnectionManager(host="127.0.0.1", port=PORT, path=PATH)
+    from PySide6.QtCore import QCoreApplication
+    app = QCoreApplication.instance() or QCoreApplication([])
+    mgr = ConnectionManager(url=f"ws://127.0.0.1:{PORT}{PATH}")
 
     connected_ev = threading.Event()
     msg_ev = threading.Event()
@@ -70,16 +82,29 @@ def test_connection_and_echo(ws_server):
     mgr.start()
 
     # wait for connection
-    ok = connected_ev.wait(timeout=5)
-    assert ok, "Did not connect in time"
+    t_end = time.monotonic() + 5.0
+    while time.monotonic() < t_end and not connected_ev.is_set():
+        app.processEvents()
+        time.sleep(0.05)
+    assert connected_ev.is_set(), "Did not connect in time"
 
     # send a test message
-    mgr.send({"type": "test", "payload": {"hello": "world"}})
+    test_msg = AuraMessage(
+        type=MessageType.CHAT_MESSAGE,
+        source="client",
+        target="server",
+        payload={"hello": "world"},
+    )
+    mgr.send(test_msg)
 
-    ok2 = msg_ev.wait(timeout=5)
-    assert ok2, "Did not receive echoed message"
+    t_end2 = time.monotonic() + 5.0
+    while time.monotonic() < t_end2 and not msg_ev.is_set():
+        app.processEvents()
+        time.sleep(0.05)
+    assert msg_ev.is_set(), "Did not receive echoed message"
 
     assert "msg" in received
-    assert received["msg"].get("type") == "echo"
+    assert received["msg"].type == MessageType.CHAT_RESPONSE
+    assert received["msg"].payload == {"hello": "world"}
 
     mgr.stop()

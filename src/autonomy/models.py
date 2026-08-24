@@ -63,6 +63,8 @@ class Trigger:
     concurrency_policy: ConcurrencyPolicy = ConcurrencyPolicy.COALESCE
     last_fired_at: str | None = None
     last_provenance: EventProvenance | None = None
+    auth_signature: str | None = None
+    is_recurring_authorized: bool = False
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +83,8 @@ class Trigger:
             "concurrency_policy": self.concurrency_policy.value if isinstance(self.concurrency_policy, Enum) else self.concurrency_policy,
             "last_fired_at": self.last_fired_at,
             "last_provenance": self.last_provenance.__dict__ if self.last_provenance else None,
+            "auth_signature": self.auth_signature,
+            "is_recurring_authorized": self.is_recurring_authorized,
             "created_at": self.created_at,
         }
 
@@ -103,5 +107,7 @@ class Trigger:
             concurrency_policy=ConcurrencyPolicy(data.get("concurrency_policy", ConcurrencyPolicy.COALESCE.value)),
             last_fired_at=data.get("last_fired_at"),
             last_provenance=prov,
+            auth_signature=data.get("auth_signature"),
+            is_recurring_authorized=data.get("is_recurring_authorized", False),
             created_at=data.get("created_at", datetime.now().isoformat()),
         )

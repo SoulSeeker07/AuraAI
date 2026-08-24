@@ -14,10 +14,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.desktop.native.sandbox.account_provisioner import AccountProvisioner, SANDBOX_USER_NAME
-from src.desktop.native.sandbox.base_sandbox import IsolationLevel
-from src.desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
-from src.desktop.native.sandbox.sandbox_manager import SandboxManager
+from desktop.native.sandbox.account_provisioner import AccountProvisioner, SANDBOX_USER_NAME
+from desktop.native.sandbox.base_sandbox import IsolationLevel
+from desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
+from desktop.native.sandbox.sandbox_manager import SandboxManager
 
 
 class TestAccountProvisioner:

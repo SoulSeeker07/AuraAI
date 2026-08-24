@@ -7,11 +7,11 @@ downstream catch-and-fallback safety, near-miss decline, and precomputed graph z
 from unittest.mock import MagicMock, patch
 import pytest
 
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
-from src.core.orchestration.task_decomposer import PlannerRole, SubTask, TaskGraph
-from src.core.planning.execution_result import ExecutionResult
-from src.experts.base_expert import DomainAssessment, PlanDAG, PlanNode
-from src.experts.router import ExpertDomainRouter
+from core.orchestration.master_orchestrator import MasterOrchestrator
+from core.orchestration.task_decomposer import PlannerRole, SubTask, TaskGraph
+from core.planning.execution_result import ExecutionResult
+from experts.base_expert import DomainAssessment, PlanDAG, PlanNode
+from experts.router import ExpertDomainRouter
 
 
 def create_mock_backend(planner: str = "coding", goal: str = "test"):
@@ -24,14 +24,19 @@ def create_mock_backend(planner: str = "coding", goal: str = "test"):
     return backend
 
 
+from core.backends.backend_registry import BackendRegistry
+
+
 @pytest.fixture(autouse=True)
 def reset_orchestrator_and_router():
     """Reset singleton state between tests."""
     MasterOrchestrator.reset_instance()
     ExpertDomainRouter.reset_instance()
+    BackendRegistry.reset_instance()
     yield
     MasterOrchestrator.reset_instance()
     ExpertDomainRouter.reset_instance()
+    BackendRegistry.reset_instance()
 
 
 @pytest.mark.asyncio
@@ -205,7 +210,7 @@ async def test_orchestrator_fail_closed_missing_input_artifact():
 @pytest.mark.asyncio
 async def test_orchestrator_fail_closed_empty_payload_artifact():
     """Verify MasterOrchestrator halts execution when an upstream artifact exists but has an empty payload."""
-    from src.core.orchestration.artifact import Artifact
+    from core.orchestration.artifact import Artifact
 
     orchestrator = MasterOrchestrator(expert_routing_enabled=False)
 
@@ -262,7 +267,7 @@ async def test_orchestrator_fail_closed_empty_payload_artifact():
 @pytest.mark.asyncio
 async def test_orchestrator_fail_closed_low_confidence_artifact():
     """Verify MasterOrchestrator halts execution when an upstream artifact is populated but carries confidence below threshold."""
-    from src.core.orchestration.artifact import Artifact, VerificationReport
+    from core.orchestration.artifact import Artifact, VerificationReport
 
     orchestrator = MasterOrchestrator(expert_routing_enabled=False)
 
@@ -325,7 +330,7 @@ async def test_orchestrator_fail_closed_low_confidence_artifact():
 @pytest.mark.asyncio
 async def test_orchestrator_non_research_artifact_not_blocked_by_default():
     """Verify non-research artifacts (e.g. desktop/security) with low confidence are NOT blocked by default."""
-    from src.core.orchestration.artifact import Artifact, VerificationReport
+    from core.orchestration.artifact import Artifact, VerificationReport
 
     orchestrator = MasterOrchestrator(expert_routing_enabled=False)
 

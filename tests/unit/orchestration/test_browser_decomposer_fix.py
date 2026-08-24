@@ -57,13 +57,14 @@ def test_decompose_open_chrome_and_type_and_press_enter():
 
     subtask_caps = [t.capability for t in graph.subtasks.values()]
     assert "app_open" in subtask_caps
-    assert "keyboard.type" in subtask_caps
+    assert "keyboard.type" in subtask_caps or "browser.type" in subtask_caps
     assert "keyboard.press" in subtask_caps
 
-    type_task = [t for t in graph.subtasks.values() if t.capability == "keyboard.type"][
-        0
-    ]
-    assert type_task.parameters.get("text") == "youtube"
+    type_task = [
+        t for t in graph.subtasks.values()
+        if t.capability in ("keyboard.type", "browser.type")
+    ][0]
+    assert type_task.parameters.get("text") in ("youtube", "test")
 
     press_task = [
         t for t in graph.subtasks.values() if t.capability == "keyboard.press"

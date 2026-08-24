@@ -32,7 +32,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.desktop.native.security import (
+from desktop.native.security import (
     AuditIPCClient,
     AuditIPCServer,
     AuditWriterService,

@@ -17,11 +17,8 @@ from typing import Any
 try:
     from desktop.native.security.device_privacy import DevicePrivacyEngine, PrivacyEvaluationResult
 except (ImportError, ModuleNotFoundError):
-    try:
-        from src.desktop.native.security.device_privacy import DevicePrivacyEngine, PrivacyEvaluationResult
-    except Exception:
-        DevicePrivacyEngine = None  # type: ignore
-        PrivacyEvaluationResult = None  # type: ignore
+    DevicePrivacyEngine = None  # type: ignore
+    PrivacyEvaluationResult = None  # type: ignore
 from ...planning.execution_result import ExecutionResult
 from ..base_backend import BaseBackendAdapter
 

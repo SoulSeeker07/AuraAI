@@ -14,14 +14,14 @@ from typing import Any, Dict
 
 import pytest
 
-from src.desktop.native.capability_registry import CapabilityRegistry
-from src.desktop.native.desktop_execution_engine import (
+from desktop.native.capability_registry import CapabilityRegistry
+from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     reset_desktop_execution_engine,
 )
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-from src.desktop.planner import (
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from desktop.planner import (
     DesktopPlanner,
     PlanState,
     StepStatus,
@@ -38,7 +38,7 @@ def cap_registry():
 def engine(cap_registry):
     reset_desktop_execution_engine()
     reg = NativeManagerRegistry.get_instance()
-    reg.discover("src.desktop.native.managers")
+    reg.discover("desktop.native.managers")
     eng = DesktopExecutionEngine(
         manager_registry=reg,
         registry=cap_registry,

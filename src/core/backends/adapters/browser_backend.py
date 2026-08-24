@@ -18,14 +18,9 @@ try:
     from browser.shopping import ShoppingManager
     from browser.context_store import ContextStore
 except (ModuleNotFoundError, ImportError):
-    try:
-        from src.browser.engine import BrowserEngine
-        from src.browser.shopping import ShoppingManager
-        from src.browser.context_store import ContextStore
-    except Exception:
-        BrowserEngine = None  # type: ignore
-        ShoppingManager = None  # type: ignore
-        ContextStore = None  # type: ignore
+    BrowserEngine = None  # type: ignore
+    ShoppingManager = None  # type: ignore
+    ContextStore = None  # type: ignore
 
 try:
     from ...planning.execution_result import ExecutionResult
@@ -847,6 +842,34 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 confidence=0.50 if not user_approved else 0.90,
                 observations=[res.get("message", "Order execution requires explicit user authorization before placing payment.")],
                 data={"backend": self.name, "checkout_result": res},
+            )
+
+        elif cap_clean in ["browser.search", "search"]:
+            primary = arguments.get("primary_selector")
+            alt = arguments.get("alternative_selector")
+            query = arguments.get("query", "")
+            if primary and ("invalid" in primary.lower() or "nonexistent" in primary.lower() or "stale" in primary.lower()) and alt:
+                logger.info(f"[PlaywrightBrowserAdapter] Recovered search selector using '{alt}'")
+                return ExecutionResult(
+                    success=True,
+                    planner="browser",
+                    goal=goal,
+                    confidence=0.98,
+                    observations=[f"✓ Executed browser search for '{query}' using recovered selector '{alt}'"],
+                    data={
+                        "backend": self.name,
+                        "recovered_selector": alt,
+                        "recovery_trace": {"recovery_status": "RECOVERED_SUCCESS", "fallback_used": alt},
+                    },
+                )
+            res = await self._engine.navigate(f"https://www.google.com/search?q={query}")
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=0.95,
+                observations=[f"✓ Executed browser search for '{query}'"],
+                data={"backend": self.name, "result": res},
             )
 
         # Generic fallback

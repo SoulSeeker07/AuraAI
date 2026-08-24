@@ -29,7 +29,7 @@ async def test_voice_memory_integration(tmp_path):
     mock_pm = MagicMock()
     mock_mem = MagicMock()
 
-    with patch("src.ai.groq_provider.GroqProvider", return_value=mock_groq), \
+    with patch("ai.groq_provider.GroqProvider", return_value=mock_groq), \
          patch("ai.provider_manager.ProviderManager", return_value=mock_pm), \
          patch("core.aura_core.Memory", return_value=mock_mem):
 

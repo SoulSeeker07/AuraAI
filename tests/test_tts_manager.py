@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import numpy as np
 
-from src.voice.tts_manager import (
+from voice.tts_manager import (
     ChunkedStreamPlayer,
     PiperTTSEngine,
     EdgeTTSEngine,
@@ -13,7 +13,7 @@ from src.voice.tts_manager import (
     TTSSettings,
     TTSSpeaker,
 )
-from src.voice.stt_manager import FasterWhisperSTTEngine, STTSettings, STTProvider
+from voice.stt_manager import FasterWhisperSTTEngine, STTSettings, STTProvider
 
 
 def test_chunked_stream_player_lifecycle_and_silence_padding():

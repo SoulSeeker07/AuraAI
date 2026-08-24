@@ -152,7 +152,7 @@ def test_backend_registry_contains_playwright_browser():
 
 
 def test_risk_analyzer_checkout_critical():
-    from src.execution.risk_analyzer import RiskAnalyzer, RiskLevel
+    from execution.risk_analyzer import RiskAnalyzer, RiskLevel
 
     analyzer = RiskAnalyzer()
     risk, _ = analyzer.analyze_operation("shopping", "shopping_checkout", {})

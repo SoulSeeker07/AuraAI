@@ -66,10 +66,22 @@ class FileManager(BaseNativeManager):
         self,
         workspace_root: str | None = None,
         auth: CryptographicApprovalAuthority | None = None,
+        allow_known_user_folders: bool = True,
     ):
         super().__init__()
         self._workspace_root: str = str(Path(workspace_root or os.getcwd()).resolve())
         self._jail: WorkspaceJail = WorkspaceJail(workspace_root=self._workspace_root)
+        if allow_known_user_folders:
+            from desktop.native.known_folders import resolve_known_folder
+            granted = []
+            for folder_name in ("documents", "downloads", "desktop", "pictures", "music", "videos"):
+                try:
+                    resolved = resolve_known_folder(folder_name)
+                    self._jail.add_allowed_root(resolved)
+                    granted.append(str(resolved))
+                except Exception as exc:
+                    logger.warning(f"FileManager: could not add known folder {folder_name!r}: {exc}")
+            logger.info(f"FileManager: WorkspaceJail widened with known folders: {granted}")
         self._auth: CryptographicApprovalAuthority = auth or CryptographicApprovalAuthority.get_instance()
         self._initialized = False
 
@@ -93,6 +105,8 @@ class FileManager(BaseNativeManager):
             "file.read",
             "file.delete",
             "file.copy",
+            "file.move",
+            "file.organize",
             "file.exists",
             "file.info",
             "file.list",
@@ -189,8 +203,23 @@ class FileManager(BaseNativeManager):
             or args.get("source")
             or args.get("src")
             or args.get("directory")
+            or args.get("target_dir")
+            or args.get("folder")
+            or args.get("target")
         )
         content = args.get("content") or args.get("text") or ""
+
+        if str(file_path_str).startswith("$known_folder:"):
+            from desktop.native.known_folders import resolve_known_folder
+            raw_kf = str(file_path_str).split(":", 1)[1]
+            parts = re.split(r"[\\/]", raw_kf, maxsplit=1)
+            folder_key = parts[0].lower()
+            sub_path = parts[1] if len(parts) > 1 else ""
+            try:
+                base_dir = resolve_known_folder(folder_key)
+                file_path_str = str(base_dir / sub_path) if sub_path else str(base_dir)
+            except Exception as kf_exc:
+                logger.warning(f"Could not resolve known folder {raw_kf!r}: {kf_exc}")
 
         if not file_path_str:
             m_path = re.search(r"['\"]([^'\"]+\.[a-zA-Z0-9]+)['\"]", goal)
@@ -371,6 +400,135 @@ class FileManager(BaseNativeManager):
                     manager=self.name,
                     data={"source": str(target_path), "destination": str(dst_path)},
                     events=["file_copied"],
+                )
+
+            # 4b. File Move
+            elif cap_clean in ("file.move", "move_file", "move"):
+                dst_str = args.get("destination") or args.get("dst") or args.get("target") or ""
+                if not dst_str:
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error="Missing destination path for file.move",
+                    )
+                valid_dst, dst_path, dst_err = self._resolve_and_verify_path(str(dst_str))
+                if not valid_dst:
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error=f"Destination {dst_err}",
+                        data={"security_alert": "workspace_jail_violation"},
+                    )
+
+                dst_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(target_path), str(dst_path))
+                if not dst_path.exists() or (target_path.exists() and target_path != dst_path):
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error="Move did not verify on disk",
+                    )
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability=capability,
+                    manager=self.name,
+                    data={"source": str(target_path), "destination": str(dst_path)},
+                    events=["file_moved"],
+                )
+
+            # 4c. File Organize (Execute -> Verify -> Report)
+            elif cap_clean in ("file.organize", "organize_files", "organize"):
+                if not target_path.is_dir():
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error=f"Target path is not a directory: {target_path}",
+                    )
+
+                strategy = args.get("strategy") or "category"
+                category_map = {
+                    ".pdf": "Documents", ".doc": "Documents", ".docx": "Documents", ".txt": "Documents",
+                    ".xls": "Spreadsheets", ".xlsx": "Spreadsheets", ".csv": "Spreadsheets",
+                    ".jpg": "Images", ".jpeg": "Images", ".png": "Images", ".gif": "Images", ".webp": "Images",
+                    ".mp4": "Videos", ".mov": "Videos", ".mkv": "Videos", ".avi": "Videos",
+                    ".mp3": "Audio", ".wav": "Audio", ".flac": "Audio",
+                    ".zip": "Archives", ".rar": "Archives", ".7z": "Archives", ".tar": "Archives", ".gz": "Archives",
+                    ".exe": "Installers", ".msi": "Installers",
+                }
+
+                moved: list[dict[str, str]] = []
+                skipped: list[str] = []
+                failed: list[dict[str, str]] = []
+
+                for entry in list(target_path.iterdir()):
+                    if entry.is_dir():
+                        continue  # Skip existing subdirectories
+
+                    if not self._jail.is_path_inside_workspace(entry):
+                        continue
+
+                    if strategy == "by_extension" or strategy == "extension":
+                        category = entry.suffix.lstrip(".").lower() or "no_extension"
+                    else:
+                        category = category_map.get(entry.suffix.lower(), "Other")
+
+                    dest_dir = target_path / category
+                    dest_path = dest_dir / entry.name
+
+                    try:
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        if dest_path.exists():
+                            skipped.append(entry.name)
+                            continue
+
+                        shutil.move(str(entry), str(dest_path))
+
+                        # Verify on disk
+                        if dest_path.exists() and not entry.exists():
+                            moved.append({"file": entry.name, "category": category, "destination": str(dest_path)})
+                        else:
+                            failed.append({"file": entry.name, "reason": "move did not verify on disk"})
+                    except Exception as exc:
+                        failed.append({"file": entry.name, "reason": str(exc)})
+
+                result_data = {
+                    "folder": str(target_path),
+                    "moved": moved,
+                    "skipped": skipped,
+                    "failed": failed,
+                    "moved_count": len(moved),
+                    "skipped_count": len(skipped),
+                    "failed_count": len(failed),
+                    "strategy": strategy,
+                }
+
+                if failed and not moved:
+                    return DesktopResult.create_failure(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        error=f"Organize failed for all {len(failed)} file(s)",
+                        data=result_data,
+                    )
+                if failed:
+                    return DesktopResult.create_partial(
+                        goal=goal,
+                        capability=capability,
+                        manager=self.name,
+                        data=result_data,
+                        warnings=[f"{len(failed)} file(s) failed to move during organization"],
+                    )
+
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability=capability,
+                    manager=self.name,
+                    data=result_data,
+                    events=["files_organized"],
                 )
 
             # 5. File Exists

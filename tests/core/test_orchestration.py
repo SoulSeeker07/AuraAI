@@ -154,15 +154,15 @@ def test_master_orchestrator_blocks_scaffolded_unwired_capabilities_fail_closed(
     p_reg, b_reg, _, _ = clean_registries
     orchestrator = MasterOrchestrator(planner_registry=p_reg, backend_registry=b_reg)
 
-    # browser.navigate is currently marked is_live=False in BrowserCapabilityProvider
-    res = orchestrator.process_request("browser.navigate", parameters={"url": "https://example.com"})
+    # code.repair is currently marked is_live=False in CodingCapabilityProvider
+    res = orchestrator.process_request("code.repair", parameters={"target_file": "src/main.py", "error_message": "syntax error"})
 
     # Must fail closed before execution dispatch
     assert res.success is False
     assert res.planner == "CapabilityRegistry"
     assert "validation_errors" in res.data
     assert any("scaffolded (is_live=False)" in err for err in res.data["validation_errors"])
-    assert "browser.navigate" in res.data.get("unwired_capabilities", [])
+    assert "code.repair" in res.data.get("unwired_capabilities", [])
     assert any("Plan validation failed" in obs for obs in res.observations)
 
 

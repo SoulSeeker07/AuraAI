@@ -17,8 +17,8 @@ not from a separate buffer.
 import pytest
 from unittest.mock import MagicMock, patch
 
-from src.brain.conversation_engine import ConversationEngine
-from src.memory.manager.memory_manager import MemoryManager
+from brain.conversation_engine import ConversationEngine
+from memory.manager.memory_manager import MemoryManager
 from ai.provider_manager import ProviderManager
 
 

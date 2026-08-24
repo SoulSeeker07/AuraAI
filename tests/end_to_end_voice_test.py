@@ -66,7 +66,7 @@ def main():
 
     results = {}
 
-    from src.voice.voice_manager import VoiceManager
+    from voice.voice_manager import VoiceManager
     
     print_step("Initializing Aura Voice Manager...")
     try:

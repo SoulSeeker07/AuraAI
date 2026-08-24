@@ -37,3 +37,4 @@ models/
 
 # Generated test/runtime artifacts
 artifacts/
+.staging/

@@ -12,12 +12,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 try:
-    from ...research.models import MIN_SYNTHESIS_CONFIDENCE_THRESHOLD
+    from research.models import MIN_SYNTHESIS_CONFIDENCE_THRESHOLD
 except (ImportError, ValueError):
-    try:
-        from src.research.models import MIN_SYNTHESIS_CONFIDENCE_THRESHOLD
-    except (ImportError, ValueError):
-        MIN_SYNTHESIS_CONFIDENCE_THRESHOLD = 0.40
+    MIN_SYNTHESIS_CONFIDENCE_THRESHOLD = 0.40
 
 from ..planning.execution_trace import ExecutionTrace
 from .artifact import Artifact

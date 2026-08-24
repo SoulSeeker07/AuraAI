@@ -1,7 +1,7 @@
 import tempfile
 import sys
 from pathlib import Path
-from src.engineering.test_engine import TestEngine
+from engineering.test_engine import TestEngine
 
 def test_test_engine_parsing():
     with tempfile.TemporaryDirectory() as temp_repo:

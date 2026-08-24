@@ -322,10 +322,7 @@ class SecurityManager(BaseNativeManager):
 
             # 9. Credential Scan
             elif cap in ("security.credential_scan", "credential_scan"):
-                try:
-                    from experts.security.credential_scanner import CredentialScanner
-                except (ImportError, ValueError):
-                    from src.experts.security.credential_scanner import CredentialScanner
+                from experts.security.credential_scanner import CredentialScanner
                 scanner = CredentialScanner()
                 workspace_path = args.get("path") or args.get("workspace_path") or os.getcwd()
                 findings = scanner.scan_directory(workspace_path)

@@ -20,13 +20,13 @@ sys.path.insert(0, project_root)
 
 import win32clipboard
 
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
-from src.desktop.native.managers.clipboard_manager import (
+from desktop.native.desktop_execution_engine import DesktopExecutionEngine
+from desktop.native.desktop_result import DesktopResult, DesktopStatus
+from desktop.native.managers.clipboard_manager import (
     ClipboardContent,
     ClipboardManager,
 )
-from src.desktop.native.native_exceptions import ClipboardError
+from desktop.native.native_exceptions import ClipboardError
 
 
 def test_manager_native_structure():
@@ -68,7 +68,7 @@ def test_only_windows_specific_code():
 
     import inspect
 
-    import src.desktop.native.managers.clipboard_manager as cm_module
+    import desktop.native.managers.clipboard_manager as cm_module
 
     source = inspect.getsource(cm_module)
 
@@ -288,7 +288,7 @@ def test_separation_of_concerns():
     # The manager should ONLY call win32clipboard functions
     import inspect
 
-    import src.desktop.native.managers.clipboard_manager as cm_module
+    import desktop.native.managers.clipboard_manager as cm_module
 
     source = inspect.getsource(cm_module.ClipboardManager)
 

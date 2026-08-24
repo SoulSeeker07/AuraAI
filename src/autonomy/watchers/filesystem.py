@@ -38,6 +38,27 @@ class _AuraFileSystemHandler(FileSystemEventHandler):
     def __init__(self, runtime: EventRuntime) -> None:
         super().__init__()
         self.runtime = runtime
+        self._listeners: list[Any] = []
+        self._listener_lock = threading.Lock()
+
+    def register_listener(self, callback: Any) -> None:
+        with self._listener_lock:
+            if callback not in self._listeners:
+                self._listeners.append(callback)
+
+    def unregister_listener(self, callback: Any) -> None:
+        with self._listener_lock:
+            if callback in self._listeners:
+                self._listeners.remove(callback)
+
+    def _notify_listeners(self, event_type: str, path_str: str) -> None:
+        with self._listener_lock:
+            listeners = list(self._listeners)
+        for cb in listeners:
+            try:
+                cb(event_type, path_str)
+            except Exception as e:
+                logger.warning(f"[FilesystemWatcher] Listener callback warning: {e}")
 
     def _normalize_path(self, path_str: str) -> str:
         try:
@@ -66,6 +87,7 @@ class _AuraFileSystemHandler(FileSystemEventHandler):
                 },
             )
             self.runtime.ingest(aura_event)
+            self._notify_listeners("created", norm_path)
         except Exception as e:
             logger.debug(f"[FilesystemWatcher] Error processing creation event for {event.src_path}: {e}")
 
@@ -90,6 +112,7 @@ class _AuraFileSystemHandler(FileSystemEventHandler):
                 },
             )
             self.runtime.ingest(aura_event)
+            self._notify_listeners("modified", norm_path)
         except Exception as e:
             logger.debug(f"[FilesystemWatcher] Error processing modification event for {event.src_path}: {e}")
 
@@ -106,6 +129,7 @@ class _AuraFileSystemHandler(FileSystemEventHandler):
                 },
             )
             self.runtime.ingest(aura_event)
+            self._notify_listeners("deleted", norm_path)
         except Exception as e:
             logger.debug(f"[FilesystemWatcher] Error processing deletion event for {event.src_path}: {e}")
 
@@ -125,6 +149,7 @@ class _AuraFileSystemHandler(FileSystemEventHandler):
                 },
             )
             self.runtime.ingest(aura_event)
+            self._notify_listeners("moved", dest_norm)
         except Exception as e:
             logger.debug(f"[FilesystemWatcher] Error processing move event for {event.src_path}: {e}")
 
@@ -152,6 +177,14 @@ class FilesystemWatcher:
         if watch_paths:
             for p in watch_paths:
                 self.add_watch(p, recursive=recursive)
+
+    def register_listener(self, callback: Any) -> None:
+        """Register a direct callback receiving (event_type: str, path: str)."""
+        self._handler.register_listener(callback)
+
+    def unregister_listener(self, callback: Any) -> None:
+        """Unregister a direct callback."""
+        self._handler.unregister_listener(callback)
 
     def add_watch(self, path: str | Path, recursive: bool | None = None) -> bool:
         """

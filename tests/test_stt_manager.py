@@ -1,8 +1,8 @@
 import time
 import pytest
 from unittest.mock import MagicMock, patch
-from src.voice.stt_manager import FasterWhisperSTTEngine, LocalAgreementStabilizer
-from src.voice.models import STTSettings
+from voice.stt_manager import FasterWhisperSTTEngine, LocalAgreementStabilizer
+from voice.models import STTSettings
 
 @pytest.fixture
 def stt_engine():
@@ -95,7 +95,7 @@ def test_stt_max_window_cap(stt_engine):
 def test_google_stt_circuit_breaker_tripping_and_recovery():
     """Verify GoogleSTTEngine circuit breaker trips on consecutive RequestError failures and recovers."""
     import speech_recognition as sr
-    from src.voice.stt_manager import GoogleSTTEngine, CircuitBreakerState
+    from voice.stt_manager import GoogleSTTEngine, CircuitBreakerState
 
     settings = STTSettings(language="en-in", sample_rate=16000)
     engine = GoogleSTTEngine(settings)
@@ -158,7 +158,7 @@ def test_google_stt_circuit_breaker_tripping_and_recovery():
 
 def test_google_stt_unexpected_exception_does_not_trip_breaker():
     """Verify non-network exceptions (TypeError, bug) do NOT trip the circuit breaker."""
-    from src.voice.stt_manager import GoogleSTTEngine, CircuitBreakerState
+    from voice.stt_manager import GoogleSTTEngine, CircuitBreakerState
 
     settings = STTSettings(language="en-in", sample_rate=16000)
     engine = GoogleSTTEngine(settings)
@@ -188,7 +188,7 @@ def test_google_stt_circuit_breaker_concurrent_hammering():
     """Verify circuit breaker thread-safety when multiple threads hammer finalize concurrently."""
     import speech_recognition as sr
     from concurrent.futures import ThreadPoolExecutor
-    from src.voice.stt_manager import GoogleSTTEngine, CircuitBreakerState
+    from voice.stt_manager import GoogleSTTEngine, CircuitBreakerState
 
     settings = STTSettings(language="en-in", sample_rate=16000)
     engine = GoogleSTTEngine(settings)
@@ -219,7 +219,7 @@ def test_google_stt_circuit_breaker_concurrent_hammering():
 
 def test_hybrid_streaming_partials_forwarding():
     """Verify GoogleSTTEngine only forwards streaming chunks when hybrid mode is enabled."""
-    from src.voice.stt_manager import GoogleSTTEngine
+    from voice.stt_manager import GoogleSTTEngine
 
     settings = STTSettings(language="en-in", sample_rate=16000)
     engine = GoogleSTTEngine(settings)

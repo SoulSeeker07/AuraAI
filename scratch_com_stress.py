@@ -1,7 +1,7 @@
 import subprocess
 import time
-from src.desktop.native.adapters.com_threading import com_scope
-from src.desktop.native.adapters.uia_adapter import PywinautoUIAAdapter
+from desktop.native.adapters.com_threading import com_scope
+from desktop.native.adapters.uia_adapter import PywinautoUIAAdapter
 
 PS_WINFORMS_CODE = """
 Add-Type -AssemblyName System.Windows.Forms

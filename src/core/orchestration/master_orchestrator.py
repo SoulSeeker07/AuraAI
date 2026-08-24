@@ -14,6 +14,7 @@ Operates natively on AgentSession processes across the 7-stage cognitive pipelin
 """
 
 import asyncio
+import dataclasses
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -22,19 +23,32 @@ from typing import Any
 try:
     from ..backends.backend_registry import BackendRegistry
     from ..planning.execution_result import ExecutionResult
+    from .request_source import RequestSource
     from ..system.prompt_builder import PromptBuilder
 except (ImportError, ValueError):
     from core.backends.backend_registry import BackendRegistry
     from core.planning.execution_result import ExecutionResult
+    from core.orchestration.request_source import RequestSource
     from core.system.prompt_builder import PromptBuilder
 from .agent_session import AgentSession, ExecutionBudget
-from .artifact import Artifact
+from .artifact import Artifact, VerificationReport
 from .decision_engine import DecisionEngine
 from .observation import Observation
 from .planner_registry import PlannerRegistry
 from .result_merger import ResultMerger
 from .supervisor_agent import SupervisorAgent
 from .task_decomposer import SubTask, TaskDecomposer
+from .execution_events import (
+    NodeState,
+    ExecutionEvent,
+    SubTaskNodeInfo,
+    GraphInitializedEvent,
+    NodeStateChangedEvent,
+    ConfirmationRequiredEvent,
+    ExecutionStartedEvent,
+    ExecutionFinishedEvent,
+    ReplanTriggeredEvent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +83,8 @@ class MasterOrchestrator:
         self._last_session: Any = (
             None  # AgentSession — used for session-scoped confirmation
         )
+        self._execution_sink: Any = None
+        self._sink_error_count: int = 0
 
         # Milestone 17.0: Build the identity layer at startup.
         # The PromptBuilder reads knowledge/ YAMLs + live registries and assembles
@@ -129,6 +145,30 @@ class MasterOrchestrator:
             NativeManagerRegistry.reset_instance()
         except Exception:
             pass
+
+    def set_execution_sink(self, sink: Any | None) -> None:
+        """Register a callback sink for real-time execution lifecycle events."""
+        self._execution_sink = sink
+        self._sink_error_count = 0
+
+    def _emit(self, event: Any) -> None:
+        """Emit execution event to registered sink with 3-strike circuit-breaker protection."""
+        if not getattr(self, "_execution_sink", None):
+            return
+        try:
+            self._execution_sink(event)
+            self._sink_error_count = 0
+        except Exception as exc:
+            self._sink_error_count = getattr(self, "_sink_error_count", 0) + 1
+            logger.warning(
+                f"[MasterOrchestrator] Execution sink error ({self._sink_error_count}/3): {exc}"
+            )
+            if self._sink_error_count >= 3:
+                logger.error(
+                    f"[MasterOrchestrator] Execution sink exceeded consecutive error threshold (3 strikes). "
+                    f"Circuit breaker tripped: permanently detaching sink."
+                )
+                self._execution_sink = None
 
     def check_pending_confirmation(self) -> Any | None:
         """
@@ -255,11 +295,12 @@ class MasterOrchestrator:
         parameters: dict[str, Any] | None = None,
         budget: ExecutionBudget | None = None,
         context: Any = None,
+        source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
     ) -> ExecutionResult:
         """Synchronous entry point for processing a request."""
         return asyncio.run(
             self.process_request_async(
-                goal_text, preferred_planner, parameters, budget, context
+                goal_text, preferred_planner, parameters, budget, context, source=source
             )
         )
 
@@ -268,6 +309,7 @@ class MasterOrchestrator:
         goal: str,
         precomputed_graph: Any | None = None,
         session: AgentSession | None = None,
+        source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
         **kwargs: Any,
     ) -> ExecutionResult:
         """Execute a goal with optional precomputed TaskGraph."""
@@ -275,6 +317,7 @@ class MasterOrchestrator:
             goal_text=goal,
             task_graph=precomputed_graph,
             session=session,
+            source=source,
             **kwargs,
         )
 
@@ -287,43 +330,104 @@ class MasterOrchestrator:
         context: Any = None,
         task_graph: Any | None = None,
         session: AgentSession | None = None,
+        source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
     ) -> ExecutionResult:
         """
         Execute full 7-stage cognitive orchestration pipeline using AgentSession.
+
+        Args:
+            source: Origin of this request. TRIGGER_AUTONOMOUS and DAEMON_BACKGROUND
+                    requests receive an AUTONOMOUS autonomy floor (HIGH-risk actions
+                    route to the HMAC gate rather than ASK_USER). The original
+                    autonomy level is restored after the request completes.
+        """
+        # ── M26: Autonomy Floor for Non-Interactive Sources ─────────────────
+        # Trigger/daemon sources must never produce a PendingConfirmation — there
+        # is no human turn to resolve it. Raise the request-scoped ContextVar floor to
+        # AUTONOMOUS so that HIGH/CRITICAL risk steps gate on the HMAC path instead of ASK_USER.
+        from .execution_policy import ExecutionPolicy
+        from .autonomy_mode import AutonomyLevel
+
+        _policy = ExecutionPolicy.get_instance()
+        _policy_token = None
+        _is_autonomous_source = source in (
+            RequestSource.TRIGGER_AUTONOMOUS,
+            RequestSource.DAEMON_BACKGROUND,
+        )
+        if _is_autonomous_source:
+            try:
+                _policy_token = _policy.set_autonomy_level(AutonomyLevel.AUTONOMOUS)
+                logger.info(
+                    f"[MasterOrchestrator] Source={source.value}: request autonomy floor set to "
+                    f"AUTONOMOUS via ContextVar. HIGH/CRITICAL risk → HMAC gate, not ASK_USER."
+                )
+            except Exception as _e:
+                logger.warning(f"[MasterOrchestrator] Could not set autonomy floor for {source.value}: {_e}")
+        elif source == RequestSource.AGENT_DELEGATED:
+            # AGENT_DELEGATED inherits current ContextVar level without forcing an override
+            _is_autonomous_source = (_policy.get_autonomy_level() == AutonomyLevel.AUTONOMOUS)
+            logger.info(
+                f"[MasterOrchestrator] Source=agent_delegated: inherited autonomy level "
+                f"{_policy.get_autonomy_level().value} from parent ContextVar context."
+            )
+
+        try:
+            return await self._process_request_async_inner(
+                goal_text=goal_text,
+                preferred_planner=preferred_planner,
+                parameters=parameters,
+                budget=budget,
+                context=context,
+                task_graph=task_graph,
+                session=session,
+                source=source,
+                skip_confirmation_intercept=_is_autonomous_source,
+            )
+        finally:
+            # Always reset request-scoped ContextVar token, even on exception
+            if _policy is not None and _policy_token is not None:
+                _policy.reset_autonomy_level(_policy_token)
+
+    async def _process_request_async_inner(
+        self,
+        goal_text: str,
+        preferred_planner: str | None = None,
+        parameters: dict[str, Any] | None = None,
+        budget: ExecutionBudget | None = None,
+        context: Any = None,
+        task_graph: Any | None = None,
+        session: AgentSession | None = None,
+        source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
+        skip_confirmation_intercept: bool = False,
+    ) -> ExecutionResult:
+        """
+        Inner pipeline body. Called from process_request_async after autonomy-floor setup.
         """
         # ── Intercept Pending Confirmation Responses ────────────────────────
-        # Intercept answers to pending confirmations (e.g. 'y', 'n', 'yes', 'no')
-        # before running any intent routing, planning, or memory recall.
-        conf = self.check_pending_confirmation()
-        if conf is not None:
-            user_answer = goal_text.strip().lower()
-            if user_answer in [
-                "yes",
-                "y",
-                "yeah",
-                "yep",
-                "sure",
-                "ok",
-                "okay",
-                "no",
-                "n",
-                "nope",
-                "nah",
-                "cancel",
-            ]:
-                resolved_res = self.resolve_pending_confirmation(goal_text)
-                if resolved_res is not None:
-                    try:
-                        self._write_memory(self._last_session, resolved_res)
-                    except Exception:
-                        pass
-                    self._last_result = resolved_res
-                    return resolved_res
+        # Skipped for non-interactive sources (no human present to answer).
+        if not skip_confirmation_intercept:
+            conf = self.check_pending_confirmation()
+            if conf is not None:
+                user_answer = goal_text.strip().lower()
+                if user_answer in [
+                    "yes", "y", "yeah", "yep", "sure", "ok", "okay",
+                    "no", "n", "nope", "nah", "cancel",
+                ]:
+                    resolved_res = self.resolve_pending_confirmation(goal_text)
+                    if resolved_res is not None:
+                        try:
+                            self._write_memory(self._last_session, resolved_res)
+                        except Exception:
+                            pass
+                        self._last_result = resolved_res
+                        return resolved_res
 
         start_t = datetime.now().timestamp()
         session = session or AgentSession(goal=goal_text, budget=budget or ExecutionBudget())
-        self._last_session = session  # for session-scoped confirmation resolution
+        if source == RequestSource.HUMAN_INTERACTIVE:
+            self._last_session = session  # for session-scoped confirmation resolution
         self._log_pipeline_start(goal_text, session.session_id)
+        self._emit(ExecutionStartedEvent(goal=goal_text, session_id=session.session_id))
 
         # Stage 0: Perception (NLU Layer)
         t_nlu = datetime.now().timestamp()
@@ -695,6 +799,42 @@ class MasterOrchestrator:
             )
             return self.result_merger.merge_session(session, success=False)
 
+        # Stage 2.7: Short-circuit for conversational/no-planner intents
+        # When the decision engine classifies the request as CHAT or marks it as
+        # not needing a planner, skip decomposition and validation entirely.
+        # The result is returned as a lightweight chat stub that aura_core.py
+        # will handle via get_ai_response().
+        from .decision_engine import IntentType as _IntentType
+        if (
+            task_graph is None
+            and not decision.can_answer_from_memory
+            and (
+                decision.intent_type == _IntentType.CHAT
+                or not decision.needs_planner
+            )
+        ):
+            chat_stub = ExecutionResult(
+                success=True,
+                planner="none",
+                goal=goal_text,
+                confidence=1.0,
+                observations=[],
+                data={
+                    "backend": "provider",
+                    "capability": "chat",
+                    "intent_type": decision.intent_type.value,
+                    "needs_planner": False,
+                    "decision": {
+                        "intent_type": decision.intent_type.value,
+                        "needs_planner": False,
+                        "can_answer_from_memory": False,
+                        "can_answer_from_system": False,
+                    },
+                },
+            )
+            self._last_result = chat_stub
+            return chat_stub
+
         # Stage 2.8: Direct Fulfillment from Memory (Zero-Refetch Invariant - G5)
         if decision.can_answer_from_memory and task_graph is None:
             ranked_mems = session.memory_context.get("ranked_cognitive_memories") or []
@@ -801,48 +941,112 @@ class MasterOrchestrator:
                     elif st.capability in parameters and isinstance(parameters[st.capability], dict):
                         st.parameters.update(parameters[st.capability])
 
-        # Stage 3.2: Task Graph Validation via Universal Capability Registry (Fail-Closed)
+        # Emit GraphInitializedEvent for real-time observers
+        nodes_info = tuple(
+            SubTaskNodeInfo(
+                task_id=st.task_id,
+                title=st.title,
+                required_role=st.required_role.value if hasattr(st.required_role, "value") else str(st.required_role),
+                capability=st.capability,
+                description=st.description,
+                dependencies=tuple(st.dependencies or ()),
+                status=NodeState.from_str(st.status),
+                parameters=dict(st.parameters or {}),
+            )
+            for st in task_graph.subtasks.values()
+        )
+        order_tuple = tuple(tuple(lvl) for lvl in task_graph.execution_order)
+        self._emit(GraphInitializedEvent(
+            goal=goal_text,
+            session_id=session.session_id,
+            nodes=nodes_info,
+            execution_order=order_tuple,
+        ))
+
+        # Stage 3.2: Task Graph Validation via Universal Capability Registry
+        # Fail-closed only for hard errors (liveness failures, dependency cycles).
+        # Unknown-capability errors are soft warnings — the execution backends
+        # have their own fallback logic and can handle unrecognised capability
+        # strings gracefully.
         from core.capabilities.capability_registry import CapabilityRegistry
         cap_reg = CapabilityRegistry.get_instance()
         plan_caps = [st.capability for st in task_graph.subtasks.values()]
         validation_res = cap_reg.validate_plan_graph(plan_caps, require_live=True)
         if not validation_res.valid:
-            logger.error(
-                f"[MasterOrchestrator] Task graph validation FAILED (blocking execution): {validation_res.errors}"
-            )
-            for err in validation_res.errors:
-                session.add_observation(
-                    Observation(
-                        obs_type="system",
-                        source="CapabilityRegistry",
-                        confidence=0.0,
-                        content=f"❌ Plan validation error: {err}",
-                    )
-                )
-            for st in task_graph.subtasks.values():
-                st.status = "failed"
+            # Separate hard errors from soft unknown-capability warnings
+            hard_errors = [
+                err for err in validation_res.errors
+                if not err.startswith("Unknown capability in plan:")
+            ]
+            unknown_caps = [
+                err for err in validation_res.errors
+                if err.startswith("Unknown capability in plan:")
+            ]
 
-            failed_result = ExecutionResult(
-                success=False,
-                planner="CapabilityRegistry",
-                goal=goal_text,
-                confidence=0.0,
-                data={
-                    "validation_errors": validation_res.errors,
-                    "unwired_capabilities": validation_res.unwired_capabilities,
-                    "missing_prerequisites": validation_res.missing_prerequisites,
-                },
-                observations=[f"Plan validation failed: {err}" for err in validation_res.errors],
-            )
-            session.metrics["decomposition_ms"] = round(
-                (datetime.now().timestamp() - t2) * 1000, 2
-            )
-            session.metrics["total_execution_time_seconds"] = datetime.now().timestamp() - start_t
-            session.metrics["subtasks_completed"] = 0
-            session.metrics["subtasks_total"] = len(task_graph.subtasks)
-            self._write_memory(session, failed_result)
-            self._last_result = failed_result
-            return failed_result
+            if unknown_caps:
+                logger.warning(
+                    f"[MasterOrchestrator] Task graph has unregistered capabilities "
+                    f"(proceeding with execution — backends will handle): {unknown_caps}"
+                )
+
+            if hard_errors:
+                logger.error(
+                    f"[MasterOrchestrator] Task graph validation FAILED (blocking execution): {hard_errors}"
+                )
+                for err in hard_errors:
+                    session.add_observation(
+                        Observation(
+                            obs_type="system",
+                            source="CapabilityRegistry",
+                            confidence=0.0,
+                            content=f"❌ Plan validation error: {err}",
+                        )
+                    )
+                for st in task_graph.subtasks.values():
+                    st.status = "failed"
+                    # Pre-execution plan validation failure: verified=False prevents false-positive checkmarks
+                    self._emit(NodeStateChangedEvent(
+                        task_id=st.task_id,
+                        new_state=NodeState.FAILED,
+                        old_state=NodeState.PENDING,
+                        error=f"Plan validation failed: {hard_errors}",
+                        verified=False,
+                    ))
+
+                failed_result = ExecutionResult(
+                    success=False,
+                    planner="CapabilityRegistry",
+                    goal=goal_text,
+                    confidence=0.0,
+                    data={
+                        "validation_errors": hard_errors,
+                        "unwired_capabilities": validation_res.unwired_capabilities,
+                        "missing_prerequisites": validation_res.missing_prerequisites,
+                        "decision": {
+                            "intent_type": decision.intent_type.value,
+                            "needs_planner": decision.needs_planner,
+                            "can_answer_from_memory": decision.can_answer_from_memory,
+                            "can_answer_from_system": decision.can_answer_from_system,
+                        },
+                    },
+                    observations=[f"Plan validation failed: {err}" for err in hard_errors],
+                )
+                session.metrics["decomposition_ms"] = round(
+                    (datetime.now().timestamp() - t2) * 1000, 2
+                )
+                session.metrics["total_execution_time_seconds"] = datetime.now().timestamp() - start_t
+                session.metrics["subtasks_completed"] = 0
+                session.metrics["subtasks_total"] = len(task_graph.subtasks)
+                self._write_memory(session, failed_result)
+                self._last_result = failed_result
+                self._emit(ExecutionFinishedEvent(
+                    goal=goal_text,
+                    session_id=session.session_id,
+                    success=False,
+                    observations=tuple(failed_result.observations or ()),
+                    error=f"Plan validation failed: {hard_errors}",
+                ))
+                return failed_result
 
         session.metrics["decomposition_ms"] = round(
             (datetime.now().timestamp() - t2) * 1000, 2
@@ -879,6 +1083,12 @@ class MasterOrchestrator:
                 # Mark remaining tasks as cancelled
                 for t_id in task_level:
                     task_graph.subtasks[t_id].status = "cancelled"
+                    self._emit(NodeStateChangedEvent(
+                        task_id=t_id,
+                        new_state=NodeState.CANCELLED,
+                        old_state=NodeState.PENDING,
+                        error="Execution halted due to upstream failure",
+                    ))
                 continue
 
             logger.info(
@@ -907,6 +1117,14 @@ class MasterOrchestrator:
                         ):
                             task_label = t_id.replace("_", " ").title()
                             err_msg = f"Research stage completed without producing a payload. Cannot generate markdown. Execution stopped at {task_label}."
+                        # Input artifact validation failure: pre-condition check failed, verified=False
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.FAILED,
+                            old_state=NodeState.PENDING,
+                            error=err_msg,
+                            verified=False,
+                        ))
                         session.add_observation(
                             Observation(
                                 obs_type="system",
@@ -942,6 +1160,14 @@ class MasterOrchestrator:
                     )
                     subtask.status = "failed"
                     pipeline_halted = True
+                    # Unhandled execution exception: task crashed mid-run, verified=False
+                    self._emit(NodeStateChangedEvent(
+                        task_id=t_id,
+                        new_state=NodeState.FAILED,
+                        old_state=NodeState.RUNNING,
+                        error=f"{type(res).__name__}: {res}",
+                        verified=False,
+                    ))
                     session.add_observation(
                         Observation(
                             obs_type="system",
@@ -962,6 +1188,27 @@ class MasterOrchestrator:
                         pipeline_halted = True
 
                     res_data = res.data if isinstance(res.data, dict) else {}
+
+                    # Infer tri-state verified flag from result / data
+                    # None  = Unverified / no explicit verification report
+                    # True  = Explicit verification passed
+                    # False = Explicit verification failed or task failed
+                    v_passed = None
+                    if getattr(res, "verification_passed", None) is not None:
+                        v_passed = bool(res.verification_passed)
+                    elif hasattr(res, "data") and isinstance(res.data, dict) and "verification_passed" in res.data:
+                        v_passed = bool(res.data["verification_passed"])
+                    elif not res.success and res_data.get("policy_action") != "ask_user":
+                        v_passed = False
+
+                    self._emit(NodeStateChangedEvent(
+                        task_id=t_id,
+                        new_state=NodeState.COMPLETED if res.success else NodeState.FAILED,
+                        old_state=NodeState.RUNNING,
+                        result=res,
+                        error=None if res.success else (res.observations[0] if res.observations else "Subtask failed"),
+                        verified=v_passed,
+                    ))
                     for obs_text in res.observations:
                         session.add_observation(
                             Observation(
@@ -1013,10 +1260,6 @@ class MasterOrchestrator:
                         if art_id in rich_ids:
                             continue  # Skip generic fallback since backend returns a rich artifact for this ID!
 
-                        import dataclasses
-
-                        from .artifact import VerificationReport
-
                         # Determine checks based on artifact ID and capability
                         checks = {}
                         if (
@@ -1059,12 +1302,13 @@ class MasterOrchestrator:
 
                     # Also process any explicit artifact dicts/objects from backends
                     for art_data in res.artifacts or []:
-                        import dataclasses
-
-                        from .artifact import VerificationReport
-
                         checks = {}
-                        art_type = art_data.artifact_type if isinstance(art_data, Artifact) else art_data.get("artifact_type", "file")
+                        is_art_obj = isinstance(art_data, Artifact)
+                        art_type = (
+                            art_data.artifact_type
+                            if is_art_obj
+                            else art_data.get("artifact_type", "file")
+                        )
                         if art_type == "research":
                             checks = {
                                 "sources_reachable": True,
@@ -1085,7 +1329,7 @@ class MasterOrchestrator:
                             observations=res.observations,
                         )
 
-                        if isinstance(art_data, Artifact):
+                        if is_art_obj:
                             updated_art = dataclasses.replace(
                                 art_data,
                                 session_id=session.session_id,
@@ -1148,6 +1392,18 @@ class MasterOrchestrator:
                                 prompt=prompt_text,
                                 remaining_subtasks=remaining_st,
                             )
+                            self._emit(ConfirmationRequiredEvent(
+                                session_id=session.session_id,
+                                task_id=t_id,
+                                plan_id=pending_plan.plan_id,
+                                prompt=prompt_text,
+                                target=target,
+                                capability=capability,
+                                remaining_task_ids=tuple(
+                                    st.task_id if hasattr(st, "task_id") else str(st)
+                                    for st in remaining_st
+                                ),
+                            ))
                             pipeline_halted = True
                             logger.info(
                                 f"[MasterOrchestrator] Stored pending confirmation on session "
@@ -1214,6 +1470,14 @@ class MasterOrchestrator:
         self._write_memory(session, final_result)
         self._last_result = final_result
 
+        self._emit(ExecutionFinishedEvent(
+            goal=goal_text,
+            session_id=session.session_id,
+            success=final_result.success,
+            observations=tuple(final_result.observations or ()),
+            error=None if final_result.success else "Execution failed",
+        ))
+
         return final_result
 
     async def _execute_level_task(
@@ -1224,6 +1488,11 @@ class MasterOrchestrator:
         context: dict[str, Any],
     ) -> ExecutionResult:
         subtask.status = "running"
+        self._emit(NodeStateChangedEvent(
+            task_id=task_id,
+            new_state=NodeState.RUNNING,
+            old_state=NodeState.PENDING,
+        ))
         role_key, planner, plan_payload = self.supervisor.delegate_subtask(
             subtask, decision, context
         )

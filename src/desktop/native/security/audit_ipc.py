@@ -45,15 +45,19 @@ class AuditIPCServer:
     def __init__(
         self,
         pipe_name: str = DEFAULT_PIPE_NAME,
+        handler: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
         shared_hmac_secret: bytes | None = None,
-        allowed_client_sids: list[str] | None = None,
     ):
         self._pipe_name = pipe_name
+        self._message_handler = handler
         self._secret = shared_hmac_secret or secrets.token_bytes(32)
-        self._allowed_sids = allowed_client_sids or []
         self._running = False
         self._thread: threading.Thread | None = None
-        self._message_handler: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+        self._ready_event = threading.Event()
+
+    def wait_until_ready(self, timeout: float = 2.0) -> bool:
+        """Wait for the Named Pipe server to create and bind the pipe instance."""
+        return self._ready_event.wait(timeout=timeout)
 
     @property
     def shared_secret(self) -> bytes:
@@ -80,15 +84,19 @@ class AuditIPCServer:
             sd = win32security.ConvertStringSecurityDescriptorToSecurityDescriptor(
                 sddl, win32security.SDDL_REVISION_1
             )
-            sa.SetSecurityDescriptor(sd)
+            sa.SECURITY_DESCRIPTOR = sd
         except Exception as exc:
-            logger.debug(f"[AuditIPCServer] Defaulting security attributes: {exc}")
+            logger.error(f"[AuditIPCServer] FATAL: Failed to construct restricted Named Pipe DACL: {exc}")
+            raise RuntimeError(
+                f"Fail-Closed Security Invariant: Named Pipe restricted DACL construction failed: {exc}"
+            ) from exc
 
         return sa
 
     def start(self) -> None:
         """Start background Named Pipe listening thread."""
         self._running = True
+        self._ready_event.clear()
         self._thread = threading.Thread(target=self._server_loop, daemon=True, name="AuditIPCServer")
         self._thread.start()
         logger.info(f"[AuditIPCServer] Named Pipe server active on '{self._pipe_name}'")
@@ -96,6 +104,7 @@ class AuditIPCServer:
     def stop(self) -> None:
         """Stop Named Pipe server."""
         self._running = False
+        self._ready_event.clear()
 
     def _server_loop(self) -> None:
         sa = self._create_security_attributes()
@@ -111,6 +120,7 @@ class AuditIPCServer:
                     IPC_TIMEOUT_MS,
                     sa,
                 )
+                self._ready_event.set()
 
                 # Wait for incoming connection
                 win32pipe.ConnectNamedPipe(pipe_handle, None)
@@ -205,15 +215,27 @@ class AuditIPCClient:
         with self._lock:
             pipe_handle = None
             try:
-                pipe_handle = win32file.CreateFile(
-                    self._pipe_name,
-                    win32file.GENERIC_READ | win32file.GENERIC_WRITE,
-                    0,
-                    None,
-                    win32file.OPEN_EXISTING,
-                    0,
-                    None,
-                )
+                deadline = time.time() + timeout_s
+                while time.time() < deadline:
+                    try:
+                        pipe_handle = win32file.CreateFile(
+                            self._pipe_name,
+                            win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                            0,
+                            None,
+                            win32file.OPEN_EXISTING,
+                            0,
+                            None,
+                        )
+                        break
+                    except pywintypes.error as e:
+                        if e.args[0] in (2, 231) and time.time() < deadline:
+                            time.sleep(0.05)
+                        else:
+                            raise
+
+                if not pipe_handle:
+                    raise ConnectionError(f"Could not connect to named pipe '{self._pipe_name}' within {timeout_s}s.")
 
                 # 1. Receive Challenge
                 challenge_msg = self._recv_frame(pipe_handle)

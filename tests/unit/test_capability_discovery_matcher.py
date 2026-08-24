@@ -5,8 +5,8 @@ Verifies word-boundary enforcement, token-length precedence, tier hierarchy, and
 
 from unittest.mock import MagicMock
 import logging
-from src.desktop.native.capability_matcher import CapabilityDiscoveryMatcher, tokenize
-from src.desktop.native.capability_registry import CapabilityDescriptor, CapabilityRegistry
+from desktop.native.capability_matcher import CapabilityDiscoveryMatcher, tokenize
+from desktop.native.capability_registry import CapabilityDescriptor, CapabilityRegistry
 
 
 def test_tokenize_basic():

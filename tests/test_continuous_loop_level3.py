@@ -21,10 +21,10 @@ try:
 except ImportError:
     pass
 
-from src.voice.continuous_loop import ContinuousVoiceLoop, VoiceState
+from voice.continuous_loop import ContinuousVoiceLoop, VoiceState
 from core.aura_core import AuraCore
-from src.brain.execution_coordinator import CoordinationResult
-from src.voice.voice_manager import VoiceManager, ConversationState
+from brain.execution_coordinator import CoordinationResult
+from voice.voice_manager import VoiceManager, ConversationState
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -48,10 +48,10 @@ def main():
     # We patch audio manager so it doesn't open the physical mic
     with patch('sounddevice.play') as mock_sd_play, \
          patch('sounddevice.wait') as mock_sd_wait, \
-         patch('src.voice.audio_manager.AudioManager.get_default_input_device') as mock_input, \
-         patch('src.voice.audio_manager.AudioManager.get_default_output_device') as mock_output, \
-         patch('src.voice.audio_manager.AudioManager.start_recording') as mock_start_rec, \
-         patch('src.voice.audio_manager.AudioManager.stop_recording') as mock_stop_rec:
+         patch('voice.audio_manager.AudioManager.get_default_input_device') as mock_input, \
+         patch('voice.audio_manager.AudioManager.get_default_output_device') as mock_output, \
+         patch('voice.audio_manager.AudioManager.start_recording') as mock_start_rec, \
+         patch('voice.audio_manager.AudioManager.stop_recording') as mock_stop_rec:
         
         mock_input.return_value = type('MockDevice', (), {'device_id': 0})()
         mock_output.return_value = type('MockDevice', (), {'device_id': 1})()

@@ -4,6 +4,44 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v0.32.0-dynamic-codeact`] - 2026-08-22
+
+### Added
+- **Milestone 28 — Dynamic CodeAct & Hybrid Capability Architecture (COMPLETE)**: General-purpose sandboxed code execution architecture (`DynamicCodeActExecutor`) for artifact synthesis (PowerPoint, Word documents, Excel spreadsheets, format conversions, CSV aggregations, JSON configs) with closed-loop diagnostic repair state machine (27 dedicated automated tests).
+- **AST-Based Static Import Checker**: Pre-execution AST safety verification (`check_imports`) blocking network egress (`socket`, `requests`, `urllib`), process escapes (`subprocess`, `ctypes`, `win32api`), and dynamic eval (`eval`, `exec`, `__import__`).
+- **Hermetic Staging Sandbox**: Ephemeral staging directory jail with isolated minimal Windows environment (`SYSTEMROOT`, `SYSTEMDRIVE`, `PATH`, `TEMP`, `TMP`) bounded under Windows kernel Job Objects (`Win32JobSandbox`).
+- **Post-Execution Binary Format Validators**: Multi-format structural verification using real format parsers (`python-pptx`, `python-docx`, `openpyxl`, PDF headers, images, CSV, JSON).
+- **15-Goal Convergence Evaluation**: 93.3% convergence rate ($\le 2$ repair attempts) across 15 real-world synthesis tasks (80.0% on shot 1, average latency 12.8s).
+- **Track 1 Acceptance Test Suite (T1–T6)**: 100% passed end-to-end through `MasterOrchestrator.process_request_async()` with physical file-on-disk verification.
+- **T1 Known-Folder Resolution & Routing**: Enhanced `FileManager` to cleanly resolve `$known_folder:desktop\filename.txt` subpaths with default permission for known user folders.
+
+---
+
+## [`v0.31.0-autonomous-engineering`] - 2026-08-22
+
+### Added
+- **Milestone 27 — Autonomous Engineering Platform (COMPLETE)**: Full closed-loop bug fixing, test-driven repair, and pull request assembly with fail-closed security and self-modification governance across 5 verified gates (35 dedicated automated tests, 225 total platform tests).
+- **G1 Workspace Staging & Protected Ceiling**: Recursive globbing blocks autonomous tampering with security files, governance engines, and write gates (`PROTECTED_SAFETY_CEILING`); atomic Win32 OS-level repo locks (`msvcrt.locking`); `RequestSource.AGENT_DELEGATED` context-floor inheritance in `MasterOrchestrator`.
+- **G2 Fault Localization & AST Slicing**: Structured traceback frame parser mapping pytest failure frames to source coordinates; AST symbol resolution selecting innermost enclosing scopes (functions, methods, classes); strict containment filtering of test files, stdlib, and `.venv/site-packages`.
+- **G3 Patch Synthesis & Single-Write Gate Enforcement**: AST syntax validation before diff generation; blunt Test-File Immunity (`RewardHackingViolation` on modifying existing tests/fixtures); `ADD_TEST` mode permitting net-new tests; authoritative write-gate re-verification directly at the `apply_patch()` disk-write point.
+- **G4 Self-Healing Loop & Rollback Safety**: Iterative repair loop bounded by `max_retries=3`; immediate hard-stop on ceiling/immunity violations; binary byte-exact snapshot & rollback (`read_bytes`/`write_bytes`); loud `RuntimeError` failure on unreadable files; failed untracked-deletion tracking.
+- **G5 Human Merge Gate & PR Assembly**: Structured `PRSummary` markdown generator with evidence citations and diffs; fail-closed `authorize_git_operation()` requiring human cryptographic ticket redemption via `CryptographicApprovalAuthority.verify_and_redeem()`.
+- **Technical Debt Registry**: Registered `TD-008` (HIGH — Out-of-process pytest execution without sandbox privilege dropping) and `TD-009` (MEDIUM — Human ticket-issuance UI/CLI flow for Git-operation approvals not yet wired end-to-end).
+
+---
+
+## [`v0.30.0-personal-os`] - 2026-08-21
+
+### Added
+- **Milestone 26 — Personal Operating System (COMPLETE)**: Proactive daily context synthesis, sub-second workspace search, autonomous background event triggers, and persistent OS state management across 5 verified gates (21 dedicated automated tests).
+- **G1 Request Source Classification & Governance**: `RequestSource` enum (`HUMAN_INTERACTIVE`, `TRIGGER_AUTONOMOUS`, `DAEMON_BACKGROUND`, `AGENT_DELEGATED`) with `ContextVar`-scoped autonomy level isolation (`_autonomy_level_ctx`) and strict domain ceiling enforcement (`trigger_allowed_domains`).
+- **G2 Proactive Daily Context Synthesis**: `DailyContextEngine` assembling calendar events, priority tasks, stale files, and recent research into structured daily briefings with caching.
+- **G3 Sub-Second Workspace Search**: In-memory inverted index and SQLite document cache (`WorkspaceSearchEngine`) providing sub-100ms workspace search with live incremental updates via `FileSystemWatcher`.
+- **G4 Autonomous Trigger Engine**: `TriggerScheduler` executing cron/interval/event triggers with template parameter interpolation and cryptographic audit logging.
+- **G5 OS State Persistence & Schema Migration**: SQLite-backed `PersonalOSStateStore` managing state transitions, schema versions, and reboot recovery.
+
+---
+
 ## [`v0.27.0-autonomous-daemon`] - 2026-08-18
 
 ### Added

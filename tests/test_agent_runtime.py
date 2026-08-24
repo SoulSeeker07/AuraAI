@@ -9,12 +9,12 @@ from enum import Enum
 
 import pytest
 
-from src.agents.agent_runtime import AgentRuntime
-from src.agents.execution_graph import ExecutionGraph
-from src.agents.goal import Goal, GoalPriority, GoalStatus
-from src.agents.planner import Planner
-from src.agents.scheduler import ExecutionStrategy, Scheduler
-from src.agents.task import (
+from agents.agent_runtime import AgentRuntime
+from agents.execution_graph import ExecutionGraph
+from agents.goal import Goal, GoalPriority, GoalStatus
+from agents.planner import Planner
+from agents.scheduler import ExecutionStrategy, Scheduler
+from agents.task import (
     ApprovalRequired,
     RetryPolicy,
     Task,

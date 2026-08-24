@@ -5,6 +5,35 @@ All notable changes to Aura AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0-expert-systems] - 2026-08-20
+
+### Added
+- **M25 — Professional Expert Systems (COMPLETE)**: 4 specialized domain planners sharing one runtime, opt-in Stage 2.9 routing via `expert_routing_enabled=True` in `MasterOrchestrator`.
+- **ExpertDomainRouter** (`src/experts/router.py`): Confidence-ranked routing with ≥0.50 threshold; graceful fallback to general planner on no match.
+- **SecurityExpert** (`src/experts/security_expert.py`): Cybersecurity threat analysis, audit, and hardening planner.
+- **NetworkExpert** (`src/experts/network_expert.py`): Network topology, diagnostics, and security planner.
+- **FinancialExpert** (`src/experts/financial_expert.py`): Financial analysis, modeling, and reporting planner.
+- **SoftwareExpert** (`src/experts/software_expert.py`): Architecture, refactoring, and debugging planner.
+- **PlanDAGCompiler** (`src/experts/compiler.py`): Compiles expert domain assessments into structured execution DAGs.
+- **ExpertRegistry** (`src/experts/expert_registry.py`): Centralized expert registration and lookup.
+- **Stage 2.9 Routing**: `MasterOrchestrator` routes to `ExpertDomainRouter` before general decomposition when `expert_routing_enabled=True`; fail-closed confidence gates prevent low-confidence expert delegation.
+
+---
+
+## [0.28.0-event-runtime] - 2026-08-20
+
+### Added
+- **M24 — Event Runtime & Autonomous Intent Execution (COMPLETE)**: Aura transitions from reactive assistant to autonomous event-driven operating runtime. All components delivered under the 6-Phase architecture.
+- **AuraEvent Contract** (`src/autonomy/events.py`): Canonical typed event envelope with `event_id`, `event_type`, `source`, `timestamp`, `payload`, `correlation_id`, `urgency`. Immutable, validated on ingestion.
+- **EventRuntime Core** (`src/autonomy/event_runtime.py`): Single choke point for all autonomous telemetry. Ingest → normalize → deduplicate (semantic fingerprinting, sliding temporal window) → correlate (multi-signal `CorrelatedEventGroups`) → dispatch. Generates immutable `EventTraceRecord` as root of causal chain.
+- **EventInterpreter** (`src/autonomy/interpreter.py`): Relevance & noise filter. Queries `WorldModel` for context. Synthesizes signals into `IntentType` goal DAGs before MasterOrchestrator dispatch. Never executes directly.
+- **AutonomyPolicyGate** (`src/autonomy/policy_gate.py`): Immutable 4-tier risk decision gate: `ALLOWED` / `RATE_LIMITED` / `APPROVAL_REQUIRED` (HMAC ticket) / `BLOCKED`.
+- **TriggerScheduler** (`src/autonomy/trigger_scheduler.py`) & **TriggerRegistry** (`src/autonomy/trigger_registry.py`): Cron, interval, and one-shot temporal triggers feeding the event pipeline.
+- **Event Source Watchers** (`src/autonomy/watchers/`): `FilesystemWatcher` (high-volume deduplication), `ProcessMonitor` (failure correlation, exit code tracking).
+- **Immutable Causal Trace Chain**: `event_id → correlation_id → assessment_id → policy_decision_id → plan_id → execution_id → observation_id` — every autonomous action is fully traceable.
+
+---
+
 ## [0.27.0-autonomous-daemon] - 2026-08-18
 
 ### Added
@@ -64,131 +93,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.23.0-coding-intelligence] - 2026-08-18
 
 ### Added
-- **M20 — Coding Intelligence 2.0**: Complete engineering agent with AST analysis, code editor with backup/rollback, Antigravity bridge for code generation, World Model integration, and automated repair loop.
-- `AntigravityCodingBridge` (`src/engineering/antigravity_bridge.py`) — routes code generation through `agy` CLI with `WorkspacePolicy.authorize_write()` gate.
-- `EditorTracker` (`src/workspace/editor_tracker.py`) — live IDE document perception with fail-closed Win32 window matching.
-- M20.6 Automated Repair Loop — `TestEngine` + `BugRepair` with exit code parsing and exhaustion-based rollback.
-- M20.7 Active IDE Document Context — cross-project workspace matching and ground-truth filesystem validation.
+- **M20 — Coding Intelligence 2.0**: `AntigravityCodingBridge` (agy CLI, `WorkspacePolicy` gate), `EditorTracker` (live IDE document perception), `TestEngine` + `BugRepair` automated repair loop, cross-project workspace matching.
 
 ---
 
 ## [0.22.0-capability-foundation] - 2026-08-15
 
 ### Added
-- **M19 — Universal Capability & Tool Runtime**: `CapabilityRegistry`, `Capability` contract with typed schemas, `ActionRisk` taxonomy, DAG plan graph validation with topological cycle detection.
-- 5 capability providers: `DesktopCapabilityProvider`, `CodingCapabilityProvider`, `BrowserCapabilityProvider`, `MemoryCapabilityProvider`, `ResearchCapabilityProvider`.
-- Plan graph prerequisite validation with fail-closed liveness gating.
+- **M19 — Universal Capability & Tool Runtime**: `CapabilityRegistry`, typed `Capability` contracts, `ActionRisk` taxonomy, DAG plan graph with topological cycle detection, 5 capability providers (Desktop, Coding, Browser, Memory, Research).
 
 ---
 
 ## [0.21.0-world-model] - 2026-08-12
 
 ### Added
-- **M18 — Adaptive Computer Interaction Runtime & World Model**: Multi-provider world model with workspace, repository, memory, and desktop provider integration.
-- `WorldModel.query()` — unified entity queries across all providers.
-- `WorldModel.snapshot()` — serializable state representation.
-- Incremental state updates without full rebuild.
+- **M18 — World Model**: Multi-provider `WorldModel` (workspace, repo, memory, desktop). `WorldModel.query()` unified entity queries, `WorldModel.snapshot()` serializable state, incremental updates.
 
 ---
 
 ## [0.20.0-cognitive-memory] - 2026-08-10
 
 ### Added
-- **M17 — Cognitive Memory**: 8 typed memory stores (Working, Episodic, Semantic, Procedural, Preference, Project + Short-Term + Long-Term).
-- `CognitiveMemoryEngine` (`src/memory/cognitive_memory.py`) — central memory engine.
-- `RecallEngine` — multi-factor candidate scoring and ranking.
-- `ConsolidationEngine` — post-execution memory merging.
-- `DecayEngine` — retention decay evaluation.
-- `ProjectMemoryFilter` — per-project memory isolation.
+- **M17 — Cognitive Memory**: 8 typed stores (Working, Episodic, Semantic, Procedural, Preference, Project, Short-Term, Long-Term). `CognitiveMemoryEngine`, `RecallEngine`, `ConsolidationEngine`, `DecayEngine`, `ProjectMemoryFilter`.
 
 ---
 
-## [0.19.0-foundation-truth-pass] - 2026-08-08
+## Foundation History (v0.0.1 – v0.19.0) — 2026-06-01 to 2026-08-08
 
-### Added
-- **Foundation Wiring & Truth Pass**: Stabilization gate between Phase 0 and Phase 1.
-- `RUNTIME.md` — canonical live-path wiring map.
-- `SYSTEM_CLASSIFICATION.md` — module lifecycle classification index.
-- Corrected M13 status from COMPLETE to IN PROGRESS (coding backend was a mock).
-- Corrected M09 status to COMPLETE — LEGACY (not on live path).
-- Corrected M03 status to COMPLETE — FOUNDATION ONLY.
+> Consolidated summary. Full history available in git log.
 
-### Fixed
-- Coding backend (`CodingBackendAdapter`) no longer returns hardcoded `success=True` — routes to `EngineeringManager` for real analysis.
-
----
-
-## [0.18.0-runtime-stabilization] - 2026-08-06
-
-### Added
-- Manual Runtime Acceptance Manual (`docs/RUNTIME_ACCEPTANCE.md`).
-- Configurable `SafetyPolicy` Engine (`config/safety_policy.yaml`).
-- Zero-LLM Control Interception for worker status and lifecycle commands.
+| Version | Date | Milestone / Change |
+|:---|:---|:---|
+| `v0.19.0-foundation-truth-pass` | 2026-08-08 | `RUNTIME.md` + `SYSTEM_CLASSIFICATION.md` established as ground truth. M13 corrected to IN PROGRESS (coding backend was a mock). Coding backend routed to real `EngineeringManager`. |
+| `v0.18.0-runtime-stabilization` | 2026-08-06 | Manual Runtime Acceptance doc, `SafetyPolicy` engine, zero-LLM control interception for lifecycle commands. |
+| `v0.17.0-runtime-architecture` | 2026-08-06 | `RuntimeSession` base, `WorkerManager` for multi-domain session tracking, `ReferenceResolver` for pronoun resolution. |
+| `v0.16.0-cognitive-orchestration` | 2026-08-06 | Executive Cognitive Coordinator, `SoftwareEngineeringSupervisor`. |
+| `v0.15.0-core-platform` | 2026-08-05 | Canonical launcher (`aura.py`), `AuraDoctor` (22 diagnostics), `AuraInspector`, `AuraVerifier`, `BackendRegistry` with capability negotiation, GitHub Actions CI. |
+| `v0.14.0` | 2026-08-01 | Research Engine (`ResearchPlanner`, `ResearchReasoner`, `CitationFormatter`), multi-provider search (Tavily, GitHub, Wikipedia, arXiv). |
+| `v0.13.0` | 2026-07-15 | 17 Win32 Native Desktop Managers, pipeline safety layer with post-execution verification and rollback. |
+| `v0.1.0` | 2026-06-01 | Initial foundation: Aura Brain core intelligence, event bus, provider interfaces. |
+| `v0.0.1` | 2026-06-01 | Project initialization, directory structure, core Python modules. |
 
 ---
 
-## [0.17.0-runtime-architecture] - 2026-08-06
-
-### Added
-- Unified `RuntimeSession` dataclass base for domain task sessions.
-- System-wide `WorkerManager` for multi-domain session tracking.
-- `ReferenceResolver` for conversational pronoun resolution.
-
----
-
-## [0.16.0-cognitive-orchestration] - 2026-08-06
-
-### Added
-- Executive Cognitive Coordinator Architecture.
-- `SoftwareEngineeringSupervisor` for long-running engineering sessions.
-
----
-
-## [0.15.0-core-platform] - 2026-08-05
-
-### Added
-- Canonical umbrella launcher (`aura.py`) with `--doctor`, `--inspect`, `--verify`, `--cli`, `--gui`.
-- `AuraDoctor` — 22 automated system diagnostic checks.
-- `AuraInspector` — real-time CLI state debugging dashboard.
-- `AuraVerifier` — one-command CI runner.
-- Adaptive `BackendRegistry` with capability negotiation and latency metrics.
-- Architecture & capability manifests (`config/`).
-- GitHub Actions CI workflow.
-
-### Changed
-- Repository reorganization into structured subdirectories.
-- Import hygiene standardization across `src/`.
-
----
-
-## [0.14.0] - 2026-08-01
-
-### Added
-- Autonomous Research Engine (`ResearchPlanner`, `ResearchReasoner`, `CitationFormatter`).
-- Multi-provider search integration (Tavily, GitHub, Wikipedia, arXiv).
-
----
-
-## [0.13.0] - 2026-07-15
-
-### Added
-- Native Windows Desktop Managers (17 Win32 managers).
-- Pipeline safety layer with automated post-execution verification and rollback.
-
----
-
-## [0.1.0] - 2026-06-01
-
-### Added
-- Initial foundation launch, Aura Brain core intelligence, basic event bus, and provider interfaces.
-
----
-
-## [0.0.1] - 2026-07-15
-
-### Added
-- Project initialization, basic directory structure, core Python modules.
-
----
-
-*Last Updated: August 18, 2026*
+*Last Updated: August 20, 2026*

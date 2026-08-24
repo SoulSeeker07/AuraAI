@@ -16,8 +16,8 @@ import logging
 import re
 from typing import Any
 
-from .ownership_tracker import ResourceOwnershipTracker
-from .world_timeline import WorldTimeline
+from core.orchestration.ownership_tracker import ResourceOwnershipTracker
+from core.orchestration.world_timeline import WorldTimeline
 
 logger = logging.getLogger(__name__)
 

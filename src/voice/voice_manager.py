@@ -448,6 +448,8 @@ class VoiceManager:
 
             logger.info("[STT] Transcription: PASS")
             self.stt_manager.reset()
+            if self.audio_manager and hasattr(self.audio_manager, "stop_recording"):
+                self.audio_manager.stop_recording()
 
             if self.on_stt_result:
                 self.on_stt_result(context)

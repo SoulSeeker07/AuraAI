@@ -9,8 +9,8 @@ and sends a test message. It demonstrates heartbeat/echo behavior.
 import json
 import time
 
-from src.aura.client.api_client import ApiClient
-from src.aura.client.connection_manager import ConnectionManager
+from aura.client.api_client import ApiClient
+from aura.client.connection_manager import ConnectionManager
 
 
 def main():

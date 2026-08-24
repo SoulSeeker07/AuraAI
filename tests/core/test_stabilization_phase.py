@@ -14,7 +14,7 @@ from core.orchestration.engineering_session import EngineeringSession
 from core.orchestration.reference_resolver import ReferenceResolver
 from core.orchestration.runtime_session import RuntimeSession, SessionStatus
 from core.orchestration.worker_manager import DomainWorker, WorkerManager
-from src.execution.safety_policy import SafetyPolicy
+from execution.safety_policy import SafetyPolicy
 
 
 def test_runtime_session_hierarchy():

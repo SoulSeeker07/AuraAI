@@ -141,6 +141,20 @@ class CodeEditor:
         self._backup_dir: Path | None = None
         self._backup_mapping: dict[str, str] = {}
 
+    def _create_backup(self, file_path: str, content: str) -> Path | None:
+        """Create a backup of a file before editing."""
+        try:
+            if not self._backup_dir:
+                self._backup_dir = self.repository_path / ".aura_backups"
+            self._backup_dir.mkdir(parents=True, exist_ok=True)
+            safe_name = file_path.replace("/", "_").replace("\\", "_")
+            backup_path = self._backup_dir / f"{safe_name}.bak"
+            backup_path.write_text(content, encoding="utf-8")
+            return backup_path
+        except Exception as e:
+            logger.warning(f"Failed to create backup for {file_path}: {e}")
+            return None
+
     def edit_file(
         self,
         file_path: str,

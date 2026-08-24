@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from src.workspace import (
+from workspace import (
     ActiveWindow,
     ClipboardContext,
     CurrentProject,
@@ -24,11 +24,11 @@ from src.workspace import (
     WorkspaceManager,
     WorkspaceState,
 )
-from src.workspace.active_window import ActiveWindowMonitor
-from src.workspace.clipboard_monitor import ClipboardMonitor
-from src.workspace.git_context import GitContext
-from src.workspace.project_detector import ProjectDetector
-from src.workspace.running_apps import RunningAppsMonitor
+from workspace.active_window import ActiveWindowMonitor
+from workspace.clipboard_monitor import ClipboardMonitor
+from workspace.git_context import GitContext
+from workspace.project_detector import ProjectDetector
+from workspace.running_apps import RunningAppsMonitor
 
 
 @pytest.fixture

@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.voice.prosody_chunker import ProsodyAwareChunker
-from src.voice.tts_manager import ChunkedStreamPlayer, OrderedStreamSynthesizer
+from voice.prosody_chunker import ProsodyAwareChunker
+from voice.tts_manager import ChunkedStreamPlayer, OrderedStreamSynthesizer
 
 
 # ── ProsodyAwareChunker Tests ───────────────────────────────────────────────
@@ -218,14 +218,27 @@ async def test_auracore_process_request_stream_chat():
 async def test_auracore_confirmation_gate_hard_blocks_stream():
     """Verify that when confirmation is pending, process_request_stream yields confirmation prompt and stops."""
     from core.aura_core import AuraCore
+    from core.orchestration.confirmation import ActionPlanConfirmation
     from core.orchestration.master_orchestrator import MasterOrchestrator
+    from core.planning.action_plan import ActionPlan
 
     aura = AuraCore()
     orchestrator = MasterOrchestrator.get_instance()
 
-    # Mock pending confirmation
-    mock_conf = MagicMock()
-    mock_conf.plan.goal = "delete audit logs"
+    # Real ActionPlanConfirmation, not a MagicMock: a mock auto-creates whatever
+    # attribute the caller reads, so it cannot catch a wrong field name. This
+    # test previously set `mock_conf.plan.goal` and passed while the production
+    # code raised AttributeError against the real dataclass field `action_plan`.
+    mock_conf = ActionPlanConfirmation(
+        session_id="test-session",
+        action_plan=ActionPlan(
+            action="delete_file",
+            target="audit.log",
+            goal="delete audit logs",
+            capability="delete_file",
+        ),
+        prompt="Confirm deletion of audit logs?",
+    )
     orchestrator.check_pending_confirmation = MagicMock(return_value=mock_conf)
 
     with patch.object(orchestrator, "process_request_async") as mock_exec:
@@ -238,3 +251,63 @@ async def test_auracore_confirmation_gate_hard_blocks_stream():
 
         # Must yield confirmation prompt
         assert any("I need your confirmation to delete audit logs" in c for c in chunks)
+
+
+def test_prosody_chunker_hard_word_ceiling_on_run_on_sentence():
+    """Verify that a continuous stream of 25+ words with NO punctuation is bounded by max_words_per_chunk."""
+    chunker = ProsodyAwareChunker(max_words_per_chunk=12)
+
+    # 25 words with zero punctuation delimiters
+    run_on_words = [
+        "this", "is", "a", "very", "long", "continuous", "stream", "of", "words", "without",
+        "any", "punctuation", "delimiters", "whatsoever", "designed", "to", "test", "if",
+        "the", "chunker", "flushes", "at", "the", "word", "ceiling"
+    ]
+
+    all_chunks = []
+    for w in run_on_words:
+        all_chunks.extend(chunker.feed(w + " "))
+    all_chunks.extend(chunker.flush())
+
+    # Must be split into at least 2 bounded chunks (not 1 giant delayed chunk)
+    assert len(all_chunks) >= 2
+    # First chunk should have at most 12 words
+    assert len(all_chunks[0].split()) <= 12
+    assert "this is a very long continuous stream of words without any punctuation" in all_chunks[0]
+
+
+@pytest.mark.asyncio
+async def test_auracore_tool_execution_yields_contextual_filler_utterance():
+    """Verify that multi-step/tool execution emits immediate contextual acoustic filler."""
+    from core.aura_core import AuraCore
+    from core.orchestration.master_orchestrator import MasterOrchestrator
+
+    aura = AuraCore()
+    orchestrator = MasterOrchestrator.get_instance()
+    orchestrator.check_pending_confirmation = MagicMock(return_value=None)
+
+    # 1. Research / Web Search query
+    with patch.object(orchestrator, "process_request_async") as mock_exec:
+        mock_result = MagicMock(observations=["Found 3 Python tutorials on YouTube."], data={"decision": {"intent_type": "research"}}, final_output="Found 3 tutorials.")
+        mock_exec.return_value = mock_result
+
+        chunks = []
+        async for c in aura.process_request_stream("Search YouTube for Python tutorials"):
+            chunks.append(c)
+
+        # First chunk must be the contextual filler
+        assert chunks[0] == "Looking that up now... "
+        assert any("Found" in c for c in chunks)
+
+    # 2. When yield_filler=False, no filler is emitted
+    with patch.object(orchestrator, "process_request_async") as mock_exec:
+        mock_result = MagicMock(observations=["Found 3 Python tutorials."], data={"decision": {"intent_type": "research"}}, final_output="Found 3 tutorials.")
+        mock_exec.return_value = mock_result
+
+        chunks = []
+        async for c in aura.process_request_stream("Search YouTube for Python tutorials", yield_filler=False):
+            chunks.append(c)
+
+        assert chunks[0] != "Looking that up now... "
+
+

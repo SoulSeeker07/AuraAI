@@ -62,6 +62,7 @@ class CapabilityRegistry:
     def _register_default_providers(self) -> None:
         """Register core domain capability providers."""
         from .providers.daemon_provider import DaemonCapabilityProvider
+        from .providers.personal_os_provider import PersonalOSCapabilityProvider
         self.register_provider(DesktopCapabilityProvider())
         self.register_provider(CodingCapabilityProvider())
         self.register_provider(BrowserCapabilityProvider())
@@ -69,6 +70,7 @@ class CapabilityRegistry:
         self.register_provider(ResearchCapabilityProvider())
         self.register_provider(MultimodalCapabilityProvider())
         self.register_provider(DaemonCapabilityProvider())
+        self.register_provider(PersonalOSCapabilityProvider())
 
     def register_provider(self, provider: ICapabilityProvider) -> None:
         """Register a domain capability provider."""

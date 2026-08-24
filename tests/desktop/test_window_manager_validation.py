@@ -18,18 +18,18 @@ sys.path.insert(0, project_root)
 import inspect
 from unittest.mock import MagicMock
 
-from src.desktop.native.capability_registry import CapabilityRegistry
-from src.desktop.native.desktop_execution_engine import (
+from desktop.native.capability_registry import CapabilityRegistry
+from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
 )
-from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
-from src.desktop.native.managers.window_manager import WindowManager
+from desktop.native.desktop_result import DesktopResult, DesktopStatus
+from desktop.native.managers.window_manager import WindowManager
 
 
 def test_window_manager_no_cross_cutting_concerns():
     """Verify WindowManager code body does not contain cross-cutting dependencies."""
-    import src.desktop.native.managers.window_manager as wm_module
+    import desktop.native.managers.window_manager as wm_module
 
     source = inspect.getsource(wm_module)
 

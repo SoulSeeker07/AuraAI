@@ -85,6 +85,36 @@ ENGINE_ALLOWLIST = {
     },
     ROOT
     / "src"
+    / "core"
+    / "backends"
+    / "adapters"
+    / "research_backend.py": {
+        "reason": "Backend adapter direct research engine wrapper",
+        "owner": "Integration Team",
+        "milestone": "v0.20",
+    },
+    ROOT
+    / "src"
+    / "core"
+    / "backends"
+    / "adapters"
+    / "vision_backend.py": {
+        "reason": "Backend adapter direct vision manager wrapper",
+        "owner": "Integration Team",
+        "milestone": "v0.20",
+    },
+    ROOT
+    / "src"
+    / "core"
+    / "backends"
+    / "adapters"
+    / "voice_backend.py": {
+        "reason": "Backend adapter direct voice manager wrapper",
+        "owner": "Integration Team",
+        "milestone": "v0.20",
+    },
+    ROOT
+    / "src"
     / "voice"
     / "continuous_loop.py": {
         "reason": "M26 PersonalOSRuntime voice-loop wiring — ContinuousVoiceLoop legitimately constructs VoiceManager as part of the frozen voice stack",

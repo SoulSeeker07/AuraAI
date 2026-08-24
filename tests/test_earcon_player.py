@@ -3,7 +3,7 @@ Unit tests for EarconPlayer.
 """
 
 import numpy as np
-from src.voice.earcon_player import EarconPlayer
+from voice.earcon_player import EarconPlayer
 
 
 def test_generate_chime():

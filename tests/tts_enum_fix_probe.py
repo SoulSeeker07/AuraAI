@@ -20,8 +20,8 @@ from pathlib import Path
 # Add workspace root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.voice.tts_manager import TTSSettings, TTSManger, TTSSpeaker
-from src.voice.models import TTSSettings as ModelsTTSSettings
+from voice.tts_manager import TTSSettings, TTSManger, TTSSpeaker
+from voice.models import TTSSettings as ModelsTTSSettings
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

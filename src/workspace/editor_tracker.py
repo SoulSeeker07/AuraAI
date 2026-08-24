@@ -205,9 +205,11 @@ class EditorTracker:
                 if parsed is not None:
                     return parsed
 
-        # 2. Fallback check: enumerate all visible desktop windows (e.g. if user is looking at browser/voice)
+        is_open_desktop = False
         try:
             h_desk = user32.OpenInputDesktop(0, False, _DESKTOP_ENUMERATE | _DESKTOP_READOBJECTS)
+            if h_desk:
+                is_open_desktop = True
         except Exception:
             h_desk = None
 
@@ -244,6 +246,12 @@ class EditorTracker:
         except Exception as e:
             logger.debug(f"[EditorTracker] EnumDesktopWindows failed: {e}")
             return None
+        finally:
+            if is_open_desktop and h_desk:
+                try:
+                    user32.CloseDesktop(h_desk)
+                except Exception:
+                    pass
 
         if editor_candidates:
             # Return topmost matched candidate

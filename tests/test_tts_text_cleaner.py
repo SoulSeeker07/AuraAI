@@ -2,7 +2,7 @@
 Unit tests for TTS Text Cleaner.
 """
 
-from src.voice.tts_text_cleaner import clean_for_tts
+from voice.tts_text_cleaner import clean_for_tts
 
 
 def test_clean_for_tts_emojis():

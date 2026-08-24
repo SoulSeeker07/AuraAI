@@ -6,28 +6,32 @@ import pytest
 from core.backends.adapters.desktop_backend import DesktopEngineBackend
 from core.orchestration.confirmation import ActionPlanConfirmation
 from core.orchestration.master_orchestrator import MasterOrchestrator
+from core.orchestration.ownership_tracker import ResourceOwnershipTracker
 from core.orchestration.reference_resolver import ReferenceResolver
 from core.orchestration.task_decomposer import TaskDecomposer
+from core.orchestration.world_timeline import WorldTimeline
 from core.planning.action_plan import ActionPlan
 
 
 def test_pronoun_resolution_open_it():
     # Setup timeline/ownership mocked state
+    mock_owner = MagicMock()
+    mock_res = MagicMock()
+    mock_res.resource_id = "calc"
+    mock_res.details = {"app_name": "calc"}
+    mock_owner.get_aura_resources.return_value = [mock_res]
+
     with (
-        patch(
-            "core.orchestration.reference_resolver.ResourceOwnershipTracker"
-        ) as mock_tracker,
-        patch("core.orchestration.reference_resolver.WorldTimeline") as mock_timeline,
+        patch.object(
+            ResourceOwnershipTracker,
+            "get_instance",
+            return_value=mock_owner,
+        ),
+        patch.object(
+            WorldTimeline,
+            "get_instance",
+        ),
     ):
-
-        # Priority 1: Mock last referenced object in ownership
-        mock_owner = MagicMock()
-        mock_res = MagicMock()
-        mock_res.resource_id = "calc"
-        mock_res.details = {"app_name": "calc"}
-        mock_owner.get_aura_resources.return_value = [mock_res]
-        mock_tracker.get_instance.return_value = mock_owner
-
         resolved_text, metadata = ReferenceResolver.resolve_references("Open it")
         assert resolved_text.lower() == "open calc"
         assert metadata["resolved"] is True

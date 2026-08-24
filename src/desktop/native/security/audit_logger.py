@@ -75,6 +75,11 @@ class SecurityAuditLogger:
     @classmethod
     def get_instance(cls, log_path: str | Path | None = None) -> SecurityAuditLogger:
         with cls._lock:
+            if log_path is not None:
+                resolved_target = str(Path(log_path).resolve())
+                if cls._instance is not None and str(cls._instance._log_path) != resolved_target:
+                    cls._instance = cls(log_path=log_path)
+                    return cls._instance
             if cls._instance is None:
                 cls._instance = cls(log_path=log_path)
             return cls._instance

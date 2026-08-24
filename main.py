@@ -146,7 +146,7 @@ def main_gui():
     print("✓ GUI Client created")
     print("✓ Launching AuraAI PySide6 Control Center & Spotlight HUD...")
 
-    from src.gui.app import AuraGUI
+    from gui.app import AuraGUI
 
     gui = AuraGUI()
     return gui.run()
@@ -191,19 +191,19 @@ Modes:
     args = parser.parse_args()
 
     if args.doctor:
-        from src.engineering.doctor import AuraDoctor
+        from engineering.doctor import AuraDoctor
 
         doctor = AuraDoctor(project_root=PROJECT_ROOT)
         doctor.diagnose()
         sys.exit(0)
     elif args.inspect:
-        from src.engineering.inspector import AuraInspector
+        from engineering.inspector import AuraInspector
 
         inspector = AuraInspector(project_root=PROJECT_ROOT)
         inspector.inspect()
         sys.exit(0)
     elif args.verify:
-        from src.engineering.doctor import AuraVerifier
+        from engineering.doctor import AuraVerifier
 
         verifier = AuraVerifier(project_root=PROJECT_ROOT)
         success = verifier.run_verify()

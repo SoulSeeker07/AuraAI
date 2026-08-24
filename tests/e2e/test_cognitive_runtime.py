@@ -39,8 +39,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from Memory import Memory
 from core.nlu.nlu_engine import NLUEngine
 from core.orchestration.master_orchestrator import MasterOrchestrator
-from src.memory.cognitive_memory import CognitiveMemoryEngine
-from src.memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
+from memory.cognitive_memory import CognitiveMemoryEngine
+from memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
 
 
 @pytest.fixture

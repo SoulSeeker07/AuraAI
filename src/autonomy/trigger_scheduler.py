@@ -31,15 +31,21 @@ class TriggerScheduler:
 
     def __init__(
         self,
-        registry: TriggerRegistry,
-        coordinator: ExecutionCoordinator | None = None,
+        registry: TriggerRegistry | None = None,
+        coordinator: Any | None = None,
         policy: ExecutionPolicy | None = None,
-        poll_interval_seconds: float = 0.1,
-    ) -> None:
-        self.registry = registry
+        poll_interval_seconds: float = 1.0,
+        state_store: Any | None = None,
+        audit_logger: Any | None = None,
+        orchestrator: Any | None = None,
+    ):
+        self.registry = registry or TriggerRegistry()
         self.coordinator = coordinator
         self.policy = policy
         self.poll_interval_seconds = poll_interval_seconds
+        self.state_store = state_store
+        self.audit_logger = audit_logger
+        self.orchestrator = orchestrator
 
         self._is_running = False
         self._scheduler_task: asyncio.Task[None] | None = None
@@ -63,13 +69,10 @@ class TriggerScheduler:
 
         self._is_running = True
         self._scheduler_task = asyncio.create_task(self._scheduler_loop())
-        logger.info("[TriggerScheduler] Autonomous trigger scheduler daemon started.")
+        logger.info("[TriggerScheduler] Daemon started.")
 
-    async def stop(self, drain_timeout: float = 2.0) -> None:
-        """Stop the trigger scheduler daemon and cancel pending evaluation."""
-        if not self._is_running:
-            return
-
+    async def stop(self) -> None:
+        """Stop the background trigger scheduler evaluation loop."""
         self._is_running = False
         if self._scheduler_task:
             self._scheduler_task.cancel()
@@ -78,17 +81,7 @@ class TriggerScheduler:
             except asyncio.CancelledError:
                 pass
             self._scheduler_task = None
-
-        # Await running trigger tasks with drain timeout
-        if self._running_tasks:
-            pending = [t for t in self._running_tasks if not t.done()]
-            if pending:
-                try:
-                    await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), timeout=drain_timeout)
-                except asyncio.TimeoutError:
-                    logger.warning(f"[TriggerScheduler] Shutdown timeout draining {len(pending)} running trigger tasks.")
-
-        logger.info("[TriggerScheduler] Autonomous trigger scheduler daemon stopped.")
+        logger.info("[TriggerScheduler] Daemon stopped.")
 
     async def emit_event(self, event_type: str, payload: dict[str, Any] | None = None) -> int:
         """
@@ -102,46 +95,41 @@ class TriggerScheduler:
         for trigger in triggers:
             if trigger.trigger_type == TriggerType.SYSTEM_EVENT:
                 if not trigger.event_pattern or trigger.event_pattern == event_type or trigger.event_pattern in event_type:
-                    fired = await self.fire_trigger(trigger, fired_payload=payload)
+                    fired = await self.fire_trigger(trigger, event_data=payload)
                     if fired:
                         matched_count += 1
 
         return matched_count
 
-    async def fire_trigger(self, trigger: Trigger, fired_payload: dict[str, Any] | None = None) -> bool:
+    async def fire_trigger(self, trigger: Trigger, event_data: dict[str, Any] | None = None) -> bool:
         """
-        Fire a single trigger with concurrency policy enforcement and provenance tracking.
+        Fires a trigger, updating its state and evaluating actions against policy.
         """
-        if trigger.state == TriggerState.RUNNING:
-            if trigger.concurrency_policy == ConcurrencyPolicy.REJECT:
-                logger.warning(f"[TriggerScheduler] Trigger '{trigger.trigger_id}' is already RUNNING — rejecting duplicate execution.")
-                return False
-            elif trigger.concurrency_policy == ConcurrencyPolicy.COALESCE:
-                logger.info(f"[TriggerScheduler] Trigger '{trigger.trigger_id}' is already RUNNING — coalescing trigger event.")
-                return False
-
-        if trigger.dedup_key and trigger.dedup_key in self._active_events:
-            logger.warning(f"[TriggerScheduler] Active event with dedup_key '{trigger.dedup_key}' is already processing — coalescing.")
+        if not trigger.enabled:
+            logger.info(f"[TriggerScheduler] Trigger '{trigger.trigger_id}' is disabled — skipping.")
             return False
+
+        if trigger.dedup_key:
+            if trigger.dedup_key in self._active_events:
+                policy = trigger.concurrency_policy
+                if policy == ConcurrencyPolicy.COALESCE:
+                    logger.info(f"[TriggerScheduler] Coalescing duplicate active trigger: '{trigger.trigger_id}'")
+                    return False
+                elif policy == ConcurrencyPolicy.REJECT:
+                    logger.warning(f"[TriggerScheduler] Rejecting duplicate active trigger: '{trigger.trigger_id}'")
+                    return False
+            self._active_events.add(trigger.dedup_key)
 
         provenance = EventProvenance(
             trigger_id=trigger.trigger_id,
-            dedup_key=trigger.dedup_key or trigger.trigger_id,
-            trigger_type=trigger.trigger_type.value if hasattr(trigger.trigger_type, "value") else str(trigger.trigger_type),
+            dedup_key=trigger.dedup_key,
+            trigger_type=trigger.trigger_type.value,
             fired_at=datetime.now().isoformat(),
         )
 
-        if trigger.dedup_key:
-            self._active_events.add(trigger.dedup_key)
-
-        self.registry.update_state(trigger.trigger_id, TriggerState.FIRED, provenance=provenance)
-
-        # Launch async execution task
         task = asyncio.create_task(self._execute_trigger_task(trigger, provenance))
         self._running_tasks.add(task)
         task.add_done_callback(self._running_tasks.discard)
-
-        logger.info(f"[TriggerScheduler] Trigger '{trigger.trigger_id}' FIRED -> Event {provenance.event_id} queued.")
         return True
 
     async def _execute_trigger_task(self, trigger: Trigger, provenance: EventProvenance) -> None:
@@ -154,16 +142,149 @@ class TriggerScheduler:
             policy = self.policy or ExecutionPolicy.get_instance()
             steps = exec_map.get("steps", [])
 
+            # M26 — Goal-based Orchestration Path for Autonomous Triggers
+            if not steps and trigger.action_goal:
+                try:
+                    from core.orchestration.master_orchestrator import MasterOrchestrator
+                    from core.orchestration.request_source import RequestSource
+                    from desktop.native.security.audit_logger import SecurityAuditLogger
+                    from personal_os.state_store import PersonalOSStateStore
+                except (ImportError, ModuleNotFoundError):
+                    from src.core.orchestration.master_orchestrator import MasterOrchestrator
+                    from src.core.orchestration.request_source import RequestSource
+                    from src.desktop.native.security.audit_logger import SecurityAuditLogger
+                    from src.personal_os.state_store import PersonalOSStateStore
+
+                # 1. Audit ledger logging for autonomous goal dispatch (FAIL-CLOSED)
+                try:
+                    audit_logger = self.audit_logger or SecurityAuditLogger.get_instance()
+                    audit_logger.log_event(
+                        event_type="AUTONOMOUS_GOAL_DISPATCH",
+                        action_type="trigger_goal_fired",
+                        target=trigger.trigger_id,
+                        status="DISPATCHED",
+                        details={
+                            "request_source": RequestSource.TRIGGER_AUTONOMOUS.value,
+                            "goal_text": trigger.action_goal[:200],
+                            "trigger_name": getattr(trigger, "name", trigger.trigger_id),
+                            "fired_at": provenance.fired_at,
+                        },
+                    )
+                except Exception as audit_exc:
+                    logger.error(
+                        f"[TriggerScheduler] Audit log failure for trigger '{trigger.trigger_id}' — "
+                        f"HALTING dispatch (fail-closed): {audit_exc}"
+                    )
+                    provenance.result_status = "BLOCKED"
+                    self.registry.update_state(trigger.trigger_id, TriggerState.BLOCKED, provenance=provenance)
+                    return
+
+                # 2. Get injected or singleton MasterOrchestrator
+                orch = self.orchestrator or MasterOrchestrator.get_instance()
+                res = await orch.process_request_async(
+                    goal_text=trigger.action_goal,
+                    source=RequestSource.TRIGGER_AUTONOMOUS,
+                    parameters={"trigger_id": trigger.trigger_id, "fired_at": provenance.fired_at},
+                )
+
+                # 3. Persist run summary in PersonalOSStateStore
+                try:
+                    p_store = self.state_store or PersonalOSStateStore.get_instance()
+                    obs_summary = " ".join(res.observations or [])[:200] if res.observations else ("Success" if res.success else "Failed")
+                    p_store.update_trigger_run(
+                        trigger_id=trigger.trigger_id,
+                        fired_at=provenance.fired_at,
+                        result_summary=obs_summary,
+                    )
+                except Exception as p_exc:
+                    logger.warning(f"[TriggerScheduler] StateStore update warning for '{trigger.trigger_id}': {p_exc}")
+
+                if res.success:
+                    provenance.result_status = "VERIFIED"
+                    self.registry.update_state(trigger.trigger_id, TriggerState.VERIFIED, provenance=provenance)
+                else:
+                    provenance.result_status = "FAILED"
+                    self.registry.update_state(trigger.trigger_id, TriggerState.FAILED, provenance=provenance)
+                return
+
+            from core.capabilities.capability_registry import CapabilityRegistry
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+
+            cap_reg = CapabilityRegistry.get_instance()
+            auth = CryptographicApprovalAuthority.get_instance()
+
             for step in steps:
                 engine = step.get("engine", "desktop")
                 action = step.get("action", "")
                 params = step.get("parameters", {})
-                policy_decision = policy.evaluate_action(engine, action, params)
-                if policy_decision.action == PolicyAction.ASK_USER and not params.get("user_authorized", False):
+
+                # 1. Verify capability exists and is live in CapabilityRegistry
+                cap_desc = cap_reg.get(action)
+                if cap_desc is None:
                     provenance.result_status = "BLOCKED"
                     self.registry.update_state(trigger.trigger_id, TriggerState.BLOCKED, provenance=provenance)
-                    logger.warning(f"[TriggerScheduler] Autonomous trigger '{trigger.trigger_id}' HALTED by ExecutionPolicy: {policy_decision.message}")
+                    logger.warning(
+                        f"[TriggerScheduler] Autonomous trigger '{trigger.trigger_id}' HALTED: "
+                        f"Unknown or unregistered capability '{action}'."
+                    )
                     return
+
+                if not getattr(cap_desc, "is_live", True):
+                    provenance.result_status = "BLOCKED"
+                    self.registry.update_state(trigger.trigger_id, TriggerState.BLOCKED, provenance=provenance)
+                    logger.warning(
+                        f"[TriggerScheduler] Autonomous trigger '{trigger.trigger_id}' HALTED: "
+                        f"Capability '{action}' is scaffolded/unwired."
+                    )
+                    return
+
+                # 2. Evaluate against ExecutionPolicy & High-Risk Confirmation
+                policy_decision = policy.evaluate_action(engine, action, params)
+                requires_human_approval = (
+                    policy_decision.action == PolicyAction.ASK_USER
+                    or getattr(cap_desc, "requires_confirmation", False)
+                )
+
+                if requires_human_approval:
+                    is_pre_authorized = False
+                    if trigger.auth_signature and trigger.is_recurring_authorized:
+                        valid_trig_sig, _ = auth.verify_trigger_signature(
+                            trigger_id=trigger.trigger_id,
+                            action_goal=trigger.action_goal,
+                            execution_map=trigger.execution_map,
+                            signature=trigger.auth_signature,
+                        )
+                        is_pre_authorized = valid_trig_sig
+
+                    if not is_pre_authorized:
+                        ticket_id = params.get("approval_ticket_id")
+                        signature = params.get("approval_signature")
+                        target_str = str(params.get("target") or params.get("path") or params.get("command") or action)
+
+                        if not (ticket_id and signature):
+                            provenance.result_status = "BLOCKED"
+                            self.registry.update_state(trigger.trigger_id, TriggerState.BLOCKED, provenance=provenance)
+                            logger.warning(
+                                f"[TriggerScheduler] Autonomous trigger '{trigger.trigger_id}' HALTED: "
+                                f"Action '{action}' requires confirmation, but no valid cryptographic ticket provided."
+                            )
+                            return
+
+                        valid_sig, sig_err = auth.verify_and_redeem(
+                            ticket_id=ticket_id,
+                            signature=signature,
+                            action_type=action,
+                            target=target_str,
+                            parameters=params,
+                        )
+                        if not valid_sig:
+                            provenance.result_status = "BLOCKED"
+                            self.registry.update_state(trigger.trigger_id, TriggerState.BLOCKED, provenance=provenance)
+                            logger.warning(
+                                f"[TriggerScheduler] Autonomous trigger '{trigger.trigger_id}' HALTED: "
+                                f"Cryptographic verification failed ({sig_err})."
+                            )
+                            return
 
             if self.coordinator:
                 try:

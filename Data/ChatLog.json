@@ -1,362 +1,362 @@
 [
   {
     "role": "user",
-    "content": "Test empty artifact fail-closed",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:10.478767"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Search completed with empty content; ❌ Task 'st_doc_2' requires artifact 'art_res_empty' but it has no content payload. Pipeline cannot continue.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:10.478767"
-  },
-  {
-    "role": "user",
-    "content": "Test low-confidence artifact fail-closed",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:10.559331"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=False. Search completed with low confidence; ❌ Task 'st_doc_2' requires artifact 'art_res_low_conf' but its confidence (0.25) is below minimum threshold (0.40). Pipeline cannot continue with unverified data.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:10.559331"
-  },
-  {
-    "role": "user",
-    "content": "Test non-research artifact not blocked",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:10.669668"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Security audit completed with partial certainty; Security audit completed with partial certainty",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:10.669668"
-  },
-  {
-    "role": "user",
-    "content": "Scan workspace structure and analyze source AST",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:16.522677"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Successfully executed workspace.walk; Successfully executed code.analyze",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:21:16.522677"
-  },
-  {
-    "role": "user",
-    "content": "audit this repository for security vulnerabilities",
+    "content": "audit repository for security vulnerabilities",
     "topic": "coding",
-    "timestamp": "2026-08-20T08:31:41.704215"
+    "timestamp": "2026-08-24T11:20:01.088985"
   },
   {
     "role": "assistant",
     "content": "Result success=True. Executed successfully",
     "topic": "coding",
-    "timestamp": "2026-08-20T08:31:41.704215"
-  },
-  {
-    "role": "user",
-    "content": "audit this repository for security vulnerabilities",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:41.867653"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:41.867653"
-  },
-  {
-    "role": "user",
-    "content": "diagnose high packet loss and latency on wifi adapter",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.004662"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.004662"
-  },
-  {
-    "role": "user",
-    "content": "refactor the authentication module and fix failing pytest regressions",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.231133"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.231133"
-  },
-  {
-    "role": "user",
-    "content": "calculate EBITDA gross margin and forecast CAGR revenue",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.494997"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.494997"
-  },
-  {
-    "role": "user",
-    "content": "audit this repository for security vulnerabilities",
-    "topic": "coding",
-    "timestamp": "2026-08-20T08:31:42.578216"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully",
-    "topic": "coding",
-    "timestamp": "2026-08-20T08:31:42.578216"
-  },
-  {
-    "role": "user",
-    "content": "search for the best coding bootcamp",
-    "topic": "general",
-    "timestamp": "2026-08-20T08:31:42.670952"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully",
-    "topic": "general",
-    "timestamp": "2026-08-20T08:31:42.670952"
-  },
-  {
-    "role": "user",
-    "content": "search the web for python tutorials",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.812257"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully; Executed successfully",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:42.812257"
-  },
-  {
-    "role": "user",
-    "content": "is my password strong",
-    "topic": "general",
-    "timestamp": "2026-08-20T08:31:42.883353"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully",
-    "topic": "general",
-    "timestamp": "2026-08-20T08:31:42.883353"
-  },
-  {
-    "role": "user",
-    "content": "bake an authentic sourdough bread loaf",
-    "topic": "general",
-    "timestamp": "2026-08-20T08:31:42.949711"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully",
-    "topic": "general",
-    "timestamp": "2026-08-20T08:31:42.949711"
+    "timestamp": "2026-08-24T11:20:01.088985"
   },
   {
     "role": "user",
     "content": "audit repository for security vulnerabilities",
     "topic": "coding",
-    "timestamp": "2026-08-20T08:31:43.037323"
+    "timestamp": "2026-08-24T11:20:01.162089"
   },
   {
     "role": "assistant",
     "content": "Result success=True. Executed successfully",
     "topic": "coding",
-    "timestamp": "2026-08-20T08:31:43.037323"
-  },
-  {
-    "role": "user",
-    "content": "audit repository for security vulnerabilities",
-    "topic": "coding",
-    "timestamp": "2026-08-20T08:31:43.101587"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Executed successfully",
-    "topic": "coding",
-    "timestamp": "2026-08-20T08:31:43.101587"
+    "timestamp": "2026-08-24T11:20:01.162089"
   },
   {
     "role": "user",
     "content": "Test missing artifact fail-closed",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.191809"
+    "timestamp": "2026-08-24T11:20:01.261507"
   },
   {
     "role": "assistant",
     "content": "Result success=False. Executed successfully; ❌ Task 'st_doc_2' requires artifact 'art_research_missing' but it has no content payload. Pipeline cannot continue.",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.191809"
+    "timestamp": "2026-08-24T11:20:01.261507"
   },
   {
     "role": "user",
     "content": "Test empty artifact fail-closed",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.279189"
+    "timestamp": "2026-08-24T11:20:01.336923"
   },
   {
     "role": "assistant",
     "content": "Result success=False. Search completed with empty content; ❌ Task 'st_doc_2' requires artifact 'art_res_empty' but it has no content payload. Pipeline cannot continue.",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.279189"
+    "timestamp": "2026-08-24T11:20:01.336923"
   },
   {
     "role": "user",
     "content": "Test low-confidence artifact fail-closed",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.360730"
+    "timestamp": "2026-08-24T11:20:01.419898"
   },
   {
     "role": "assistant",
     "content": "Result success=False. Search completed with low confidence; ❌ Task 'st_doc_2' requires artifact 'art_res_low_conf' but its confidence (0.25) is below minimum threshold (0.40). Pipeline cannot continue with unverified data.",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.360730"
+    "timestamp": "2026-08-24T11:20:01.419898"
   },
   {
     "role": "user",
     "content": "Test non-research artifact not blocked",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.469235"
+    "timestamp": "2026-08-24T11:20:01.536827"
   },
   {
     "role": "assistant",
     "content": "Result success=True. Security audit completed with partial certainty; Security audit completed with partial certainty",
     "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:43.469235"
+    "timestamp": "2026-08-24T11:20:01.536827"
   },
   {
     "role": "user",
-    "content": "Scan workspace structure and analyze source AST",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:48.694277"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Successfully executed workspace.walk; Successfully executed code.analyze",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-20T08:31:48.694277"
-  },
-  {
-    "role": "user",
-    "content": "Hello",
+    "content": "Open Notepad",
     "topic": "desktop",
-    "timestamp": "2026-08-20T09:53:27.147629"
+    "timestamp": "2026-08-24T11:23:40.430486"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. You are Aura AI v0.17, an AI Operating System. You have 0 registered capabilities across Desktop, Research, Coding, Voice, Vision, Memory, and Workflow domains. Active planners: desktop, research, coding, memory, browser. Active backends: Native Desktop Engine. You reason before acting. You route through planners. You never pretend.",
+    "content": "Result success=True. Executed successfully",
     "topic": "desktop",
-    "timestamp": "2026-08-20T09:53:27.147629"
+    "timestamp": "2026-08-24T11:23:40.430486"
   },
   {
     "role": "user",
-    "content": "Let's discuss networking.",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.195039"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.580393"
   },
   {
     "role": "assistant",
-    "content": "Sure! What would you like to know?",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.195039"
+    "content": "Result success=True. Executed successfully",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.580393"
   },
   {
     "role": "user",
-    "content": "What protocol elects DR and BDR?",
-    "topic": "Networking",
-    "timestamp": "2026-08-20T09:53:36.201668"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.672935"
   },
   {
     "role": "assistant",
-    "content": "In OSPF, the Designated Router (DR) and Backup DR (BDR) are elected using the OSPF Hello protocol.",
-    "topic": "Networking",
-    "timestamp": "2026-08-20T09:53:36.201668"
+    "content": "Result success=False. Requires confirmation",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.672935"
   },
   {
     "role": "user",
-    "content": "Switch topic.",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.215504"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.779874"
   },
   {
     "role": "assistant",
-    "content": "What's next?",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.215504"
+    "content": "Result success=False. Requires confirmation",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.779874"
   },
   {
     "role": "user",
-    "content": "Let's discuss Python.",
-    "topic": "Python",
-    "timestamp": "2026-08-20T09:53:36.223862"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.930219"
   },
   {
     "role": "assistant",
-    "content": "Great choice! Python is versatile.",
-    "topic": "Python",
-    "timestamp": "2026-08-20T09:53:36.223862"
+    "content": "Result success=True. Executed successfully",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:40.930219"
   },
   {
     "role": "user",
-    "content": "Let's discuss networking.",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.547922"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.071887"
   },
   {
     "role": "assistant",
-    "content": "Sure!",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.547922"
+    "content": "Result success=True. Executed successfully",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.071887"
   },
   {
     "role": "user",
-    "content": "Question 1",
-    "topic": "Networking",
-    "timestamp": "2026-08-20T09:53:36.558554"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.206839"
   },
   {
     "role": "assistant",
-    "content": "Answer 1",
-    "topic": "Networking",
-    "timestamp": "2026-08-20T09:53:36.558554"
+    "content": "Result success=False. Execution failed",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.206839"
   },
   {
     "role": "user",
-    "content": "Switch topic.",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.573702"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.312148"
   },
   {
     "role": "assistant",
-    "content": "What's next?",
-    "topic": "General",
-    "timestamp": "2026-08-20T09:53:36.573702"
+    "content": "Result success=False. Notepad is already open. Open another instance? (yes / no)",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.312148"
   },
   {
     "role": "user",
-    "content": "Let's discuss Python.",
-    "topic": "Python",
-    "timestamp": "2026-08-20T09:53:36.583974"
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.421204"
   },
   {
     "role": "assistant",
-    "content": "Great!",
-    "topic": "Python",
-    "timestamp": "2026-08-20T09:53:36.583974"
+    "content": "Result success=True. Executed successfully",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.421204"
+  },
+  {
+    "role": "user",
+    "content": "Open Notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.546111"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully",
+    "topic": "desktop",
+    "timestamp": "2026-08-24T11:23:41.546111"
+  },
+  {
+    "role": "user",
+    "content": "audit this repository for security vulnerabilities",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:41.687287"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:41.687287"
+  },
+  {
+    "role": "user",
+    "content": "audit this repository for security vulnerabilities",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:41.944850"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:41.944850"
+  },
+  {
+    "role": "user",
+    "content": "diagnose high packet loss and latency on wifi adapter",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.225333"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.225333"
+  },
+  {
+    "role": "user",
+    "content": "refactor the authentication module and fix failing pytest regressions",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.479885"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.479885"
+  },
+  {
+    "role": "user",
+    "content": "calculate EBITDA gross margin and forecast CAGR revenue",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.693585"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully; Executed successfully; Executed successfully",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.693585"
+  },
+  {
+    "role": "user",
+    "content": "audit this repository for security vulnerabilities",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:42.776807"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:42.776807"
+  },
+  {
+    "role": "user",
+    "content": "search for the best coding bootcamp",
+    "topic": "general",
+    "timestamp": "2026-08-24T11:23:42.859944"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully",
+    "topic": "general",
+    "timestamp": "2026-08-24T11:23:42.859944"
+  },
+  {
+    "role": "user",
+    "content": "search the web for python tutorials",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.950928"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully; Executed successfully",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:42.950928"
+  },
+  {
+    "role": "user",
+    "content": "audit repository for security vulnerabilities",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:43.084666"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:43.084666"
+  },
+  {
+    "role": "user",
+    "content": "audit repository for security vulnerabilities",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:43.158520"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Executed successfully",
+    "topic": "coding",
+    "timestamp": "2026-08-24T11:23:43.158520"
+  },
+  {
+    "role": "user",
+    "content": "Test missing artifact fail-closed",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.241710"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Executed successfully; ❌ Task 'st_doc_2' requires artifact 'art_research_missing' but it has no content payload. Pipeline cannot continue.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.241710"
+  },
+  {
+    "role": "user",
+    "content": "Test empty artifact fail-closed",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.324885"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Search completed with empty content; ❌ Task 'st_doc_2' requires artifact 'art_res_empty' but it has no content payload. Pipeline cannot continue.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.324885"
+  },
+  {
+    "role": "user",
+    "content": "Test low-confidence artifact fail-closed",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.417006"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. Search completed with low confidence; ❌ Task 'st_doc_2' requires artifact 'art_res_low_conf' but its confidence (0.25) is below minimum threshold (0.40). Pipeline cannot continue with unverified data.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.417006"
+  },
+  {
+    "role": "user",
+    "content": "Test non-research artifact not blocked",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.575004"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Security audit completed with partial certainty; Security audit completed with partial certainty",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-24T11:23:43.575004"
   }
 ]

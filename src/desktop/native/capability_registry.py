@@ -1779,6 +1779,7 @@ class CapabilityRegistry:
             ("file.write", "Write or overwrite content to a file", RiskLevel.LOW, True, False),
             ("file.delete", "Delete a file", RiskLevel.HIGH, False, True),
             ("file.move", "Move or rename a file or directory", RiskLevel.LOW, True, False),
+            ("file.organize", "Organize files in a directory into category subfolders by file type", RiskLevel.MODERATE, False, False),
             ("file.copy", "Copy a file or directory", RiskLevel.MODERATE, True, False),
             ("file.mkdir", "Create a directory (with parents)", RiskLevel.LOW, True, False),
             ("file.compress", "Create ZIP/TAR archive from files", RiskLevel.MODERATE, False, False),

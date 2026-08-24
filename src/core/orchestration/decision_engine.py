@@ -138,6 +138,12 @@ class DecisionEngine:
                 "tell me my",
                 "who is",
                 "where is my",
+                "what did we find",
+                "what did i find",
+                "what did we learn",
+                "what did we discuss",
+                "earlier about",
+                "find earlier",
             ]
         ) or (
             any(
@@ -359,6 +365,19 @@ class DecisionEngine:
                 "turn on",
                 "enable",
                 "disable",
+                # Artifact & Office Synthesis
+                "presentation",
+                "powerpoint",
+                "pptx",
+                "word document",
+                "docx",
+                "spreadsheet",
+                "excel",
+                "xlsx",
+                "slides",
+                "leave letter",
+                "status report",
+                "convert",
                 # Explicit capability & security dispatch
                 "execute capability",
                 "security.",
@@ -591,8 +610,52 @@ class DecisionEngine:
             ]
         )
 
+        is_personal_os = any(
+            w in goal_lower
+            for w in [
+                "what do i need to do today",
+                "what should i do today",
+                "what do i have today",
+                "what's on my agenda",
+                "what is on my agenda",
+                "my agenda today",
+                "today's agenda",
+                "daily overview",
+                "daily summary",
+                "my tasks today",
+                "priorities today",
+                "schedule today",
+                "personal_os.daily_context",
+                "personal_os",
+            ]
+        )
+
+        is_workspace_search = (
+            any(
+                w in goal_lower
+                for w in [
+                    "find the file",
+                    "find file",
+                    "search workspace",
+                    "search file",
+                    "find where",
+                    "locate file",
+                    "where is the file",
+                    "where do we store",
+                    "personal_os.search",
+                ]
+            )
+            and not is_research
+        )
+
         intent_capability = ""
-        if is_session_summary:
+        if is_workspace_search:
+            intent = IntentType.DESKTOP_ACTION
+            intent_capability = "personal_os.search"
+        elif is_personal_os:
+            intent = IntentType.DESKTOP_ACTION
+            intent_capability = "personal_os.daily_context"
+        elif is_session_summary:
             intent = IntentType.SESSION
             intent_capability = "session_summary"
         elif is_memory_write:

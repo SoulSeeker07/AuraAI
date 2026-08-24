@@ -76,6 +76,13 @@ class AutonomyGovernanceEngine:
     def reset_instance(cls) -> None:
         cls._instance = None
 
+    def check_trigger_domain(self, capability: str) -> tuple[bool, str]:
+        """Check if a capability's domain is in the allowed trigger domains."""
+        domain = capability.split(".")[0] if "." in capability else capability
+        if domain not in self.policy.allowed_domains:
+            return False, f"Capability domain '{domain}' is outside trigger_allowed_domains"
+        return True, "Domain allowed"
+
     def compute_arguments_digest(self, arguments: dict[str, Any]) -> str:
         """Compute deterministic SHA-256 digest of execution arguments."""
         try:

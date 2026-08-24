@@ -123,9 +123,9 @@ class AccountProvisioner:
                     cmd = ["icacls", str(target), "/deny", f"{self.username}:(OI)(CI)(F)", "/q", "/c"]
                     subprocess.run(cmd, capture_output=True, text=True, timeout=30.0)
 
-            # 2. Apply GRANT (Modify) on active workspace directory (with 60s timeout for large .venv trees)
+            # 2. Apply GRANT (Read & Execute) on active workspace directory (with 60s timeout for large .venv trees)
             if ws_path.exists():
-                cmd = ["icacls", str(ws_path), "/grant:r", f"{self.username}:(OI)(CI)(M)", "/q", "/c"]
+                cmd = ["icacls", str(ws_path), "/grant:r", f"{self.username}:(OI)(CI)(RX)", "/q", "/c"]
                 subprocess.run(cmd, capture_output=True, text=True, timeout=60.0)
 
             return True, "NTFS DACL boundaries configured successfully."
@@ -159,6 +159,28 @@ class AccountProvisioner:
             return True, "Outbound network egress rule configured successfully."
         except Exception as exc:
             return False, f"Firewall configuration error: {exc}"
+
+    def grant_staging_access(self, staging_dir: str | Path) -> bool:
+        """
+        Grant AuraSandboxUser un-elevated Modify permissions on a user-owned ephemeral staging directory.
+        """
+        target = Path(staging_dir).resolve()
+        if not target.exists():
+            return False
+        try:
+            cmd = ["icacls", str(target), "/grant", f"{self.username}:(OI)(CI)(M)", "/q"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+            return res.returncode == 0
+        except Exception as exc:
+            logger.warning(f"Failed to grant staging access to {self.username}: {exc}")
+            return False
+
+
+def grant_staging_access(staging_dir: str | Path, username: str = SANDBOX_USER_NAME) -> bool:
+    """Convenience helper to grant ephemeral staging permissions."""
+    provisioner = AccountProvisioner(username=username)
+    return provisioner.grant_staging_access(staging_dir)
+
 
 
 

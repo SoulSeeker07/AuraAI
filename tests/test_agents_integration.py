@@ -16,18 +16,18 @@ from pathlib import Path
 
 import pytest
 
-from src.agents.agent_registry import (
+from agents.agent_registry import (
     AgentCapability,
     AgentRegistry,
     AgentType,
     register_builtin_agents,
 )
-from src.agents.config import ConfigManager, ProviderType, get_config_manager
-from src.agents.plugin_system import PluginBase, PluginRegistry
-from src.agents.safety_layer import OperationType, SafetyLayer
-from src.agents.skill_system import SkillCategory, SkillRegistry, SkillStep
-from src.agents.task_manager import TaskManager
-from src.agents.task_model import (
+from agents.config import ConfigManager, ProviderType, get_config_manager
+from agents.plugin_system import PluginBase, PluginRegistry
+from agents.safety_layer import OperationType, SafetyLayer
+from agents.skill_system import SkillCategory, SkillRegistry, SkillStep
+from agents.task_manager import TaskManager
+from agents.task_model import (
     Task,
     TaskInput,
     TaskOutput,

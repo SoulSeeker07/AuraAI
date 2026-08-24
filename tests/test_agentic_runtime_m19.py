@@ -22,7 +22,7 @@ from core.orchestration.runtime_checkpoint import (
 )
 from core.orchestration.task_worker import TaskWorker, ResearchProfile
 from core.capabilities.capability_registry import CapabilityRegistry
-from src.workspace.workspace_instruction_loader import WorkspaceInstructionLoader
+from workspace.workspace_instruction_loader import WorkspaceInstructionLoader
 
 
 @pytest.mark.asyncio

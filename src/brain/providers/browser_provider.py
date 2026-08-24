@@ -14,11 +14,8 @@ from typing import Any
 try:
     from browser.world_model import BrowserContext, BrowserStateProbe
 except (ImportError, ModuleNotFoundError):
-    try:
-        from src.browser.world_model import BrowserContext, BrowserStateProbe
-    except Exception:
-        BrowserContext = None  # type: ignore
-        BrowserStateProbe = None  # type: ignore
+    BrowserContext = None  # type: ignore
+    BrowserStateProbe = None  # type: ignore
 from .base import IWorldProvider, ProviderFact
 
 

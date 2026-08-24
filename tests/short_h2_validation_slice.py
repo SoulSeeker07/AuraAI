@@ -34,10 +34,10 @@ import sys
 # Add workspace root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.voice.tts_manager import TTSSettings, TTSManger, TTSSpeaker
-from src.browser.engine import BrowserEngine
-from src.brain.goal_verifier import GoalVerifier
-from src.core.config import AuraConfig
+from voice.tts_manager import TTSSettings, TTSManger, TTSSpeaker
+from browser.engine import BrowserEngine
+from brain.goal_verifier import GoalVerifier
+from core.config import AuraConfig
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -215,7 +215,7 @@ class ShortH2ValidationSlice:
 
         try:
             # Import GoalVerifier class
-            from src.brain.goal_verifier import GoalVerifier
+            from brain.goal_verifier import GoalVerifier
 
             # Verify GoalVerifier can be instantiated
             verifier = GoalVerifier()

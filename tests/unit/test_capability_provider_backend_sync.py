@@ -6,9 +6,9 @@ preventing silent fallthrough, descriptor drift, and phantom capability definiti
 
 import pytest
 
-from src.core.capabilities.capability_registry import CapabilityRegistry
-from src.core.backends.backend_registry import BackendRegistry
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from core.capabilities.capability_registry import CapabilityRegistry
+from core.backends.backend_registry import BackendRegistry
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 
 
 @pytest.fixture(autouse=True)

@@ -104,9 +104,9 @@ class RestrictedUserSandbox(BaseSandboxProvider):
         Execute command as AuraSandboxUser via CreateProcessWithLogonW inside Job Object.
         """
         if not self.is_available():
-            # Gracefully fallback to JobObject execution
-            logger.warning("RestrictedUserSandbox is unavailable; falling back to Win32JobSandbox.")
-            return self._job_sandbox.execute(command, cwd=cwd, timeout=timeout, env=env)
+            raise RuntimeError(
+                "Fail-Closed Security Invariant: RestrictedUserSandbox is unavailable (AuraSandboxUser account missing or password unconfigured)."
+            )
 
         advapi32 = ctypes.windll.advapi32
         kernel32 = ctypes.windll.kernel32
@@ -129,14 +129,14 @@ class RestrictedUserSandbox(BaseSandboxProvider):
 
         import base64
 
-        encoded_cmd = base64.b64encode(command.encode("utf-16le")).decode("ascii")
-        cmd_line = f"powershell.exe -NoProfile -NonInteractive -EncodedCommand {encoded_cmd}"
         exec_cwd = str(Path(cwd).resolve())
+        wrapped_command = f'Set-Location "{exec_cwd}"; {command}'
+        encoded_cmd = base64.b64encode(wrapped_command.encode("utf-16le")).decode("ascii")
+        cmd_line = f"powershell.exe -NoProfile -NonInteractive -EncodedCommand {encoded_cmd}"
 
         pi = PROCESS_INFORMATION()
 
         success = advapi32.CreateProcessWithLogonW(
-
             self._username,
             ".",
             self._password,
@@ -200,9 +200,14 @@ class RestrictedUserSandbox(BaseSandboxProvider):
         raw_text = b"".join(chunks).decode("utf-8", errors="replace")
         if "#< CLIXML" in raw_text:
             import re
-            lines = re.findall(r'<S S="(?:Error|Warning|verbose)">([^<]+)</S>', raw_text)
+            lines = re.findall(r'<S S="(?:Error|Warning|verbose|debug)">([^<]+)</S>', raw_text, re.IGNORECASE)
             if lines:
                 return "\n".join(lines).replace("_x000D__x000A_", "\n")
+            cleaned = re.sub(r"<[^>]+>", "", raw_text).replace("#< CLIXML", "").strip()
+            if cleaned:
+                return cleaned
+            if '<Obj S="progress"' in raw_text:
+                return ""
         return raw_text
 
 

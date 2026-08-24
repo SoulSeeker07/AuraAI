@@ -242,3 +242,39 @@ This document tracks identified architectural debt, interim compatibility shims,
      - Part 1 (5 Distinct Roles): `MEMORY` (`memory.recall`) $\to$ `DESKTOP` (`security.firewall_audit`) $\to$ `RESEARCH` (`research.search`) $\to$ `CODING` (`code.report`) $\to$ `DESKTOP` (`notification.send`) completed in 59.70s with clean observation text and physical file creation (`scratch/track_b_audit_report.md`).
      - Part 2 (Fail-Closed Stop Invariant): Missing upstream input artifact caused `MasterOrchestrator` to halt immediately and return explicit failure observation (`"❌ Research stage completed without producing a payload..."`).
   9. **Regression**: 60/60 unit tests passed in 24.78s.
+
+---
+
+## 16. Dynamic CodeAct OS-Level Containment & Adversarial Probe Blast Radius (M29)
+* **Location**: [`src/codeact/staging_sandbox.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/codeact/staging_sandbox.py), [`src/desktop/native/sandbox/restricted_user_sandbox.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/desktop/native/sandbox/restricted_user_sandbox.py), [`src/desktop/native/sandbox/account_provisioner.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/desktop/native/sandbox/account_provisioner.py), [`tests/test_codeact/test_restricted_staging.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/test_codeact/test_restricted_staging.py)
+* **Status**: ✅ **RESOLVED** (filesystem containment) / ⚠️ **PARTIAL** (network egress — see item 17)
+* **Context**: `StagingSandbox` originally relied on the AST static checker alone for filesystem confinement, so any AST-clean script using plain `pathlib` could read or write anywhere the host user could. M29 moved confinement down to the OS kernel: scripts execute under the low-privilege `AuraSandboxUser` service account via `CreateProcessWithLogonW`, inside a Windows Job Object (512MB RAM cap, 4-process limit, kill-on-close), writing only into an ephemeral `.staging/aura_run_<uuid>` directory granted `(OI)(CI)(M)`. The workspace root carries a standing `(OI)(CI)(RX)` grant — deliberately read-execute only, so the interpreter and installed packages load without opening any write surface outside `.staging/`.
+* **Secondary Defect Found (post-milestone audit)**: The G4b adversarial traversal probe aims its `# MALICIOUS_MUTATION_*` marker payload at two **real repository files** (`src/daemon/governance.py`, `docs/technical_debt.md`) — correct as a threat model, but its post-condition asserted content integrity for `governance.py` only. A pre-hardening run of that probe successfully wrote through to `docs/technical_debt.md`, truncating this registry from 244 lines to a 28-byte stub. Because the surviving assertion covered the other target, the suite reported green and the loss sat undetected in the working tree while the milestone was recorded as verified.
+* **Resolution**:
+  1. **Fail-Closed Sandbox Execution**: Removed the permissive fallback in `RestrictedUserSandbox.execute()`; account unavailability or logon failure now raises `RuntimeError("Fail-Closed Security Invariant: RestrictedUserSandbox is unavailable")` rather than executing unconfined.
+  2. **Fail-Closed Job Object Assignment**: `StagingSandbox` raises `RuntimeError` if `Win32JobSandbox` initialization or process assignment fails, instead of running the script outside the job.
+  3. **CLIXML Stream Unwrapping**: `_read_pipe` extracts `<S S="Error|Warning|verbose|debug">` payloads and strips the `#< CLIXML` envelope that `powershell.exe -EncodedCommand` wraps around subprocess stderr, so real tracebacks reach the CodeAct repair loop instead of XML noise.
+  4. **Bounded Probe Blast Radius**: `test_g4b_adversarial_relative_traversal_to_ceiling_blocked` now snapshots the bytes of **every** ceiling target before execution, asserts byte-for-byte identity for all of them afterward inside a `finally` block, and restores any mutated file before failing with an explicit `CONTAINMENT BREACH` message. The probe keeps its adversarial realism but can no longer leave the repository damaged, and can no longer pass while one of its targets is being overwritten.
+  5. **Data Recovery**: This registry was restored from `HEAD` (244 lines recovered); `src/daemon/governance.py` was confirmed uncorrupted, and the G4a `C:\aura_m29_escape_probe.txt` root-write probe left no artifact.
+* **Verification**: `tests/test_codeact/test_restricted_staging.py` — 5/5 passed in 7.60s (G1 lifecycle, G2 fail-closed, G3 real PPTX synthesis under the restricted user, G4a AST-clean escape blocked, G4b traversal blocked with byte-integrity assertions on both ceiling targets). Post-run integrity re-confirmed: registry 244 lines, zero payload matches, clean `git diff`.
+* **Lesson**: An adversarial containment test that writes to production paths must assert integrity on *every* path it targets. Partial post-condition coverage converts a containment breach into a silent green.
+
+---
+
+---
+
+## 18. `ExecutionPolicy._pending` Legacy Singleton Store (TD-M26-01)
+* **Location**: [`src/core/orchestration/execution_policy.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/execution_policy.py) (`_pending`, `has_pending_confirmation`, `resolve_confirmation`)
+* **Status**: ⚠️ **OPEN / TRACKED** (Low priority clean-up)
+* **Context**: `ExecutionPolicy._pending` is a vestigial dictionary from pre-M19. All active interactive confirmation flows route through session-scoped `ActionPlanConfirmation` on `AgentSession` via `MasterOrchestrator.resolve_pending_confirmation()`. The internal `_pending` store in `ExecutionPolicy` is written to during `evaluate_action()` but never read in production execution.
+* **Remediation**: Deprecate and remove `_pending`, `has_pending_confirmation()`, and `resolve_confirmation()` on `ExecutionPolicy` once isolated legacy unit tests are migrated to `ActionPlanConfirmation`.
+
+---
+
+## 19. Cross-Channel Session Isolation & `_last_session` Pollution (TD-M26-02)
+* **Location**: [`src/core/orchestration/master_orchestrator.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/master_orchestrator.py) (`process_request_async`, `_process_request_async_inner`)
+* **Status**: ✅ **RESOLVED**
+* **Context**: `self._last_session` was previously overwritten unconditionally on every request. A background autonomous trigger executing through `MasterOrchestrator` would overwrite `self._last_session`. If the trigger halted on `ASK_USER`, a subsequent interactive `"yes"` in chat would resolve the trigger's confirmation rather than an interactive request.
+* **Resolution**: Guarded `self._last_session = session` with `if source == RequestSource.HUMAN_INTERACTIVE:`. Non-interactive sources (`TRIGGER_AUTONOMOUS`, `DAEMON_BACKGROUND`, `AGENT_DELEGATED`) execute with isolated session context and cannot pollute the interactive confirmation channel.
+* **Verification**: `tests/unit/test_cross_channel_session_isolation.py` (4/4 passed).
+

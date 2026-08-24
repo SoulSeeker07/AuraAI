@@ -17,14 +17,8 @@ try:
         get_desktop_execution_engine,
     )
 except (ImportError, ModuleNotFoundError):
-    try:
-        from src.desktop.native.desktop_execution_engine import (
-            DesktopExecutionEngine,
-            get_desktop_execution_engine,
-        )
-    except Exception:
-        DesktopExecutionEngine = None  # type: ignore
-        get_desktop_execution_engine = None  # type: ignore
+    DesktopExecutionEngine = None  # type: ignore
+    get_desktop_execution_engine = None  # type: ignore
 
 try:
     from ...planning.execution_result import ExecutionResult
@@ -1035,12 +1029,9 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 verb = "moved"
 
             try:
-                from ....desktop.native.desktop_result import DesktopStatus
+                from desktop.native.desktop_result import DesktopStatus
             except (ImportError, ValueError):
-                try:
-                    from src.desktop.native.desktop_result import DesktopStatus
-                except (ImportError, ValueError):
-                    DesktopStatus = None
+                DesktopStatus = None
 
             is_partial = DesktopStatus is not None and getattr(res, "status", None) == DesktopStatus.PARTIAL
 

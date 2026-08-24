@@ -1,8 +1,8 @@
 import pytest
-from src.core.nlu.nlu_engine import NLUEngine
-from src.brain.intent_router import IntentRouter
-from src.core.orchestration.decision_engine import DecisionEngine
-from src.core.orchestration.reference_resolver import ReferenceResolver
+from core.nlu.nlu_engine import NLUEngine
+from brain.intent_router import IntentRouter
+from core.orchestration.decision_engine import DecisionEngine
+from core.orchestration.reference_resolver import ReferenceResolver
 
 class MockMemory:
     def __init__(self):

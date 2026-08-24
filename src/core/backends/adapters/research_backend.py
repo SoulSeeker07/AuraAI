@@ -178,7 +178,7 @@ class ResearchEngineBackend(BaseBackendAdapter):
                         {
                             "artifact_id": "art_search_results",
                             "artifact_type": "research",
-                            "content": serialized_results,
+                            "content": obs_text,
                             "data": {"results": serialized_results, "query": query},
                         }
                     ],
@@ -199,6 +199,34 @@ class ResearchEngineBackend(BaseBackendAdapter):
                 topic = args.get("topic") or goal
                 sources = args.get("sources") or args.get("results")
 
+                if not sources and args.get("artifact"):
+                    art_obj = args.get("artifact")
+                    art_data = getattr(art_obj, "data", None)
+                    if isinstance(art_data, dict) and "results" in art_data:
+                        sources = art_data["results"]
+                    else:
+                        art_cnt = getattr(art_obj, "content", None)
+                        if isinstance(art_cnt, list):
+                            sources = art_cnt
+                        elif isinstance(art_cnt, dict) and "results" in art_cnt:
+                            sources = art_cnt["results"]
+                        elif isinstance(art_cnt, str) and art_cnt.strip():
+                            import re
+                            matches = re.findall(r"\[(\d+)\]\s+([^\n\r\(]+)\s+\(([^\)]+)\)", art_cnt)
+                            if matches:
+                                sources = [
+                                    {
+                                        "key": f"[{m[0]}]",
+                                        "title": m[1].strip(),
+                                        "url": m[2].strip(),
+                                        "snippet": art_cnt,
+                                        "score": 85.0,
+                                    }
+                                    for m in matches
+                                ]
+                            else:
+                                sources = [{"title": "Search Summary", "url": "https://research.internal", "snippet": art_cnt, "score": 85.0}]
+
                 if not sources and args.get("content"):
                     content_val = args.get("content")
                     if isinstance(content_val, list):
@@ -206,15 +234,21 @@ class ResearchEngineBackend(BaseBackendAdapter):
                     elif isinstance(content_val, dict) and "results" in content_val:
                         sources = content_val["results"]
                     elif isinstance(content_val, str) and content_val.strip():
-                        sources = [{"title": "Search Summary", "url": "https://research.internal", "snippet": content_val, "score": 85.0}]
-
-                if not sources and args.get("artifact"):
-                    art_obj = args.get("artifact")
-                    art_cnt = getattr(art_obj, "content", None)
-                    if isinstance(art_cnt, list):
-                        sources = art_cnt
-                    elif isinstance(art_cnt, str) and art_cnt.strip():
-                        sources = [{"title": "Search Summary", "url": "https://research.internal", "snippet": art_cnt, "score": 85.0}]
+                        import re
+                        matches = re.findall(r"\[(\d+)\]\s+([^\n\r\(]+)\s+\(([^\)]+)\)", content_val)
+                        if matches:
+                            sources = [
+                                {
+                                    "key": f"[{m[0]}]",
+                                    "title": m[1].strip(),
+                                    "url": m[2].strip(),
+                                    "snippet": content_val,
+                                    "score": 85.0,
+                                }
+                                for m in matches
+                            ]
+                        else:
+                            sources = [{"title": "Search Summary", "url": "https://research.internal", "snippet": content_val, "score": 85.0}]
 
                 if not sources:
                     sources = []
@@ -303,9 +337,9 @@ class ResearchEngineBackend(BaseBackendAdapter):
                     summary = f"Deep research findings concluded for '{question}'."
 
                 conf = getattr(report, "confidence", None)
-                if conf is None and hasattr(report, "key_stats") and isinstance(report.key_stats, dict):
+                if not conf and hasattr(report, "key_stats") and isinstance(report.key_stats, dict):
                     conf = report.key_stats.get("confidence_score", 85.0) / 100.0
-                if conf is None:
+                if not conf:
                     conf = 0.85
 
                 duration_val = getattr(report, "duration", None)
@@ -338,16 +372,8 @@ class ResearchEngineBackend(BaseBackendAdapter):
                         report_citations.append(cit_dict)
 
                 report_claims = []
-                for idx, cit_dict in enumerate(report_citations, start=1):
-                    report_claims.append(
-                        {
-                            "claim_id": f"c{idx}",
-                            "text": cit_dict.get("snippet", summary[:100]),
-                            "citations": [cit_dict.get("key", f"[{idx}]")],
-                            "source_url": cit_dict.get("url", ""),
-                            "domain": cit_dict.get("domain", ""),
-                        }
-                    )
+                for claim in getattr(report, "claims", []):
+                    report_claims.append(claim.to_dict() if hasattr(claim, "to_dict") else dict(claim))
 
                 cit_lines = []
                 for c in report_citations:
@@ -374,14 +400,20 @@ class ResearchEngineBackend(BaseBackendAdapter):
                     observations=[obs_text],
                     artifacts=[
                         {
-                            "artifact_id": "art_deep_research",
+                            "artifact_id": "art_research_data",
                             "artifact_type": "research",
-                            "content": {
+                            "content": obs_text,
+                            "data": {
                                 "question": question,
                                 "summary": summary,
                                 "claims": report_claims,
                                 "citations": report_citations,
                             },
+                        },
+                        {
+                            "artifact_id": "art_deep_research",
+                            "artifact_type": "research",
+                            "content": obs_text,
                             "data": {
                                 "question": question,
                                 "claims": report_claims,

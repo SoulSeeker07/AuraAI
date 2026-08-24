@@ -179,7 +179,10 @@ class BrowserEngine:
                 await route.continue_()
                 return
 
-            from ..desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+            try:
+                from desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+            except (ImportError, ModuleNotFoundError):
+                from src.desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
 
             decision, reason, _ = NetworkPolicyEngine.get_instance().evaluate_destination(req_url)
             if decision == EgressDecision.HARD_BLOCKED:
@@ -190,9 +193,12 @@ class BrowserEngine:
             else:
                 await route.continue_()
         except Exception as exc:
-            logger.debug(f"[BrowserEngine Route Interceptor] Route handling error: {exc}")
+            logger.error(
+                f"[BrowserEngine Route Interceptor] Security evaluation failed for '{req_url}' — aborting request (fail-closed): {exc}",
+                exc_info=True,
+            )
             try:
-                await route.continue_()
+                await route.abort("blockedbyclient")
             except Exception:
                 pass
 

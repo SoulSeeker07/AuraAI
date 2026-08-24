@@ -28,15 +28,15 @@ src_path = REPO_ROOT / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from src.browser.engine import BrowserEngine, validate_url_security
-from src.desktop.native.managers.software_manager import SoftwareManager
-from src.desktop.native.security.approval_authority import CryptographicApprovalAuthority
-from src.desktop.native.security.audit_logger import SecurityAuditLogger
-from src.desktop.native.security.governance import (
+from browser.engine import BrowserEngine, validate_url_security
+from desktop.native.managers.software_manager import SoftwareManager
+from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+from desktop.native.security.audit_logger import SecurityAuditLogger
+from desktop.native.security.governance import (
     HOST_CONTEXT_MUTATION_EXCEPTIONS,
     is_host_context_exception,
 )
-from src.desktop.native.security.network_policy import NetworkPolicyEngine
+from desktop.native.security.network_policy import NetworkPolicyEngine
 
 
 class TestHostInstallerRegistryPinning:

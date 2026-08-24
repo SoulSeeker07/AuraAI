@@ -96,14 +96,14 @@ def test_validate_plan_graph_liveness_gating():
     """Verify plan validation fails closed when a primary capability or prerequisite is scaffolded."""
     reg = CapabilityRegistry.get_instance()
 
-    # Scaffolded primary capability (e.g. code.test)
-    res = reg.validate_plan_graph(["code.test"], require_live=True)
+    # Scaffolded primary capability (e.g. code.repair)
+    res = reg.validate_plan_graph(["code.repair"], require_live=True)
     assert res.valid is False
     assert any("scaffolded (is_live=False)" in err for err in res.errors)
-    assert "code.test" in res.unwired_capabilities
+    assert "code.repair" in res.unwired_capabilities
 
     # When require_live=False, scaffolded capabilities pass liveness check
-    res_sim = reg.validate_plan_graph(["code.test"], require_live=False)
+    res_sim = reg.validate_plan_graph(["code.repair"], require_live=False)
     assert res_sim.valid is True
 
 

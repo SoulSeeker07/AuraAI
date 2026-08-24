@@ -764,8 +764,8 @@ class TTSManger:
     becomes available.
     """
 
-    def __init__(self, settings: TTSSettings):
-        self.settings = settings
+    def __init__(self, settings: TTSSettings | None = None):
+        self.settings = settings or TTSSettings()
         self.engine: TTSEngine | None = None
         self.fallback_engine: TTSEngine | None = None
         # Pending callbacks stored so they survive lazy initialization.
@@ -987,3 +987,7 @@ class TTSManger:
             status["fallback_active"] = self.fallback_engine is not None and self.fallback_engine.is_active
             return status
         return {"speaker": self.settings.speaker.value, "is_active": False}
+
+
+# Backward-compatible alias
+TTSManager = TTSManger

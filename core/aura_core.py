@@ -39,7 +39,7 @@ except ImportError:
 
 # Import research module types
 try:
-    from src.research import ConflictResolution, ResearchConfig, SearchMode
+    from research import ConflictResolution, ResearchConfig, SearchMode
 except ImportError:
     SearchMode = None
     ConflictResolution = None
@@ -47,7 +47,7 @@ except ImportError:
 
 # Import planner module
 try:
-    from src.research.research_planner import ResearchPlanner
+    from research.research_planner import ResearchPlanner
 except ImportError:
     ResearchPlanner = None
 
@@ -203,7 +203,67 @@ class AuraCore:
         self._init_llm()
         self._initialize_components()
         self._init_executive_brain()
+        self._init_personal_os()
         self._prewarm_voice_and_models_async()
+
+    def _init_personal_os(self):
+        """Initialize Personal OS subsystem, load stored triggers, and warm search index."""
+        try:
+            from personal_os.state_store import PersonalOSStateStore
+            from personal_os.daily_context import DailyContextEngine
+            from personal_os.workspace_search import WorkspaceSearchEngine
+            from autonomy.models import Trigger, TriggerType, TriggerState
+
+            self.personal_os_store = PersonalOSStateStore.get_instance(
+                db_path=self.project_root / "storage" / "personal_os.db"
+            )
+            self.daily_context_engine = DailyContextEngine(state_store=self.personal_os_store)
+            self.workspace_search_engine = WorkspaceSearchEngine.get_instance(root_dir=self.project_root)
+
+            # Re-arm stored Personal OS triggers into trigger_registry & scheduler
+            stored_triggers = self.personal_os_store.list_triggers(enabled_only=True)
+            if hasattr(self, "trigger_registry") and self.trigger_registry:
+                for p_trig in stored_triggers:
+                    t = Trigger(
+                        trigger_id=p_trig.trigger_id,
+                        trigger_type=TriggerType.SCHEDULED,
+                        action_goal=p_trig.goal_text,
+                        execution_map={},
+                        cron_schedule=p_trig.schedule if " " in p_trig.schedule else None,
+                        state=TriggerState.ARMED,
+                        dedup_key=p_trig.trigger_id,
+                    )
+                    self.trigger_registry.register_trigger(t)
+
+            # Wire live filesystem telemetry if FilesystemWatcher is active
+            if hasattr(self, "filesystem_watcher") and self.filesystem_watcher:
+                if hasattr(self.filesystem_watcher, "register_listener"):
+                    self.filesystem_watcher.register_listener(self.workspace_search_engine.on_filesystem_event)
+                    logger.info("[AuraCore] Registered WorkspaceSearchEngine live event listener on FilesystemWatcher.")
+                else:
+                    logger.warning("[AuraCore] FilesystemWatcher instance missing register_listener.")
+            else:
+                logger.info("[AuraCore] FilesystemWatcher not attached; workspace search index will use initial scan and manual/event rebuilds.")
+
+            self.components["personal_os"] = ComponentStatus(
+                name="Personal OS Subsystem",
+                status=AuraCoreStatus.READY,
+                message=f"Personal OS active ({len(stored_triggers)} routines armed)",
+            )
+            logger.info(
+                f"[AuraCore] Personal OS initialized: {len(stored_triggers)} routine(s) armed, search index ready."
+            )
+        except Exception as e:
+            self.components["personal_os"] = ComponentStatus(
+                name="Personal OS Subsystem",
+                status=AuraCoreStatus.ERROR,
+                message=f"Personal OS initialization failed: {e}",
+                loaded=False,
+            )
+            logger.error(
+                f"[AuraCore] Personal OS initialization failed — running in degraded mode: {e}",
+                exc_info=True,
+            )
 
     def _prewarm_voice_and_models_async(self):
         """Asynchronously pre-warm Voice ML models in background without blocking startup."""
@@ -212,12 +272,12 @@ class AuraCore:
         def _warm():
             try:
                 # 1. Pre-warm FasterWhisper STT
-                from src.voice.stt_manager import STTManager, STTSettings, STTProvider
+                from voice.stt_manager import STTManager, STTSettings, STTProvider
                 stt = STTManager(STTSettings(provider=STTProvider.FASTER_WHISPER, model_size="small"))
                 stt.initialize()
 
                 # 2. Pre-warm Piper TTS
-                from src.voice.tts_manager import TTSManager, TTSSettings, TTSSpeaker
+                from voice.tts_manager import TTSManager, TTSSettings, TTSSpeaker
                 tts = TTSManager(TTSSettings(speaker=TTSSpeaker.PIPER))
                 tts.initialize()
 
@@ -240,7 +300,12 @@ class AuraCore:
 
             self.groq_client = Groq(api_key=api_key)
             self.llm_enabled = True
-            logger.info("Groq LLM client initialized successfully")
+            self.voice_llm_model = os.environ.get("AURA_VOICE_MODEL", "openai/gpt-oss-20b")
+            self.reasoning_llm_model = os.environ.get("AURA_REASONING_MODEL", "openai/gpt-oss-120b")
+            self.llm_model = self.reasoning_llm_model
+            logger.info(
+                f"Groq LLM client initialized successfully (Voice: {self.voice_llm_model}, Reasoning: {self.reasoning_llm_model})"
+            )
         except Exception as e:
             self.llm_enabled = False
             self.groq_client = None
@@ -251,7 +316,7 @@ class AuraCore:
         try:
             # Wire the cognitive runtime to the MasterOrchestrator for execution
             from core.orchestration import MasterOrchestrator
-            from src.brain import (
+            from brain import (
                 CapabilitySelector,
                 ContextManager,
                 ExecutionCoordinator,
@@ -262,7 +327,7 @@ class AuraCore:
                 VerificationEngine,
                 WorldModel,
             )
-            from src.brain.aca import (
+            from brain.aca import (
                 ACABrain,
                 ConfidenceGate,
                 FusionEngine,
@@ -303,10 +368,10 @@ class AuraCore:
                 from core.orchestration.execution_policy import ExecutionPolicy
                 from voice.continuous_loop import ContinuousVoiceLoop
             except (ImportError, ModuleNotFoundError):
-                from src.autonomy.trigger_registry import TriggerRegistry
-                from src.autonomy.trigger_scheduler import TriggerScheduler
-                from src.core.orchestration.execution_policy import ExecutionPolicy
-                from src.voice.continuous_loop import ContinuousVoiceLoop
+                from autonomy.trigger_registry import TriggerRegistry
+                from autonomy.trigger_scheduler import TriggerScheduler
+                from core.orchestration.execution_policy import ExecutionPolicy
+                from voice.continuous_loop import ContinuousVoiceLoop
 
             self.policy = ExecutionPolicy.get_instance()
             self.trigger_registry = TriggerRegistry(
@@ -316,6 +381,7 @@ class AuraCore:
                 registry=self.trigger_registry,
                 coordinator=self.coordinator,
                 policy=self.policy,
+                orchestrator=orchestrator,
             )
 
             self.voice_loop = ContinuousVoiceLoop(
@@ -328,7 +394,7 @@ class AuraCore:
             # ── Wire Real Engine Callbacks ─────────────────────────────────
             # Replace mock callbacks with real engines so there is ONE execution path.
             try:
-                from src.desktop.native.desktop_execution_engine import (
+                from desktop.native.desktop_execution_engine import (
                     DesktopExecutionEngine,
                 )
 
@@ -355,7 +421,7 @@ class AuraCore:
                 logger.warning(f"Desktop Engine wiring skipped: {e}")
 
             try:
-                from src.browser.engine import BrowserEngine
+                from browser.engine import BrowserEngine
 
                 browser_engine = BrowserEngine()
 
@@ -380,7 +446,7 @@ class AuraCore:
                 logger.warning(f"Browser Engine wiring skipped: {e}")
 
             try:
-                from src.research.research_engine import ResearchEngine
+                from research.research_engine import ResearchEngine
 
                 research_engine = ResearchEngine()
 
@@ -437,7 +503,7 @@ class AuraCore:
             return await self.process_request(user_goal)
 
         try:
-            from src.core.learning.behavior_store import BehaviorStore
+            from core.learning.behavior_store import BehaviorStore
 
             # Build context for the Executive Brain
             context = {
@@ -465,7 +531,7 @@ class AuraCore:
             return await self.process_request(user_goal)
 
     async def get_ai_response_stream(
-        self, user_message: str
+        self, user_message: str, model: str | None = None
     ) -> AsyncGenerator[str, None]:
         """
         Streaming variant of get_ai_response: yields token chunks directly from Groq/provider.
@@ -487,13 +553,18 @@ class AuraCore:
                 {"role": "user", "content": user_message},
             ]
 
-            completion = self.groq_client.chat.completions.create(
-                model=getattr(self, "llm_model", "llama-3.3-70b-versatile"),
-                messages=messages,
-                stream=True,
-                temperature=0.7,
-                max_tokens=1024,
-            )
+            target_model = model or getattr(self, "voice_llm_model", "openai/gpt-oss-20b")
+            kwargs: dict[str, Any] = {
+                "model": target_model,
+                "messages": messages,
+                "stream": True,
+                "temperature": 0.7,
+                "max_tokens": 1024,
+            }
+            if "gpt-oss-120b" in target_model:
+                kwargs["reasoning_effort"] = "medium"
+
+            completion = self.groq_client.chat.completions.create(**kwargs)
             for chunk in completion:
                 if (
                     chunk.choices
@@ -536,7 +607,7 @@ class AuraCore:
             return f"✗ Error processing message: {e}"
 
     async def process_request_stream(
-        self, user_goal: str
+        self, user_goal: str, yield_filler: bool = True
     ) -> AsyncGenerator[str, None]:
         """
         Unified OS Kernel streaming request entry point.
@@ -557,38 +628,53 @@ class AuraCore:
             # Check if pending confirmation is active before execution
             pending_conf = orchestrator.check_pending_confirmation()
             if pending_conf is not None:
-                yield f"I need your confirmation to {pending_conf.plan.goal}. Should I proceed?"
+                yield f"I need your confirmation to {pending_conf.action_plan.goal}. Should I proceed?"
                 return
 
-            # Tool / Orchestration Execution
-            result = await orchestrator.process_request_async(user_goal)
+            # Fast Pre-evaluation via DecisionEngine
+            decision = orchestrator.decision_engine.evaluate(user_goal)
+            intent_type = decision.intent_type
+            can_from_sys = decision.can_answer_from_system
+            needs_planner = decision.needs_planner
 
-            # Check if pending confirmation was generated during execution (Hard-Block invariant)
-            pending_conf = orchestrator.check_pending_confirmation()
-            if pending_conf is not None:
-                yield f"I need your confirmation to {pending_conf.plan.goal}. Should I proceed?"
-                return
-
-            decision = (
-                result.data.get("decision", {})
-                if hasattr(result, "data") and isinstance(result.data, dict)
-                else {}
-            )
-            intent_type = decision.get("intent_type")
-            can_from_sys = decision.get("can_answer_from_system", False)
-            needs_planner = decision.get("needs_planner", True)
-
-            # System Self-Knowledge Queries
+            # System Self-Knowledge Queries (Instant local resolution)
             if intent_type == "system_query" or can_from_sys:
                 from core.system.system_knowledge_resolver import SystemKnowledgeResolver
                 yield SystemKnowledgeResolver.resolve(user_goal)
                 return
 
-            # Conversational Chat Queries -> Stream directly from LLM
+            # Conversational Chat Queries -> Stream directly from Groq LLM immediately!
             if (intent_type == "chat" or not needs_planner) and self.llm_enabled and self.groq_client is not None:
                 async for token in self.get_ai_response_stream(user_goal):
                     yield token
                 return
+
+            # Tool / Orchestration Execution (Mutating actions, Multi-step DAGs)
+            # Yield contextual acoustic filler immediately to eliminate dead air during tool resolution
+            if yield_filler:
+                if intent_type in ["browser", "research", "web"]:
+                    yield "Looking that up now... "
+                elif intent_type in ["window_control", "desktop"]:
+                    yield "Working on that now... "
+                elif intent_type in ["security", "network"]:
+                    yield "Checking system settings... "
+                else:
+                    yield "Working on your request... "
+
+            result = await orchestrator.process_request_async(user_goal)
+
+            # Check if pending confirmation was generated during execution (Hard-Block invariant)
+            pending_conf = orchestrator.check_pending_confirmation()
+            if pending_conf is not None:
+                yield f"I need your confirmation to {pending_conf.action_plan.goal}. Should I proceed?"
+                return
+
+            res_decision = (
+                result.data.get("decision", {})
+                if hasattr(result, "data") and isinstance(result.data, dict)
+                else {}
+            )
+            res_intent_type = res_decision.get("intent_type", intent_type)
 
             if hasattr(result, "final_output") and getattr(result, "final_output"):
                 yield str(getattr(result, "final_output"))
@@ -730,7 +816,7 @@ class AuraCore:
                 try:
                     import asyncio
                     import re
-                    from src.vision.vision_manager import VisionManager
+                    from vision.vision_manager import VisionManager
 
                     def _capture_screen_context():
                         vm = VisionManager()
@@ -862,8 +948,8 @@ class AuraCore:
     def _init_vision(self):
         """Initialize Vision System."""
         try:
-            from src.vision.vision_manager import VisionManager
-            from src.vision.vision_plugin import VisionPlugin
+            from vision.vision_manager import VisionManager
+            from vision.vision_plugin import VisionPlugin
 
             self.vision_plugin = VisionPlugin()
             if self.vision_plugin.on_load():
@@ -950,7 +1036,7 @@ class AuraCore:
             try:
                 from plugins.shared.plugin_manager import PluginManager
             except ImportError:
-                from src.plugins.plugin_manager import PluginManager
+                from plugins.plugin_manager import PluginManager
 
             plugin_manager = PluginManager()
 
@@ -1062,10 +1148,10 @@ class AuraCore:
             # Create ConversationEngine
             from ai.provider_manager import ProviderManager
             from memory.manager.memory_manager import MemoryManager
-            from src.ai.groq_provider import (  # adjust path if it lives elsewhere
+            from ai.groq_provider import (  # adjust path if it lives elsewhere
                 GroqProvider,
             )
-            from src.brain.conversation_engine import ConversationEngine
+            from brain.conversation_engine import ConversationEngine
 
             self.provider_manager = ProviderManager()
             self.provider_manager.register(
@@ -1125,7 +1211,7 @@ class AuraCore:
             logger.info("[_init_research] Creating ResearchEngine...")
 
             # Import research engine
-            from src.research import ResearchConfig, ResearchEngine
+            from research import ResearchConfig, ResearchEngine
 
             research_settings = self.config.get("research_settings", {})
 
@@ -1147,7 +1233,7 @@ class AuraCore:
             )
 
             logger.info("[_init_research] Creating ResearchIntegration...")
-            from src.brain.research_integration import ResearchIntegration
+            from brain.research_integration import ResearchIntegration
 
             self.research_integration = ResearchIntegration(research_engine)
             self.research_integration.__id__ = f"research_integration_{id(self)}"
@@ -1306,9 +1392,9 @@ class AuraCore:
     def _init_multi_agent(self):
         """Initialize multi-agent intelligence system."""
         try:
-            from src.agents.agent_context import ContextManager
-            from src.agents.agent_registry import AgentRegistry
-            from src.agents.orchestrator import AgentOrchestrator
+            from agents.agent_context import ContextManager
+            from agents.agent_registry import AgentRegistry
+            from agents.orchestrator import AgentOrchestrator
 
             # Create agent registry
             agent_registry = AgentRegistry()
@@ -1339,7 +1425,7 @@ class AuraCore:
     def _init_agent_runtime(self):
         """Initialize agent runtime system."""
         try:
-            from src.agents.agent_runtime import AgentRuntime
+            from agents.agent_runtime import AgentRuntime
 
             # Create agent runtime
             agent_runtime = AgentRuntime()
@@ -1364,7 +1450,7 @@ class AuraCore:
     def _init_workflow(self):
         """Initialize workflow engine system."""
         try:
-            from src.workflows.workflow_engine import WorkflowEngine
+            from workflows.workflow_engine import WorkflowEngine
 
             # Create workflow engine (agent_runtime will be None initially)
             workflow_engine = WorkflowEngine(agent_runtime=None)

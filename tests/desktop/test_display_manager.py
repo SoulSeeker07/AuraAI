@@ -14,10 +14,10 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-import src.desktop.native.managers.display_manager as dm_module
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-from src.desktop.native.managers.display_manager import DisplayManager
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+import desktop.native.managers.display_manager as dm_module
+from desktop.native.desktop_execution_engine import DesktopExecutionEngine
+from desktop.native.managers.display_manager import DisplayManager
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 
 
 def setup_function():
@@ -62,7 +62,7 @@ def test_display_manager_native_structure():
 def test_display_manager_auto_discovery():
     """Test DisplayManager auto-discovery."""
     registry = NativeManagerRegistry.get_instance()
-    discovered = registry.discover("src.desktop.native.managers")
+    discovered = registry.discover("desktop.native.managers")
 
     assert "display" in discovered
     display_manager = registry.get("display")
@@ -75,7 +75,7 @@ def test_display_manager_auto_discovery():
 def test_display_capabilities_execution():
     """Test executing display capabilities through DesktopExecutionEngine."""
     registry = NativeManagerRegistry.get_instance()
-    registry.discover("src.desktop.native.managers")
+    registry.discover("desktop.native.managers")
 
     engine = DesktopExecutionEngine(manager_registry=registry)
 

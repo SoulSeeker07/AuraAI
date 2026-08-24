@@ -94,14 +94,19 @@ class CryptographicApprovalAuthority:
     ) -> str:
         """
         Compute deterministic SHA-256 hash for a structured action payload.
-        Canonicalizes parameters by sorting keys.
+        Canonicalizes parameters by sorting keys and filtering out approval ticket metadata.
         """
         params_str = ""
         if parameters:
+            filtered_params = {
+                k: v
+                for k, v in parameters.items()
+                if k not in {"approval_ticket_id", "approval_signature", "user_authorized"}
+            }
             try:
-                params_str = json.dumps(parameters, sort_keys=True, default=str)
+                params_str = json.dumps(filtered_params, sort_keys=True, default=str)
             except Exception:
-                params_str = str(sorted(parameters.items()))
+                params_str = str(sorted(filtered_params.items()))
 
         payload = f"{action_type.lower().strip()}:{target.strip()}:{params_str}".encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
@@ -206,8 +211,14 @@ class CryptographicApprovalAuthority:
 
     def generate_human_signature(self, ticket_id: str) -> str | None:
         """
-        Called strictly by the trusted Human UI / CLI approval channel.
-        Signs the ticket using the process HMAC secret.
+        Signs the ticket using the process HMAC secret. Emits TICKET_SIGNED.
+
+        This is the single signing chokepoint for the human approval channel (UI / CLI),
+        but it is NOT a trust boundary: the secret is one process-wide value on a
+        singleton, so any in-process caller can mint a valid signature. What it stops is
+        LLM self-authorization — a model cannot emit a signature as text, it must route
+        through this auditable call. It does not prove a human was present.
+        See docs/adr/0007-hmac-approval-trust-boundary.md before relying on it as one.
         """
         with self._ticket_lock:
             ticket = self._tickets.get(ticket_id)
@@ -399,3 +410,77 @@ class CryptographicApprovalAuthority:
                 ticket.is_redeemed = True
                 return True
             return False
+
+    def sign_persisted_task(
+        self,
+        task_id: str,
+        capability: str,
+        parameters: dict[str, Any] | None = None,
+        workspace_root: str | None = None,
+    ) -> str:
+        """
+        Cryptographically bind and sign a persisted task definition with its capability name,
+        canonical parameters, and target workspace root to prevent stored parameter tampering.
+        """
+        params_str = json.dumps(parameters or {}, sort_keys=True, default=str)
+        ws_str = str(workspace_root or "").strip()
+        payload = f"task:{task_id.strip()}:{capability.lower().strip()}:{ws_str}:{params_str}".encode("utf-8")
+        return hmac.new(self._secret_key, payload, hashlib.sha256).hexdigest()
+
+    def verify_persisted_task(
+        self,
+        task_id: str,
+        capability: str,
+        parameters: dict[str, Any] | None,
+        signature: str,
+        workspace_root: str | None = None,
+    ) -> tuple[bool, str]:
+        """
+        Verify the cryptographic signature of a persisted task definition.
+        Detects any tampering of task_id, capability, workspace_root, or parameters.
+        """
+        if not signature:
+            return False, "Missing cryptographic signature for persisted task."
+        expected_sig = self.sign_persisted_task(
+            task_id=task_id,
+            capability=capability,
+            parameters=parameters,
+            workspace_root=workspace_root,
+        )
+        if not hmac.compare_digest(expected_sig, signature):
+            return False, "Cryptographic signature mismatch: task definition or parameters have been tampered with."
+        return True, "Persisted task verified successfully."
+
+    def sign_trigger(
+        self,
+        trigger_id: str,
+        action_goal: str,
+        execution_map: dict[str, Any],
+    ) -> str:
+        """
+        Cryptographically sign an autonomous or recurring trigger definition.
+        """
+        exec_str = json.dumps(execution_map or {}, sort_keys=True, default=str)
+        payload = f"trigger:{trigger_id.strip()}:{action_goal.strip()}:{exec_str}".encode("utf-8")
+        return hmac.new(self._secret_key, payload, hashlib.sha256).hexdigest()
+
+    def verify_trigger_signature(
+        self,
+        trigger_id: str,
+        action_goal: str,
+        execution_map: dict[str, Any],
+        signature: str,
+    ) -> tuple[bool, str]:
+        """
+        Verify that an autonomous or recurring trigger definition has not been tampered with.
+        """
+        if not signature:
+            return False, "Missing trigger authorization signature."
+        expected_sig = self.sign_trigger(
+            trigger_id=trigger_id,
+            action_goal=action_goal,
+            execution_map=execution_map,
+        )
+        if not hmac.compare_digest(expected_sig, signature):
+            return False, "Trigger definition or execution map tampered with (signature mismatch)."
+        return True, "Trigger signature verified successfully."

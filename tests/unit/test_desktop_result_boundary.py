@@ -6,10 +6,10 @@ and MiddlewareAction enum unification.
 from unittest.mock import MagicMock
 import pytest
 
-from src.desktop.native.desktop_result import DesktopResult, DesktopStatus
-from src.desktop.native.middleware import MiddlewareAction, ExecutionResult as MiddlewareExecutionResult
-from src.core.backends.adapters.desktop_backend import DesktopBackend
-from src.core.planning.execution_result import ExecutionResult as CoreExecutionResult
+from desktop.native.desktop_result import DesktopResult, DesktopStatus
+from desktop.native.middleware import MiddlewareAction, ExecutionResult as MiddlewareExecutionResult
+from core.backends.adapters.desktop_backend import DesktopBackend
+from core.planning.execution_result import ExecutionResult as CoreExecutionResult
 
 
 def test_desktop_result_status_success_synchronization():
@@ -121,9 +121,9 @@ def test_desktop_backend_app_name_fallback_compound_goals():
 def test_window_manager_undo_capabilities_and_verification():
     """Verify WindowManager returns DesktopResult with live rollback and passes engine verification."""
     from unittest.mock import patch
-    from src.desktop.native.managers.window_manager import WindowManager
-    from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-    from src.desktop.native.capability_registry import CapabilityRegistry
+    from desktop.native.managers.window_manager import WindowManager
+    from desktop.native.desktop_execution_engine import DesktopExecutionEngine
+    from desktop.native.capability_registry import CapabilityRegistry
 
     wm = WindowManager()
     engine = DesktopExecutionEngine()

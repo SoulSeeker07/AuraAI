@@ -6,8 +6,8 @@ Location: tests/test_input_and_screen_containment.py
 from unittest.mock import MagicMock, patch
 import pytest
 
-from src.desktop.native.managers.input_manager import InputFailsafeException, InputManager
-from src.desktop.native.managers.screen_action_manager import ScreenActionManager
+from desktop.native.managers.input_manager import InputFailsafeException, InputManager
+from desktop.native.managers.screen_action_manager import ScreenActionManager
 
 
 class TestInputManagerContainment:

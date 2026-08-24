@@ -63,7 +63,7 @@ def main():
     
     # 1a. PiperTTSEngine
     try:
-        from src.voice.tts_manager import PiperTTSEngine, TTSSettings, TTSSpeaker
+        from voice.tts_manager import PiperTTSEngine, TTSSettings, TTSSpeaker
         settings = TTSSettings(speaker=TTSSpeaker.PIPER)
         engine = PiperTTSEngine(settings)
         ok = engine.initialize()
@@ -87,7 +87,7 @@ def main():
     
     # 1b. EdgeTTSEngine
     try:
-        from src.voice.tts_manager import EdgeTTSEngine, TTSSettings, TTSSpeaker
+        from voice.tts_manager import EdgeTTSEngine, TTSSettings, TTSSpeaker
         settings = TTSSettings(speaker=TTSSpeaker.EDGE_TTS, voice="en-US-AriaNeural")
         engine = EdgeTTSEngine(settings)
         ok = engine.initialize()
@@ -102,7 +102,7 @@ def main():
     
     # 1c. TTSSettings string->enum coercion (piper)
     try:
-        from src.voice.tts_manager import TTSSettings, TTSSpeaker
+        from voice.tts_manager import TTSSettings, TTSSpeaker
         s = TTSSettings(speaker="piper")
         assert s.speaker == TTSSpeaker.PIPER
         _record("TTSSettings 'piper' string coercion", "PASS", f"-> {s.speaker!r}")
@@ -111,7 +111,7 @@ def main():
     
     # 1d. TTSSettings string->enum coercion (edge_tts fallback)
     try:
-        from src.voice.tts_manager import TTSSettings, TTSSpeaker
+        from voice.tts_manager import TTSSettings, TTSSpeaker
         s = TTSSettings(speaker="edge_tts")
         assert s.speaker == TTSSpeaker.EDGE_TTS
         _record("TTSSettings 'edge_tts' string coercion", "PASS", f"-> {s.speaker!r}")
@@ -120,7 +120,7 @@ def main():
     
     # 1e. Invalid speaker raises ValueError
     try:
-        from src.voice.tts_manager import TTSSettings
+        from voice.tts_manager import TTSSettings
         try:
             TTSSettings(speaker="elevenlabs")  # removed -- must raise ValueError
             _record("TTSSettings 'elevenlabs' rejected", "FAIL", "should have raised ValueError")
@@ -131,7 +131,7 @@ def main():
     
     # 1f. TTSManger lazy-init (Piper path)
     try:
-        from src.voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
+        from voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
         mgr = TTSManger(TTSSettings(speaker=TTSSpeaker.PIPER))
         assert mgr.engine is None
         ok = mgr.add_text("Lazy test")
@@ -145,7 +145,7 @@ def main():
     
     # 1g. set_callbacks stored before init
     try:
-        from src.voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
+        from voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
         mgr = TTSManger(TTSSettings(speaker=TTSSpeaker.PIPER))
         mgr.set_callbacks(complete=lambda: None, interrupt=lambda: None)
         assert mgr._pending_complete_callback is not None
@@ -155,7 +155,7 @@ def main():
     
     # 1h. initialize() idempotency
     try:
-        from src.voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
+        from voice.tts_manager import TTSManger, TTSSettings, TTSSpeaker
         mgr = TTSManger(TTSSettings(speaker=TTSSpeaker.PIPER))
         r1 = mgr.initialize()
         engine_ref = mgr.engine
@@ -168,7 +168,7 @@ def main():
     
     # 1i. No ElevenLabs in TTSSpeaker enum
     try:
-        from src.voice.tts_manager import TTSSpeaker
+        from voice.tts_manager import TTSSpeaker
         has_el = hasattr(TTSSpeaker, "ELEVENLABS")
         if has_el:
             _record("ElevenLabs removed from TTSSpeaker", "FAIL",
@@ -189,7 +189,7 @@ def main():
     
     # 2a. FasterWhisperSTTEngine -- import + init (downloads tiny model ~73 MB first time)
     try:
-        from src.voice.stt_manager import FasterWhisperSTTEngine, STTSettings, STTProvider
+        from voice.stt_manager import FasterWhisperSTTEngine, STTSettings, STTProvider
         settings = STTSettings(provider=STTProvider.FASTER_WHISPER, model_size="tiny")
         engine = FasterWhisperSTTEngine(settings)
         print("    [INFO] Initializing faster-whisper tiny model (downloads on first use)...")
@@ -216,7 +216,7 @@ def main():
     
     # 2b. STTManager -- faster-whisper path
     try:
-        from src.voice.stt_manager import STTManager, STTSettings, STTProvider
+        from voice.stt_manager import STTManager, STTSettings, STTProvider
         mgr = STTManager(STTSettings(provider=STTProvider.FASTER_WHISPER, model_size="tiny"))
         assert mgr.engine is None
         ok = mgr.initialize()
@@ -236,7 +236,7 @@ def main():
     
     # 2c. STTSettings string->enum coercion
     try:
-        from src.voice.stt_manager import STTSettings, STTProvider
+        from voice.stt_manager import STTSettings, STTProvider
         s = STTSettings(provider="faster_whisper")
         assert s.provider == STTProvider.FASTER_WHISPER
         _record("STTSettings 'faster_whisper' string coercion", "PASS", f"-> {s.provider!r}")
@@ -245,7 +245,7 @@ def main():
     
     # 2d. STTSettings invalid provider raises ValueError
     try:
-        from src.voice.stt_manager import STTSettings
+        from voice.stt_manager import STTSettings
         try:
             STTSettings(provider="nonexistent_provider")
             _record("STTSettings invalid provider rejected", "FAIL", "should have raised ValueError")
@@ -256,7 +256,7 @@ def main():
     
     # 2e. VoskSTTEngine
     try:
-        from src.voice.stt_manager import VoskSTTEngine, STTSettings, STTProvider
+        from voice.stt_manager import VoskSTTEngine, STTSettings, STTProvider
         settings = STTSettings(provider=STTProvider.VOSK)
         engine = VoskSTTEngine(settings)
         ok = engine.initialize()
@@ -278,7 +278,7 @@ def main():
     
     # 2f. STTSettings serialization
     try:
-        from src.voice.stt_manager import STTSettings, STTProvider
+        from voice.stt_manager import STTSettings, STTProvider
         s = STTSettings(provider=STTProvider.FASTER_WHISPER, model_size="tiny", language="en")
         d = s.to_dict()
         assert d["provider"] == "faster_whisper"
@@ -289,7 +289,7 @@ def main():
     
     # 2g. STTManager get_status() before init
     try:
-        from src.voice.stt_manager import STTManager, STTSettings, STTProvider
+        from voice.stt_manager import STTManager, STTSettings, STTProvider
         mgr = STTManager(STTSettings(provider=STTProvider.FASTER_WHISPER))
         status = mgr.get_status()
         assert status["is_active"] is False
@@ -299,7 +299,7 @@ def main():
     
     # 2h. STTManager process_audio() before init returns ""
     try:
-        from src.voice.stt_manager import STTManager, STTSettings, STTProvider
+        from voice.stt_manager import STTManager, STTSettings, STTProvider
         mgr = STTManager(STTSettings(provider=STTProvider.FASTER_WHISPER))
         result = mgr.process_audio(bytes(3200))
         assert result == ""
@@ -309,7 +309,7 @@ def main():
     
     # 2i. STTProvider.FASTER_WHISPER exists in enum
     try:
-        from src.voice.stt_manager import STTProvider
+        from voice.stt_manager import STTProvider
         assert hasattr(STTProvider, "FASTER_WHISPER")
         assert STTProvider.FASTER_WHISPER.value == "faster_whisper"
         _record("STTProvider.FASTER_WHISPER enum value", "PASS",
@@ -326,9 +326,9 @@ def main():
     print(f"{BOLD}{'='*60}{RESET}")
     
     try:
-        from src.voice.voice_manager import VoiceManager
-        from src.voice.tts_manager import TTSSpeaker
-        from src.voice.stt_manager import STTProvider
+        from voice.voice_manager import VoiceManager
+        from voice.tts_manager import TTSSpeaker
+        from voice.stt_manager import STTProvider
     
         vm = VoiceManager()
     

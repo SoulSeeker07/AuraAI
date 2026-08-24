@@ -20,9 +20,9 @@ try:
 except ImportError:
     pass
 
-from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
-from src.voice.continuous_loop import ContinuousVoiceLoop, VoiceState
-from src.voice.voice_manager import VoiceManager
+from core.orchestration.personal_os_runtime import PersonalOSRuntime
+from voice.continuous_loop import ContinuousVoiceLoop, VoiceState
+from voice.voice_manager import VoiceManager
 import logging
 
 logging.basicConfig(level=logging.WARNING)

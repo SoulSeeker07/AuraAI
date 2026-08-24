@@ -52,10 +52,12 @@ class ProsodyAwareChunker:
     def __init__(
         self,
         min_words_for_clause: int = 10,
+        max_words_per_chunk: int = 15,
         idle_timeout_seconds: float = 0.35,
         max_buffer_chars: int = 250,
     ):
         self.min_words_for_clause = min_words_for_clause
+        self.max_words_per_chunk = max_words_per_chunk
         self.idle_timeout_seconds = idle_timeout_seconds
         self.max_buffer_chars = max_buffer_chars
         self._buffer: str = ""
@@ -127,8 +129,13 @@ class ProsodyAwareChunker:
                 if self._is_file_or_url(text, i):
                     continue
 
-                # Valid sentence end if followed by space, quote, newline, or is at end
-                if i + 1 == len(text) or text[i + 1] in (" ", "\t", "\n", '"', "'", "”", "’"):
+                # Valid sentence end if followed by space, quote, newline, or is at end (non-digit preceding)
+                if i + 1 == len(text):
+                    if i > 0 and text[i - 1].isdigit() and not is_final:
+                        # Wait for next token to confirm it's not a decimal (e.g. 3.14)
+                        continue
+                    return i + 1
+                elif text[i + 1] in (" ", "\t", "\n", '"', "'", "”", "’"):
                     return i + 1
 
         # 2. Check for secondary clause delimiters (, ; : — -) if buffer is long
@@ -145,7 +152,17 @@ class ProsodyAwareChunker:
             if last_clause_idx != -1:
                 return last_clause_idx
 
-        # 3. If final stream end, return entire length if anything remains
+        # 3. Check for hard word-count or buffer ceiling (prevents run-on delimiter-free starvation)
+        if len(words) >= self.max_words_per_chunk or len(text) >= self.max_buffer_chars:
+            count = 0
+            for i, char in enumerate(text):
+                if char in (" ", "\t", "\n"):
+                    if i > 0 and text[i - 1] not in (" ", "\t", "\n"):
+                        count += 1
+                        if count >= self.max_words_per_chunk:
+                            return i + 1
+
+        # 4. If final stream end, return entire length if anything remains
         if is_final and text.strip():
             return len(text)
 

@@ -27,12 +27,13 @@ def test_coding_capability_provider():
     assert edit.supports_undo is True
     assert "workspace.walk" in edit.requires
 
-    # Scaffolded capabilities
+    # Verification capabilities
     test_cap = provider.get_capability("code.test")
     assert test_cap is not None
-    assert test_cap.is_live is False
-    assert test_cap.availability == "scaffolded"
+    assert test_cap.is_live is True
+    assert test_cap.availability == "online"
 
+    # Scaffolded capabilities
     repair_cap = provider.get_capability("code.repair")
     assert repair_cap is not None
     assert repair_cap.is_live is False
@@ -90,3 +91,39 @@ def test_research_capability_provider():
     assert deep_cap is not None
     assert deep_cap.is_live is True
     assert deep_cap.availability == "online"
+
+
+def test_browser_capability_provider_sync_with_playwright_backend():
+    """Verify BrowserCapabilityProvider defines strict typed contracts matching 100% of PlaywrightBrowserAdapter capabilities."""
+    from core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
+    from core.capabilities.capability_registry import CapabilityRegistry
+
+    provider = BrowserCapabilityProvider()
+    cap_reg = CapabilityRegistry.get_instance()
+
+    # Get declared capabilities from Playwright adapter class
+    adapter_caps = (
+        PlaywrightBrowserAdapter.capabilities.fget(None)
+        if hasattr(PlaywrightBrowserAdapter.capabilities, "fget")
+        else PlaywrightBrowserAdapter(engine=object()).capabilities
+    )
+
+    for cap_name in adapter_caps:
+        # 1. Must be explicitly declared in BrowserCapabilityProvider (no dynamic fallback masking)
+        cap_from_provider = provider.get_capability(cap_name)
+        assert cap_from_provider is not None, (
+            f"Capability '{cap_name}' declared by PlaywrightBrowserAdapter is missing from BrowserCapabilityProvider!"
+        )
+        assert cap_from_provider.is_live is True, f"Capability '{cap_name}' must be live!"
+        assert cap_from_provider.domain == "browser", f"Capability '{cap_name}' domain must be 'browser'!"
+        assert cap_from_provider.execution_backend == "browser", f"Capability '{cap_name}' backend must be 'browser'!"
+        assert len(cap_from_provider.permissions) > 0, f"Capability '{cap_name}' must declare explicit permissions!"
+
+        # 2. Must resolve through fail-closed CapabilityRegistry
+        cap_from_reg = cap_reg.get(cap_name)
+        assert cap_from_reg is not None, (
+            f"Capability '{cap_name}' failed to resolve in CapabilityRegistry!"
+        )
+        assert cap_from_reg.is_live is True
+
+

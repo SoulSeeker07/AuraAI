@@ -11,7 +11,7 @@ Tests:
 
 import pytest
 
-from src.desktop.native.adapters.network_adapter import (
+from desktop.native.adapters.network_adapter import (
     DummyNetworkAdapter,
     NetshNetworkAdapter,
     NetworkAdapter,
@@ -19,21 +19,21 @@ from src.desktop.native.adapters.network_adapter import (
     PsutilNetworkAdapter,
     WMINetworkAdapter,
 )
-from src.desktop.native.capability_registry import (
+from desktop.native.capability_registry import (
     CapabilityRegistry,
     PermissionRequired,
     RiskLevel,
 )
-from src.desktop.native.desktop_execution_engine import (
+from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
     reset_desktop_execution_engine,
 )
-from src.desktop.native.managers.native_manager_registry import (
+from desktop.native.managers.native_manager_registry import (
     HealthStatus,
     NativeManagerRegistry,
 )
-from src.desktop.native.managers.network_manager import NetworkManager
+from desktop.native.managers.network_manager import NetworkManager
 
 
 @pytest.fixture
@@ -138,7 +138,7 @@ def test_network_manager_no_cross_cutting_concerns():
 
 
 def test_network_manager_auto_discovery(registry):
-    discovered = registry.discover("src.desktop.native.managers")
+    discovered = registry.discover("desktop.native.managers")
     assert "network" in discovered
 
     nm = registry.get("network")

@@ -29,10 +29,10 @@ src_path = REPO_ROOT / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from src.desktop.native.managers.network_manager import NetworkManager
-from src.desktop.native.managers.terminal_manager import CommandRiskTier, TerminalManager
-from src.desktop.native.security.approval_authority import CryptographicApprovalAuthority
-from src.desktop.native.security.governance import (
+from desktop.native.managers.network_manager import NetworkManager
+from desktop.native.managers.terminal_manager import CommandRiskTier, TerminalManager
+from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+from desktop.native.security.governance import (
     DEFAULT_DEVELOPER_DOMAIN_ALLOWLIST,
     HARD_BLOCKED_HOSTNAMES,
     HARD_BLOCKED_IP_NETWORKS,
@@ -41,7 +41,7 @@ from src.desktop.native.security.governance import (
     is_host_context_exception,
     is_unconditionally_hard_blocked,
 )
-from src.desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+from desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
 
 
 class TestNetworkGovernanceConstants:
@@ -317,9 +317,9 @@ class TestNetworkManagerHardening:
         assert res2.data["requires_confirmation"] is True
 
 
-from src.brain.page_reader import PageReader
-from src.desktop.native.security.network_policy import SafeHTTPRedirectHandler, SafeSession
-from src.research.content_fetcher import ContentFetcher
+from brain.page_reader import PageReader
+from desktop.native.security.network_policy import SafeHTTPRedirectHandler, SafeSession
+from research.content_fetcher import ContentFetcher
 
 
 class TestProgrammaticHttpClientSecurity:

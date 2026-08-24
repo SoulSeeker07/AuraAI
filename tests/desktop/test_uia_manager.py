@@ -551,7 +551,7 @@ def test_uia_live_winforms_round_trip():
     """
     import subprocess
     import time
-    from src.desktop.native.adapters.com_threading import com_scope
+    from desktop.native.adapters.com_threading import com_scope
 
     ps_code = """
     Add-Type -AssemblyName System.Windows.Forms

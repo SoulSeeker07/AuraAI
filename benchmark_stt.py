@@ -2,8 +2,8 @@ import time
 import soundfile as sf
 import numpy as np
 import threading
-from src.voice.models import STTSettings
-from src.voice.stt_manager import FasterWhisperSTTEngine
+from voice.models import STTSettings
+from voice.stt_manager import FasterWhisperSTTEngine
 import logging
 import math
 try:

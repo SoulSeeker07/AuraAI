@@ -25,7 +25,7 @@ _root = Path(__file__).resolve().parents[3]
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from src.voice.tts_manager import (
+from voice.tts_manager import (
     TTSEngine,
     TTSManger,
     TTSSettings,
@@ -217,7 +217,7 @@ class TestVoiceManagerSpeakWithoutExplicitTTSInit:
     def _make_voice_manager_with_stub_tts(self):
         """Build a VoiceManager and replace its tts_manager with a stub-backed one."""
         # Import here to avoid top-level import failure if optional deps are missing.
-        from src.voice.voice_manager import VoiceManager
+        from voice.voice_manager import VoiceManager
 
         vm = VoiceManager()
 
@@ -252,7 +252,7 @@ class TestVoiceManagerSpeakWithoutExplicitTTSInit:
         except Exception:
             pytest.skip("VoiceManager constructor failed (missing hw deps) — skip runtime test")
 
-        from src.voice.models import ConversationState
+        from voice.models import ConversationState
 
         # Track whether the completion handler ran.
         fired = []

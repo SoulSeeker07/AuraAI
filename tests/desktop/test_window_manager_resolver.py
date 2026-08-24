@@ -5,8 +5,8 @@ Unit tests for WindowManager Two-Tier App Resolver, UWP Protocols, and Web Fallb
 from unittest.mock import MagicMock, patch
 import pytest
 
-from src.desktop.native.managers.window_manager import WindowManager
-from src.desktop.native.native_result import ResultStatus
+from desktop.native.managers.window_manager import WindowManager
+from desktop.native.native_result import ResultStatus
 
 
 def test_tier1_fast_path_aliases():

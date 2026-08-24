@@ -5,8 +5,8 @@ Verifies rollback closures, verification structures, and Win32 error handling co
 
 from unittest.mock import patch
 
-from src.desktop.native.managers.clipboard_manager import ClipboardManager
-from src.desktop.native.managers.display_manager import DisplayManager
+from desktop.native.managers.clipboard_manager import ClipboardManager
+from desktop.native.managers.display_manager import DisplayManager
 
 
 def test_clipboard_manager_write_and_rollback():
@@ -78,8 +78,8 @@ def test_display_manager_brightness_rollback_and_verification():
     mock_prev = {"level": 70, "supported": True, "method": "wmi"}
     mock_curr = {"level": 90, "supported": True, "method": "wmi"}
 
-    with patch("src.desktop.native.managers.display_helpers.get_display_brightness", side_effect=[mock_prev, mock_curr]), \
-         patch("src.desktop.native.managers.display_helpers.set_display_brightness", return_value={"success": True, "level": 90, "method": "wmi"}) as mock_set:
+    with patch("desktop.native.managers.display_helpers.get_display_brightness", side_effect=[mock_prev, mock_curr]), \
+         patch("desktop.native.managers.display_helpers.set_display_brightness", return_value={"success": True, "level": 90, "method": "wmi"}) as mock_set:
 
         res = mgr.execute("display.set_brightness", "Set brightness to 90", {"level": 90})
         assert res.success is True
@@ -102,8 +102,8 @@ def test_display_manager_resolution_rollback_and_verification():
     mock_prev_settings = {"width": 1920, "height": 1080, "orientation": 0}
     mock_curr_settings = {"width": 2560, "height": 1440, "orientation": 0}
 
-    with patch("src.desktop.native.managers.display_helpers.get_display_settings", side_effect=[mock_prev_settings, mock_curr_settings]), \
-         patch("src.desktop.native.managers.display_helpers.set_display_resolution", return_value=True) as mock_set:
+    with patch("desktop.native.managers.display_helpers.get_display_settings", side_effect=[mock_prev_settings, mock_curr_settings]), \
+         patch("desktop.native.managers.display_helpers.set_display_resolution", return_value=True) as mock_set:
 
         res = mgr.execute("display.set_resolution", "Change resolution to 2560x1440", {"width": 2560, "height": 1440})
         assert res.success is True
@@ -128,8 +128,8 @@ def test_display_manager_orientation_rollback_and_verification():
     mock_prev_settings = {"width": 1920, "height": 1080, "orientation": 0}
     mock_curr_settings = {"width": 1080, "height": 1920, "orientation": 1}
 
-    with patch("src.desktop.native.managers.display_helpers.get_display_settings", side_effect=[mock_prev_settings, mock_curr_settings]), \
-         patch("src.desktop.native.managers.display_helpers.set_display_orientation", return_value=True) as mock_set:
+    with patch("desktop.native.managers.display_helpers.get_display_settings", side_effect=[mock_prev_settings, mock_curr_settings]), \
+         patch("desktop.native.managers.display_helpers.set_display_orientation", return_value=True) as mock_set:
 
         res = mgr.execute("display.set_orientation", "Change orientation to portrait", {"orientation": 1})
         assert res.success is True
@@ -146,7 +146,7 @@ def test_display_manager_orientation_rollback_and_verification():
 
 def test_security_manager_defender_fallback_when_restricted():
     """Verify SecurityManager.firewall_audit fails gracefully when Defender query is restricted/third-party AV."""
-    from src.desktop.native.managers.security_manager import SecurityManager
+    from desktop.native.managers.security_manager import SecurityManager
     mgr = SecurityManager()
 
     # Mock netsh succeeding but Defender query returning non-zero / error
@@ -170,8 +170,8 @@ def test_display_manager_unsupported_resolution_error_handling():
     """Verify DisplayManager.set_resolution returns failure when Win32 rejects mode."""
     mgr = DisplayManager()
 
-    with patch("src.desktop.native.managers.display_helpers.get_display_settings", return_value={"width": 1920, "height": 1080}), \
-         patch("src.desktop.native.managers.display_helpers.set_display_resolution", return_value=False):
+    with patch("desktop.native.managers.display_helpers.get_display_settings", return_value={"width": 1920, "height": 1080}), \
+         patch("desktop.native.managers.display_helpers.set_display_resolution", return_value=False):
 
         res = mgr.execute("display.set_resolution", "Change resolution to 9999x9999", {"width": 9999, "height": 9999})
         assert res.success is False

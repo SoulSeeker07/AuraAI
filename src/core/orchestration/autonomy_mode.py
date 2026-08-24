@@ -8,9 +8,12 @@ Defines system autonomy levels (ASK, ASSISTED, AUTONOMOUS) and deterministic act
 
 from __future__ import annotations
 
+import logging
 import re
 from enum import Enum
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class AutonomyLevel(str, Enum):
@@ -46,16 +49,42 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
     engine_lower = (engine or "").lower()
     params = params or {}
 
-    # 1. Critical Risk Operations
-    critical_keywords = ["checkout", "purchase", "pay", "buy", "credential", "password", "secret", "private_key"]
+    # Check CapabilityRegistry authoritative declaration first
+    try:
+        from core.capabilities.capability_registry import CapabilityRegistry
+        cap = CapabilityRegistry.get_instance().get(action)
+        if cap is not None:
+            if cap.risk_level == ActionRisk.CRITICAL:
+                return ActionRisk.CRITICAL
+            if cap.risk_level == ActionRisk.HIGH or cap.requires_confirmation or getattr(cap, "is_destructive", False):
+                return ActionRisk.HIGH
+            return cap.risk_level
+        elif "." in action:
+            logger.debug(
+                f"[classify_action_risk] Capability '{action}' not registered in CapabilityRegistry; using heuristic classification."
+            )
+    except (ImportError, AttributeError) as err:
+        logger.warning(
+            f"[classify_action_risk] Failed to import/query CapabilityRegistry for '{action}': {err}. Using heuristic fallback."
+        )
+    except Exception as err:
+        logger.warning(
+            f"[classify_action_risk] Unexpected error querying CapabilityRegistry for '{action}': {err}. Using heuristic fallback."
+        )
+
+    # 1. Critical Risk Operations (Financial, destructive auth, credential leaks)
+    critical_keywords = [
+        "checkout", "purchase", "pay", "buy", "credential", "password",
+        "secret", "private_key", "shopping.checkout", "order.place"
+    ]
     if any(kw in action_lower for kw in critical_keywords) or any(kw in str(params).lower() for kw in critical_keywords):
         return ActionRisk.CRITICAL
 
-    # 2. High Risk Operations
+    # 2. High Risk Operations (Destructive mutations, form submissions, external posts)
     high_keywords = [
         "delete", "remove", "drop", "truncate", "clear", "kill", "unlink",
         "bulk_delete", "send_message", "send_email", "post", "publish",
-        "rmdir", "destroy", "format"
+        "rmdir", "destroy", "format", "submit", "form.submit", "form.fill"
     ]
     if any(kw in action_lower for kw in high_keywords):
         return ActionRisk.HIGH
@@ -85,7 +114,10 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
         return ActionRisk.HIGH
 
     # 3. Medium Risk Operations
-    medium_keywords = ["edit", "update", "modify", "write", "create", "launch", "open_app", "click", "input_text"]
+    medium_keywords = [
+        "edit", "update", "modify", "write", "create", "launch", "open_app",
+        "click", "input_text", "shopping.cart.add", "cart.add", "cart"
+    ]
     if any(kw in action_lower for kw in medium_keywords):
         return ActionRisk.MEDIUM
 

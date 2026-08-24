@@ -147,13 +147,13 @@ DEPRECATED   — Will be removed.
 | `AutonomyGovernanceEngine` | `src/daemon/governance.py` | **ACTIVE** | M23 — Parameter-bound, time-bound cryptographic HMAC authorization tokens & risk tiers. |
 | `DaemonStateStore` | `src/daemon/state_store.py` | **ACTIVE** | M23 — SQLite persistence for jobs, idempotency claims, and crash recovery (RECOVERY_REQUIRED). |
 | `PlaywrightBrowserAdapter` | `src/core/backends/adapters/browser_backend.py` | **ACTIVE** | Playwright DOM & browser engine. Capability contracts scaffolded. |
-| `WorkflowEngine` | `src/workflows/workflow_engine.py` | **DISCONNECTED** | Real framework. No active workflows. Will reconnect at M24. |
+| `WorkflowEngine` | `src/workflows/workflow_engine.py` | **DISCONNECTED** | Instantiated at startup via `core/aura_core.py` with `agent_runtime=None`. `WorkflowEngineAdapter` in `src/brain/aca/engine_adapters.py` is a stub (hardcoded success, `self._engine` unused). `src/workflows/` not reconnected as part of M24. |
 | `AgentRuntime` | `src/agents/agent_runtime.py` | **LEGACY** | Superseded by MasterOrchestrator pipeline. Not on live path. |
 | `ReflectionEngine` | `src/brain/executive/reflection.py` | **DISCONNECTED** | Rule-based recovery patterns. Not connected to live result handling. |
 | `LearningEngine` | `src/brain/executive/learning.py` | **DISCONNECTED** | LearnedItem objects created but not persisted to SQLite. |
 | `MultiAgent collaboration` | `src/agents/collaboration.py` | **DISCONNECTED** | Not called from live path. |
-| `Event Runtime` | — | **MISSING** | M24 deliverable. |
-| `Expert Systems` | — | **MISSING** | M25 deliverable. |
+| `EventRuntime` / `EventInterpreter` / `AutonomyPolicyGate` / `TriggerScheduler` / Watchers | `src/autonomy/` | **ACTIVE** | M24 — AuraEvent contract, ingest/dedup/correlate/dispatch pipeline, AutonomyPolicyGate (ALLOWED/RATE_LIMITED/APPROVAL_REQUIRED/BLOCKED), immutable causal trace chain (event_id → correlation_id → assessment_id → policy_decision_id → plan_id → execution_id → observation_id). |
+| `ExpertDomainRouter` / `SecurityExpert` / `NetworkExpert` / `FinancialExpert` / `SoftwareExpert` / `PlanDAGCompiler` | `src/experts/` | **ACTIVE** | M25 — 4 domain experts + router + compiler. Opt-in via `expert_routing_enabled=True` in MasterOrchestrator (Stage 2.9). Confidence-ranked routing with ≥0.50 threshold, graceful fallback to general planner. |
 
 ---
 
@@ -254,4 +254,4 @@ DPAPIKeyManager                — Windows DPAPI master secret encryption at res
 
 ---
 
-*Last Updated: August 18, 2026*
+*Last Updated: August 20, 2026*

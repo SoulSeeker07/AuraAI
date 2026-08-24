@@ -128,12 +128,21 @@ class FakeSTTManager:
 class FakeTTSManager:
     def __init__(self):
         self.text = ""
+        self._complete_cb = None
+        self._interrupt_cb = None
+
+    def set_callbacks(self, complete=None, interrupt=None):
+        self._complete_cb = complete
+        self._interrupt_cb = interrupt
 
     def add_text(self, text):
         self.text = text
         return True
 
     def speak(self):
+        return True
+
+    def speak_stream(self, chunk_iterator):
         return True
 
     def stop(self):
@@ -344,3 +353,45 @@ def test_08_spoken_wake_then_stt_then_tts_restores_wake_mode(clean_registry):
 
     assert voice_mgr.state == ConversationState.WAKE_LISTENING
     assert voice_mgr.audio_manager.is_recording() is True
+
+
+def test_09_continuous_voice_loop_streaming_tool_filler_integration(clean_registry):
+    """Verify ContinuousVoiceLoop handles streaming tool queries yielding acoustic filler chunks."""
+    import time
+    from unittest.mock import MagicMock
+
+    registry, desktop, browser = clean_registry
+    voice_mgr = make_hardware_free_voice_manager()
+
+    # Mock AuraCore with process_request_stream yielding filler then tool result
+    mock_core = MagicMock()
+
+    async def _mock_stream(transcript):
+        yield "Looking that up now... "
+        yield "Found the top Python tutorials on YouTube."
+
+    mock_core.process_request_stream = _mock_stream
+    mock_core.add_to_conversation = MagicMock()
+
+    spoken_chunks = []
+    def _mock_speak(text, **kwargs):
+        spoken_chunks.append(text)
+        return True
+
+    voice_mgr.speak = _mock_speak
+
+    loop = ContinuousVoiceLoop(voice_manager=voice_mgr, coordinator=ExecutionCoordinator())
+    loop._aura_core = mock_core
+    assert loop.start() is True
+
+    # User speaks tool query
+    loop.trigger_transcription_ready("Search YouTube for Python tutorials")
+
+    # Allow background thread to process stream
+    time.sleep(0.2)
+
+    assert loop.turn_count == 1
+    assert len(loop.history) == 1
+    assert loop.history[0]["transcript"] == "Search YouTube for Python tutorials"
+    assert "Looking that up now..." in spoken_chunks or "Looking that up now..." in loop.history[0]["spoken_summary"]
+

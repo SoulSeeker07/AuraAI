@@ -53,7 +53,7 @@ async def test_end_to_end_boundary_queries(test_memory_instance):
     """
     Test the boundaries between local_time and research/exchange rate routing.
     """
-    from src.brain.intent_router import IntentRouter
+    from brain.intent_router import IntentRouter
     router = IntentRouter(test_memory_instance)
 
     queries = [
@@ -72,7 +72,7 @@ async def test_end_to_end_boundary_queries(test_memory_instance):
         else:
             assert intent.name != "local_time", f"Expected NOT local_time for '{query}'"
 
-            from src.core.orchestration.decision_engine import DecisionEngine
+            from core.orchestration.decision_engine import DecisionEngine
             engine = DecisionEngine()
             out = engine.evaluate(query)
             assert out.intent_type.value == "research", f"Expected research for '{query}' from DecisionEngine"

@@ -33,10 +33,10 @@ from typing import Any
 # Add workspace root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.browser.engine import BrowserEngine
-from src.core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
-from src.brain.goal_verifier import GoalVerifier
-from src.brain.execution_coordinator import StepResult, CoordinationResult
+from browser.engine import BrowserEngine
+from core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
+from brain.goal_verifier import GoalVerifier
+from brain.execution_coordinator import StepResult, CoordinationResult
 from core.orchestration.observation_models import FailureType
 
 logging.basicConfig(level=logging.INFO)

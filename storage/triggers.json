@@ -1,66 +1,4 @@
 {
-  "trig_system_idle": {
-    "trigger_id": "trig_system_idle",
-    "trigger_type": "SYSTEM_EVENT",
-    "action_goal": "perform security audit on system idle",
-    "execution_map": {
-      "capability": "security.firewall_audit"
-    },
-    "cron_schedule": null,
-    "interval_seconds": null,
-    "event_pattern": "system.idle_audit",
-    "condition_fn": null,
-    "state": "VERIFIED",
-    "enabled": true,
-    "dedup_key": null,
-    "concurrency_policy": "QUEUE",
-    "last_fired_at": "2026-08-19T19:23:22.113494",
-    "last_provenance": {
-      "trigger_id": "trig_system_idle",
-      "event_id": "evt_f5b9c8aa",
-      "dedup_key": "trig_system_idle",
-      "trigger_type": "SYSTEM_EVENT",
-      "created_at": "2026-08-19T19:23:22.113494",
-      "fired_at": "2026-08-19T19:23:22.113494",
-      "execution_id": "exec_12345",
-      "result_status": "VERIFIED"
-    },
-    "created_at": "2026-08-19T19:23:22.113494"
-  },
-  "trig_real_security_audit": {
-    "trigger_id": "trig_real_security_audit",
-    "trigger_type": "SYSTEM_EVENT",
-    "action_goal": "Audit Windows Firewall compliance status",
-    "execution_map": {
-      "steps": [
-        {
-          "engine": "desktop",
-          "action": "security.firewall_audit",
-          "parameters": {}
-        }
-      ]
-    },
-    "cron_schedule": null,
-    "interval_seconds": null,
-    "event_pattern": "security.audit_requested",
-    "condition_fn": null,
-    "state": "VERIFIED",
-    "enabled": true,
-    "dedup_key": null,
-    "concurrency_policy": "QUEUE",
-    "last_fired_at": "2026-08-19T20:07:41.772653",
-    "last_provenance": {
-      "trigger_id": "trig_real_security_audit",
-      "event_id": "evt_45183ad1",
-      "dedup_key": "trig_real_security_audit",
-      "trigger_type": "SYSTEM_EVENT",
-      "created_at": "2026-08-19T20:07:41.772653",
-      "fired_at": "2026-08-19T20:07:41.772653",
-      "execution_id": "88114387",
-      "result_status": "VERIFIED"
-    },
-    "created_at": "2026-08-19T20:07:41.768631"
-  },
   "trig_core_autonomy_test": {
     "trigger_id": "trig_core_autonomy_test",
     "trigger_type": "SCHEDULED",
@@ -69,7 +7,7 @@
       "steps": [
         {
           "engine": "desktop",
-          "action": "open_app",
+          "action": "app_open",
           "parameters": {
             "application": "Calculator"
           }
@@ -84,12 +22,12 @@
     "enabled": true,
     "dedup_key": null,
     "concurrency_policy": "COALESCE",
-    "last_fired_at": "2026-08-20T08:12:06.343328",
+    "last_fired_at": "2026-08-20T18:49:16.430747",
     "last_provenance": {
       "trigger_id": "trig_core_autonomy_test",
-      "event_id": "evt_e16be2d2",
+      "event_id": "evt_cc088e8b",
       "dedup_key": "trig_core_autonomy_test",
       "trigger_type": "SCHEDULED",
-      "created_at": "2026-08-20T08:12:06.343328",
-      "fired_at": "2026-08-20T08:12:06.343328",
+      "created_at": "2026-08-20T18:49:16.430747",
+      "fired_at": "2026-08-20T18:49:16.430747",
       "execution_id": 

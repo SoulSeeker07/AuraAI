@@ -101,7 +101,7 @@ A milestone may ship across one or more releases.
 | M22 | `v0.26.0` | Phase 3 — Intelligence Expansion (Multimodal Hardening) | `COMPLETE` |
 | M23 | `v0.27.0` | Phase 4 — Autonomy & Persistent Daemon | `COMPLETE` |
 | M24 | `v0.28.0` | Phase 5 — Autonomy (Event Runtime & Autonomous Execution) | `COMPLETE` |
-| M25 | `v0.29.0` | Phase 5 — Autonomy | `PLANNED` |
+| M25 | `v0.29.0` | Phase 5 — Autonomy (Professional Expert Systems) | `COMPLETE` |
 | M26 | `v0.30.0` | Phase 5 — Autonomy | `PLANNED` |
 | M27 | `v0.31.0` | Phase 6 — Autonomous Engineering | `PLANNED` |
 | M28 | `v1.0.0` | Phase 7 — Aura OS | `PLANNED` |
@@ -1241,8 +1241,8 @@ LEARN / CONTINUE
 
 ### M25 — Professional Expert Systems
 
-**Status:** `PLANNED`
-**Priority:** 🟠 High
+**Status:** `COMPLETE`
+**Priority:** 🟢 Delivered in v0.29.0 (4 Domain Experts + ExpertDomainRouter + PlanDAGCompiler + Stage 2.9 MasterOrchestrator routing verified live)
 
 Specialized domain intelligence built on top of the shared Aura runtime.
 **Not independent AIs — specialized planners sharing one runtime.**

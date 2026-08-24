@@ -82,6 +82,10 @@ class PlannerRegistry:
             PlannerRole.RESEARCH.value, DefaultRolePlanner("research", "research")
         )
         self.register(PlannerRole.CODING.value, DefaultRolePlanner("coding", "coding"))
+        self.register(
+            PlannerRole.CODEACT.value,
+            DefaultRolePlanner("codeact", "codeact.synthesize"),
+        )
 
         try:
             from ..planning.memory_planner import MemoryPlanner
@@ -95,7 +99,6 @@ class PlannerRegistry:
 
         try:
             from browser.planner.browser_goal_planner import BrowserGoalPlanner
-
             self.register(PlannerRole.BROWSER.value, BrowserGoalPlanner())
         except Exception as e:
             logger.warning(

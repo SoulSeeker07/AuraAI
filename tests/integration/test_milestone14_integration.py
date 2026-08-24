@@ -16,15 +16,15 @@ from pathlib import Path
 workspace_root = Path(__file__).parent
 sys.path.insert(0, str(workspace_root))
 
-from src.research.models import (
+from research.models import (
     Citation,
     Evidence,
     ResearchConfig,
     SearchMode,
     SourceTrustLevel,
 )
-from src.research.research_context import ResearchContext, ResearchMode
-from src.research.research_engine import ResearchEngine
+from research.research_context import ResearchContext, ResearchMode
+from research.research_engine import ResearchEngine
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -162,7 +162,7 @@ def test_reasoning_layer():
     print("=" * 80)
 
     try:
-        from src.research.reasoning_layer import ReasoningResult, ResearchReasoner
+        from research.reasoning_layer import ReasoningResult, ResearchReasoner
 
         print("\n1. Creating reasoner...")
         reasoner = ResearchReasoner()
@@ -170,7 +170,7 @@ def test_reasoning_layer():
 
         # Create mock evidence
         print("\n2. Creating mock evidence...")
-        from src.research.models import Evidence, SourceTrustLevel
+        from research.models import Evidence, SourceTrustLevel
 
         mock_evidence = [
             Evidence(
@@ -244,11 +244,11 @@ def test_citation_formatter():
     print("=" * 80)
 
     try:
-        from src.research.citation_formatter import CitationFormatter
+        from research.citation_formatter import CitationFormatter
 
         # Create test citations
         print("\n1. Creating test citations...")
-        from src.research.models import Citation, SourceTrustLevel
+        from research.models import Citation, SourceTrustLevel
 
         citations = [
             Citation(

@@ -258,7 +258,7 @@ def test_coding_backend_enriches_agy_goal_with_world_context(tmp_path):
     import json
     from unittest.mock import MagicMock, patch
     from core.backends.adapters.antigravity_backend import CodingBackendAdapter
-    from src.brain.providers.base import ProviderFact, QueryResult
+    from brain.providers.base import ProviderFact, QueryResult
     from tests.fake_provider import FakeProvider
 
     mock_wm = MagicMock()

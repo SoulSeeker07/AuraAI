@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from src.desktop.native.security.network_policy import SafeSession
+from desktop.native.security.network_policy import SafeSession
 from .models import Document
 
 logger = logging.getLogger(__name__)

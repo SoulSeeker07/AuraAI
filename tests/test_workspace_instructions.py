@@ -5,7 +5,7 @@ Location: tests/test_workspace_instructions.py
 
 import pytest
 from pathlib import Path
-from src.workspace.workspace_instruction_loader import WorkspaceInstructionLoader
+from workspace.workspace_instruction_loader import WorkspaceInstructionLoader
 
 
 def test_instruction_loader_discovery_and_parsing(tmp_path):

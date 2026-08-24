@@ -35,7 +35,7 @@ class TestGoalDecomposer:
         assert all(role == PlannerRole.BROWSER for role in subtask_roles)
 
         caps = [t.capability for t in graph.subtasks.values()]
-        assert "browser.ensure_open" in caps
+        assert "browser.open" in caps
         assert "browser.navigate" in caps
         assert "browser.check_auth" in caps
         assert "browser.navigate_goal" in caps
@@ -49,7 +49,7 @@ class TestGoalDecomposer:
         graph = decomposer.decompose("Open Instagram profile", decision=decision)
 
         ensure_task = [
-            t for t in graph.subtasks.values() if t.capability == "browser.ensure_open"
+            t for t in graph.subtasks.values() if t.capability == "browser.open"
         ][0]
         assert ensure_task.status == "skipped"
 

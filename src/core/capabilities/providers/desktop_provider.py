@@ -23,20 +23,11 @@ try:
     )
     from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 except (ImportError, ModuleNotFoundError):
-    try:
-        from src.desktop.native.capability_registry import (
-            CapabilityDescriptor,
-            CapabilityRegistry as NativeCapabilityRegistry,
-            PermissionRequired,
-            RiskLevel as NativeRiskLevel,
-        )
-        from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-    except Exception:
-        CapabilityDescriptor = None  # type: ignore
-        NativeCapabilityRegistry = None  # type: ignore
-        PermissionRequired = None  # type: ignore
-        NativeRiskLevel = None  # type: ignore
-        NativeManagerRegistry = None  # type: ignore
+    CapabilityDescriptor = None  # type: ignore
+    NativeCapabilityRegistry = None  # type: ignore
+    PermissionRequired = None  # type: ignore
+    NativeRiskLevel = None  # type: ignore
+    NativeManagerRegistry = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -502,9 +493,11 @@ class DesktopCapabilityProvider(ICapabilityProvider):
         if desc is None:
             return None
 
-        manager_reg = NativeManagerRegistry.get_instance()
-        if manager_reg._managers and manager_reg.get(desc.manager) is None:
-            return None
-
+        # Always return the capability even when the underlying native manager
+        # is not currently registered in NativeManagerRegistry.  The capability
+        # still exists in the native descriptor registry; the manager may simply
+        # have been excluded during auto-discovery on this boot.  We let the
+        # execution backend surface the error at runtime instead of silently
+        # hiding the capability from plan validation.
         return self._descriptor_to_capability(desc)
 

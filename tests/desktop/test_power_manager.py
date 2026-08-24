@@ -17,18 +17,18 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-import src.desktop.native.managers.power_manager as pm_module
-from src.desktop.native.adapters.power_adapter import (
+import desktop.native.managers.power_manager as pm_module
+from desktop.native.adapters.power_adapter import (
     DummyPowerAdapter,
     PowerAdapter,
     PowerAdapterFactory,
     Win32PowerAdapter,
     WMIPowerAdapter,
 )
-from src.desktop.native.desktop_execution_engine import DesktopExecutionEngine
-from src.desktop.native.managers.base_manager import HealthStatus
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-from src.desktop.native.managers.power_manager import PowerManager
+from desktop.native.desktop_execution_engine import DesktopExecutionEngine
+from desktop.native.managers.base_manager import HealthStatus
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from desktop.native.managers.power_manager import PowerManager
 
 
 def setup_function():
@@ -97,7 +97,7 @@ def test_power_manager_native_structure():
 def test_power_manager_auto_discovery_and_health():
     """Test PowerManager auto-discovery and health checks."""
     registry = NativeManagerRegistry.get_instance()
-    discovered = registry.discover("src.desktop.native.managers")
+    discovered = registry.discover("desktop.native.managers")
 
     assert "power" in discovered
     power_manager = registry.get("power")
@@ -115,7 +115,7 @@ def test_power_manager_auto_discovery_and_health():
 def test_power_capabilities_execution():
     """Test executing power capabilities through DesktopExecutionEngine."""
     registry = NativeManagerRegistry.get_instance()
-    registry.discover("src.desktop.native.managers")
+    registry.discover("desktop.native.managers")
 
     engine = DesktopExecutionEngine(manager_registry=registry)
 

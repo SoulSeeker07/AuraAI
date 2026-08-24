@@ -17,23 +17,23 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, project_root)
 
-from src.desktop.native.capability_registry import CapabilityRegistry
-from src.desktop.native.capability_validator import (
+from desktop.native.capability_registry import CapabilityRegistry
+from desktop.native.capability_validator import (
     CapabilityValidationReport,
     CapabilityValidator,
 )
-from src.desktop.native.desktop_execution_engine import (
+from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
 )
-from src.desktop.native.managers.base_manager import (
+from desktop.native.managers.base_manager import (
     BaseNativeManager,
     HealthCheckResult,
     HealthStatus,
 )
-from src.desktop.native.managers.clipboard_manager import ClipboardManager
-from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
-from src.desktop.native.managers.window_manager import WindowManager
+from desktop.native.managers.clipboard_manager import ClipboardManager
+from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+from desktop.native.managers.window_manager import WindowManager
 
 
 def setup_function():
@@ -74,7 +74,7 @@ def test_base_native_manager_metadata():
 def test_auto_discovery():
     """Test dynamic package auto-discovery of native managers."""
     registry = NativeManagerRegistry.get_instance()
-    discovered = registry.discover("src.desktop.native.managers")
+    discovered = registry.discover("desktop.native.managers")
 
     assert "window" in discovered, "WindowManager should be auto-discovered"
     assert "clipboard" in discovered, "ClipboardManager should be auto-discovered"
@@ -92,7 +92,7 @@ def test_auto_discovery():
 def test_capability_resolution():
     """Test data-driven capability resolution."""
     registry = NativeManagerRegistry.get_instance()
-    registry.discover("src.desktop.native.managers")
+    registry.discover("desktop.native.managers")
 
     # Resolve window capabilities
     wm = registry.resolve("list_windows")
@@ -122,7 +122,7 @@ def test_capability_resolution():
 def test_manager_health_aggregation():
     """Test aggregated health diagnostics across all managers."""
     registry = NativeManagerRegistry.get_instance()
-    registry.discover("src.desktop.native.managers")
+    registry.discover("desktop.native.managers")
 
     health_summary = registry.health()
     assert "window" in health_summary
@@ -144,7 +144,7 @@ def test_capability_validation_pass():
     """Test CapabilityValidator pre-flight check."""
     cap_registry = CapabilityRegistry()
     manager_registry = NativeManagerRegistry.get_instance()
-    manager_registry.discover("src.desktop.native.managers")
+    manager_registry.discover("desktop.native.managers")
 
     validator = CapabilityValidator(
         capability_registry=cap_registry,
@@ -167,7 +167,7 @@ def test_capability_validation_pass():
 def test_execution_engine_registry_integration():
     """Test DesktopExecutionEngine executing capabilities via NativeManagerRegistry."""
     manager_registry = NativeManagerRegistry.get_instance()
-    manager_registry.discover("src.desktop.native.managers")
+    manager_registry.discover("desktop.native.managers")
 
     engine = DesktopExecutionEngine(manager_registry=manager_registry)
 
@@ -191,7 +191,7 @@ def test_execution_engine_registry_integration():
 def test_boot_report():
     """Test Desktop Boot Report generation."""
     manager_registry = NativeManagerRegistry.get_instance()
-    manager_registry.discover("src.desktop.native.managers")
+    manager_registry.discover("desktop.native.managers")
     report = manager_registry.get_boot_report(simulation_mode=True)
     assert "Aura Desktop Boot" in report
     assert "Simulation Mode" in report

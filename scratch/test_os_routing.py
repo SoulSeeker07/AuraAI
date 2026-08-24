@@ -2,8 +2,8 @@ import asyncio
 import sys
 sys.path.insert(0, "D:/Sreekanta/VS Code Project/Desktop AI/AuraAI")
 
-from src.core.orchestration.personal_os_runtime import PersonalOSRuntime
-from src.core.orchestration.reference_resolver import ReferenceResolver
+from core.orchestration.personal_os_runtime import PersonalOSRuntime
+from core.orchestration.reference_resolver import ReferenceResolver
 import Memory
 
 class MockMemoryForRuntime:

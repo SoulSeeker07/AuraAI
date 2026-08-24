@@ -13,9 +13,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.browser.planner.browser_goal import BrowserGoal
-from src.browser.planner.browser_goal_planner import BrowserGoalPlanner
-from src.browser.planner.site_registry import SiteRegistry
+from browser.planner.browser_goal import BrowserGoal
+from browser.planner.browser_goal_planner import BrowserGoalPlanner
+from browser.planner.site_registry import SiteRegistry
 
 
 class TestBrowserGoalPlanner:

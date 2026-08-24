@@ -159,10 +159,10 @@
 
 | Module | File | Classification | Notes |
 |:---|:---|:---|:---|
-| `WorkflowEngine` | `src/workflows/workflow_engine.py` | **DISCONNECTED** | Framework is real. No active workflows. Reconnects at M24. |
-| `TriggerManager` | `src/workflows/trigger_manager.py` | **DISCONNECTED** | `agent_runtime` param is typically `None`. |
-| `WorkflowScheduler` | `src/workflows/workflow_scheduler.py` | **DISCONNECTED** | Will reconnect at M24. |
-| All other `src/workflows/` | `src/workflows/` | **DISCONNECTED** | Real code. Reconnects at M24 (Event Runtime). |
+| `WorkflowEngine` | `src/workflows/workflow_engine.py` | **DISCONNECTED** | Framework is real. `WorkflowEngineAdapter` in ACA is a stub. `src/workflows/` was not reconnected as part of M24 — reconnection deferred to M26 (Personal OS). |
+| `TriggerManager` | `src/workflows/trigger_manager.py` | **DISCONNECTED** | `agent_runtime` param is `None`. Not reconnected in M24. |
+| `WorkflowScheduler` | `src/workflows/workflow_scheduler.py` | **DISCONNECTED** | Used internally by `WorkflowEngine`. Not on live request path. |
+| All other `src/workflows/` | `src/workflows/` | **DISCONNECTED** | Real code. `src/autonomy/` is the M24 Event Runtime; `src/workflows/` reconnection deferred to M26. |
 
 ---
 
@@ -182,12 +182,12 @@
 | Autonomous Daemon & Background Operations (Durable state, crash recovery, HMAC tokens) | **ACTIVE** | M23 ✅ |
 | Event Runtime & Autonomous Intent Execution (AuraEvent, EventRuntime, Interpreter, PolicyGate, Watchers) | **ACTIVE** | M24 ✅ |
 | Security Hardening Track (Phases 1–4, DPAPI, HKDF, Isolated Audit Writer IPC) | **ACTIVE** | Core Security ✅ |
+| Professional Expert Systems (SecurityExpert, NetworkExpert, FinancialExpert, SoftwareExpert, ExpertDomainRouter, PlanDAGCompiler, Stage 2.9 MasterOrchestrator routing) | **ACTIVE** | M25 ✅ |
 
 ## Missing — Future Milestones
 
 | Module | Classification | Milestone |
 |:---|:---|:---|
-| Professional Expert Systems (Specialized planners for NetEng, Security, Finance) | **MISSING** | M25 |
 | Personal OS (Proactive task & schedule management, daily workflows) | **MISSING** | M26 |
 | Autonomous Engineering Platform (End-to-end issue to PR pipeline) | **MISSING** | M27 |
 | Aura OS Runtime (Unified persistent OS environment) | **MISSING** | M28 |
@@ -208,5 +208,5 @@ Before expanding any module:
 
 ---
 
-*Last Updated: August 18, 2026*
+*Last Updated: August 20, 2026*
 *Maintained in sync with [`RUNTIME.md`](RUNTIME.md) and [`roadmap.md`](roadmap.md)*

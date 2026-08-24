@@ -23,7 +23,7 @@ class TestTerminalSecurityGuardrails:
 
     @pytest.fixture
     def manager(self):
-        from src.desktop.native.managers.terminal_manager import TerminalManager
+        from desktop.native.managers.terminal_manager import TerminalManager
         mgr = TerminalManager()
         mgr.initialize()
         return mgr
@@ -230,7 +230,7 @@ class TestNativeManagers:
     """Test all native managers."""
 
     def test_native_manager_auto_discovery(self):
-        from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+        from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 
         reg = NativeManagerRegistry.get_instance()
         discovered = reg.discover()
@@ -245,7 +245,7 @@ class TestNativeManagers:
         assert len(reg._capability_map) >= 200
 
     def test_input_manager_mouse_position(self):
-        from src.desktop.native.managers.input_manager import InputManager
+        from desktop.native.managers.input_manager import InputManager
         mgr = InputManager()
         mgr.initialize()
         res = mgr.execute("input.mouse_position")
@@ -254,7 +254,7 @@ class TestNativeManagers:
         assert isinstance(res.data.get("y"), int)
 
     def test_input_manager_unicode_surrogate_pairs(self):
-        from src.desktop.native.managers.input_manager import InputManager
+        from desktop.native.managers.input_manager import InputManager
         mgr = InputManager()
         mgr.initialize()
         # Non-BMP emojis should encode to surrogate pairs and not raise ctypes OverflowError
@@ -262,7 +262,7 @@ class TestNativeManagers:
         assert res.success is True
 
     def test_file_manager_extended(self):
-        from src.desktop.native.managers.file_manager import FileManager
+        from desktop.native.managers.file_manager import FileManager
         mgr = FileManager()
         mgr.initialize()
 
@@ -292,7 +292,7 @@ class TestNativeManagers:
             shutil.rmtree(test_dir, ignore_errors=True)
 
     def test_notification_manager(self):
-        from src.desktop.native.managers.notification_manager import NotificationManager
+        from desktop.native.managers.notification_manager import NotificationManager
         mgr = NotificationManager()
         mgr.initialize()
         res = mgr.execute("notify.list")
@@ -300,7 +300,7 @@ class TestNativeManagers:
         assert "scheduled_notifications" in res.data
 
     def test_scheduler_manager(self):
-        from src.desktop.native.managers.scheduler_manager import SchedulerManager
+        from desktop.native.managers.scheduler_manager import SchedulerManager
         mgr = SchedulerManager()
         mgr.initialize()
 
@@ -312,7 +312,7 @@ class TestNativeManagers:
         assert res_cancel.success is True
 
     def test_screen_action_manager(self):
-        from src.desktop.native.managers.screen_action_manager import ScreenActionManager
+        from desktop.native.managers.screen_action_manager import ScreenActionManager
         mgr = ScreenActionManager()
         mgr.initialize()
         res_cap = mgr.execute("screen.capture")
@@ -320,20 +320,20 @@ class TestNativeManagers:
         assert "width" in res_cap.data and "height" in res_cap.data
 
     def test_settings_manager(self):
-        from src.desktop.native.managers.settings_manager import SettingsManager
+        from desktop.native.managers.settings_manager import SettingsManager
         mgr = SettingsManager()
         mgr.initialize()
         res_startup = mgr.execute("settings.startup_apps.list")
         assert res_startup.success is True
 
     def test_software_manager(self):
-        from src.desktop.native.managers.software_manager import SoftwareManager
+        from desktop.native.managers.software_manager import SoftwareManager
         mgr = SoftwareManager()
         mgr.initialize()
         assert mgr.health_check().status.value == "HEALTHY"
 
     def test_security_manager(self):
-        from src.desktop.native.managers.security_manager import SecurityManager
+        from desktop.native.managers.security_manager import SecurityManager
         mgr = SecurityManager()
         mgr.initialize()
         res_fw = mgr.execute("security.firewall.status")
@@ -397,13 +397,13 @@ class TestBackendRegistryAndObservations:
     """Test backend registration and observation formatting."""
 
     def test_all_20_backends_registered(self):
-        from src.core.backends.backend_registry import BackendRegistry
+        from core.backends.backend_registry import BackendRegistry
         reg = BackendRegistry.get_instance()
         assert len(reg._backends) >= 20
         assert len(reg._capability_map) >= 400
 
     def test_terminal_backend_observation_get_cwd(self):
-        from src.core.backends.backend_registry import BackendRegistry
+        from core.backends.backend_registry import BackendRegistry
         term_backend = BackendRegistry.get_instance().get_backend("Terminal Engine")
         res = term_backend.execute("terminal.get_cwd", goal="Get working dir")
         assert res.success is True
@@ -411,7 +411,7 @@ class TestBackendRegistryAndObservations:
         assert "Current working directory:" in res.observations[0]
 
     def test_terminal_backend_observation_get_env(self):
-        from src.core.backends.backend_registry import BackendRegistry
+        from core.backends.backend_registry import BackendRegistry
         term_backend = BackendRegistry.get_instance().get_backend("Terminal Engine")
         term_backend.execute("terminal.set_env", goal="Set test env", arguments={"key": "AURA_OBS_VAR", "value": "VAL_99"})
         res = term_backend.execute("terminal.get_env", goal="Get test env", arguments={"key": "AURA_OBS_VAR"})
@@ -419,7 +419,7 @@ class TestBackendRegistryAndObservations:
         assert "Environment variable 'AURA_OBS_VAR': VAL_99" in res.observations[0]
 
     def test_terminal_backend_observation_command_execution(self):
-        from src.core.backends.backend_registry import BackendRegistry
+        from core.backends.backend_registry import BackendRegistry
         term_backend = BackendRegistry.get_instance().get_backend("Terminal Engine")
         res = term_backend.execute("terminal.execute", goal="Echo test", arguments={"command": "Write-Output 'HELLO_BACKEND'"})
         assert res.success is True
@@ -427,7 +427,7 @@ class TestBackendRegistryAndObservations:
         assert "HELLO_BACKEND" in res.observations[0]
 
     def test_terminal_backend_observation_blocked_failure(self):
-        from src.core.backends.backend_registry import BackendRegistry
+        from core.backends.backend_registry import BackendRegistry
         term_backend = BackendRegistry.get_instance().get_backend("Terminal Engine")
         res = term_backend.execute("terminal.execute", goal="Wipe drive", arguments={"command": "Format-Volume -DriveLetter C"})
         assert res.success is False

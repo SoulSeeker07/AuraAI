@@ -21,9 +21,10 @@ try:
     from workspace.active_window import ActiveWindowMonitor
     from workspace.running_apps import RunningAppsMonitor
 except (ModuleNotFoundError, ImportError):
-    from src.browser.world_model import BrowserContext, BrowserStateProbe
-    from src.workspace.active_window import ActiveWindowMonitor
-    from src.workspace.running_apps import RunningAppsMonitor
+    BrowserContext = None  # type: ignore
+    BrowserStateProbe = None  # type: ignore
+    ActiveWindowMonitor = None  # type: ignore
+    RunningAppsMonitor = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 

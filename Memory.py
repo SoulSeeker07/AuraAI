@@ -89,7 +89,7 @@ class Memory:
 
         self._init_db()
         try:
-            from src.memory.cognitive_memory import CognitiveMemoryEngine
+            from memory.cognitive_memory import CognitiveMemoryEngine
             self.cognitive = CognitiveMemoryEngine(db_path=self.db_path)
         except Exception as e:
             logger.warning(f"[Memory] CognitiveMemoryEngine init warning: {e}")
@@ -581,7 +581,7 @@ class Memory:
         # Sync with Cognitive Memory Engine
         if getattr(self, "cognitive", None) is not None:
             try:
-                from src.memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
+                from memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
                 mem_type = MemoryType.PREFERENCE if category in ("preference", "profile") else MemoryType.LONG_TERM
                 item = MemoryItem(
                     content=f"{category}: {key} = {value}",

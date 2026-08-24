@@ -5,8 +5,8 @@ import uuid
 
 sys.path.insert(0, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI")
 
-from src.agents.desktop_agent import DesktopAgent
-from src.agents.task_model import Task, TaskInput, TaskType
+from agents.desktop_agent import DesktopAgent
+from agents.task_model import Task, TaskInput, TaskType
 
 
 def test_process_list():

@@ -110,6 +110,7 @@ class AuditWriterService:
 
             self._is_ready = True
             self._ipc_server.start()
+            self._ipc_server.wait_until_ready(timeout=2.0)
             logger.info(
                 f"[AuditWriterService] READY (Instance: {self._writer_instance_id}, Seq: {self._sequence}, Key: {self._key_meta.key_id[:8]})"
             )

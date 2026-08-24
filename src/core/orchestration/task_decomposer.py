@@ -21,6 +21,7 @@ class PlannerRole(str, Enum):
     CODING = "coding"
     BROWSER = "browser"
     MEMORY = "memory"
+    CODEACT = "codeact"
 
 
 @dataclass
@@ -109,9 +110,129 @@ class TaskDecomposer:
         )
         return graph
 
+    def _detect_artifact_synthesis(
+        self, goal_lower: str, raw_goal: str
+    ) -> SubTask | None:
+        """
+        Detect artifact synthesis goals (presentations, spreadsheets, word documents,
+        data transformations, format conversions) and route them to CodeAct.
+        """
+        import re
+
+        # Extract filename if explicitly mentioned
+        m_file = re.search(
+            r"\b([a-zA-Z0-9_\-]+\.(?:pptx|docx|xlsx|pdf|csv|json|txt|md|py|png|jpg))\b",
+            raw_goal,
+            re.IGNORECASE,
+        )
+        extracted_file = m_file.group(1).strip("'\" ") if m_file else None
+
+        # 1. PowerPoint / Presentation
+        if any(
+            k in goal_lower
+            for k in ["presentation", "powerpoint", "slide", "slides", ".pptx"]
+        ):
+            target = extracted_file or "presentation.pptx"
+            if not target.endswith(".pptx"):
+                target += ".pptx"
+            return SubTask(
+                task_id="task_1",
+                title=f"Create Presentation: {target}",
+                required_role=PlannerRole.CODEACT,
+                capability="codeact.synthesize",
+                description=raw_goal,
+                parameters={
+                    "goal": raw_goal,
+                    "output_filename": target,
+                    "allowed_libraries": ["python-pptx"],
+                },
+            )
+
+        # 2. Word Document
+        if any(
+            k in goal_lower
+            for k in [
+                "word document",
+                ".docx",
+                "create docx",
+                "save as .docx",
+                "docx document",
+                "leave application letter in word",
+                "status report in word",
+            ]
+        ):
+            target = extracted_file or "document.docx"
+            if not target.endswith(".docx"):
+                target += ".docx"
+            return SubTask(
+                task_id="task_1",
+                title=f"Create Word Document: {target}",
+                required_role=PlannerRole.CODEACT,
+                capability="codeact.synthesize",
+                description=raw_goal,
+                parameters={
+                    "goal": raw_goal,
+                    "output_filename": target,
+                    "allowed_libraries": ["python-docx"],
+                },
+            )
+
+        # 3. Excel Spreadsheet
+        if any(
+            k in goal_lower
+            for k in [
+                "spreadsheet",
+                "excel",
+                ".xlsx",
+                "create sheet",
+                "workbook",
+                "excel sheet",
+            ]
+        ):
+            target = extracted_file or "spreadsheet.xlsx"
+            if not target.endswith(".xlsx"):
+                target += ".xlsx"
+            return SubTask(
+                task_id="task_1",
+                title=f"Create Spreadsheet: {target}",
+                required_role=PlannerRole.CODEACT,
+                capability="codeact.synthesize",
+                description=raw_goal,
+                parameters={
+                    "goal": raw_goal,
+                    "output_filename": target,
+                    "allowed_libraries": ["openpyxl"],
+                },
+            )
+
+        # 4. Format Conversion
+        if "convert" in goal_lower and any(
+            ext in goal_lower for ext in ["pdf", ".pdf", "docx", "xlsx"]
+        ):
+            target = extracted_file or "converted_document.pdf"
+            return SubTask(
+                task_id="task_1",
+                title=f"Convert Document: {target}",
+                required_role=PlannerRole.CODEACT,
+                capability="codeact.synthesize",
+                description=raw_goal,
+                parameters={
+                    "goal": raw_goal,
+                    "output_filename": target,
+                    "allowed_libraries": ["python-docx", "openpyxl", "fpdf2"],
+                },
+            )
+
+        return None
+
     def _analyze_goal_clauses(
         self, goal_lower: str, raw_goal: str, decision: Any | None = None
     ) -> list[SubTask]:
+        # 0. Check for artifact synthesis goals first
+        artifact_task = self._detect_artifact_synthesis(goal_lower, raw_goal)
+        if artifact_task is not None:
+            return [artifact_task]
+
         is_browser_flow = (
             any(u in goal_lower for u in ["https://", "http://", "www."])
             or (
@@ -247,6 +368,14 @@ class TaskDecomposer:
                         "refactor",
                         "generate",
                         "implement",
+                        "update",
+                        "organize",
+                        "sort",
+                        "tidy",
+                        "clean",
+                        "antigravity",
+                        "research",
+                        "summarize",
                     ]
                 ):
                     valid_clauses.append(p_clean)
@@ -276,7 +405,7 @@ class TaskDecomposer:
                 valid_clauses = merged_clauses
 
                 decomposed_tasks = []
-                prev_task_id = None
+                prev_clause_task_ids: list[str] = []
                 task_counter = 1
                 last_app_name = None
                 for idx, clause in enumerate(valid_clauses):
@@ -284,11 +413,23 @@ class TaskDecomposer:
                     clause_tasks = self._analyze_goal_clauses_single(
                         clause_lower, clause, None
                     )
+                    id_map = {}
+                    current_clause_task_ids: list[str] = []
                     for t in clause_tasks:
-                        t.task_id = f"task_{task_counter}"
+                        old_id = t.task_id
+                        new_id = f"task_{task_counter}"
+                        id_map[old_id] = new_id
+                        t.task_id = new_id
                         task_counter += 1
-                        if prev_task_id:
-                            t.dependencies = [prev_task_id]
+                        current_clause_task_ids.append(new_id)
+
+                        # Remap internal dependencies
+                        remapped_deps = [id_map[dep] for dep in t.dependencies if dep in id_map]
+                        if not remapped_deps and prev_clause_task_ids:
+                            t.dependencies = list(prev_clause_task_ids)
+                        else:
+                            t.dependencies = remapped_deps
+
                         if t.parameters.get("app_name") and t.parameters.get("app_name") not in (
                             "application",
                             "keyboard",
@@ -297,8 +438,8 @@ class TaskDecomposer:
                             last_app_name = t.parameters.get("app_name")
                         elif last_app_name and t.capability.startswith("uia.") and not t.parameters.get("window_title"):
                             t.parameters["window_title"] = last_app_name
-                        prev_task_id = t.task_id
                         decomposed_tasks.append(t)
+                    prev_clause_task_ids = [current_clause_task_ids[-1]] if current_clause_task_ids else []
                 return decomposed_tasks
 
         return self._analyze_goal_clauses_single(goal_lower, raw_goal, decision)
@@ -451,10 +592,7 @@ class TaskDecomposer:
         """
         Classifies natural language into canonical capabilities and extracts parameters & context.
         """
-        try:
-            from src.browser.context_store import ContextStore
-        except (ModuleNotFoundError, ImportError):
-            from browser.context_store import ContextStore
+        from browser.context_store import ContextStore
 
         store = ContextStore.get_instance()
 
@@ -781,6 +919,59 @@ class TaskDecomposer:
                 )
             ]
 
+        if getattr(decision, "capability", None) == "personal_os.search" or (
+            any(
+                w in goal_lower
+                for w in [
+                    "find the file",
+                    "find file",
+                    "search workspace",
+                    "locate file",
+                    "where do we store",
+                ]
+            )
+        ):
+            return [
+                SubTask(
+                    task_id="task_1",
+                    title="Search Workspace Files",
+                    required_role=PlannerRole.DESKTOP,
+                    capability="personal_os.search",
+                    description=f"Search workspace for: {raw_goal}",
+                    parameters={"query": raw_goal, "goal": raw_goal},
+                    dependencies=[],
+                )
+            ]
+
+        if getattr(decision, "capability", None) == "personal_os.daily_context" or (
+            any(
+                w in goal_lower
+                for w in [
+                    "what do i need to do today",
+                    "what should i do today",
+                    "what's on my agenda",
+                    "what is on my agenda",
+                    "today's agenda",
+                    "my agenda today",
+                    "daily overview",
+                    "daily summary",
+                    "my tasks today",
+                    "priorities today",
+                ]
+            )
+        ):
+            return [
+                SubTask(
+                    task_id="task_1",
+                    title="Synthesize Daily Context & Agenda",
+                    required_role=PlannerRole.DESKTOP,
+                    capability="personal_os.daily_context",
+                    description=f"Synthesize prioritized daily context for: {raw_goal}",
+                    parameters={"goal": raw_goal},
+                    dependencies=[],
+                )
+            ]
+
         resolved_intents = {"coding", "browser", "desktop_action", "system_query", "chat", "research", "memory", "vision", "voice", "multimodal", "daemon", "scheduler"}
         intent_is_authoritative = intent_val in resolved_intents
 
@@ -923,6 +1114,13 @@ class TaskDecomposer:
                 r"\bmaximize\b",
                 r"\brestore\b",
                 r"\bunminimize\b",
+                r"\borganize\b",
+                r"\bsort\b",
+                r"\btidy\b",
+                r"\bclean\b",
+                r"\bdocuments\b",
+                r"\bdownloads\b",
+                r"\bpictures\b",
                 r"\bapp\b",
                 r"\bwindow\b",
                 r"\btype\b",
@@ -965,7 +1163,7 @@ class TaskDecomposer:
         if has_coding and has_desktop and not intent_is_authoritative:
             # Prevent nouns like 'app' or 'calculator' from spuriously triggering desktop actions
             # in coding clauses, unless there is a clear desktop action verb.
-            desktop_verbs = ["open", "launch", "close", "minimize", "maximize", "restore", "type", "press", "hit"]
+            desktop_verbs = ["open", "launch", "close", "minimize", "maximize", "restore", "type", "press", "hit", "organize", "sort", "tidy", "clean"]
             if not any(v in goal_lower for v in desktop_verbs):
                 has_desktop = False
 
@@ -988,25 +1186,41 @@ class TaskDecomposer:
             if not any(v in goal_lower for v in desktop_verbs):
                 has_desktop = False
 
-        # Check for multi-stage research -> document -> persist -> open DAG
+        # Check for multi-stage research -> document -> persist (-> open) DAG
         if (
             has_research
             and any(w in goal_lower for w in ["save", "create", "write", "summary"])
             and any(
                 w in goal_lower
-                for w in ["open", "launch", "in vs code", "in notepad", "in code"]
+                for w in [
+                    ".md",
+                    ".txt",
+                    ".json",
+                    ".csv",
+                    "file",
+                    "document",
+                    "open",
+                    "launch",
+                    "in vs code",
+                    "in notepad",
+                    "in code",
+                ]
             )
         ):
             import re
 
             m_file = re.search(
-                r"['\"]([a-zA-Z]:[\\/][^'\"]+\.[a-zA-Z0-9]+|[^'\"]+\.[a-zA-Z0-9]+)['\"]",
+                r"\b([a-zA-Z0-9_\-]+\.(?:md|txt|json|csv|log))\b",
                 raw_goal,
+                re.IGNORECASE,
             )
             target_file_name = (
                 m_file.group(1) if m_file else "python_release_summary.md"
             )
 
+            has_open_app = any(
+                w in goal_lower for w in ["open", "launch", "in vs code", "in notepad", "in code"]
+            )
             target_app = "code"
             if "notepad" in goal_lower:
                 target_app = "notepad"
@@ -1022,8 +1236,6 @@ class TaskDecomposer:
             t2_id = f"task_{task_counter}"
             task_counter += 1
             t3_id = f"task_{task_counter}"
-            task_counter += 1
-            t4_id = f"task_{task_counter}"
             task_counter += 1
 
             # Stage 1: Research — produces raw structured research data
@@ -1059,23 +1271,31 @@ class TaskDecomposer:
                 parameters={"file_path": target_file_name, "goal": raw_goal},
                 dependencies=[t2_id],
             )
-            # Stage 4: Open in Application — launches the saved file
-            t4 = SubTask(
-                task_id=t4_id,
-                title=f"Open Artifact in {target_app.title()}: {target_file_name}",
-                required_role=PlannerRole.DESKTOP,
-                capability="app_open",
-                description=f"Open artifact '{target_file_name}' using {target_app.title()}",
-                input_artifacts=["art_saved_file"],
-                parameters={
-                    "app_name": target_app,
-                    "file_path": target_file_name,
-                    "target_file": target_file_name,
-                    "goal": raw_goal,
-                },
-                dependencies=[t3_id],
-            )
-            return [t1, t2, t3, t4]
+
+            tasks = [t1, t2, t3]
+
+            # Stage 4: Open in Application — only if requested
+            if has_open_app:
+                t4_id = f"task_{task_counter}"
+                task_counter += 1
+                t4 = SubTask(
+                    task_id=t4_id,
+                    title=f"Open Artifact in {target_app.title()}: {target_file_name}",
+                    required_role=PlannerRole.DESKTOP,
+                    capability="app_open",
+                    description=f"Open artifact '{target_file_name}' using {target_app.title()}",
+                    input_artifacts=["art_saved_file"],
+                    parameters={
+                        "app_name": target_app,
+                        "file_path": target_file_name,
+                        "target_file": target_file_name,
+                        "goal": raw_goal,
+                    },
+                    dependencies=[t3_id],
+                )
+                tasks.append(t4)
+
+            return tasks
 
         prev_id: str | None = None
 
@@ -1204,6 +1424,13 @@ class TaskDecomposer:
                         "write summary",
                         "write a file",
                         "write markdown",
+                        "write me a",
+                        "write a letter",
+                        "write letter",
+                        "leave letter",
+                        "save it as",
+                        "save as",
+                        "save to",
                     ]
                 )
             )
@@ -1297,10 +1524,89 @@ class TaskDecomposer:
                     "save file",
                     "make file",
                     "create a file",
+                    "write me a",
+                    "write a letter",
+                    "leave letter",
+                    "save it as",
+                    "save as",
+                    "save to",
                 ]
+            ) and any(
+                ext in goal_lower
+                for ext in [".txt", ".md", ".csv", ".log", "file", "desktop", "document"]
             ):
                 cap = "file.create"
-                title_text = f"Create and write file: {raw_goal}"
+                import re
+
+                m_txt_file = re.search(
+                    r"\b([a-zA-Z0-9_\-]+\.(?:txt|md|csv|log))\b",
+                    raw_goal,
+                    re.I,
+                )
+                txt_filename = (
+                    m_txt_file.group(1).strip("'\" ")
+                    if m_txt_file
+                    else "leave_letter.txt" if "leave letter" in goal_lower else "document.txt"
+                )
+                if "desktop" in goal_lower:
+                    dest_path = f"$known_folder:desktop\\{txt_filename}"
+                elif "document" in goal_lower:
+                    dest_path = f"$known_folder:documents\\{txt_filename}"
+                else:
+                    dest_path = txt_filename
+
+                content_val = ""
+                if "leave letter" in goal_lower:
+                    content_val = (
+                        "Dear Manager,\n\n"
+                        "I am writing to formally request a leave of absence due to personal reasons.\n"
+                        "I will ensure all my pending tasks are handed over appropriately.\n\n"
+                        "Thank you for your understanding.\n\nSincerely,\nEmployee"
+                    )
+                else:
+                    content_val = raw_goal
+
+                params = {
+                    "file_path": dest_path,
+                    "content": content_val,
+                    "goal": raw_goal,
+                }
+                title_text = f"Create and write file: {txt_filename}"
+            elif any(
+                k in goal_lower
+                for k in ["organize", "sort", "tidy", "clean up", "clean out"]
+            ) and any(
+                k in goal_lower
+                for k in ["download", "document", "desktop", "picture", "photo", "music", "video", "folder", "directory", "file"]
+            ):
+                from desktop.native.known_folders import resolve_known_folder
+
+                folder_key = "downloads"
+                for key in ["documents", "downloads", "desktop", "pictures", "music", "videos"]:
+                    if key in goal_lower or key.rstrip("s") in goal_lower:
+                        folder_key = key
+                        break
+
+                try:
+                    resolved_folder = resolve_known_folder(folder_key)
+                    cap = "file.organize"
+                    app_target = folder_key
+                    params = {
+                        "target_dir": f"$known_folder:{folder_key}",
+                        "folder": str(resolved_folder),
+                        "path": str(resolved_folder),
+                        "strategy": "category",
+                        "goal": raw_goal,
+                    }
+                    title_text = f"Organize {folder_key.title()} folder"
+                except Exception as kf_err:
+                    logger.warning(
+                        f"decomposer_fallback_triggered: could not resolve known folder for {raw_goal!r}: {kf_err}"
+                    )
+                    cap = "unknown_action"
+                    app_target = raw_goal
+                    title_text = f"Unknown desktop action: {raw_goal}"
+                    params = {"app_name": app_target, "goal": raw_goal}
             elif any(k in goal_lower for k in ["bluetooth", "bt radio"]) and any(
                 k in goal_lower
                 for k in ["on", "off", "enable", "disable", "turn", "toggle"]
@@ -1451,6 +1757,9 @@ class TaskDecomposer:
                         cap = "unknown_action"
                         app_target = raw_goal
                         title_text = f"Unknown desktop action: {raw_goal}"
+                        logger.warning(
+                            f"decomposer_fallback_triggered: no known action or app matched for goal={raw_goal!r}"
+                        )
                 params = {"app_name": app_target, "goal": raw_goal}
 
             is_web_target = app_target.lower() in [

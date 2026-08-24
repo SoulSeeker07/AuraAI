@@ -10,8 +10,8 @@ from PySide6.QtCore import QCoreApplication
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.aura.client.connection_manager import ConnectionManager
-from src.aura.shared import AuraMessage, MessageType
+from aura.client.connection_manager import ConnectionManager
+from aura.shared import AuraMessage, MessageType
 
 PORT = 8765
 PATH = "/ws"

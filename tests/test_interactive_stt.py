@@ -21,7 +21,7 @@ except ImportError:
     pass
 
 import pyaudio
-from src.voice.stt_manager import STTManager, STTSettings, STTProvider
+from voice.stt_manager import STTManager, STTSettings, STTProvider
 import logging
 logging.basicConfig(level=logging.WARNING)
 import warnings
