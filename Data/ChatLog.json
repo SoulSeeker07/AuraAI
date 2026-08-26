@@ -1,162 +1,6 @@
 [
   {
     "role": "user",
-    "content": "open youtube",
-    "topic": "Open Youtube",
-    "timestamp": "2026-08-26T13:30:29.285772"
-  },
-  {
-    "role": "assistant",
-    "content": "✓ Opened '04_Where_Is_YouTube_In_Your_Phone.mp3'\n📍 Location: D:\\Sreekanta\\Network Eng\\New folder\\04_Where_Is_YouTube_In_Your_Phone.mp3",
-    "topic": "Open Youtube",
-    "timestamp": "2026-08-26T13:30:29.285772"
-  },
-  {
-    "role": "user",
-    "content": "open flipkart",
-    "topic": "Open Flipkart",
-    "timestamp": "2026-08-26T13:30:52.211821"
-  },
-  {
-    "role": "assistant",
-    "content": "❌ Application 'flipkart' not found on system.",
-    "topic": "Open Flipkart",
-    "timestamp": "2026-08-26T13:30:52.211821"
-  },
-  {
-    "role": "user",
-    "content": "open flipkart",
-    "topic": "Open Flipkart",
-    "timestamp": "2026-08-26T13:30:52.220821"
-  },
-  {
-    "role": "assistant",
-    "content": "❌ Application 'flipkart' not found on system.",
-    "topic": "Open Flipkart",
-    "timestamp": "2026-08-26T13:30:52.220821"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:45:35.135679"
-  },
-  {
-    "role": "assistant",
-    "content": "⚠️ Autonomous browser notice: All browser pages were closed.",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:45:35.135679"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:45:35.147150"
-  },
-  {
-    "role": "assistant",
-    "content": "⚠️ Autonomous browser notice: All browser pages were closed.",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:45:35.147150"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:52:16.677719"
-  },
-  {
-    "role": "assistant",
-    "content": "⚠️ Autonomous browser notice: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01m0wzz8dzefss89egm23fp486` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198292, Requested 8195. Please try again in 46m42.384s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:52:16.677719"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:52:16.686728"
-  },
-  {
-    "role": "assistant",
-    "content": "⚠️ Autonomous browser notice: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01m0wzz8dzefss89egm23fp486` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198292, Requested 8195. Please try again in 46m42.384s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T13:52:16.686728"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:13:53.302026"
-  },
-  {
-    "role": "assistant",
-    "content": "⚠️ Autonomous browser notice: All browser pages were closed.",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:13:53.302026"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:13:53.310022"
-  },
-  {
-    "role": "assistant",
-    "content": "⚠️ Autonomous browser notice: All browser pages were closed.",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:13:53.310022"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:37:46.961360"
-  },
-  {
-    "role": "assistant",
-    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `Search for Logitech MX Master 3S on Amazon and click Add to Cart`\n**Result:** Logitech MX Master 3S added to cart at ₹7,995.\n**Page:** https://www.amazon.in/gp/aw/d/B0B11LJ69K/?_encoding=UTF8&pd_rd_plhdr=t&aaxitk=ea4d009b98fcd6e9b22693a8e4643e5d&hsa_cr_id=0&qid=1787735134&sr=1-2-e0fa1fdd-d857-4087-adda-5bd576b25987&i=aps&aref=zZhaQjfWkk&ref_=sbx_s_sparkle_sbtcd_asin_1_img&pd_rd_w=wZdQ7&content-id=amzn1.sym.c0c4f4ed-4ecc-4626-b0b0-d428311a6244%3Aamzn1.sym.c0c4f4ed-4ecc-4626-b0b0-d428311a6244&pf_rd_p=c0c4f4ed-4ecc-4626-b0b0-d428311a6244&pf_rd_r=EKMQWRXQ3RQ4DPA456ES&pd_rd_wg=20phS&pd_rd_r=f04b7069-b3ee-49e1-b7dd-ef31108482dd&th=1\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.amazon.in/s?k=Logitech+MX+Master+3S'}`\n- **extract_text**: `{'description': 'search results'}`\n- **extract_text**: `{'description': 'search results'}`\n- **click**: `{'description': 'Logitech MX Master 3S'}`\n- **extract_text**: `{'description': 'Add to Cart'}`\n- **extract_text**: `{'description': 'search results'}`\n- **click**: `{'description': 'Logitech MX Master 3S'}`\n- **extract_text**: `{'description': 'Add to Cart'}`\n- **extract_text**: `{'description': 'page'}`\n- **click**: `{'description': 'Logitech MX Master 3S Bluetooth Edition Wireless Mouse'}`\n- **click**: `{'description': 'Add to Cart'}`\n- **extract_text**: `{'description': 'page'}`\n- **done**: `{'summary': 'Logitech MX Master 3S added to cart at ₹7,995.'}`",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:37:46.961360"
-  },
-  {
-    "role": "user",
-    "content": "Search for Logitech MX Master 3S on Amazon and click Add to Cart",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:37:46.972354"
-  },
-  {
-    "role": "assistant",
-    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `Search for Logitech MX Master 3S on Amazon and click Add to Cart`\n**Result:** Logitech MX Master 3S added to cart at ₹7,995.\n**Page:** https://www.amazon.in/gp/aw/d/B0B11LJ69K/?_encoding=UTF8&pd_rd_plhdr=t&aaxitk=ea4d009b98fcd6e9b22693a8e4643e5d&hsa_cr_id=0&qid=1787735134&sr=1-2-e0fa1fdd-d857-4087-adda-5bd576b25987&i=aps&aref=zZhaQjfWkk&ref_=sbx_s_sparkle_sbtcd_asin_1_img&pd_rd_w=wZdQ7&content-id=amzn1.sym.c0c4f4ed-4ecc-4626-b0b0-d428311a6244%3Aamzn1.sym.c0c4f4ed-4ecc-4626-b0b0-d428311a6244&pf_rd_p=c0c4f4ed-4ecc-4626-b0b0-d428311a6244&pf_rd_r=EKMQWRXQ3RQ4DPA456ES&pd_rd_wg=20phS&pd_rd_r=f04b7069-b3ee-49e1-b7dd-ef31108482dd&th=1\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.amazon.in/s?k=Logitech+MX+Master+3S'}`\n- **extract_text**: `{'description': 'search results'}`\n- **extract_text**: `{'description': 'search results'}`\n- **click**: `{'description': 'Logitech MX Master 3S'}`\n- **extract_text**: `{'description': 'Add to Cart'}`\n- **extract_text**: `{'description': 'search results'}`\n- **click**: `{'description': 'Logitech MX Master 3S'}`\n- **extract_text**: `{'description': 'Add to Cart'}`\n- **extract_text**: `{'description': 'page'}`\n- **click**: `{'description': 'Logitech MX Master 3S Bluetooth Edition Wireless Mouse'}`\n- **click**: `{'description': 'Add to Cart'}`\n- **extract_text**: `{'description': 'page'}`\n- **done**: `{'summary': 'Logitech MX Master 3S added to cart at ₹7,995.'}`",
-    "topic": "Search Logitech Master",
-    "timestamp": "2026-08-26T14:37:46.972354"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-26T18:04:45.298726"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi, Sreekanta. How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-26T18:04:45.298726"
-  },
-  {
-    "role": "user",
-    "content": "hi",
-    "topic": "General",
-    "timestamp": "2026-08-26T18:04:45.311726"
-  },
-  {
-    "role": "assistant",
-    "content": "Hi, Sreekanta. How can I help you today?",
-    "topic": "General",
-    "timestamp": "2026-08-26T18:04:45.311726"
-  },
-  {
-    "role": "user",
     "content": "scan workspace and inspect files",
     "topic": "Scan Workspace Inspect",
     "timestamp": "2026-08-26T18:26:46.051221"
@@ -358,5 +202,161 @@
     "content": "Result success=True. Repository analysis complete: AuraAI; Files analyzed : 0; Folders        : 0",
     "topic": "coding",
     "timestamp": "2026-08-26T18:47:25.529981"
+  },
+  {
+    "role": "user",
+    "content": "restart",
+    "topic": "Restart",
+    "timestamp": "2026-08-26T18:50:11.879179"
+  },
+  {
+    "role": "assistant",
+    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
+    "topic": "Restart",
+    "timestamp": "2026-08-26T18:50:11.879179"
+  },
+  {
+    "role": "user",
+    "content": "restart",
+    "topic": "Restart",
+    "timestamp": "2026-08-26T18:50:11.916707"
+  },
+  {
+    "role": "assistant",
+    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
+    "topic": "Restart",
+    "timestamp": "2026-08-26T18:50:11.916707"
+  },
+  {
+    "role": "user",
+    "content": "what is the current weather and news briefing?",
+    "topic": "memory",
+    "timestamp": "2026-08-26T19:01:13.480630"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Research findings on 'Look up the latest Python release and write a one-paragraph summary to python_news.md': ✓ Found 1 relevant sources for 'Look up the latest Python release and write a one-paragraph summary to python_news.md':\n[1] LibreOffice (https://en.wikipedia.org/wiki/LibreOffice)\n   LibreOffice () is a free and open-source office productivity software suite developed by The Document Foundation (TDF). It was created in 2010 as a fork of OpenOffice.org, itself a successor to the discontinued StarOffice. The suite includes applications for word processing (Writer), spreadsheets (C",
+    "topic": "memory",
+    "timestamp": "2026-08-26T19:01:13.480630"
+  },
+  {
+    "role": "user",
+    "content": "what is the current weather and news briefing?",
+    "topic": "memory",
+    "timestamp": "2026-08-26T19:05:36.777001"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Research findings on 'Look up the latest Python release and write a one-paragraph summary to python_news.md': ✓ Found 1 relevant sources for 'Look up the latest Python release and write a one-paragraph summary to python_news.md':\n[1] LibreOffice (https://en.wikipedia.org/wiki/LibreOffice)\n   LibreOffice () is a free and open-source office productivity software suite developed by The Document Foundation (TDF). It was created in 2010 as a fork of OpenOffice.org, itself a successor to the discontinued StarOffice. The suite includes applications for word processing (Writer), spreadsheets (C",
+    "topic": "memory",
+    "timestamp": "2026-08-26T19:05:36.777001"
+  },
+  {
+    "role": "user",
+    "content": "what is the current weather and news briefing?",
+    "topic": "memory",
+    "timestamp": "2026-08-26T19:05:54.642944"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. Research findings on 'Look up the latest Python release and write a one-paragraph summary to python_news.md': ✓ Found 1 relevant sources for 'Look up the latest Python release and write a one-paragraph summary to python_news.md':\n[1] LibreOffice (https://en.wikipedia.org/wiki/LibreOffice)\n   LibreOffice () is a free and open-source office productivity software suite developed by The Document Foundation (TDF). It was created in 2010 as a fork of OpenOffice.org, itself a successor to the discontinued StarOffice. The suite includes applications for word processing (Writer), spreadsheets (C",
+    "topic": "memory",
+    "timestamp": "2026-08-26T19:05:54.642944"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "desktop",
+    "timestamp": "2026-08-26T19:51:13.359404"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-26T19:51:13.359404"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "desktop",
+    "timestamp": "2026-08-26T19:51:49.852585"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-26T19:51:49.852585"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:00:33.870413"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ❌ Failed to open browser session: 'NoneType' object has no attribute 'start'",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:00:33.870413"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:02:31.913838"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Successfully launched https://www.instagram.com in your desktop web browser.; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:02:31.913838"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:09:13.060550"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Successfully launched https://www.instagram.com in your desktop web browser.; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:09:13.060550"
+  },
+  {
+    "role": "user",
+    "content": "open youtube",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:09:14.108110"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Successfully launched https://www.youtube.com in your desktop web browser.; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:09:14.108110"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:10:28.245700"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Successfully launched https://www.instagram.com in your desktop web browser.; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:10:28.245700"
+  },
+  {
+    "role": "user",
+    "content": "open youtube",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:10:29.311448"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Successfully launched https://www.youtube.com in your desktop web browser.; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-26T20:10:29.311448"
   }
 ]

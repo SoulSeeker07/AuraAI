@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -175,26 +176,50 @@ class DecisionEngine:
             )
         )
 
-        is_system_query = any(
-            w in goal_lower
-            for w in [
-                "what are you",
-                "who are you",
-                "capabilities you currently have",
-                "what capabilities",
-                "what can you do",
-                "can't you do",
-                "cannot do",
-                "limitation",
-                "limitations",
-                "what planners",
-                "what backends",
-                "what commands",
-                "tell me about yourself",
-                "your status",
-                "system status",
-                "architecture",
-            ]
+        system_phrases = [
+            "what are you",
+            "who are you",
+            "capabilities you currently have",
+            "what capabilities",
+            "what can you do",
+            "can't you do",
+            "cannot do",
+            "limitation",
+            "limitations",
+            "what planners",
+            "what backends",
+            "what commands",
+            "tell me about yourself",
+            "your status",
+            "system status",
+            "architecture",
+            "weather",
+            "temperature",
+            "forecast",
+            "hardware health",
+            "system diagnostics",
+            "scan workspace",
+            "inspect workspace",
+            "inspect files",
+            "inspect memory",
+            "task memory",
+            "personal os",
+            "inspect active dag",
+            "active dag",
+            "subagent pool",
+            "sub-agent pool",
+            "agent pool",
+            "reasoning graph",
+            "tokens left",
+            "token usage",
+            "tokens remaining",
+            "how many tokens",
+            "tokens consumed",
+            "token quota",
+        ]
+        system_exact_words = ["cpu", "gpu", "ram", "dag", "swarm", "diagnostics", "hardware"]
+        is_system_query = any(w in goal_lower for w in system_phrases) or any(
+            re.search(r'\b' + re.escape(w) + r'\b', goal_lower) for w in system_exact_words
         )
         # Desktop window control / app management takes precedence over browsing
         app_verbs = [

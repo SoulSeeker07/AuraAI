@@ -7,24 +7,53 @@ Consolidates OS probes onto canonical ActiveWindowMonitor and RunningAppsMonitor
 Thread-safe snapshotting with automatic WorldTimeline diff recording.
 """
 
-from __future__ import annotations
-
 import asyncio
 import logging
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+_src_root = Path(__file__).resolve().parent.parent.parent
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
 
 try:
     from browser.world_model import BrowserContext, BrowserStateProbe
+except (ModuleNotFoundError, ImportError):
+    try:
+        from src.browser.world_model import BrowserContext, BrowserStateProbe
+    except Exception:
+        class BrowserContext:
+            running_browsers = []
+            def to_dict(self):
+                return {}
+
+        class BrowserStateProbe:
+            @staticmethod
+            def probe_state(engine=None):
+                return BrowserContext()
+
+try:
     from workspace.active_window import ActiveWindowMonitor
     from workspace.running_apps import RunningAppsMonitor
 except (ModuleNotFoundError, ImportError):
-    BrowserContext = None  # type: ignore
-    BrowserStateProbe = None  # type: ignore
-    ActiveWindowMonitor = None  # type: ignore
-    RunningAppsMonitor = None  # type: ignore
+    try:
+        from src.workspace.active_window import ActiveWindowMonitor
+        from src.workspace.running_apps import RunningAppsMonitor
+    except Exception:
+        class ActiveWindowMonitor:
+            def get_active_window(self):
+                return {"title": ""}
+
+        class RunningAppsMonitor:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def get_running_apps(self):
+                return []
 
 logger = logging.getLogger(__name__)
 

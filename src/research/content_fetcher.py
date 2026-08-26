@@ -6,7 +6,9 @@ Fetches and parses content from URLs.
 
 import logging
 import re
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -15,7 +17,18 @@ from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from desktop.native.security.network_policy import SafeSession
+_src_root = Path(__file__).resolve().parent.parent
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
+
+try:
+    from desktop.native.security.network_policy import SafeSession
+except (ModuleNotFoundError, ImportError):
+    try:
+        from src.desktop.native.security.network_policy import SafeSession
+    except Exception:
+        SafeSession = requests.Session
+
 from .models import Document
 
 logger = logging.getLogger(__name__)

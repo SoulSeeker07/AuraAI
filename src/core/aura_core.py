@@ -580,8 +580,7 @@ class AuraCore:
 
     async def get_ai_response(self, user_message: str) -> str:
         """
-        Send the user's message through the ConversationEngine,
-        which handles intent detection, memory integration, and LLM response generation.
+        Send the user's message through the Groq LLM reasoning engine.
 
         Args:
             user_message: The latest message from the user
@@ -596,14 +595,36 @@ class AuraCore:
             )
 
         try:
-            # Use ConversationEngine to process the message with memory integration
-            conversation_result = await self.conversation_engine.process(user_message)
+            import asyncio
 
-            # Extract the AI's response text from the conversation result
-            return conversation_result.text
+            target_model = getattr(self, "reasoning_llm_model", "openai/gpt-oss-120b")
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are AuraAI, an advanced next-gen autonomous agent OS. Provide helpful, direct, concise, intelligent responses.",
+                },
+                {"role": "user", "content": user_message},
+            ]
+            kwargs: dict[str, Any] = {
+                "model": target_model,
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 1024,
+            }
+            if "gpt-oss-120b" in target_model:
+                kwargs["reasoning_effort"] = "medium"
+
+            def _call_groq():
+                res = self.groq_client.chat.completions.create(**kwargs)
+                if res and res.choices and res.choices[0].message:
+                    return res.choices[0].message.content or ""
+                return ""
+
+            response_text = await asyncio.to_thread(_call_groq)
+            return response_text.strip()
 
         except Exception as e:
-            logger.error(f"ConversationEngine processing failed: {e}", exc_info=True)
+            logger.error(f"get_ai_response failed: {e}", exc_info=True)
             return f"✗ Error processing message: {e}"
 
     async def process_request_stream(
@@ -722,31 +743,6 @@ class AuraCore:
             from core.orchestration import MasterOrchestrator
 
             orchestrator = MasterOrchestrator.get_instance()
-            decision = orchestrator.decision_engine.evaluate(user_goal)
-
-            # If it requires planner / tool execution or system inspection, run through MasterOrchestrator
-            if decision.needs_planner or decision.intent_type != "chat":
-                res = await orchestrator.process_request_async(user_goal)
-                if hasattr(res, "final_output") and res.final_output:
-                    return str(res.final_output)
-                if hasattr(res, "observations") and res.observations:
-                    return "\n".join(res.observations)
-
-            # Fast Conversational Engine fallback
-            try:
-                from Memory import Memory
-                from ai.registry import build_provider_manager
-                from brain.conversation_engine import ConversationEngine
-                mem = getattr(self, "memory", None)
-                if mem is None:
-                    mem = Memory(db_path=str(self.memory_db_path), chat_log_path=str(self.chat_log_path))
-                pm = build_provider_manager(dict(os.environ))
-                engine = ConversationEngine(memory=mem, provider_manager=pm, aura_core=self)
-                conv_res = await engine.process(user_goal)
-                if conv_res and conv_res.text:
-                    return conv_res.text
-            except Exception as conv_err:
-                logger.debug(f"[AuraCore] Fast ConversationEngine notice: {conv_err}")
 
             raw = user_goal.strip().lower()
             if raw in [
@@ -891,7 +887,7 @@ class AuraCore:
                 if (
                     self.llm_enabled 
                     and self.groq_client is not None 
-                    and intent_type in ["browser", "research"]
+                    and intent_type in ["browser", "research", "coding", "workspace"]
                 ):
                     obs_text = "\n".join(result.observations) if result.observations else ""
                     if result.data:
@@ -936,6 +932,8 @@ class AuraCore:
                     return await self.get_ai_response(user_goal)
                 return f"Action completed successfully." if result.success else "I was unable to complete that action."
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             logger.error(
                 f"MasterOrchestrator pipeline execution failed: {e}", exc_info=True
             )

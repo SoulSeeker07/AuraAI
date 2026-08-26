@@ -169,22 +169,30 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
     Local embedding provider using sentence-transformers.
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", device: str = "cpu"):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", device: str | None = None):
         """
         Initialize local embedding provider.
 
         Args:
             model_name: Sentence transformer model name
-            device: Device to run on (cpu/cuda)
+            device: Device to run on (cpu/cuda, or auto-detect if None)
         """
         self.model_name = model_name
-        self.device = device
+        if device is None or device == "cpu":
+            try:
+                import torch
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            except Exception:
+                self.device = "cpu"
+        else:
+            self.device = device
+
         try:
             from sentence_transformers import SentenceTransformer
 
-            self.model = SentenceTransformer(model_name, device=device)
-            self.logger.info(
-                f"Local embedding provider initialized with model: {model_name}"
+            self.model = SentenceTransformer(model_name, device=self.device)
+            logger.info(
+                f"Local embedding provider initialized with model: {model_name} on {self.device.upper()}"
             )
         except ImportError:
             raise ImportError(

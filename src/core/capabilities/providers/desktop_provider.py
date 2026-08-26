@@ -10,10 +10,17 @@ with zero cache skew and zero disruption to the underlying desktop layer.
 from __future__ import annotations
 
 import logging
+import sys
+from pathlib import Path
+
+_src_root = Path(__file__).resolve().parent.parent.parent.parent
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
 
 from core.capabilities.models import Capability
 from core.capabilities.provider import ICapabilityProvider
 from core.orchestration.autonomy_mode import ActionRisk
+
 try:
     from desktop.native.capability_registry import (
         CapabilityDescriptor,
@@ -23,11 +30,30 @@ try:
     )
     from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 except (ImportError, ModuleNotFoundError):
-    CapabilityDescriptor = None  # type: ignore
-    NativeCapabilityRegistry = None  # type: ignore
-    PermissionRequired = None  # type: ignore
-    NativeRiskLevel = None  # type: ignore
-    NativeManagerRegistry = None  # type: ignore
+    try:
+        from src.desktop.native.capability_registry import (
+            CapabilityDescriptor,
+            CapabilityRegistry as NativeCapabilityRegistry,
+            PermissionRequired,
+            RiskLevel as NativeRiskLevel,
+        )
+        from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+    except Exception:
+        class CapabilityDescriptor:
+            pass
+
+        class NativeCapabilityRegistry:
+            def list_capabilities(self):
+                return []
+            def get(self, name):
+                return None
+
+        PermissionRequired = None  # type: ignore
+        NativeRiskLevel = None  # type: ignore
+
+        class NativeManagerRegistry:
+            def list_managers(self):
+                return {}
 
 logger = logging.getLogger(__name__)
 

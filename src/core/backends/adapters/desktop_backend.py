@@ -3,10 +3,18 @@ Desktop Engine Backend Adapter
 Wraps native DesktopExecutionEngine as a core backend adapter.
 """
 
+from __future__ import annotations
+
 import logging
 import os
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+_src_root = Path(__file__).resolve().parent.parent.parent.parent
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
 
 if TYPE_CHECKING:
     from ...planning.action_plan import ActionPlan
@@ -17,8 +25,16 @@ try:
         get_desktop_execution_engine,
     )
 except (ImportError, ModuleNotFoundError):
-    DesktopExecutionEngine = None  # type: ignore
-    get_desktop_execution_engine = None  # type: ignore
+    try:
+        from src.desktop.native.desktop_execution_engine import (
+            DesktopExecutionEngine,
+            get_desktop_execution_engine,
+        )
+    except Exception:
+        class DesktopExecutionEngine:
+            pass
+
+        get_desktop_execution_engine = lambda: None
 
 try:
     from ...planning.execution_result import ExecutionResult

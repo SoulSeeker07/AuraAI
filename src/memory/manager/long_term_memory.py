@@ -60,7 +60,10 @@ class LongTermMemory:
         embed_model: str = "all-MiniLM-L6-v2",
     ):
         try:
-            self.embedder = SentenceTransformer(embed_model, local_files_only=True)
+            import torch
+            dev = "cuda" if torch.cuda.is_available() else "cpu"
+            self.embedder = SentenceTransformer(embed_model, device=dev, local_files_only=True)
+            logger.info(f"[LongTermMemory] Embedding model '{embed_model}' loaded on {dev.upper()}")
         except Exception as e:
             logger.warning(
                 f"[LongTermMemory] Local embedding model '{embed_model}' not found in cache or offline: {e}. "

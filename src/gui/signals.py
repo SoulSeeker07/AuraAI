@@ -36,6 +36,10 @@ class ExecutionStep:
     description: str = ""
     status: StepStatus = StepStatus.PENDING
     timestamp: float | None = None
+    duration_ms: float = 0.0
+    engine: str = ""
+    role: str = ""
+    payload: str = ""
     metadata: dict[str, Any] = None
 
     def __post_init__(self):
@@ -52,6 +56,12 @@ class TaskNode:
     status: TaskNodeStatus = TaskNodeStatus.PENDING
     parent_ids: list[str] = None
     progress: float = 0.0
+    duration_ms: float = 0.0
+    engine: str = ""
+    role: str = ""
+    payload: str = ""
+    description: str = ""
+    start_time: float = 0.0
 
     def __post_init__(self):
         if self.parent_ids is None:

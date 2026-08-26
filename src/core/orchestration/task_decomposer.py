@@ -6,9 +6,15 @@ Decomposes goals into a Directed Acyclic Graph (DAG) of subtasks with capability
 """
 
 import logging
+import sys
+from pathlib import Path
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+_src_root = Path(__file__).resolve().parent.parent.parent
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
 
 logger = logging.getLogger(__name__)
 
@@ -475,7 +481,16 @@ class TaskDecomposer:
         """
         import re
 
-        from browser.planner.site_registry import SiteRegistry
+        try:
+            from browser.planner.site_registry import SiteRegistry
+            sites_list = SiteRegistry.list_sites()
+        except Exception:
+            try:
+                from src.browser.planner.site_registry import SiteRegistry
+                sites_list = SiteRegistry.list_sites()
+            except Exception:
+                SiteRegistry = None
+                sites_list = ["instagram", "youtube", "github", "linkedin", "google", "amazon", "reddit", "facebook", "twitter"]
 
         goal_lower = raw_goal.lower()
 
@@ -486,7 +501,7 @@ class TaskDecomposer:
             return ("custom", url, "")
 
         detected_site = None
-        for site_name in SiteRegistry.list_sites():
+        for site_name in sites_list:
             if site_name in goal_lower:
                 detected_site = site_name
                 break
@@ -498,7 +513,7 @@ class TaskDecomposer:
             detected_site = "youtube"
 
         if detected_site:
-            profile = SiteRegistry.get_site(detected_site)
+            profile = SiteRegistry.get_site(detected_site) if SiteRegistry else None
             base_url = (
                 profile.base_url if profile else f"https://www.{detected_site}.com"
             )
@@ -592,9 +607,17 @@ class TaskDecomposer:
         """
         Classifies natural language into canonical capabilities and extracts parameters & context.
         """
-        from browser.context_store import ContextStore
+        try:
+            from browser.context_store import ContextStore
+            store = ContextStore.get_instance()
+        except Exception:
+            store = None
 
-        store = ContextStore.get_instance()
+        media_dict = (
+            store.media.to_dict()
+            if store and hasattr(store, "media") and store.media
+            else {}
+        )
 
         # 1. Media Control capabilities
         if any(
@@ -609,11 +632,12 @@ class TaskDecomposer:
                 "go to the next",
             ]
         ):
-            store.update_media_state("media.next", raw_goal)
+            if store:
+                store.update_media_state("media.next", raw_goal)
             return (
                 "media.next",
                 "Play Next Video",
-                {"action": "next", "media_context": store.media.to_dict()},
+                {"action": "next", "media_context": media_dict},
             )
 
         if any(
@@ -629,19 +653,21 @@ class TaskDecomposer:
                 "go back",
             ]
         ):
-            store.update_media_state("media.previous", raw_goal)
+            if store:
+                store.update_media_state("media.previous", raw_goal)
             return (
                 "media.previous",
                 "Play Previous Video",
-                {"action": "previous", "media_context": store.media.to_dict()},
+                {"action": "previous", "media_context": media_dict},
             )
 
         if goal_lower.strip() in ["next", "next."]:
-            store.update_media_state("media.next", raw_goal)
+            if store:
+                store.update_media_state("media.next", raw_goal)
             return (
                 "media.next",
                 "Play Next Video",
-                {"action": "next", "media_context": store.media.to_dict()},
+                {"action": "next", "media_context": media_dict},
             )
 
         if goal_lower.strip() in ["previous", "previous."]:
