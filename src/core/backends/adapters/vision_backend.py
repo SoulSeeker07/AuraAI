@@ -120,21 +120,19 @@ class VisionEngineBackend(BaseBackendAdapter):
             if cap_clean in ("vision.capture", "screen.capture"):
                 capture_type = args.get("capture_type", "full_screen")
                 img_path = ""
-                if mgr and hasattr(mgr, "screenshot_manager"):
-                    try:
-                        if capture_type == "active_window" and target_window:
-                            img_path = mgr.screenshot_manager.capture_window(target_window)
-                        elif capture_type == "region" and args.get("region"):
-                            r = args["region"]
-                            img_path = mgr.screenshot_manager.capture_region(r[0], r[1], r[2], r[3])
-                        else:
-                            img_path = mgr.screenshot_manager.capture_full_screen()
-                    except Exception as grab_err:
-                        logger.warning(f"[VisionEngineBackend] Live grab error ({grab_err}), using synthetic frame buffer")
-                        img_path = os.path.join(os.getcwd(), f"screenshot_{capture_id}.png")
-                else:
-                    # Synthetic / test fallback capture path
-                    img_path = os.path.join(os.getcwd(), f"screenshot_{capture_id}.png")
+                from vision.screenshot_manager import ScreenshotManager
+
+                sm = mgr.screenshot_manager if (mgr and hasattr(mgr, "screenshot_manager")) else ScreenshotManager()
+                try:
+                    img_path = sm.capture_internal(
+                        capture_type=capture_type,
+                        window_title=target_window,
+                        region=args.get("region"),
+                        monitor_index=args.get("monitor_index", 0),
+                    )
+                except Exception as grab_err:
+                    logger.warning(f"[VisionEngineBackend] Live grab error ({grab_err}), using managed runtime path")
+                    img_path = sm._get_save_path(f"screenshot_{capture_id}.png")
 
                 dur = datetime.now().timestamp() - start_t
                 obs_text = f"✓ Screen capture complete ({capture_type}): {img_path}"

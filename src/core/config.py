@@ -9,7 +9,6 @@ ENABLE_LONG_TERM_MEMORY = True  # M2 complete — all gates verified
 MEMORY_EXTRACTION_MODELS: list[str] = [
     "openai/gpt-oss-120b",       # primary
     "llama-3.3-70b-versatile",   # fallback 1
-    "llama-3.1-8b-instant",      # fallback 2
 ]
 
 APP_NAME = "Aura"

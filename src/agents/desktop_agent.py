@@ -382,37 +382,25 @@ class DesktopAgent:
     # ========================================
 
     def _execute_screenshot(self, task: Task) -> TaskOutput:
-        """Take a screenshot."""
+        """Take a screenshot via unified ScreenshotManager."""
         try:
-            from PIL import ImageGrab
+            from vision.screenshot_manager import ScreenshotManager
 
-            screenshot = ImageGrab.grab()
-
-            # Save screenshot
-            screenshot_path = (
-                Path.home()
-                / "screenshots"
-                / f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-            )
-            screenshot_path.parent.mkdir(parents=True, exist_ok=True)
-
-            screenshot.save(screenshot_path)
+            sm = ScreenshotManager()
+            path = sm.capture_full_screen()
+            if not path:
+                return TaskOutput(
+                    success=False,
+                    message="Screenshot failed",
+                    error="Screen capture unavailable on current display session",
+                )
 
             return TaskOutput(
                 success=True,
                 message="Screenshot captured",
                 data={
-                    "path": str(screenshot_path),
-                    "width": screenshot.width,
-                    "height": screenshot.height,
+                    "path": str(path),
                 },
-            )
-
-        except ImportError:
-            return TaskOutput(
-                success=False,
-                message="Screenshot failed",
-                error="Pillow not installed. Run: pip install Pillow",
             )
         except Exception as e:
             return TaskOutput(success=False, message="Screenshot failed", error=str(e))

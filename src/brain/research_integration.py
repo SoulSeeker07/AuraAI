@@ -382,32 +382,47 @@ class ResearchIntegration:
         )
         try:
             report = self.research_engine.research(query, mode=mode)
+            results = getattr(report, "results", None)
+            if results is None:
+                results = getattr(report, "evidence", [])
+            citations = getattr(report, "citations", []) or []
+            summary = getattr(report, "summary", "")
+            
+            if hasattr(report, "get_confidence_score"):
+                confidence = report.get_confidence_score()
+            else:
+                confidence = getattr(report, "confidence", 0.0)
+
             logger.info(
-                f"ResearchEngine.research() returned: results_count={len(report.results)}, citations_count={len(report.citations)}"
+                f"ResearchEngine.research() returned: results_count={len(results)}, citations_count={len(citations)}"
             )
 
-            if not report.results:
+            if not results:
                 logger.warning(
                     f"ResearchEngine returned empty results for query: {query}"
                 )
 
+            formatted_citations = []
+            for c in citations:
+                t_level = getattr(c, "trust_level", "unknown")
+                if hasattr(t_level, "value"):
+                    t_level = t_level.value
+                formatted_citations.append({
+                    "url": getattr(c, "url", ""),
+                    "title": getattr(c, "title", ""),
+                    "score": getattr(c, "score", 0),
+                    "trust_level": str(t_level),
+                })
+
             return {
-                "query": report.query,
-                "has_results": len(report.results) > 0,
-                "confidence_score": report.get_confidence_score(),
-                "summary": report.summary,
-                "citations": [
-                    {
-                        "url": c.url,
-                        "title": c.title,
-                        "score": c.score,
-                        "trust_level": c.trust_level.value,
-                    }
-                    for c in report.citations
-                ],
-                "primary_sources": report.primary_sources,
-                "conflicts": report.conflicts,
-                "duration": report.duration,
+                "query": getattr(report, "query", query),
+                "has_results": len(results) > 0,
+                "confidence_score": confidence,
+                "summary": summary,
+                "citations": formatted_citations,
+                "primary_sources": getattr(report, "primary_sources", []),
+                "conflicts": getattr(report, "conflicts", []),
+                "duration": getattr(report, "duration", 0.0),
             }
 
         except Exception as e:

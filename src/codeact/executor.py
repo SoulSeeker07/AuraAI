@@ -64,7 +64,8 @@ class DynamicCodeActExecutor:
                 f"1. Write a complete Python script to generate '{request.output_filename}'.",
                 "2. Ensure the output file is saved directly to the current working directory.",
                 "3. Ensure the generated artifact is well-formatted, non-empty, and valid.",
-                "4. Enclose all code in a ```python ... ``` code block.",
+                "4. When generating markdown, documentation, or text with code blocks/quotes, avoid raw triple-quoted strings (''' or \"\"\"). Construct text with `json.loads(...)` or join list lines `\"\\n\".join([...])` to avoid SyntaxErrors.",
+                "5. Enclose all code in a ```python ... ``` code block.",
             ]
         )
         return "\n".join(lines)
@@ -72,17 +73,39 @@ class DynamicCodeActExecutor:
     def _build_static_repair_prompt(
         self, request: CodeActRequest, code: str, static_res: StaticCheckResult
     ) -> str:
-        """Construct repair prompt when AST static check rejects imports or calls."""
+        """Construct repair prompt when AST static check rejects imports, syntax, or calls."""
+        is_syntax_error = any("SyntaxError" in str(v) for v in static_res.violations) or "syntax" in (static_res.reason or "").lower()
+
+        if is_syntax_error:
+            return (
+                "Your previous Python script FAILED Python syntax validation.\n"
+                f"SYNTAX ERROR: {static_res.reason}\n\n"
+                f"GOAL: {request.goal}\n"
+                f"OUTPUT FILENAME: {request.output_filename}\n\n"
+                "CRITICAL ESCAPING RULE:\n"
+                "Do NOT use raw triple-quoted string literals (''' or \"\"\") containing markdown codeblocks (```) or quotes.\n"
+                "Instead, construct your document text using JSON decoding (import json; content = json.loads(...)) or by joining a list of line strings (content = '\\n'.join([...])).\n\n"
+                "PREVIOUS CODE:\n"
+                "```python\n"
+                f"{code}\n"
+                "```\n\n"
+                "Please fix the syntax error and provide a corrected, complete Python script in a ```python ... ``` block."
+            )
+
         return (
-            f"Your previous Python script was REJECTED by static safety verification.\n"
+            "Your previous Python script was REJECTED by static safety verification.\n"
             f"REASON: {static_res.reason}\n\n"
-            f"VIOLATIONS:\n"
+            "VIOLATIONS:\n"
             f"- Blocked: {static_res.blocked_imports}\n"
             f"- Disallowed: {static_res.disallowed_imports}\n"
             f"- Violations: {static_res.violations}\n\n"
             f"GOAL: {request.goal}\n"
             f"OUTPUT FILENAME: {request.output_filename}\n"
             f"ALLOWED LIBRARIES: {', '.join(request.allowed_libraries) if request.allowed_libraries else 'Standard library only'}\n\n"
+            "PREVIOUS CODE:\n"
+            "```python\n"
+            f"{code}\n"
+            "```\n\n"
             "Please rewrite the script without using any blocked or disallowed modules or functions."
         )
 

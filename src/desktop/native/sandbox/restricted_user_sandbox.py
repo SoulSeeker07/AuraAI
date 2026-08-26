@@ -130,9 +130,11 @@ class RestrictedUserSandbox(BaseSandboxProvider):
         import base64
 
         exec_cwd = str(Path(cwd).resolve())
-        wrapped_command = f'Set-Location "{exec_cwd}"; {command}'
+        wrapped_command = f'cd "{exec_cwd}"; {command}'
         encoded_cmd = base64.b64encode(wrapped_command.encode("utf-16le")).decode("ascii")
         cmd_line = f"powershell.exe -NoProfile -NonInteractive -EncodedCommand {encoded_cmd}"
+
+
 
         pi = PROCESS_INFORMATION()
 

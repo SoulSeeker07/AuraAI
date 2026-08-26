@@ -98,7 +98,7 @@ _BROWSER_URLS: dict[str, str] = {
     "linkedin": "https://www.linkedin.com",
     "facebook": "https://www.facebook.com",
     "instagram": "https://www.instagram.com",
-    "amazon": "https://www.amazon.com",
+    "amazon": "https://www.amazon.in",
     "stackoverflow": "https://stackoverflow.com",
 }
 

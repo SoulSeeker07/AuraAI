@@ -17,6 +17,9 @@ from src.plugins.plugin_interface import Plugin, PluginCategory, PluginManifest
 logger = logging.getLogger(__name__)
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 class CalendarPlugin(Plugin):
     """
     Calendar and Task Management Plugin for Aura.
@@ -44,7 +47,7 @@ class CalendarPlugin(Plugin):
                 ],
             )
         super().__init__(manifest)
-        self._db_path = Path("calendar_tasks.db")
+        self._db_path = (PROJECT_ROOT / "calendar_tasks.db").resolve()
         self._init_db()
 
     def _init_db(self) -> None:

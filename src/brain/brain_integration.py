@@ -16,8 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from brain.execution_state import ExecutionState
 from brain.request import ToolResult
-from core.tools.tool_router import ToolRouter
-from core.workspace.workspace_manager import WorkspaceManager
 from execution.execution_engine import ExecutionEngine
 from execution.tool_adapter import adapt_function
 from execution.tool_interface import ToolCategory

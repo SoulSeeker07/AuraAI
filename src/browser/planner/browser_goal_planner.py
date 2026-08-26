@@ -304,12 +304,12 @@ class BrowserGoalPlanner(BasePlanner):
         if "buy" in goal_lower or "order" in goal_lower or "checkout" in goal_lower:
             intent = "order"
             target_url = (
-                site_profile.base_url if site_profile else "https://www.amazon.com"
+                site_profile.base_url if site_profile else "https://www.amazon.in"
             )
         elif "add to cart" in goal_lower or "cart" in goal_lower:
             intent = "add_to_cart"
             target_url = (
-                site_profile.base_url if site_profile else "https://www.amazon.com"
+                site_profile.base_url if site_profile else "https://www.amazon.in"
             )
         elif "shop" in goal_lower or "product" in goal_lower or "price" in goal_lower:
             intent = "shopping"
@@ -317,7 +317,7 @@ class BrowserGoalPlanner(BasePlanner):
             target_url = (
                 site_profile.search_url_template.format(query=query)
                 if site_profile and site_profile.search_url_template
-                else f"https://www.amazon.com/s?k={query}"
+                else f"https://www.amazon.in/s?k={query}"
             )
         elif "scroll" in goal_lower:
             intent = "scroll"

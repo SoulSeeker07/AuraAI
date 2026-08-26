@@ -24,6 +24,12 @@ class KnowledgeType(str, Enum):
 class ChunkType(str, Enum):
     """Types of document chunks."""
 
+    TEXT = "text"
+    DOCUMENT = "document"
+    FILE = "file"
+    RAW = "raw"
+    HEADER = "header"
+    LIST = "list"
     SECTION = "section"
     PARAGRAPH = "paragraph"
     SENTENCE = "sentence"
@@ -237,8 +243,8 @@ class DocumentMetadata:
             "file_path": self.file_path,
             "file_name": self.file_name,
             "file_size": self.file_size,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "modified_at": self.modified_at.isoformat() if self.modified_at else None,
+            "created_at": self.created_at.isoformat() if hasattr(self.created_at, "isoformat") else (str(self.created_at) if self.created_at else None),
+            "modified_at": self.modified_at.isoformat() if hasattr(self.modified_at, "isoformat") else (str(self.modified_at) if self.modified_at else None),
             "page_count": self.page_count,
             "chunk_count": self.chunk_count,
             "author": self.author,
@@ -306,11 +312,17 @@ class DocumentChunk:
                 extra_metadata[key] = kwargs.pop(key)
 
         # Initialize with remaining kwargs
-        object.__setattr__(self, "id", kwargs.pop("id"))
-        object.__setattr__(self, "content", kwargs.pop("content"))
-        object.__setattr__(self, "chunk_type", kwargs.pop("chunk_type"))
-        object.__setattr__(self, "source_type", kwargs.pop("source_type"))
-        object.__setattr__(self, "source_file", kwargs.pop("source_file"))
+        chunk_id = kwargs.pop("id", f"chunk_{int(datetime.now().timestamp() * 1000)}")
+        content = kwargs.pop("content", "")
+        chunk_type = kwargs.pop("chunk_type", kwargs.pop("type", ChunkType.TEXT))
+        source_type = kwargs.pop("source_type", SourceType.TXT)
+        source_file = kwargs.pop("source_file", str(kwargs.pop("file_path", "")))
+
+        object.__setattr__(self, "id", chunk_id)
+        object.__setattr__(self, "content", content)
+        object.__setattr__(self, "chunk_type", chunk_type)
+        object.__setattr__(self, "source_type", source_type)
+        object.__setattr__(self, "source_file", source_file)
         object.__setattr__(self, "project", kwargs.pop("project", None))
         object.__setattr__(self, "language", kwargs.pop("language", None))
         object.__setattr__(self, "language_family", kwargs.pop("language_family", None))
@@ -335,6 +347,18 @@ class DocumentChunk:
 
         # Store extra fields in metadata dict
         self.metadata = {**self.metadata, **extra_metadata}
+
+    @property
+    def title(self) -> str:
+        return self.metadata.get("title") or self.source_file or self.id
+
+    @property
+    def page(self) -> int | None:
+        return self.page_number
+
+    @property
+    def line(self) -> int | None:
+        return self.line_number
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -361,15 +385,43 @@ class DocumentChunk:
 class Citation:
     """Citation information for a document chunk."""
 
-    id: str
-    chunk_id: str
-    source_file: str
-    source_type: SourceType
+    id: str = ""
+    chunk_id: str = ""
+    source_file: str = ""
+    source_type: SourceType = SourceType.TXT
     page: int | None = None
     line: int | None = None
     title: str | None = None
     text: str = ""
     score: float = 0.0
+    project: str | None = None
+    retrieval_date: datetime = field(default_factory=datetime.now)
+
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop("id", f"cit_{int(datetime.now().timestamp() * 1000)}")
+        self.chunk_id = kwargs.pop("chunk_id", "")
+        self.source_file = kwargs.pop("source_file", kwargs.pop("source", ""))
+        raw_st = kwargs.pop("source_type", SourceType.TXT)
+        if isinstance(raw_st, SourceType):
+            self.source_type = raw_st
+        else:
+            try:
+                self.source_type = SourceType(str(raw_st))
+            except Exception:
+                self.source_type = SourceType.TXT
+        self.page = kwargs.pop("page", None)
+        self.line = kwargs.pop("line", None)
+        self.title = kwargs.pop("title", None)
+        self.text = kwargs.pop("text", "")
+        self.score = kwargs.pop("score", 0.0)
+        self.project = kwargs.pop("project", None)
+        self.retrieval_date = kwargs.pop("retrieval_date", datetime.now())
+
+    def format(self) -> str:
+        """Format citation as readable string."""
+        loc = f", p. {self.page}" if self.page else (f", l. {self.line}" if self.line else "")
+        title_str = f"'{self.title}'" if self.title else self.source_file
+        return f"{title_str}{loc}"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -377,7 +429,7 @@ class Citation:
             "id": self.id,
             "chunk_id": self.chunk_id,
             "source_file": self.source_file,
-            "source_type": self.source_type.value,
+            "source_type": self.source_type.value if hasattr(self.source_type, "value") else str(self.source_type),
             "page": self.page,
             "line": self.line,
             "title": self.title,
@@ -500,7 +552,7 @@ class KnowledgeStats:
 class RetrievalResult:
     """Result of a knowledge retrieval operation."""
 
-    chunks: list[DocumentChunk]
+    chunks: list[DocumentChunk] = field(default_factory=list)
     citations: list[Citation] | None = None
     context: str | None = None
     mode: str = "semantic"
@@ -508,6 +560,30 @@ class RetrievalResult:
     retrieved_at: datetime = field(default_factory=datetime.now)
     total_retrieved: int = 0
     confidence: float = 0.0
+    score: float = 0.0
+    rank: int = 1
+    sources: list[str] = field(default_factory=list)
+
+    def __init__(self, **kwargs):
+        single_chunk = kwargs.pop("chunk", None)
+        chunks = kwargs.pop("chunks", [])
+        if single_chunk is not None:
+            chunks = [single_chunk]
+        self.chunks = chunks
+        self.citations = kwargs.pop("citations", []) or []
+        self.context = kwargs.pop("context", None)
+        self.mode = kwargs.pop("mode", "semantic")
+        self.query = kwargs.pop("query", "")
+        self.retrieved_at = kwargs.pop("retrieved_at", datetime.now())
+        self.total_retrieved = kwargs.pop("total_retrieved", len(chunks))
+        self.confidence = kwargs.pop("confidence", 0.0)
+        self.score = kwargs.pop("score", 0.0)
+        self.rank = kwargs.pop("rank", 1)
+        self.sources = kwargs.pop("sources", [])
+
+    @property
+    def chunk(self) -> DocumentChunk | None:
+        return self.chunks[0] if self.chunks else None
 
 
 @dataclass

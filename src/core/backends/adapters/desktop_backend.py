@@ -576,6 +576,44 @@ class DesktopEngineBackend(BaseBackendAdapter):
                 data={"backend": self.name, "capability": capability, "file_path": abs_path, "saved_content": content_to_save},
             )
 
+        # ── Display Controls: Brightness ─────────────────────────────────────
+        if capability in ("display.set_brightness", "display.brightness", "set_brightness", "get_brightness"):
+            args_disp = arguments or {}
+            try:
+                from desktop.native.managers.display_helpers import set_display_brightness, get_display_brightness
+                if "set" in capability:
+                    lvl = args_disp.get("level", 100)
+                    res_disp = set_display_brightness(lvl)
+                    dur_disp = datetime.now().timestamp() - start_t
+                    if res_disp.get("success"):
+                        obs_disp = f"☀️ Display brightness set to {res_disp.get('level', lvl)}%."
+                    else:
+                        obs_disp = f"⚠️ Could not set brightness: {res_disp.get('error', 'unsupported')}"
+                    return ExecutionResult(
+                        success=res_disp.get("success", False),
+                        planner="desktop",
+                        goal=goal,
+                        confidence=1.0 if res_disp.get("success") else 0.0,
+                        execution_time_seconds=dur_disp,
+                        observations=[obs_disp],
+                        data={"backend": self.name, "capability": capability, "level": res_disp.get("level")},
+                    )
+                else:
+                    res_disp = get_display_brightness()
+                    dur_disp = datetime.now().timestamp() - start_t
+                    obs_disp = f"☀️ Current display brightness: {res_disp.get('level', 100)}%."
+                    return ExecutionResult(
+                        success=True,
+                        planner="desktop",
+                        goal=goal,
+                        confidence=1.0,
+                        execution_time_seconds=dur_disp,
+                        observations=[obs_disp],
+                        data={"backend": self.name, "capability": capability, "level": res_disp.get("level")},
+                    )
+            except Exception as exc:
+                logger.warning(f"[DesktopBackend] Display brightness error: {exc}")
+
         # ── Document Generation (template-based, no API calls) ───────────
         if capability == "document.generate":
             return self._generate_document(goal, arguments or {})
@@ -807,12 +845,15 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     clause = clause[len(prefix):].strip()
 
             # Filter out generic noun noise words
-            stopwords = {"the", "a", "an", "app", "application", "program", "window", "tool"}
+            stopwords = {"the", "a", "an", "my", "app", "application", "program", "window", "tool", "folder", "directory"}
             tokens = [w.strip("',\"") for w in clause.split() if w.strip("',\"") not in stopwords and w.strip("',\"")]
 
-            app_name = tokens[0] if tokens else "notepad"
+            app_name = " ".join(tokens) if tokens else "notepad"
         else:
-            app_name = str(raw_app).lower().strip()
+            raw_str = str(raw_app).lower().strip()
+            import re
+            app_name = re.sub(r"\b(my|the|a|an|app|application|folder|directory)\b", " ", raw_str, flags=re.IGNORECASE)
+            app_name = " ".join(app_name.split()).strip() or raw_str
         args["app_name"] = app_name
         self._last_app_name = app_name
 
@@ -1092,6 +1133,13 @@ class DesktopEngineBackend(BaseBackendAdapter):
                     obs_text = f"✓ System query completed: {capability}."
                 elif capability.startswith("audio.") or capability.startswith("media."):
                     obs_text = f"✓ Audio/media action completed: {capability}."
+                elif capability in ("power.battery", "battery"):
+                    try:
+                        from tools.battery_service import BatteryDiagnosticsService
+                        report = BatteryDiagnosticsService.get_full_battery_report()
+                        obs_text = report.get("markdown")
+                    except Exception:
+                        obs_text = f"✓ Hardware/power action completed: {capability}."
                 elif capability.startswith("hardware.") or capability.startswith("power."):
                     obs_text = f"✓ Hardware/power action completed: {capability}."
                 elif capability.startswith("file.") or capability.startswith("filesystem."):
@@ -1296,7 +1344,26 @@ class DesktopEngineBackend(BaseBackendAdapter):
             )
             markdown_doc = f"# {title}\n\n{content.strip()}\n"
 
+        # Physically write the document files (.docx and .md) to disk
+        saved_info = {}
+        try:
+            from tools.document_generator import DocumentGenerator
+            saved_info = DocumentGenerator.create_document(
+                title=title,
+                content=markdown_doc,
+                filename_base=target_filename.replace(".md", "").replace(".docx", "").replace(".txt", ""),
+                author="Sreekanta",
+            )
+        except Exception as exc:
+            logger.warning(f"[DesktopBackend] DocumentGenerator write notice: {exc}")
+
         dur = datetime.now().timestamp() - start_t
+        saved_msg = f"✓ Generated & saved document: {target_filename}"
+        if saved_info.get("docx_path"):
+            saved_msg += f"\n📄 Word DOCX: {saved_info['docx_path']}"
+        if saved_info.get("md_path"):
+            saved_msg += f"\n📄 Markdown: {saved_info['md_path']}"
+
         logger.info(
             f"[DesktopBackend] document.generate produced {len(markdown_doc)} chars "
             f"for '{target_filename}' ({doc_format})"
@@ -1307,13 +1374,14 @@ class DesktopEngineBackend(BaseBackendAdapter):
             goal=goal,
             confidence=1.0,
             execution_time_seconds=dur,
-            observations=[f"✓ Generated {doc_format} document: {target_filename}"],
+            observations=[saved_msg],
             data={
                 "backend": self.name,
                 "capability": "document.generate",
                 "content": markdown_doc,
                 "format": doc_format,
                 "target_filename": target_filename,
+                "saved_files": saved_info,
             },
         )
 

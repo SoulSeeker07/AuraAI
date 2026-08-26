@@ -37,7 +37,7 @@ class MemoryManager:
     def __init__(
         self,
         provider_manager: ProviderManager,
-        summarizer_model: str = "llama-3.1-8b-instant",  # cheap/fast, just condensing
+        summarizer_model: str = "openai/gpt-oss-120b",  # fast JSON summarization
         persist_dir: str = "./aura_memory_db",
         short_term_kwargs: Optional[dict] = None,
     ):

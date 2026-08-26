@@ -127,6 +127,12 @@ class AppSignals(QObject):
     # ── UI Commands ──
     toggle_overlay = Signal()
     toggle_inspector = Signal()
+    toggle_chat_overlay = Signal()
+    toggle_weather_overlay = Signal()
+    toggle_system_overlay = Signal()
+    toggle_system_status_overlay = Signal()
+    toggle_agent_task_overlay = Signal()
+    toggle_personal_os_overlay = Signal()
     show_notification = Signal(str, str)  # title, message
 
 

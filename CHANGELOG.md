@@ -5,6 +5,52 @@ All notable changes to Aura AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0-smarthome-ambient-hud] - 2026-08-25
+
+### Added
+- **M29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction (COMPLETE)**: Physical ambient intelligence and bidirectional multi-device control.
+- **Home Assistant Integration** (`src/integrations/smarthome/ha_client.py`, `src/integrations/smarthome/ha_ws.py`): Bidirectional WebSocket client with optimistic command execution, entity registry caching, and state rollback on failure.
+- **TP-Link Tapo / Kasa KLAP Driver** (`src/integrations/smarthome/tapo_client.py`): Zero-cloud local device encryption driver implementing KLAP handshake, SHA-256 seed negotiation, and AES-CBC-128 crypto for Tapo L530 bulbs and smart plugs.
+- **SmartHome Backend & Provider** (`src/core/backends/adapters/smarthome_backend.py`, `src/core/capabilities/providers/smarthome_provider.py`): 12 registered capabilities covering lights, switches, climate, cameras, and scenes with 4-tier risk classification and offline graceful degradation.
+- **Ambient Desktop HUD Overlays** (`src/gui/widgets/`): Translucent PySide6 widgets including `JarvisRingsOverlay` (pulsing reactive orbital arcs), `ChatWindowOverlay` (floating conversational interface), `WeatherOverlay`, `SystemMonitorOverlay`, `PersonalOSDashboardOverlay`, `AgentTaskStatusOverlay`, `MatrixOverlay`, and `SystemStatusOverlay`.
+- **Real Backend Bridge** (`src/gui/real_backend_bridge.py`): Non-blocking Qt signal telemetry bus bridging core runtime state and smart home events to HUD overlays.
+
+### Fixed
+- **Root-Folder Screenshot Leak & Single-Owner Lifecycle**: Consolidated all screen capture implementations (`desktop_agent.py`, `vision_backend.py`, `vision_manager.py`) under single-owner `ScreenshotManager`. Enforced canonical runtime storage (`Data/runtime/screenshots/`), collision-proof UUID naming (`timestamp + uuid[:6]`), fail-open `capture_scoped()` context manager with guarded deletion on verified consumer success, bounded failure retention pruning (20-file count cap / 24-hour age limit), and purged 14 legacy root screenshot artifacts.
+
+---
+
+## [0.32.0-dynamic-codeact-hud-os] - 2026-08-24
+
+### Added
+- **M28 — Dynamic CodeAct Runtime, HUD Overlays & Integrated Aura OS (COMPLETE)**: Transitioned AuraAI into an integrated autonomous operating system.
+- **Dynamic CodeAct Execution Engine** (`src/codeact/executor.py`, `src/codeact/drafters.py`): Code-as-action paradigm replacing rigid tool calling; multiline code block parser; AST safety validator; closed-loop repair loop.
+- **Sandboxed Test Isolation** (`src/engineering/test_runner.py`): Privileged test execution isolation using Windows Job Objects and `RestrictedUserSandbox` (512MB RAM cap, temp redirection, credential scrubbing; `TD-008` resolved).
+- **RAG Knowledge Service** (`src/knowledge/rag_service.py`): ChromaDB/SQLite vector search, text chunking, and grounded context retrieval.
+
+---
+
+## [0.31.0-autonomous-engineering] - 2026-08-23
+
+### Added
+- **M27 — Autonomous Engineering Platform (COMPLETE)**: Closed-loop bug fixing, test-driven repair, and pull request assembly.
+- **Protected Safety Ceiling**: `PROTECTED_SAFETY_CEILING` prevents unauthorized modification of security-critical subsystems.
+- **AST Fault Localization & Single-Write Gate**: Precision line-level fault localization and binary byte-exact rollback.
+- **Cryptographic Git Merge Gate**: Fail-closed human authorization gate (`PatchBundleAssembler.authorize_git_operation`).
+
+---
+
+## [0.30.0-personal-os] - 2026-08-22
+
+### Added
+- **M26 — Personal Operating System (COMPLETE)**: Proactive daily context synthesis, sub-second workspace search, and persistent OS state.
+- **DailyContextEngine**: Multi-source daily context synthesis from calendar, tasks, recent activities, and environment.
+- **WorkspaceSearchEngine**: Inverted index sub-second fuzzy and prefix searching across project workspaces.
+- **TriggerScheduler**: Autonomous background trigger daemon dispatching cron, interval, and event-based tasks.
+- **PersonalOSStateStore**: SQLite-backed persistent state store for user routines and context.
+
+---
+
 ## [0.29.0-expert-systems] - 2026-08-20
 
 ### Added

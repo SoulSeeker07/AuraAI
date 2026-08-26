@@ -92,3 +92,23 @@ def test_three_turn_regression(monkeypatch):
     engine = DecisionEngine()
     out = engine.evaluate(resolved_text)
     assert out.intent_type.value == "research"
+
+
+def test_screen_vision_intent_and_routing():
+    memory = MockMemory()
+    router = IntentRouter(memory)
+
+    queries = [
+        "whats on my screen",
+        "what's on my screen",
+        "what is on my screen",
+        "describe my screen",
+        "can you see my screen",
+        "look at my screen",
+        "read my screen",
+        "what is open on my screen",
+    ]
+
+    for q in queries:
+        intent = router.detect(q)
+        assert intent.name == "vision", f"Query '{q}' did not detect vision intent, got {intent.name}"

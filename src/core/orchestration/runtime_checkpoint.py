@@ -65,13 +65,21 @@ class RuntimeCheckpoint:
         }
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_DB_PATH = PROJECT_ROOT / "Memory.db"
+
+
 class RuntimeCheckpointManager:
     """
     Manages active session checkpoints and persists state to SQLite.
     """
 
-    def __init__(self, db_path: str | Path = "Memory.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: str | Path | None = None):
+        if db_path is None:
+            self.db_path = DEFAULT_DB_PATH
+        else:
+            p = Path(db_path)
+            self.db_path = p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
         self._active_checkpoints: dict[str, RuntimeCheckpoint] = {}
         self._init_db()
 

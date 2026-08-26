@@ -1,0 +1,102 @@
+﻿=== AURA ROOT INVENTORY (read-only, nothing changed) ===
+Path: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
+Generated: 2026-08-25 15:01:53
+
+--- Likely screenshots (14) ---
+  screenshot_full_1787599190.png  [8.4 KB]  08/25/2026 00:49:50
+  screenshot_full_1787599224.png  [8.4 KB]  08/25/2026 00:50:24
+  screenshot_full_1787599258.png  [8.4 KB]  08/25/2026 00:50:58
+  screenshot_full_1787599362.png  [8.4 KB]  08/25/2026 00:52:42
+  screenshot_full_1787599523.png  [253 KB]  08/25/2026 00:55:23
+  screenshot_full_1787599731.png  [8.4 KB]  08/25/2026 00:58:51
+  screenshot_full_1787599732.png  [8.4 KB]  08/25/2026 00:58:52
+  screenshot_full_1787599812.png  [315.2 KB]  08/25/2026 01:00:13
+  screenshot_full_1787599917.png  [8.4 KB]  08/25/2026 01:01:58
+  screenshot_full_1787599918.png  [8.4 KB]  08/25/2026 01:01:58
+  screenshot_full_1787600150.png  [217.4 KB]  08/25/2026 01:05:50
+  screenshot_full_1787600151.png  [335.1 KB]  08/25/2026 01:05:51
+  screenshot_full_1787600253.png  [8.4 KB]  08/25/2026 01:07:33
+  screenshot_full_1787600371.png  [303.7 KB]  08/25/2026 01:09:31
+
+--- Likely temp/backup files (0) ---
+
+--- Log/text files at root (2) ---
+  out.txt
+  requirements.txt
+
+--- Everything else, grouped by extension ---
+  (no extension) : 1 file(s)
+      LICENSE
+  .bat : 4 file(s)
+      aura.bat
+      run_chat.bat
+      start-groq-claude.bat
+      test_aura.bat
+  .cmd : 1 file(s)
+      aura.cmd
+  .db : 3 file(s)
+      calendar_tasks.db
+      daemon_state.db
+      Memory.db
+  .env : 1 file(s)
+      .env
+  .example : 1 file(s)
+      .env.example
+  .gitignore : 1 file(s)
+      .gitignore
+  .importlinter : 1 file(s)
+      .importlinter
+  .json : 2 file(s)
+      config.json
+      convergence_report.json
+  .md : 16 file(s)
+      AGENTS.md
+      ARCHITECTURE.md
+      AURA.md
+      CHANGELOG.md
+      CODE_OF_CONDUCT.md
+      CONTRIBUTING.md
+      EULA.md
+      PRIVACY_POLICY.md
+      python_release_summary.md
+      README.md
+      RELEASE.md
+      roadmap.md
+      RUNTIME.md
+      SYSTEM_CLASSIFICATION.md
+      TERMS_OF_SERVICE.md
+      THIRD_PARTY_LICENSES.md
+  .ps1 : 1 file(s)
+      start-groq-claude.ps1
+  .py : 23 file(s)
+      aura.py
+      benchmark_stt.py
+      benchmark_tts.py
+      buggy_code.py
+      cli.py
+      main.py
+      measure_shipped_tts.py
+      Memory.py
+      patch.py
+      run_aura.py
+      run_chat_window.py
+      run_hud_overlays.py
+      run_jarvis_hud.py
+      run_personal_os_hud.py
+      run_proxy.py
+      run_status_hud.py
+      run_task_status_hud.py
+      scratch_com_stress.py
+      scratch_sandbox_smoke.py
+      setup.py
+      test_aura_fixed.py
+      test_edge_cases.py
+      test_whisper.py
+  .python-version : 1 file(s)
+      .python-version
+  .toml : 1 file(s)
+      pyproject.toml
+  .wav : 1 file(s)
+      test_speech.wav
+  .yaml : 1 file(s)
+      litellm_groq_config.yaml

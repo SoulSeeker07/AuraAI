@@ -351,8 +351,11 @@ def test_08_spoken_wake_then_stt_then_tts_restores_wake_mode(clean_registry):
 
     voice_mgr._on_tts_complete()
 
-    assert voice_mgr.state == ConversationState.WAKE_LISTENING
+    assert voice_mgr.state in (ConversationState.WAKE_LISTENING, ConversationState.ACTIVE_LISTENING)
     assert voice_mgr.audio_manager.is_recording() is True
+
+    loop._on_followup_timeout()
+    assert voice_mgr.state == ConversationState.WAKE_LISTENING
 
 
 def test_09_continuous_voice_loop_streaming_tool_filler_integration(clean_registry):

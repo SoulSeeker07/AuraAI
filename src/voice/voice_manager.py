@@ -305,10 +305,9 @@ class VoiceManager:
         """
         with self._lock:
             try:
-                # Process wake word detection during WAKE_LISTENING, SPEAKING, THINKING, or EXECUTING (barge-in / thinking interruption)
+                # Process wake word detection during WAKE_LISTENING, THINKING, or EXECUTING
                 if self.state in (
                     ConversationState.WAKE_LISTENING,
-                    ConversationState.SPEAKING,
                     ConversationState.THINKING,
                     ConversationState.EXECUTING,
                 ):
@@ -485,9 +484,9 @@ class VoiceManager:
             if self.session:
                 self.session.update_state(ConversationState.SPEAKING)
 
-            # Ensure mic recording is active during speech so user saying 'Aura' interrupts immediately
-            if not self.audio_manager.is_recording:
-                self.audio_manager.start_recording(self.process_audio)
+            # Stop microphone recording during active speech to avoid acoustic feedback and false wake triggers
+            if self.audio_manager and hasattr(self.audio_manager, "is_recording") and self.audio_manager.is_recording():
+                self.audio_manager.stop_recording()
 
             logger.info(f"[TTS] Piper playback: PASS ({text})")
 

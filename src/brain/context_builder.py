@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import re
 from typing import Any, cast
 
 from ai.models import ChatMessage, MessageRole
@@ -68,6 +69,18 @@ class ContextBuilder:
             messages.append(
                 ChatMessage("system", self._format_web_results(web_results))
             )
+
+        # Check for relevant RAG document context only when query warrants it
+        if self._should_query_rag(user_input):
+            try:
+                from knowledge.rag_service import RAGService
+                rag_context = RAGService.get_instance().get_relevant_context(user_input)
+                if rag_context:
+                    messages.append(
+                        ChatMessage("system", f"Retrieved Document Knowledge:\n{rag_context}")
+                    )
+            except Exception:
+                pass
             
         if getattr(self, "memory_manager", None):
             mgr_msgs = self.memory_manager.get_context_messages(user_input)
@@ -203,15 +216,23 @@ class ContextBuilder:
 
     def _system_messages(self) -> list[ChatMessage]:
         now = dt.datetime.now().strftime("%A, %B %d, %Y at %H:%M:%S")
+        user_name = self.username
+        if self.memory:
+            stored_name = self.memory.fact_value("profile", "name") or self.memory.fact_value("person", "name")
+            if stored_name:
+                user_name = stored_name
         return [
             ChatMessage(
                 "system",
                 (
-                    f"You are {self.assistant_name}, the AI brain for AuraAI. "
-                    f"Be concise, helpful, and respectful. The user's name is {self.username}."
+                    f"You are {self.assistant_name}, the proactive personal AI companion for {user_name}.\n"
+                    "### Core Behavioral Guidelines:\n"
+                    "1. **Concise & Direct Responses**: Give straightforward, helpful, and natural answers without conversational filler, boilerplate, or robotic commentary.\n"
+                    "2. **Speech & Translation Directness**: When asked to translate, speak, or say a phrase in any language (such as Hindi, Kannada, etc.), output ONLY the direct, natural translation/phrase in that language. Do NOT add pronunciation guides, phonetic brackets, or meta-explanations (like 'feed this into a TTS engine') unless explicitly asked.\n"
+                    "3. **Localization & Regional E-Commerce (India / INR / Amazon.in)**: The user is located in India. Always default to Indian market prices in Indian Rupees (INR / ₹) and Indian regional platforms (e.g. Amazon.in, Flipkart) for product, pricing, and shopping queries unless the user specifically specifies another country or currency (such as US, UK, or dollars).\n"
                 ),
             ),
-            ChatMessage("system", f"Current local time: {now}."),
+            ChatMessage("system", f"Current local time: {now} (IST, India)."),
         ]
 
     def _recent_messages(self, limit: int) -> list[ChatMessage]:
@@ -220,6 +241,40 @@ class ContextBuilder:
             role = cast(MessageRole, str(item["role"]))
             messages.append(ChatMessage(role, str(item["content"])))
         return messages
+
+    def _should_query_rag(self, user_input: str) -> bool:
+        """Determine if a user query requires RAG vector document search."""
+        clean = user_input.lower().strip(" ?!.`'\"~@#$%^&*()_+-=[]{}|;:,<>/\t\r\n")
+        if not clean:
+            return False
+
+        # Fast skip for short greetings, salutations, or simple system phrases
+        if clean in {
+            "hi", "hello", "hey", "hey aura", "hi aura", "hello aura",
+            "good morning", "good evening", "good afternoon", "good night",
+            "how are you", "what's up", "whats up", "sup", "thanks", "thank you",
+            "bye", "goodbye", "ok", "okay", "yes", "no", "cool", "great",
+            "help", "status", "say hello", "say hi", "ping", "test"
+        }:
+            return False
+
+        if len(clean.split()) <= 2 and not any(w in clean for w in ("doc", "file", "pdf", "cv", "resume")):
+            return False
+
+        doc_keywords = {
+            "resume", "cv", "pdf", "docx", "document", "file", "files", "notes",
+            "project", "skills", "experience", "education", "report",
+            "docs", "documentation", "portfolio", "certifications", "paper",
+            "spec", "guide", "summary", "contract", "invoice", "receipt"
+        }
+        tokens = set(re.findall(r"\w+", clean))
+        if tokens & doc_keywords:
+            return True
+
+        if len(clean.split()) >= 4 and any(clean.startswith(w) for w in ("what", "who", "where", "how", "tell me", "summarize", "find", "search")):
+            return True
+
+        return False
 
 
 class Context:

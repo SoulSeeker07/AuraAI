@@ -193,29 +193,28 @@ class VectorStore:
             combined[chunk_id] = {
                 "chunk": chunk,
                 "semantic_score": score,
-                "keyword_scores": {},
+                "keyword_score": 0.0,
             }
 
         for chunk, score in keyword_results:
             chunk_id = chunk.id
             if chunk_id in combined:
-                combined[chunk_id]["keyword_scores"][chunk] = score
+                combined[chunk_id]["keyword_score"] = score
+            else:
+                combined[chunk_id] = {
+                    "chunk": chunk,
+                    "semantic_score": 0.0,
+                    "keyword_score": score,
+                }
 
         # Combine scores
         final_results = []
         for chunk_id, data in combined.items():
             semantic_score = data["semantic_score"]
-            keyword_scores = data["keyword_scores"]
-
-            # Weighted combination
-            if keyword_scores:
-                max_keyword = max(keyword_scores.values())
-                combined_score = (
-                    semantic_score * (1 - keyword_weight) + max_keyword * keyword_weight
-                )
-            else:
-                combined_score = semantic_score
-
+            keyword_score = data["keyword_score"]
+            combined_score = (
+                semantic_score * (1 - keyword_weight) + keyword_score * keyword_weight
+            )
             final_results.append((data["chunk"], combined_score))
 
         # Sort and return top_k

@@ -48,13 +48,16 @@ graph TD
   end
 
   subgraph SUBSYSTEMS_LAYER ["🎯 4. DOMAIN ENGINE ADAPTERS & SUBSYSTEMS"]
-    REGISTRY["🏥 EngineRegistry (Health & Capabilities)"]
-    DESKTOP_ENG["🖥️ DesktopEngineAdapter → Windows OS"]
+    REGISTRY["🏥 Backend & Capability Registry"]
+    DESKTOP_ENG["🖥️ DesktopEngineAdapter → 17 Win32 Managers"]
+    CODEACT_ENG["⚡ CodeAct Executor → Python Sandbox"]
+    SMARTHOME_ENG["🏠 SmartHome Adapter → HA & Tapo KLAP"]
     BROWSER_ENG["🌐 BrowserEngineAdapter → Playwright"]
     RESEARCH_ENG["🔬 ResearchEngineAdapter → Deep Search"]
     ENGINEERING_ENG["🛠️ EngineeringManager → AST & Refactor"]
     VISION_ENG["👁️ VisionManager → OCR & Element Detect"]
     VOICE_ENG["🔊 VoiceManager → STT / TTS"]
+    HUD_LAYER["📊 Desktop HUD Overlays → PySide6 Translucent"]
   end
 
   subgraph MEMORY_LAYER ["📚 5. KNOWLEDGE & PERSISTENCE"]

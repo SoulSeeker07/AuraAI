@@ -100,44 +100,39 @@ class VisionManager:
             self.screenshot_settings.selected_region = kwargs.get("selected_region")
             self.screenshot_settings.monitor_index = kwargs.get("monitor_index", 0)
 
-        # Capture screenshot
-        screenshot_path = self.screenshot_manager.capture_from_settings()
-        self.last_image_path = screenshot_path
+        with self.screenshot_manager.capture_scoped(capture_type=capture_type, **kwargs) as screenshot_path:
+            self.last_image_path = screenshot_path
 
-        # Load image
-        try:
+            # Load image
             img, image_type = self.image_loader.load_image(screenshot_path)
             self.last_image_type = image_type
-        except Exception as e:
-            logger.error(f"Failed to load image: {e}")
-            raise
 
-        # Create vision context
-        context = self.coordinator.create_context(
-            image_path=screenshot_path,
-            image_type=image_type,
-            image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
-            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
-        )
+            # Create vision context
+            context = self.coordinator.create_context(
+                image_path=screenshot_path,
+                image_type=image_type,
+                image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
+                image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
+            )
 
-        # Preprocess image
-        try:
-            img, dims = self.image_preprocessor.preprocess_image(screenshot_path)
-            context.metadata["preprocessing"] = {
-                "original_dims": (img.shape[1], img.shape[0]),
-                "processed_dims": dims,
-                "deskewed": True,
-                "rotated": True,
-            }
-        except Exception as e:
-            logger.warning(f"Preprocessing failed: {e}")
+            # Preprocess image
+            try:
+                img, dims = self.image_preprocessor.preprocess_image(screenshot_path)
+                context.metadata["preprocessing"] = {
+                    "original_dims": (img.shape[1], img.shape[0]),
+                    "processed_dims": dims,
+                    "deskewed": True,
+                    "rotated": True,
+                }
+            except Exception as e:
+                logger.warning(f"Preprocessing failed: {e}")
 
-        # Run analysis pipeline
-        self._run_analysis_pipeline(context, img, screenshot_path)
+            # Run analysis pipeline
+            self._run_analysis_pipeline(context, img, screenshot_path)
 
-        # Finalize and return
-        context = self.coordinator.finalize_context(context)
-        return context
+            # Finalize and return
+            context = self.coordinator.finalize_context(context)
+            return context
 
     def capture_active_window_and_analyze(
         self, window_title: str = None
@@ -153,32 +148,23 @@ class VisionManager:
         """
         logger.info("Capturing and analyzing active window")
 
-        try:
-            if window_title:
-                screenshot_path = self.screenshot_manager.capture_window_by_title(
-                    window_title
-                )
-            else:
-                screenshot_path = self.screenshot_manager.capture_active_window()
-        except Exception as e:
-            logger.error(f"Failed to capture window: {e}")
-            raise
+        cap_type = "window_by_title" if window_title else "active_window"
+        with self.screenshot_manager.capture_scoped(capture_type=cap_type, window_title=window_title) as screenshot_path:
+            self.last_image_path = screenshot_path
 
-        self.last_image_path = screenshot_path
+            # Load and preprocess
+            img, image_type = self.image_loader.load_image(screenshot_path)
+            context = self.coordinator.create_context(
+                image_path=screenshot_path,
+                image_type=image_type,
+                image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
+                image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
+            )
 
-        # Load and preprocess
-        img, image_type = self.image_loader.load_image(screenshot_path)
-        context = self.coordinator.create_context(
-            image_path=screenshot_path,
-            image_type=image_type,
-            image_width=img.shape[1] if len(img.shape) == 3 else img.shape[0],
-            image_height=img.shape[0] if len(img.shape) == 3 else img.shape[1],
-        )
+            # Run analysis pipeline
+            self._run_analysis_pipeline(context, img, screenshot_path)
 
-        # Run analysis pipeline
-        self._run_analysis_pipeline(context, img, screenshot_path)
-
-        return self.coordinator.finalize_context(context)
+            return self.coordinator.finalize_context(context)
 
     def analyze_image(
         self, image_path: str, image_type: ImageType = None

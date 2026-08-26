@@ -64,18 +64,25 @@ class CommandWorker(QThread):
             )
             self.step_signal.emit(step2)
 
-            if self.aura_core and hasattr(
+            if self.aura_core is None:
+                try:
+                    from core.aura_core import AuraCore
+                    self.aura_core = AuraCore.get_instance()
+                except Exception as e:
+                    logger.error(f"CommandWorker failed to load AuraCore: {e}")
+
+            if self.aura_core and hasattr(self.aura_core, "process_request"):
+                response_text = loop.run_until_complete(
+                    self.aura_core.process_request(self.command)
+                )
+            elif self.aura_core and hasattr(
                 self.aura_core, "process_via_executive_brain"
             ):
                 response_text = loop.run_until_complete(
                     self.aura_core.process_via_executive_brain(self.command)
                 )
-            elif self.aura_core and hasattr(self.aura_core, "process_request"):
-                response_text = loop.run_until_complete(
-                    self.aura_core.process_request(self.command)
-                )
             else:
-                response_text = f"Processed: {self.command}"
+                response_text = f"Aura Core received: {self.command}"
 
             loop.close()
 
@@ -97,6 +104,12 @@ class AuraGUI:
         self.app.setStyle("Fusion")
 
         self.aura_core = aura_core
+        if self.aura_core is None:
+            try:
+                from core.aura_core import AuraCore
+                self.aura_core = AuraCore.get_instance()
+            except Exception as e:
+                logger.error(f"Failed to load AuraCore singleton: {e}")
         self.main_window = MainWindow()
         self.overlay = OverlayWindow()
 
@@ -106,6 +119,22 @@ class AuraGUI:
         # Connect user message signal to core runner
         app_signals.message_received.connect(self._on_message_received)
         app_signals.toggle_overlay.connect(self.overlay.toggle)
+        self.app.aboutToQuit.connect(self._cleanup)
+
+        # Global Hotkeys (Alt+Space anywhere, Ctrl+Q in terminal)
+        try:
+            from tools.hotkey_service import GlobalHotkeyService
+            self._hotkeys = GlobalHotkeyService.get_instance(on_toggle_chat=self.main_window.toggle_chat_overlay)
+            self._hotkeys.start()
+        except Exception as e:
+            logger.warning(f"GlobalHotkeyService startup notice: {e}")
+
+    def _cleanup(self):
+        if hasattr(self, "_hotkeys") and self._hotkeys:
+            self._hotkeys.stop()
+        if self._active_worker and self._active_worker.isRunning():
+            self._active_worker.quit()
+            self._active_worker.wait(1000)
 
     def _on_message_received(self, sender: str, content: str, is_user: bool):
         if is_user and not self._is_executing:
@@ -126,7 +155,11 @@ class AuraGUI:
             except Exception as e:
                 logger.error(f"Failed to load AuraCore: {e}")
 
-        self._active_worker = CommandWorker(self.aura_core, text)
+        # Clean up old worker if finished
+        if self._active_worker and not self._active_worker.isRunning():
+            self._active_worker = None
+
+        self._active_worker = CommandWorker(self.aura_core, text, parent=self.main_window)
         self._active_worker.step_signal.connect(
             lambda step: app_signals.step_updated.emit(step)
         )

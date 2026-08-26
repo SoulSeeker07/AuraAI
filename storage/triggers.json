@@ -1,33 +1,78 @@
 {
-  "trig_core_autonomy_test": {
-    "trigger_id": "trig_core_autonomy_test",
+  "trig_standup": {
+    "trigger_id": "trig_standup",
     "trigger_type": "SCHEDULED",
-    "action_goal": "Open Calculator",
-    "execution_map": {
-      "steps": [
-        {
-          "engine": "desktop",
-          "action": "app_open",
-          "parameters": {
-            "application": "Calculator"
-          }
-        }
-      ]
-    },
+    "action_goal": "Compile yesterday accomplishments and present agenda for standup",
+    "execution_map": {},
+    "cron_schedule": "0 9 * * 1-5",
+    "interval_seconds": null,
+    "event_pattern": null,
+    "condition_fn": null,
+    "state": "ARMED",
+    "enabled": true,
+    "dedup_key": "trig_standup",
+    "concurrency_policy": "COALESCE",
+    "last_fired_at": null,
+    "last_provenance": null,
+    "auth_signature": null,
+    "is_recurring_authorized": false,
+    "created_at": "2026-08-25T15:52:14.268608"
+  },
+  "trig_focus": {
+    "trigger_id": "trig_focus",
+    "trigger_type": "SCHEDULED",
+    "action_goal": "Silence non-critical notifications and optimize system resources",
+    "execution_map": {},
     "cron_schedule": null,
     "interval_seconds": null,
     "event_pattern": null,
     "condition_fn": null,
-    "state": "VERIFIED",
+    "state": "ARMED",
     "enabled": true,
-    "dedup_key": null,
+    "dedup_key": "trig_focus",
     "concurrency_policy": "COALESCE",
-    "last_fired_at": "2026-08-20T18:49:16.430747",
-    "last_provenance": {
-      "trigger_id": "trig_core_autonomy_test",
-      "event_id": "evt_cc088e8b",
-      "dedup_key": "trig_core_autonomy_test",
-      "trigger_type": "SCHEDULED",
-      "created_at": "2026-08-20T18:49:16.430747",
-      "fired_at": "2026-08-20T18:49:16.430747",
-      "execution_id": 
+    "last_fired_at": null,
+    "last_provenance": null,
+    "auth_signature": null,
+    "is_recurring_authorized": false,
+    "created_at": "2026-08-25T15:52:14.268608"
+  },
+  "trig_downloads": {
+    "trigger_id": "trig_downloads",
+    "trigger_type": "SCHEDULED",
+    "action_goal": "Categorize PDFs, installers, and images in ~/Downloads weekly",
+    "execution_map": {},
+    "cron_schedule": "0 18 * * 5",
+    "interval_seconds": null,
+    "event_pattern": null,
+    "condition_fn": null,
+    "state": "ARMED",
+    "enabled": true,
+    "dedup_key": "trig_downloads",
+    "concurrency_policy": "COALESCE",
+    "last_fired_at": null,
+    "last_provenance": null,
+    "auth_signature": null,
+    "is_recurring_authorized": false,
+    "created_at": "2026-08-25T15:52:14.268608"
+  },
+  "trig_research": {
+    "trigger_id": "trig_research",
+    "trigger_type": "SCHEDULED",
+    "action_goal": "Asynchronously gather multi-source evidence and compile briefing",
+    "execution_map": {},
+    "cron_schedule": null,
+    "interval_seconds": null,
+    "event_pattern": null,
+    "condition_fn": null,
+    "state": "ARMED",
+    "enabled": true,
+    "dedup_key": "trig_research",
+    "concurrency_policy": "COALESCE",
+    "last_fired_at": null,
+    "last_provenance": null,
+    "auth_signature": null,
+    "is_recurring_authorized": false,
+    "created_at": "2026-08-25T15:52:14.268608"
+  }
+}

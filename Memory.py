@@ -402,7 +402,8 @@ class Memory:
         # 3. Extract projects
         for pattern in (
             r"\b(?:i am|i'm)\s+(?:building|working on|creating)\s+(.+)",
-            r"\bmy projects? (?:are|include)\s+(.+)",
+            r"\bmy projects? (?:are|include|is|at|path is|dir is|directory is|:)\s+(.+)",
+            r"\bmy current project (?:is|at|path is|:)?\s*(.+)",
         ):
             match = re.search(pattern, lower)
             if match:
@@ -622,8 +623,14 @@ class Memory:
         words = text.split()
         if not 1 <= len(words) <= 3:
             return False
-        blocked = {"hello", "hi", "hey", "thanks", "ok", "okay", "yes", "no"}
-        if text.lower() in blocked:
+        blocked = {
+            "hello", "hi", "hey", "thanks", "ok", "okay", "yes", "no",
+            "explain", "describe", "show", "tell", "what", "why", "how",
+            "who", "when", "where", "search", "find", "open", "close",
+            "start", "stop", "help", "play", "pause", "resume", "listen",
+            "check", "test", "run", "make", "create", "build", "write"
+        }
+        if text.lower() in blocked or words[0].lower() in blocked:
             return False
         return all(re.fullmatch(r"[A-Z][A-Za-z'.-]{1,30}", word) for word in words)
 

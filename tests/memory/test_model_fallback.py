@@ -60,8 +60,8 @@ def test_all_models_fail_returns_empty_list():
     # Must NOT raise
     result = ltm.extract_candidates("user: Hello\nassistant: Hi.")
     assert result == []
-    # All three models attempted
-    assert ltm.provider_manager.chat.call_count == 3
+    # All models in MEMORY_EXTRACTION_MODELS attempted (currently 2: primary + fallback 1)
+    assert ltm.provider_manager.chat.call_count == 2
 
 
 def test_unparseable_json_triggers_next_model():

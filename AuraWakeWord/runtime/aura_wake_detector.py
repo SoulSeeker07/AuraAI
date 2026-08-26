@@ -171,11 +171,19 @@ class AuraWakeDetector(WakeWordEngine):
                     self.on_error(f"AuraWakeDetector reached {self.consecutive_failures} consecutive failures: {e}")
             return False
 
+    def reset(self) -> None:
+        """Reset internal rolling audio buffers and hit tracking."""
+        self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
+        self.consecutive_hits = 0
+        self.cooldown_frames = 0
+        self.last_probability = 0.0
+
     def is_active(self) -> bool:
         return self.enabled
 
     def deactivate(self) -> None:
         self.enabled = False
+        self.reset()
         logger.debug("Aura wake word deactivated")
 
     def get_status(self) -> dict:

@@ -53,11 +53,20 @@ class AuraDoctor:
         return False, "Missing architecture or capability manifests in config/"
 
     def check_groq_api(self) -> tuple[bool, str]:
-        """Check Groq API configuration."""
+        """Check Groq API configuration and pool size."""
+        try:
+            from ai.key_pool import KeyPool
+            pool = KeyPool.get_instance()
+            count = pool.count("groq")
+            if count > 0:
+                return True, f"Configured ({count} API key(s) in rotation pool)"
+        except Exception:
+            pass
+
         key = os.environ.get("GROQ_API_KEY")
         if key:
             return True, "Configured"
-        return False, "GROQ_API_KEY not set in environment"
+        return False, "GROQ_API_KEY / GROQ_API_KEYS not set in environment"
 
     def check_gemini_api(self) -> tuple[bool, str]:
         """Check Gemini API configuration."""

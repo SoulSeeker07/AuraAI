@@ -51,8 +51,10 @@ print(f"Factorial of 5 is {result}")
     print()
 
     # Save and test the fixed code
-    print("💾 Saving fixed code to test_aura_fixed.py")
-    with open("test_aura_fixed.py", "w", encoding="utf-8") as f:
+    fixed_file = PROJECT_ROOT / "dev" / "scratch" / "test_aura_fixed.py"
+    fixed_file.parent.mkdir(parents=True, exist_ok=True)
+    print(f"💾 Saving fixed code to {fixed_file}")
+    with open(fixed_file, "w", encoding="utf-8") as f:
         f.write(fixed_response)
 
     print("🚀 Running fixed code...")
@@ -62,7 +64,7 @@ print(f"Factorial of 5 is {result}")
     result = subprocess.run(
         [
             sys.executable,
-            "test_aura_fixed.py",
+            str(fixed_file),
         ],
         capture_output=True,
         text=True,

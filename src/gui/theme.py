@@ -15,51 +15,59 @@ from PySide6.QtWidgets import QWidget
 
 
 class Colors:
-    """Centralized color definitions."""
+    """Centralized color definitions for AuraAI Cyber-HUD."""
 
     # Backgrounds
-    BG_DEEP = "#0B0F17"
-    BG_SLATE = "#0F172A"
-    BG_CARD = "#1E293B"
-    BG_CARD_HOVER = "#334155"
-    BG_INPUT = "#1E293B"
-    BG_TOOLBAR = "#0F172A"
-    BG_OVERLAY = "rgba(11, 15, 23, 0.85)"
-    BG_SIDEBAR = "#0F172A"
+    BG_DEEP = "#0d1117"
+    BG_SLATE = "#121722"
+    BG_SURFACE = "#161c28"
+    BG_CARD = "rgba(22, 28, 40, 0.85)"
+    BG_CARD_HOVER = "rgba(32, 42, 60, 0.95)"
+    BG_INPUT = "rgba(18, 23, 34, 0.9)"
+    BG_TOOLBAR = "#0e131d"
+    BG_OVERLAY = "rgba(16, 20, 28, 0.92)"
+    BG_SIDEBAR = "#0c1017"
 
-    # Accents
-    CYAN = "#06B6D4"
-    CYAN_GLOW = "#22D3EE"
-    PURPLE = "#6366F1"
-    PURPLE_GLOW = "#818CF8"
+    # Accents (Cyber Neon)
+    CYAN = "#00e5ff"
+    CYAN_GLOW = "#33eeff"
+    CYAN_DIM = "rgba(0, 229, 255, 0.15)"
+    BLUE = "#50aaff"
+    BLUE_GLOW = "#80c4ff"
+    PURPLE = "#818cf8"
+    PURPLE_GLOW = "#a5b4fc"
+    EMERALD = "#10b981"
+    AMBER = "#fbbf24"
+    CRIMSON = "#f43f5e"
 
-    # Gradients (for borders / glows)
+    # Gradients
     BORDER_GRADIENT = (
-        "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #06B6D4, stop:1 #6366F1)"
+        "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00e5ff, stop:1 #818cf8)"
     )
     GLOW_GRADIENT = (
-        "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #22D3EE, stop:1 #818CF8)"
+        "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #33eeff, stop:1 #a5b4fc)"
     )
 
     # Status
-    SUCCESS = "#10B981"
-    WARNING = "#F59E0B"
-    ERROR = "#F43F5E"
-    INFO = "#3B82F6"
+    SUCCESS = "#10b981"
+    WARNING = "#fbbf24"
+    ERROR = "#f43f5e"
+    INFO = "#50aaff"
 
     # Text
-    TEXT_PRIMARY = "#F8FAFC"
-    TEXT_SECONDARY = "#94A3B8"
-    TEXT_MUTED = "#64748B"
-    TEXT_DISABLED = "#475569"
+    TEXT_PRIMARY = "#f3f6fc"
+    TEXT_SECONDARY = "#a5b4cb"
+    TEXT_MUTED = "#627289"
+    TEXT_DISABLED = "#3e4c60"
 
     # Borders
-    BORDER_SUBTLE = "#1E293B"
-    BORDER_ACTIVE = "#334155"
+    BORDER_SUBTLE = "rgba(255, 255, 255, 0.08)"
+    BORDER_ACTIVE = "rgba(0, 229, 255, 0.4)"
+    BORDER_ACCENT = "rgba(0, 229, 255, 0.85)"
 
     # Overlay-specific
-    OVERLAY_BG = "rgba(15, 23, 42, 0.88)"
-    OVERLAY_BORDER = "rgba(34, 211, 238, 0.25)"
+    OVERLAY_BG = "rgba(16, 20, 28, 0.92)"
+    OVERLAY_BORDER = "rgba(0, 229, 255, 0.45)"
 
 
 # =============================================================================

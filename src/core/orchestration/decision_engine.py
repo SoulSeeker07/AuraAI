@@ -375,7 +375,6 @@ class DecisionEngine:
                 "excel",
                 "xlsx",
                 "slides",
-                "leave letter",
                 "status report",
                 "convert",
                 # Explicit capability & security dispatch

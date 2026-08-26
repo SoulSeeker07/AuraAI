@@ -363,11 +363,32 @@ class ExecutionPolicy:
                     proc_name = ""
                     proc_base = ""
 
+                # Special folder matching: ONLY match Explorer windows (CabinetWClass or explorer.exe)
+                special_folders = ("documents", "document", "downloads", "download", "pictures", "photos", "desktop", "music", "videos")
+                if app_lower in special_folders:
+                    if "explorer" not in proc_name and "explorer" not in proc_base:
+                        return True
+                    if app_lower not in title:
+                        return True
+                    matches.append(hwnd)
+                    return True
+
+                # Terminal / Shell protection: do NOT match shells for generic app searches
+                shell_procs = ("cmd.exe", "powershell.exe", "windowsterminal.exe", "conhost.exe", "bash.exe")
+                is_shell_proc = any(proc_name.endswith(sp) or proc_name == sp or proc_base in ("cmd", "powershell", "windowsterminal", "conhost", "bash") for sp in shell_procs)
+                wants_shell = any(kw in app_lower for kw in ("cmd", "command prompt", "powershell", "terminal", "console", "bash"))
+                if is_shell_proc and not wants_shell:
+                    return True
+
+                # VS Code / IDE protection: do NOT match VS Code for generic queries unless requested
+                if "code.exe" in proc_name and not any(kw in app_lower for kw in ("code", "vscode", "visual studio")):
+                    return True
+
                 # Target matching logic: either title matches app_name or process matches AND window has non-empty title
                 name_match = (
                     app_lower in proc_base
                     or app_lower in proc_name
-                    or app_lower in title
+                    or (len(app_lower) >= 3 and app_lower in title)
                 )
                 if name_match:
                     # Require non-empty title to prevent headless/helper HWND duplication

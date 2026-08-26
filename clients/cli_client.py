@@ -8,7 +8,7 @@ Provides commands for all Aura Core functionality.
 import re
 
 from core import logger
-from core.agents.coding_agent.autonomous_coding_agent import AutonomousCodingAgent
+from agents.autonomous_coding_agent import AutonomousCodingAgent
 from core.aura_core import AuraCore, AuraCoreStatus
 
 # Import component status types

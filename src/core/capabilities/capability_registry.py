@@ -63,6 +63,7 @@ class CapabilityRegistry:
         """Register core domain capability providers."""
         from .providers.daemon_provider import DaemonCapabilityProvider
         from .providers.personal_os_provider import PersonalOSCapabilityProvider
+        from .providers.smarthome_provider import SmartHomeCapabilityProvider
         self.register_provider(DesktopCapabilityProvider())
         self.register_provider(CodingCapabilityProvider())
         self.register_provider(BrowserCapabilityProvider())
@@ -71,6 +72,7 @@ class CapabilityRegistry:
         self.register_provider(MultimodalCapabilityProvider())
         self.register_provider(DaemonCapabilityProvider())
         self.register_provider(PersonalOSCapabilityProvider())
+        self.register_provider(SmartHomeCapabilityProvider())
 
     def register_provider(self, provider: ICapabilityProvider) -> None:
         """Register a domain capability provider."""

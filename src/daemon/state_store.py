@@ -15,6 +15,7 @@ import sqlite3
 import threading
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from .models import (
@@ -29,11 +30,19 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DB_PATH = str(PROJECT_ROOT / "daemon_state.db")
+
+
 class DaemonStateStore:
     """Thread-safe SQLite persistent store for daemon jobs and execution records."""
 
-    def __init__(self, db_path: str = "daemon_state.db") -> None:
-        self.db_path = os.path.abspath(db_path)
+    def __init__(self, db_path: str | Path | None = None) -> None:
+        if db_path is None:
+            self.db_path = DEFAULT_DB_PATH
+        else:
+            p = Path(db_path)
+            self.db_path = str(p if p.is_absolute() else (PROJECT_ROOT / p).resolve())
         self._lock = threading.Lock()
         self._init_db()
 

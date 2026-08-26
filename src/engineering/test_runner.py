@@ -260,10 +260,106 @@ class PytestRunnerAdapter(TestRunnerAdapter):
         )
 
 
+class SandboxedPytestRunnerAdapter(PytestRunnerAdapter):
+    """
+    Executes Pytest runs under OS-enforced sandbox containment:
+    - Runs under AuraSandboxUser via RestrictedUserSandbox using CreateProcessWithLogonW.
+    - Bound to Win32 Job Object with process limits and kill-on-close.
+    - Redirects cache and temporary files to .aura_staging/ (granted Modify to AuraSandboxUser).
+    - Scrubbed minimal environment free of host credentials / API keys.
+    - Strict fail-closed security invariant: raises RuntimeError if sandbox is unavailable.
+    """
+
+    def __init__(
+        self,
+        repo_root: str | Path | None = None,
+        python_executable: str | None = None,
+        staging_dir: str | Path | None = None,
+        sandbox: Any | None = None,
+    ):
+        super().__init__(repo_root=repo_root, python_executable=python_executable)
+        self.staging_dir = Path(staging_dir or (self.repo_root / ".aura_staging")).resolve()
+        self.pytest_cache_dir = self.staging_dir / "pytest_cache"
+        self.pytest_tmp_dir = self.staging_dir / "tmp"
+        self._sandbox = sandbox
+
+    def _get_sandbox(self) -> Any:
+        if self._sandbox is not None:
+            if hasattr(self._sandbox, "is_available") and not self._sandbox.is_available():
+                raise RuntimeError(
+                    "Fail-Closed Security Invariant: RestrictedUserSandbox is unavailable (AuraSandboxUser unconfigured or missing)."
+                )
+            return self._sandbox
+        if os.name == "nt":
+            from src.desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
+            sandbox = RestrictedUserSandbox(workspace_root=str(self.repo_root))
+            if not sandbox.is_available():
+                raise RuntimeError(
+                    "Fail-Closed Security Invariant: RestrictedUserSandbox is unavailable (AuraSandboxUser unconfigured or missing)."
+                )
+            self._sandbox = sandbox
+            return self._sandbox
+        else:
+            raise RuntimeError(
+                "Fail-Closed Security Invariant: SandboxedPytestRunnerAdapter requires a Windows host with Win32 Job Object & RestrictedUserSandbox."
+            )
+
+    def _ensure_staging_permissions(self) -> None:
+        self.pytest_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.pytest_tmp_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            from src.desktop.native.sandbox.account_provisioner import grant_staging_access
+            grant_staging_access(self.staging_dir)
+        except Exception:
+            pass
+
+    def run_tests(
+
+        self,
+        test_path: str | Path | None = None,
+        filter_expr: str | None = None,
+        timeout_seconds: int = 120,
+    ) -> TestRunResult:
+        """Execute pytest inside the sandbox and capture structured results."""
+        self._ensure_staging_permissions()
+        sandbox = self._get_sandbox()
+
+        # Use relative paths for staging cache and temp to keep PowerShell encoded command under 1024 chars
+        cmd_parts = [
+            f'& "{self.python_exe}"',
+            "-m",
+            "pytest",
+            "-v",
+            "--tb=short",
+            "-o",
+            "cache_dir=.aura_staging/pytest_cache",
+            "--basetemp=.aura_staging/tmp",
+        ]
+        if test_path:
+            cmd_parts.append(f'"{test_path}"')
+        if filter_expr:
+            cmd_parts.extend(["-k", f'"{filter_expr}"'])
+
+        command_str = " ".join(cmd_parts)
+
+        exit_code, stdout, stderr = sandbox.execute(
+            command=command_str,
+            cwd=str(self.repo_root),
+            timeout=float(timeout_seconds),
+        )
+        raw_out = f"{stdout}\n{stderr}".strip()
+        return self._build_run_result(exit_code == 0, raw_out)
+
+
+
+
+
 __all__ = [
     "StackFrame",
     "TestFailureFrame",
     "TestRunResult",
     "TestRunnerAdapter",
     "PytestRunnerAdapter",
+    "SandboxedPytestRunnerAdapter",
 ]
+

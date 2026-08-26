@@ -66,3 +66,23 @@ class Settings:
                 "live_screen_interval_ms", DEFAULT_SETTINGS["live_screen_interval_ms"]
             )
         )
+
+    @property
+    def ha_url(self) -> str:
+        return os.getenv("HASS_URL", os.getenv("HA_URL", str(self.get("ha_url", "http://127.0.0.1:8123"))))
+
+    @property
+    def ha_token(self) -> str:
+        return os.getenv("HASS_TOKEN", os.getenv("HA_TOKEN", ""))
+
+    @property
+    def tapo_username(self) -> str:
+        return os.getenv("TAPO_USERNAME", str(self.get("tapo_username", "")))
+
+    @property
+    def tapo_password(self) -> str:
+        return os.getenv("TAPO_PASSWORD", str(self.get("tapo_password", "")))
+
+    @property
+    def tapo_bulb_ip(self) -> str:
+        return os.getenv("TAPO_BULB_IP", str(self.get("tapo_bulb_ip", "")))

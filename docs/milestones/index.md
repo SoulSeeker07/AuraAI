@@ -80,6 +80,12 @@ This directory contains permanent design documents for each milestone in the Aur
 ### Milestone 27 — Autonomous Engineering Platform
 [milestone27.md](milestone27.md) — Closed-loop repair, AST fault localization, protected safety ceiling, byte-exact rollback, human cryptographic merge gate
 
+### Milestone 28 — Dynamic CodeAct Runtime, HUD Overlays & Integrated Aura OS
+[milestone28.md](milestone28.md) — Dynamic CodeAct sandbox execution, PySide6 desktop HUD overlays, RAG knowledge service, sandboxed test runner
+
+### Milestone 29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction
+[milestone29.md](milestone29.md) — Home Assistant WebSocket & REST client, local Tapo/Kasa KLAP AES-CBC-128 crypto, SmartHome capability domain, Jarvis rings & floating chat overlays
+
 ---
 
 ## Quick Links
@@ -103,10 +109,11 @@ Phase 4 — Autonomy & Daemon (M23)       ████████████�
 Phase 5 — Domain Expertise & Autonomy   ████████████████████   2/2   COMPLETE (M24 + M25)
 Phase 6 — Personal OS & Daily Workflows ████████████████████   1/1   COMPLETE (M26)
 Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
-Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░░░░░░░░░   0/1   NEXT (M28)
+Phase 8 — Integrated Aura OS & HUDs     ████████████████████   1/1   COMPLETE (M28)
+Phase 9 — Smart Home & Ambient HUDs     ████████████████████   1/1   COMPLETE (M29)
 ```
 
-**Overall Progress:** 27/27 Completed Milestones Baseline (M01–M27) | 225/225 Deterministic Tests 100% Green
+**Overall Progress:** 29/29 Milestones Baseline (M01–M29) | 250+ Deterministic Tests 100% Green
 
 - ✅ Milestone 16 — Cognitive Orchestration Layer (100%)
 - ✅ Milestone 17 — Cognitive Memory (100%)
@@ -120,6 +127,8 @@ Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░�
 - ✅ Milestone 25 — Professional Expert Systems & Cognitive Routing (100%)
 - ✅ Milestone 26 — Personal Operating System (100%)
 - ✅ Milestone 27 — Autonomous Engineering Platform (100%)
+- ✅ Milestone 28 — Dynamic CodeAct Runtime, HUD Overlays & Integrated Aura OS (100%)
+- ✅ Milestone 29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction (100%)
 
 
 ---

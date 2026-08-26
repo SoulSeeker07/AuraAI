@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import threading
 import uuid
 from typing import Optional
 
@@ -71,6 +72,12 @@ class LongTermMemory:
         self.provider_manager = provider_manager
         # Fallback chain from config — do NOT override here
         self._extraction_models = MEMORY_EXTRACTION_MODELS
+        # Serializes concurrent store()/retrieve() calls from the consolidation
+        # thread and the synchronous retrieve() on the main path.
+        # threading.Lock (non-reentrant) is safe here: extract_candidates() makes
+        # no calls to store() or retrieve(), and no other code path holds this lock
+        # while calling into either method.
+        self._lock = threading.Lock()
 
     # ---------------------------------------------------------------- write
 
@@ -112,20 +119,21 @@ class LongTermMemory:
         Persist a policy-approved fact to Chroma.
         Called only by MemoryManager._consolidate() after apply_policy() approves.
         """
-        if not self.embedder:
-            logger.debug("[LTM] Skipping semantic store (embedder unavailable)")
-            return
+        with self._lock:
+            if not self.embedder:
+                logger.debug("[LTM] Skipping semantic store (embedder unavailable)")
+                return
 
-        vec = self.embedder.encode(fact).tolist()
-        self.collection.add(
-            ids=[str(uuid.uuid4())],
-            embeddings=[vec],
-            documents=[fact],
-            metadatas=[
-                {"topic": topic, "importance": importance, "timestamp": time.time()}
-            ],
-        )
-        logger.info(f"[LTM] Stored: {fact!r} (topic={topic}, importance={importance})")
+            vec = self.embedder.encode(fact).tolist()
+            self.collection.add(
+                ids=[str(uuid.uuid4())],
+                embeddings=[vec],
+                documents=[fact],
+                metadatas=[
+                    {"topic": topic, "importance": importance, "timestamp": time.time()}
+                ],
+            )
+            logger.info(f"[LTM] Stored: {fact!r} (topic={topic}, importance={importance})")
 
     # ----------------------------------------------------------------- read
 
@@ -136,32 +144,33 @@ class LongTermMemory:
         Semantic search over stored facts, re-ranked by a blend of
         similarity, recency, and importance.
         """
-        if not self.embedder or self.collection.count() == 0:
-            return []
+        with self._lock:
+            if not self.embedder or self.collection.count() == 0:
+                return []
 
-        vec = self.embedder.encode(query).tolist()
-        where = {"topic": topic} if topic else None
-        results = self.collection.query(
-            query_embeddings=[vec],
-            n_results=min(k * 3, self.collection.count()),  # over-fetch, re-rank, trim
-            where=where,
-        )
-        docs = results.get("documents", [[]])[0]
-        metas = results.get("metadatas", [[]])[0]
-        dists = results.get("distances", [[]])[0]
+            vec = self.embedder.encode(query).tolist()
+            where = {"topic": topic} if topic else None
+            results = self.collection.query(
+                query_embeddings=[vec],
+                n_results=min(k * 3, self.collection.count()),  # over-fetch, re-rank, trim
+                where=where,
+            )
+            docs = results.get("documents", [[]])[0]
+            metas = results.get("metadatas", [[]])[0]
+            dists = results.get("distances", [[]])[0]
 
-        now = time.time()
-        scored = []
-        for doc, meta, dist in zip(docs, metas, dists):
-            age_days = (now - meta.get("timestamp", now)) / 86400
-            recency_score = 1 / (1 + age_days / 30)  # ~halves relevance every month
-            importance_score = meta.get("importance", 3) / 5
-            similarity = 1 - dist  # chroma returns cosine distance by default
-            score = 0.6 * similarity + 0.25 * recency_score + 0.15 * importance_score
-            scored.append((score, doc))
+            now = time.time()
+            scored = []
+            for doc, meta, dist in zip(docs, metas, dists):
+                age_days = (now - meta.get("timestamp", now)) / 86400
+                recency_score = 1 / (1 + age_days / 30)  # ~halves relevance every month
+                importance_score = meta.get("importance", 3) / 5
+                similarity = 1 - dist  # chroma returns cosine distance by default
+                score = 0.6 * similarity + 0.25 * recency_score + 0.15 * importance_score
+                scored.append((score, doc))
 
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [doc for _, doc in scored[:k]]
+            scored.sort(key=lambda pair: pair[0], reverse=True)
+            return [doc for _, doc in scored[:k]]
 
     # ----------------------------------------------------------- parsing
 

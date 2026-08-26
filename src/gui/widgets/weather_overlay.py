@@ -26,7 +26,7 @@ Usage:
 """
 
 import sys
-from PySide6.QtCore import Qt, QPoint, QSize, QSettings, QRect, QTimer, QDateTime
+from PySide6.QtCore import Qt, QPoint, QSize, QSettings, QRect, QTimer, QDateTime, QThread, Signal
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QBrush
 from PySide6.QtWidgets import QApplication, QWidget
 
@@ -49,6 +49,19 @@ BAR_DIM = QColor(90, 180, 255, 110)
 
 MIN_W, MIN_H = 300, 340
 GRIP_SIZE = 16
+
+
+class WeatherWorker(QThread):
+    """Background worker to fetch real-time location & meteorological data."""
+    data_ready = Signal(dict)
+
+    def run(self):
+        try:
+            from tools.weather_service import LiveWeatherService
+            data = LiveWeatherService.get_live_weather()
+            self.data_ready.emit(data)
+        except Exception:
+            pass
 
 
 class WeatherOverlay(QWidget):
@@ -84,9 +97,10 @@ class WeatherOverlay(QWidget):
 
         # default data
         self.data = dict(
-            location="BLR // SECTOR 12.97N",
+            location="LOCATING // SECTOR GPS",
             temp_c=24,
-            condition="PARTLY_CLOUDY.STATUS",
+            condition="SCANNING_METEOROLOGY.STATUS",
+            icon="☁",
             high=27,
             low=19,
             humidity=68,
@@ -96,6 +110,26 @@ class WeatherOverlay(QWidget):
         )
 
         self._restore_geometry()
+
+        # Background live weather worker
+        self._worker: Optional[WeatherWorker] = None
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.timeout.connect(self.refresh_weather)
+        self._refresh_timer.start(600000)  # Refresh every 10 minutes
+        self.refresh_weather()
+
+    def refresh_weather(self):
+        """Trigger background live weather fetch."""
+        if self._worker is not None and self._worker.isRunning():
+            return
+        self._worker = WeatherWorker()
+        self._worker.data_ready.connect(self._on_weather_fetched)
+        self._worker.start()
+
+    def _on_weather_fetched(self, data: dict):
+        if data:
+            self.data.update(data)
+            self.update()
 
     # ------------------------------------------------------------------
     # Public API
@@ -188,6 +222,12 @@ class WeatherOverlay(QWidget):
         )
         return grip_rect.contains(pos)
 
+    def closeEvent(self, event):
+        self._save_geometry()
+        if hasattr(self, "_scan_timer") and self._scan_timer.isActive():
+            self._scan_timer.stop()
+        super().closeEvent(event)
+
     # ------------------------------------------------------------------
     # Scan-line animation
     # ------------------------------------------------------------------
@@ -279,7 +319,8 @@ class WeatherOverlay(QWidget):
         p.drawEllipse(cx, cy, circ, circ)
         p.setFont(self._font(mono, w, 0.05))
         p.setPen(QPen(ACCENT))
-        p.drawText(QRect(cx, cy, circ, circ), Qt.AlignCenter, "☁")
+        icon_glyph = self.data.get("icon", "☁")
+        p.drawText(QRect(cx, cy, circ, circ), Qt.AlignCenter, icon_glyph)
 
         y += int(h * 0.15)
         p.setFont(self._font(mono, w, 0.026, letter_spacing=1.0))

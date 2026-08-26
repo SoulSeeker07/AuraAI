@@ -30,7 +30,13 @@ class SafetyPolicy:
         "system",
         "python.exe",
         "cmd.exe",
+        "command prompt",
         "powershell.exe",
+        "powershell",
+        "windowsterminal.exe",
+        "terminal",
+        "conhost.exe",
+        "bash.exe",
     ]
 
     @classmethod
@@ -74,8 +80,16 @@ class SafetyPolicy:
         if not app_name_or_title:
             return False
         clean = app_name_or_title.strip().lower()
+        clean_base = clean.replace(".exe", "")
         for protected in self.protected_applications:
-            if protected in clean or (clean.endswith(".exe") and clean == protected):
+            p_clean = protected.lower()
+            p_base = p_clean.replace(".exe", "")
+            if (
+                p_clean in clean
+                or clean == p_clean
+                or clean_base == p_base
+                or (clean.endswith(".exe") and clean == p_clean)
+            ):
                 return True
         return False
 

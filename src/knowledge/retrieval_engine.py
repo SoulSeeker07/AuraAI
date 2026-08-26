@@ -154,25 +154,25 @@ class RetrievalEngine:
                 combined[chunk.id] = {
                     "chunk": chunk,
                     "semantic_score": score,
-                    "keyword_scores": {},
+                    "keyword_score": 0.0,
                 }
 
         for chunk, score in keyword_results:
             if chunk.id in combined:
-                combined[chunk.id]["keyword_scores"][chunk] = score
+                combined[chunk.id]["keyword_score"] = score
+            else:
+                combined[chunk.id] = {
+                    "chunk": chunk,
+                    "semantic_score": 0.0,
+                    "keyword_score": score,
+                }
 
         # Weighted combination of scores
         final_results = []
         for chunk_id, data in combined.items():
             semantic_score = data["semantic_score"]
-            keyword_scores = data["keyword_scores"]
-
-            if keyword_scores:
-                max_keyword = max(keyword_scores.values())
-                combined_score = semantic_score * 0.7 + max_keyword * 0.3
-            else:
-                combined_score = semantic_score
-
+            keyword_score = data["keyword_score"]
+            combined_score = semantic_score * 0.7 + keyword_score * 0.3
             final_results.append((data["chunk"], combined_score))
 
         # Sort and return top_k
@@ -248,6 +248,7 @@ class RetrievalEngine:
             )
 
             result.citation = citation
+            result.citations = [citation]
 
         return results
 

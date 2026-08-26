@@ -523,6 +523,16 @@ class WakeWordManager:
 
         self.engine.enabled = True
         self.is_active = True
+        if hasattr(self.engine, "reset"):
+            self.engine.reset()
+        elif hasattr(self.engine, "audio_buffer"):
+            try:
+                import numpy as np
+                self.engine.audio_buffer = np.zeros(getattr(self.engine, "num_samples", 32000), dtype=np.float32)
+            except Exception:
+                pass
+            if hasattr(self.engine, "consecutive_hits"):
+                self.engine.consecutive_hits = 0
         logger.debug("Wake word detection activated")
         return True
 

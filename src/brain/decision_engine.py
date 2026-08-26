@@ -14,9 +14,6 @@ from agents.agent_registry import AgentRegistry
 from agents.task_model import TaskInput
 from brain.request import ActionType, AuraRequest
 from brain.response_coordinator import ResponseCoordinator
-from core.memory.memory_manager import MemoryManager
-from core.tools.tool_router import ToolRouter
-from core.workspace.workspace_manager import WorkspaceManager
 
 logger = logging.getLogger(__name__)
 

@@ -19,6 +19,7 @@ from .agent_registry import (
     AgentType,
     register_builtin_agents,
 )
+from .autonomous_coding_agent import AutonomousCodingAgent
 from .coding_agent import CodingAgent
 from .config import (
     ConfigManager,

@@ -5,8 +5,11 @@ import os
 import sys
 from pathlib import Path
 
-# Silence harmless third-party library warnings in CLI
+# Silence third-party library progress bars and warnings in CLI
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["TQDM_DISABLE"] = "1"
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Configure sys.path FIRST before any core imports
@@ -25,6 +28,12 @@ sys.path.insert(1, str(PROJECT_ROOT))
 if str(PROJECT_ROOT / "scripts") not in sys.path:
     sys.path.insert(2, str(PROJECT_ROOT / "scripts"))
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
+except Exception:
+    pass
+
 
 # Configure stdout and stderr to UTF-8 before any logging or core imports
 if hasattr(sys.stdout, "reconfigure"):
@@ -39,13 +48,9 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
-from clients.cli_client import CLIClient
-from clients.gui_client import GUIClient
-
 # Import logger from core module
 from core import logger
 from core.aura_core import AuraCore
-from scripts.aura_monitor import AuraMonitor
 
 # Singleton instance of AuraCore
 _aura_core_instance = None
@@ -94,13 +99,82 @@ def get_aura_core(config: dict = None) -> AuraCore:
     return _aura_core_instance
 
 
-async def main_cli():
-    """Run AuraAI in CLI mode."""
+async def main_cli(query_str: str = "", tts_enabled: bool = False):
+    """Run AuraAI in CLI mode (interactive or one-shot query)."""
+    # One-shot command execution
+    if query_str:
+        query_clean = query_str.lower().strip()
+        is_voice_start = query_clean in (
+            "start listening", "start voice listening", "start voice",
+            "listen to me", "start continuous listening", "voice listen",
+            "listen", "start listening mode", "voice listening on"
+        )
+        is_explicit_speak = (
+            tts_enabled
+            or query_clean.startswith(("say ", "speak ", "tts ", "read aloud ", "repeat after me "))
+            or any(w in query_clean for w in ("say aloud", "speak aloud", "read aloud", "speak out", "talk to me"))
+        )
+        try:
+            from Memory import Memory
+            from ai.registry import build_provider_manager
+            from brain.conversation_engine import ConversationEngine
+            from voice.continuous_loop import ContinuousVoiceLoop
+            
+            aura_core = get_aura_core(config={"voice_enabled": True}) if is_voice_start else None
+            if aura_core:
+                ContinuousVoiceLoop.set_global_aura_core(aura_core)
+            
+            mem = Memory(db_path="Memory.db", chat_log_path="Data/ChatLog.json")
+            pm = build_provider_manager(dict(os.environ))
+            engine = ConversationEngine(memory=mem, provider_manager=pm, aura_core=aura_core)
+            if aura_core:
+                setattr(aura_core, "conversation_engine", engine)
+            res = await engine.process(query_str)
+            print(f"\n🔮 Aura: {res.text}\n")
+
+            if is_explicit_speak and res.text:
+                try:
+                    from voice.tts_manager import TTSManager
+                    tts = TTSManager()
+                    if tts.initialize():
+                        tts.add_text(res.text)
+                        tts.speak()
+                        while tts.is_playing():
+                            await asyncio.sleep(0.08)
+                except Exception as e:
+                    logger.debug(f"TTS playback notice: {e}")
+
+            if is_voice_start:
+                print("🎙️ Press Ctrl+C to stop listening and exit.\n")
+                try:
+                    voice_loop = getattr(aura_core, "voice_loop", None)
+                    if not voice_loop:
+                        voice_loop = ContinuousVoiceLoop(
+                            voice_manager=getattr(aura_core, "voice_manager", None),
+                            aura_core=aura_core,
+                            coordinator=getattr(aura_core, "coordinator", None),
+                        )
+                        setattr(aura_core, "voice_loop", voice_loop)
+                    voice_loop.conversation_engine = engine
+                    voice_loop.start()
+                    while getattr(voice_loop, "_running", False):
+                        await asyncio.sleep(0.5)
+                except KeyboardInterrupt:
+                    pass
+        except KeyboardInterrupt:
+            print("\n\n✓ Voice listening stopped.")
+        except Exception as e:
+            print(f"\n✗ Error: {e}")
+        return
+
+    # Get Aura Core for full interactive session
+    from clients.cli_client import CLIClient
+    from scripts.aura_monitor import AuraMonitor
+
+    aura_core = get_aura_core(config={"voice_enabled": False})
+
     print("Starting AuraAI in CLI mode...")
     print("-" * 60)
-
-    # Get Aura Core (singleton pattern)
-    aura_core = get_aura_core()
 
     # Create Aura Monitor
     monitor = AuraMonitor(aura_core, refresh_interval=2)
@@ -132,23 +206,29 @@ async def main_cli():
 
 
 def main_gui():
-    """Run AuraAI in PySide6 GUI mode."""
-    print("Starting AuraAI in GUI mode...")
+    """Run AuraAI in PySide6 GUI mode (Text/Visual interface, no heavy voice ML models)."""
+    print("Starting AuraAI in GUI mode (No TTS/STT)...")
     print("-" * 60)
 
-    # Get Aura Core (singleton pattern)
-    aura_core = get_aura_core()
+    from PySide6.QtWidgets import QApplication
+    from clients.gui_client import GUIClient
+
+    app = QApplication.instance() or QApplication(sys.argv)
+
+    # Disable voice / STT / TTS when launching in pure GUI mode
+    aura_core = get_aura_core(config={"voice_enabled": False})
+    aura_core.voice_enabled = False
 
     # Create GUI client
     gui_client = GUIClient(aura_core)
 
-    print("\n✓ Aura Core initialized")
+    print("\n✓ Aura Core initialized (Visual GUI mode)")
     print("✓ GUI Client created")
     print("✓ Launching AuraAI PySide6 Control Center & Spotlight HUD...")
 
     from gui.app import AuraGUI
 
-    gui = AuraGUI()
+    gui = AuraGUI(aura_core=aura_core)
     return gui.run()
 
 
@@ -186,9 +266,15 @@ Modes:
 
     parser.add_argument("--gui", action="store_true", help="Run in GUI mode")
 
+    parser.add_argument("--tts", "--speak", action="store_true", help="Speak Aura's response aloud using Text-to-Speech")
+
     parser.add_argument("--workspace", type=str, help="Override workspace path")
 
+    parser.add_argument("query", nargs="*", default=[], help="Direct command or query to execute")
+
     args = parser.parse_args()
+
+    query_text = " ".join(args.query).strip() if args.query else ""
 
     if args.doctor:
         from engineering.doctor import AuraDoctor
@@ -213,8 +299,8 @@ Modes:
         gui_client = main_gui()
         return gui_client
     else:
-        # CLI mode (default)
-        asyncio.run(main_cli())
+        # CLI mode (interactive or one-shot query)
+        asyncio.run(main_cli(query_text, tts_enabled=args.tts))
         return None
 
 

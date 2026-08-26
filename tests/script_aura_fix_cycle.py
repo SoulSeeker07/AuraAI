@@ -70,17 +70,19 @@ if response1.strip().startswith("```"):
 else:
     buggy_code = response1.strip()
 
-with open("buggy_code.py", "w", encoding="utf-8") as f:
+buggy_file = PROJECT_ROOT / "dev" / "scratch" / "buggy_code.py"
+buggy_file.parent.mkdir(parents=True, exist_ok=True)
+with open(buggy_file, "w", encoding="utf-8") as f:
     f.write(buggy_code)
 
-print("💾 Code saved to buggy_code.py")
+print(f"💾 Code saved to {buggy_file}")
 print("🔄 Running buggy code...")
 print("=" * 80)
 
 import subprocess
 
 result = subprocess.run(
-    [sys.executable, "buggy_code.py"],
+    [sys.executable, str(buggy_file)],
     capture_output=True,
     text=True,
     cwd=PROJECT_ROOT,

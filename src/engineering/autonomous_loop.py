@@ -20,7 +20,13 @@ from .fault_localizer import FaultCandidate, FaultLocalizer
 from .patch_synthesizer import CodePatch, PatchSynthesizer
 from .safety_ceiling import ProtectedCeilingViolation, RewardHackingViolation
 from .staging_workspace import StagingWorkspace
-from .test_runner import PytestRunnerAdapter, TestFailureFrame, TestRunResult, TestRunnerAdapter
+from .test_runner import (
+    PytestRunnerAdapter,
+    SandboxedPytestRunnerAdapter,
+    TestFailureFrame,
+    TestRunResult,
+    TestRunnerAdapter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +81,7 @@ class AutonomousEngineeringLoop:
         max_retries: int = 3,
     ):
         self.repo_root = Path(repo_root or os.getcwd()).resolve()
-        self.test_runner = test_runner or PytestRunnerAdapter(repo_root=self.repo_root)
+        self.test_runner = test_runner or SandboxedPytestRunnerAdapter(repo_root=self.repo_root)
         self.synthesizer = synthesizer or PatchSynthesizer(repo_root=self.repo_root)
         self.localizer = localizer or FaultLocalizer(repo_root=self.repo_root)
         self.max_retries = max_retries

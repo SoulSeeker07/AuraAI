@@ -1726,6 +1726,26 @@ class TaskDecomposer:
                     cap = "power.power_plan"
                     app_target = "power"
                     title_text = "Check power plan"
+                elif any(w in goal_lower for w in ["brightness", "screen brightness", "display brightness"]):
+                    if any(w in goal_lower for w in ["set", "change", "adjust", "make", "turn", "increase", "decrease", "max", "min", "lowest", "highest", "%"] + [str(i) for i in range(10, 101, 10)]):
+                        cap = "display.set_brightness"
+                        app_target = "display"
+                        target_lvl = 100
+                        if "max" in goal_lower or "full" in goal_lower or "100" in goal_lower or "highest" in goal_lower:
+                            target_lvl = 100
+                        elif "min" in goal_lower or "lowest" in goal_lower or "minimum" in goal_lower:
+                            target_lvl = 10
+                        else:
+                            nums = re.findall(r"\b\d+\b", goal_lower)
+                            if nums:
+                                target_lvl = max(0, min(100, int(nums[0])))
+                        title_text = f"Set display brightness to {target_lvl}%"
+                        params = {"level": target_lvl, "app_name": "display", "goal": raw_goal}
+                    else:
+                        cap = "display.brightness"
+                        app_target = "display"
+                        title_text = "Check display brightness"
+                        params = {"app_name": "display", "goal": raw_goal}
                 elif any(w in goal_lower for w in ["volume", "audio", "mute", "unmute"]):
                     cap = "audio.volume"
                     app_target = "audio"

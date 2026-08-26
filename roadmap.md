@@ -102,11 +102,11 @@ A milestone may ship across one or more releases.
 | M23 | `v0.27.0` | Phase 4 — Autonomy & Persistent Daemon | `COMPLETE` |
 | M24 | `v0.28.0` | Phase 5 — Autonomy (Event Runtime & Autonomous Execution) | `COMPLETE` |
 | M25 | `v0.29.0` | Phase 5 — Autonomy (Professional Expert Systems) | `COMPLETE` |
-| M26 | `v0.30.0` | Phase 5 — Autonomy | `PLANNED` |
-| M27 | `v0.31.0` | Phase 6 — Autonomous Engineering | `PLANNED` |
-| M28 | `v1.0.0` | Phase 7 — Aura OS | `PLANNED` |
-| M29 | `v1.1.0` | Phase 8 — Natural Interaction | `PLANNED` |
-| M30 | `v1.2.0` | Phase 9 — Aura GUI (Command Center) | `PLANNED` |
+| M26 | `v0.30.0` | Phase 6 — Personal OS & Daily Workflows | `COMPLETE` |
+| M27 | `v0.31.0` | Phase 7 — Autonomous Engineering Platform | `COMPLETE` |
+| M28 | `v0.32.0` | Phase 8 — Dynamic CodeAct Runtime & Integrated Aura OS | `COMPLETE` |
+| M29 | `v0.33.0` | Phase 9 — Smart Home / IoT & Ambient Desktop HUDs | `COMPLETE` |
+| M30 | `v1.0.0` | Phase 10 — Multi-User & Enterprise Governance | `PLANNED` |
 
 ---
 
@@ -1662,15 +1662,16 @@ Phase 1 — Shared Intelligence (M17–M18) ████████████
 Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
 Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
 Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
-Phase 5 — Autonomy (M24–M26)            ░░░░░░░░░░░░░░░░░░░░   0/3   PLANNED
-Phase 6 — Autonomous Engineering (M27)  ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 7 — Aura OS (M28)                 ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
-Phase 8 — Natural Interaction (M29)     ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M08 voice infrastructure is COMPLETE)
-Phase 9 — Aura GUI (M30)               ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED
+Phase 5 — Domain Expertise & Autonomy   ████████████████████   2/2   COMPLETE (M24 + M25)
+Phase 6 — Personal OS & Daily Workflows ████████████████████   1/1   COMPLETE (M26)
+Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
+Phase 8 — Integrated Aura OS & HUDs     ████████████████████   1/1   COMPLETE (M28)
+Phase 9 — Smart Home & Ambient HUDs     ████████████████████   1/1   COMPLETE (M29)
+Phase 10 — Multi-User & Enterprise Sinks░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M30)
 ```
 
-**Overall:** 23 / 30 milestones complete. 587 source files (~130K lines), 213 test files (~32K lines), ~5.1 MB source code.
-Next critical milestones: M24 (Event Runtime), M25 (Professional Expert Systems), M26 (Personal OS).
+**Overall:** 29 / 30 milestones complete baseline (M01–M29). 600+ source files (~140K lines), 220+ test files (~35K lines), ~5.8 MB source code.
+Next critical milestone: M30 (Multi-User & Enterprise Policy Governance & Continuous Spatial Interaction).
 
 ---
 
@@ -1678,22 +1679,18 @@ Next critical milestones: M24 (Event Runtime), M25 (Professional Expert Systems)
 
 | Priority | Milestone | Status | Hard Blocker |
 | :--- | :--- | :--- | :--- |
-| 1 | **M24** — Event Runtime & Autonomy | `PLANNED` | None (M23 complete) |
-| 2 | **M25** — Professional Expert Systems | `PLANNED` | None (M19 + M20 + M21 complete) |
-| 3 | **M26** — Personal OS Proactive Automation | `PLANNED` | None (M23 complete) |
-| 4 | **M27** — Autonomous Engineering Loop | `PLANNED` | M24 + M25 + M26 |
-| 5 | **M28** — Aura OS Runtime | `PLANNED` | M27 |
-| 6 | **M29** — Natural Interaction Layer | `PLANNED` | M28 |
-| 7 | **M30** — Aura GUI Command Center | `PLANNED` | M28 |
+| 1 | **M30** — Multi-User & Enterprise Policy Governance | `PLANNED` | None (M01–M29 baseline complete) |
+| 2 | **Enterprise Sinks** — Active Directory, Splunk, Azure Sentinel Integration | `PLANNED` | M30 |
+| 3 | **Distributed Aura Nodes** — Multi-PC LAN Mesh Coordination | `PLANNED` | M30 |
 
 ---
 
 ## Architecture Constitution
 
-Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for layer contracts and the 5-stage ACA pipeline.
+Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for layer contracts and the 7-stage ACA pipeline.
 Read [`docs/ARCHITECTURE_FREEZE.md`](docs/ARCHITECTURE_FREEZE.md) for frozen guardrails
 and contributor extension guidelines.
 
 ---
 
-*Last Updated: August 18, 2026 — v0.27.0-autonomous-daemon*
+*Last Updated: August 25, 2026 — v0.33.0-smarthome-ambient-hud*

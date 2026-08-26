@@ -12,19 +12,19 @@ Phase 1 — Shared Intelligence (M17–M18) ████████████
 Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
 Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
 Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
-Phase 5 — Domain Expertise & Autonomy   ██████████████░░░░░░   2/3   IN PROGRESS (M24 + M25 COMPLETE)
-Phase 6 — Personal OS & Daily Workflows ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M26)
-Phase 7 — Autonomous Engineering Loop   ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M27)
-Phase 8 — Integrated Aura OS Runtime    ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M28)
-Phase 9 — Multimodal Voice Interaction  ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M29)
-Phase 10 — Aura OS Native GUI Interface ░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M30)
+Phase 5 — Domain Expertise & Autonomy   ████████████████████   2/2   COMPLETE (M24 + M25)
+Phase 6 — Personal OS & Daily Workflows ████████████████████   1/1   COMPLETE (M26)
+Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
+Phase 8 — Integrated Aura OS & HUDs     ████████████████████   1/1   COMPLETE (M28)
+Phase 9 — Smart Home & Ambient HUDs     ████████████████████   1/1   COMPLETE (M29)
+Phase 10 — Multi-User & Enterprise Sinks░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M30)
 ```
 
 ---
 
-## Current Platform Status (`v0.29.0-expert-systems`)
+## Current Platform Status (`v0.33.0-smarthome-ambient-hud`)
 
-### Completed Milestones (M01–M25)
+### Completed Milestones (M01–M29)
 
 - ✅ **M01–M16 — Core Foundation & Orchestration**: MasterOrchestrator 7-stage cognitive pipeline, 17 native Win32 desktop managers, 23 backend adapters, unified RuntimeSession.
 - ✅ **M17 — Cognitive Memory**: 8 typed memory stores (Working, Short-Term, Long-Term, Episodic, Semantic, Procedural, Preference, Project) with decay, consolidation, and project-scoped isolation.
@@ -39,20 +39,17 @@ Phase 10 — Aura OS Native GUI Interface ░░░░░░░░░░░░�
 - ✅ **Security Hardening Track (Phases 1–4)**: DPAPI master keys, HKDF-SHA256 derivation, out-of-process `AuditWriterService` over authenticated Windows Named Pipe IPC, and Windows Event Log OS sink.
 - ✅ **M26 — Personal Operating System (`v0.30.0`)**: Proactive daily context synthesis (`DailyContextEngine`), sub-second workspace search index (`WorkspaceSearchEngine`), autonomous trigger dispatch (`TriggerScheduler`), `RequestSource` classification with `ContextVar`-scoped autonomy isolation, and persistent OS state store (`PersonalOSStateStore`).
 - ✅ **M27 — Autonomous Engineering Platform (`v0.31.0`)**: Closed-loop bug fixing, test-driven repair, and PR assembly; protected safety ceiling (`PROTECTED_SAFETY_CEILING`); AST fault localization; single-write gate enforcement (`WorkspacePolicy`); binary byte-exact baseline snapshot/rollback; fail-closed human cryptographic merge gate (`PatchBundleAssembler.authorize_git_operation`).
+- ✅ **M28 — Dynamic CodeAct Runtime, HUD Overlays & Integrated Aura OS (`v0.32.0`)**: Python Code-as-action execution engine (`DynamicCodeActExecutor`, `CodeSandbox`, multiline fence parsing, AST validation); Modern PySide6 desktop HUD overlays (`SystemMonitorOverlay`, `WeatherOverlay`, `AgentTaskStatusOverlay`, `PersonalOSDashboardOverlay`, `ChatWindowOverlay`); `RealBackendBridge` telemetry wiring; ChromaDB/SQLite RAG knowledge service (`RAGService`); Job Object-sandboxed pytest isolation (`SandboxedPytestRunnerAdapter`).
+- ✅ **M29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction (`v0.33.0`)**: Home Assistant WebSocket/REST client (`HAWebSocketClient`, `HomeAssistantClient`); local TP-Link Tapo/Kasa KLAP AES-CBC-128 crypto device driver (`TapoClient`); unified `SmartHomeBackendAdapter` & `SmartHomeCapabilityProvider` with 12 registered capabilities; animated frameless HUD overlays (`JarvisRingsOverlay`, `ChatWindowOverlay`, `WeatherOverlay`, `SystemMonitorOverlay`, `PersonalOSDashboardOverlay`, `AgentTaskStatusOverlay`, `MatrixOverlay`, `SystemStatusOverlay`).
 
 ---
 
 ## Target Milestones (Future Roadmap)
 
-### Milestone 28 — Integrated Aura OS Runtime (`v1.0.0`) [NEXT]
-- 🎯 **Persistent System Daemon**: Low-overhead Windows system service lifecycle (`AuraService`) with zero-downtime hot reloading.
+### Milestone 30 — Multi-User & Enterprise Policy Governance (`v1.0.0`) [PLANNED]
 - 🎯 **Multi-User & Enterprise Policy Governance**: Multi-tenant memory partitions, role-based capability permissions, and corporate compliance telemetry sinks.
-
-### Milestone 29 — Natural Voice & Ambient Interaction (`v1.1.0`) [PLANNED]
-- 🎯 **Continuous Low-Latency Voice Interface**: Wake-word activation (`AuraWake`), streaming STT/TTS pipeline, and conversational turn-taking with ambient barge-in support.
-
-### Milestone 30 — Native Aura GUI & Management Console (`v1.2.0`) [PLANNED]
-- 🎯 **Aura OS Dashboard**: System tray telemetry, live cognitive DAG visualization, task history audit viewer, and real-time permission approval prompt dialogs.
+- 🎯 **Persistent System Daemon**: Low-overhead Windows system service lifecycle (`AuraService`) with zero-downtime hot reloading.
+- 🎯 **Ambient Voice & Audio Spatial Interaction**: Wake-word activation (`AuraWake`), streaming STT/TTS pipeline, and conversational turn-taking with ambient barge-in support.
 
 ---
 

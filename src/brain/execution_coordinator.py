@@ -489,7 +489,7 @@ class ExecutionCoordinator:
 
             req = ChatRequest(
                 messages=messages,
-                model=params.get("model", "llama-3.1-8b-instant"),
+                model=params.get("model", "openai/gpt-oss-120b"),
             )
             response = provider.chat(req)
             return response.text

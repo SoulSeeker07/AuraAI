@@ -52,7 +52,7 @@ class ShoppingManager:
     """
 
     SEARCH_TEMPLATES = {
-        "amazon": "https://www.amazon.com/s?k={query}",
+        "amazon": "https://www.amazon.in/s?k={query}",
         "ebay": "https://www.ebay.com/sch/i.html?_nkw={query}",
         "flipkart": "https://www.flipkart.com/search?q={query}",
         "walmart": "https://www.walmart.com/search?q={query}",
@@ -138,7 +138,7 @@ class ShoppingManager:
                             ).first.inner_text(timeout=500)
                             price = f"${price_whole}.{price_fraction}".replace("\n", "")
                             link = await item.locator("h2 a").get_attribute("href")
-                            full_url = f"https://www.amazon.com{link}" if link else ""
+                            full_url = f"https://www.amazon.in{link}" if link else ""
 
                             products.append(
                                 ProductItem(

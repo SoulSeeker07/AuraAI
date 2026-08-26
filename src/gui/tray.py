@@ -39,6 +39,9 @@ class AuraTrayIcon(QSystemTrayIcon):
         overlay_action = QAction("Show Overlay", self)
         overlay_action.triggered.connect(self.show_overlay_requested.emit)
 
+        chat_action = QAction("Chat HUD", self)
+        chat_action.triggered.connect(self._toggle_chat_overlay)
+
         self.live_screen_action = QAction("Live Screen", self)
         self.live_screen_action.setCheckable(True)
         self.live_screen_action.toggled.connect(self.live_screen_toggled.emit)
@@ -60,6 +63,7 @@ class AuraTrayIcon(QSystemTrayIcon):
         menu.addAction(self.show_action)
         menu.addAction(self.hide_action)
         menu.addAction(overlay_action)
+        menu.addAction(chat_action)
         menu.addAction(self.live_screen_action)
         menu.addSeparator()
         menu.addAction(self.startup_action)
@@ -80,6 +84,10 @@ class AuraTrayIcon(QSystemTrayIcon):
     def hide_main_window(self) -> None:
         self.main_window.hide()
         self.sync_visibility_actions()
+
+    def _toggle_chat_overlay(self) -> None:
+        if hasattr(self.main_window, "toggle_chat_overlay"):
+            self.main_window.toggle_chat_overlay()
 
     def restart_app(self) -> None:
         executable = sys.executable

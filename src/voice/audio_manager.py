@@ -236,6 +236,16 @@ class AudioManager:
                 logger.error("No input device selected")
                 return False
 
+            # Drain any residual queued audio
+            while not self._audio_queue.empty():
+                try:
+                    self._audio_queue.get_nowait()
+                except Exception:
+                    break
+
+            with self._buffer_lock:
+                self._input_buffer.clear()
+
             # Set up callback
             self._input_callback = callback
             self._is_recording = True
@@ -301,6 +311,12 @@ class AudioManager:
             self._is_recording = False
             self._input_callback = None
             
+            while not self._audio_queue.empty():
+                try:
+                    self._audio_queue.get_nowait()
+                except Exception:
+                    break
+
             with self._buffer_lock:
                 self._input_buffer.clear()
 

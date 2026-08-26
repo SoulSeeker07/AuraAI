@@ -9,10 +9,10 @@ import sys
 from pathlib import Path
 
 # Add paths in correct order: project root first (to find core/__init__.py), then src
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
-sys.path.insert(0, str(PROJECT_ROOT))  # project root first
-sys.path.insert(1, str(SRC_DIR))  # src second to find logger
+sys.path.insert(0, str(SRC_DIR))
+sys.path.insert(1, str(PROJECT_ROOT))
 
 from clients.gui_client import GUIClient
 from core.aura_core import AuraCore

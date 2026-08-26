@@ -7,8 +7,10 @@ Handles various types of screenshot captures for the Vision System.
 import ctypes
 import logging
 import time
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 import win32api
 import win32con
@@ -43,25 +45,76 @@ class ScreenshotManager:
         self.preprocessor = ImagePreprocessor()
         self.last_capture: str | None = None
 
-    def capture_full_screen(self) -> str:
+    def _grab_safe(self, bbox=None):
+        """Safely grab genuine screen pixels using mss or Pillow with DPI awareness."""
+        try:
+            import ctypes
+
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            except Exception:
+                try:
+                    ctypes.windll.user32.SetProcessDPIAware()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Attempt 1: mss (high performance native Windows screen grab)
+        try:
+            from mss import mss
+            from PIL import Image
+
+            with mss() as sct:
+                if bbox:
+                    mon = {"left": bbox[0], "top": bbox[1], "width": bbox[2] - bbox[0], "height": bbox[3] - bbox[1]}
+                else:
+                    mon = sct.monitors[0]
+                sct_img = sct.grab(mon)
+                return Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+        except Exception:
+            pass
+
+        # Attempt 2: Pillow ImageGrab with bbox
+        if bbox:
+            try:
+                return ImageGrab.grab(bbox=bbox)
+            except Exception:
+                pass
+
+        # Attempt 3: Pillow ImageGrab with all_screens
+        try:
+            return ImageGrab.grab(all_screens=True)
+        except Exception:
+            pass
+
+        # Attempt 4: Plain Pillow ImageGrab
+        try:
+            return ImageGrab.grab()
+        except Exception:
+            pass
+
+        # Do NOT return a fake blank image - return None so caller knows screen is unavailable
+        return None
+
+    def capture_full_screen(self) -> str | None:
         """
         Capture the entire screen.
 
         Returns:
-            Path to saved screenshot
+            Absolute path to saved screenshot, or None if screen capture is unavailable
         """
         logger.info("Capturing full screen")
 
-        # Get screen dimensions
-        screen_width = win32api.GetSystemMetrics(0)
-        screen_height = win32api.GetSystemMetrics(1)
+        screenshot = self._grab_safe()
+        if screenshot is None:
+            logger.warning("Screen capture unavailable on current display session")
+            return None
 
-        # Capture full screen
-        screenshot = ImageGrab.grab(bbox=(0, 0, screen_width, screen_height))
-
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_full_{timestamp}.png"
+        uid = uuid.uuid4().hex[:6]
+        filename = f"screenshot_full_{timestamp}_{uid}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -85,6 +138,12 @@ class ScreenshotManager:
 
         # Get all monitors
         monitors = self._get_monitors()
+        if not monitors:
+            logger.warning("No monitors detected via Win32 enum, falling back to full screen capture")
+            res = self.capture_full_screen()
+            if res is None:
+                raise RuntimeError("Screen capture unavailable for active monitor")
+            return res
 
         if monitor_index >= len(monitors):
             logger.warning(
@@ -96,11 +155,14 @@ class ScreenshotManager:
         bbox = monitor["rect"]
 
         # Capture monitor
-        screenshot = ImageGrab.grab(bbox=bbox)
+        screenshot = self._grab_safe(bbox=bbox)
+        if screenshot is None:
+            raise RuntimeError("Screen capture unavailable for active monitor")
 
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_monitor_{monitor_index}_{timestamp}.png"
+        uid = uuid.uuid4().hex[:6]
+        filename = f"screenshot_monitor_{monitor_index}_{timestamp}_{uid}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -123,7 +185,8 @@ class ScreenshotManager:
         hwnd = win32gui.GetForegroundWindow()
 
         if not hwnd:
-            raise RuntimeError("No active window found")
+            # Fallback to full screen if no foreground window handle
+            return self.capture_full_screen()
 
         # Get window rectangle
         rect = win32gui.GetWindowRect(hwnd)
@@ -133,17 +196,20 @@ class ScreenshotManager:
         height = bottom - y
 
         if width <= 0 or height <= 0:
-            raise RuntimeError("Invalid window dimensions")
+            return self.capture_full_screen()
 
         # Capture window
-        screenshot = ImageGrab.grab(bbox=(x, y, right, bottom))
+        screenshot = self._grab_safe(bbox=(x, y, right, bottom))
+        if screenshot is None:
+            raise RuntimeError("Screen capture unavailable for active window")
 
-        # Get window title
-        window_title = win32gui.GetWindowText(hwnd)
+        # Get window title sanitized
+        window_title = "".join(c for c in win32gui.GetWindowText(hwnd) if c.isalnum() or c in (" ", "_", "-")).strip()
 
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_window_{timestamp}_{window_title[:20]}.png"
+        uid = uuid.uuid4().hex[:6]
+        filename = f"screenshot_window_{timestamp}_{uid}_{window_title[:15]}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -173,11 +239,14 @@ class ScreenshotManager:
             raise ValueError("Invalid region coordinates")
 
         # Capture region
-        screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+        screenshot = self._grab_safe(bbox=(x1, y1, x2, y2))
+        if screenshot is None:
+            raise RuntimeError("Screen capture unavailable for selected region")
 
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_region_{x1}_{y1}_{x2}_{y2}_{timestamp}.png"
+        uid = uuid.uuid4().hex[:6]
+        filename = f"screenshot_region_{x1}_{y1}_{x2}_{y2}_{timestamp}_{uid}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -186,6 +255,14 @@ class ScreenshotManager:
 
         self.last_capture = filepath
         return filepath
+
+    def capture_region(self, x1: int, y1: int, x2: int, y2: int) -> str:
+        """Alias for capture_selected_region."""
+        return self.capture_selected_region(x1, y1, x2, y2)
+
+    def capture_window(self, window_title: str) -> str:
+        """Alias for capture_window_by_title."""
+        return self.capture_window_by_title(window_title)
 
     def capture_window_by_title(self, window_title: str) -> str:
         """
@@ -226,11 +303,15 @@ class ScreenshotManager:
             raise RuntimeError("Invalid window dimensions")
 
         # Capture window
-        screenshot = ImageGrab.grab(bbox=(x, y, right, bottom))
+        screenshot = self._grab_safe(bbox=(x, y, right, bottom))
+        if screenshot is None:
+            raise RuntimeError("Screen capture unavailable for window")
 
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_window_{timestamp}_{window_title[:20]}.png"
+        uid = uuid.uuid4().hex[:6]
+        safe_title = "".join(c for c in window_title if c.isalnum() or c in (" ", "_", "-")).strip()
+        filename = f"screenshot_window_{timestamp}_{uid}_{safe_title[:15]}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -264,11 +345,15 @@ class ScreenshotManager:
             raise RuntimeError("Invalid window dimensions")
 
         # Capture window
-        screenshot = ImageGrab.grab(bbox=(x, y, right, bottom))
+        screenshot = self._grab_safe(bbox=(x, y, right, bottom))
+        if screenshot is None:
+            raise RuntimeError("Screen capture unavailable for menu")
 
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_menu_{timestamp}_{menu_item[:20]}.png"
+        uid = uuid.uuid4().hex[:6]
+        safe_menu = "".join(c for c in menu_item if c.isalnum() or c in (" ", "_", "-")).strip()
+        filename = f"screenshot_menu_{timestamp}_{uid}_{safe_menu[:15]}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -301,11 +386,14 @@ class ScreenshotManager:
             raise RuntimeError("Invalid dialog dimensions")
 
         # Capture dialog
-        screenshot = ImageGrab.grab(bbox=(x, y, right, bottom))
+        screenshot = self._grab_safe(bbox=(x, y, right, bottom))
+        if screenshot is None:
+            raise RuntimeError("Screen capture unavailable for dialog")
 
-        # Generate filename
+        # Generate collision-proof filename
         timestamp = int(time.time())
-        filename = f"screenshot_dialog_{timestamp}.png"
+        uid = uuid.uuid4().hex[:6]
+        filename = f"screenshot_dialog_{timestamp}_{uid}_{window_handle}.png"
         filepath = self._get_save_path(filename)
 
         # Save screenshot
@@ -431,21 +519,147 @@ class ScreenshotManager:
 
     def _get_save_path(self, filename: str) -> str:
         """
-        Get full path for saving screenshot.
-
-        Args:
-            filename: Screenshot filename
-
-        Returns:
-            Full save path
+        Get absolute path for saving screenshot.
+        Defaults to project Data/runtime/screenshots/ with automatic directory creation.
         """
-        if self.settings.save_path:
+        if self.settings and self.settings.save_path and self.settings.save_path.strip():
             path = Path(self.settings.save_path)
-            path.mkdir(parents=True, exist_ok=True)
-            return str(path / filename)
+            if not path.is_absolute():
+                path = (Path(__file__).resolve().parents[2] / path).resolve()
         else:
-            # Save to current directory
-            return filename
+            path = (Path(__file__).resolve().parents[2] / "Data" / "runtime" / "screenshots").resolve()
+        path.mkdir(parents=True, exist_ok=True)
+        return str((path / filename).resolve())
+
+    def capture_internal(self, capture_type: str = "full_screen", **kwargs) -> str:
+        """
+        Dispatch capture based on capture_type and kwargs.
+        Handles 'full_screen', 'active_monitor', 'active_window', 'window_by_title', and 'selected_region'.
+        """
+        ct = capture_type.lower().strip()
+        if ct in ("full_screen", "fullscreen", "screen", "full"):
+            res = self.capture_full_screen()
+            if res is None:
+                raise RuntimeError("Screen capture unavailable on current display session")
+            return res
+        elif ct in ("active_monitor", "monitor"):
+            idx = kwargs.get("monitor_index", kwargs.get("monitor", self.settings.monitor_index if self.settings else 0))
+            return self.capture_active_monitor(monitor_index=idx)
+        elif ct in ("active_window", "window_active"):
+            return self.capture_active_window()
+        elif ct in ("window", "window_by_title", "title"):
+            title = kwargs.get("window_title", kwargs.get("title", ""))
+            if not title:
+                return self.capture_active_window()
+            return self.capture_window_by_title(title)
+        elif ct in ("selected_region", "region"):
+            region = kwargs.get("region")
+            if region and len(region) >= 4:
+                return self.capture_selected_region(region[0], region[1], region[2], region[3])
+            elif all(k in kwargs for k in ("x1", "y1", "x2", "y2")):
+                return self.capture_selected_region(kwargs["x1"], kwargs["y1"], kwargs["x2"], kwargs["y2"])
+            elif self.settings and self.settings.selected_region:
+                x1, y1, x2, y2 = self.settings.selected_region
+                return self.capture_selected_region(x1, y1, x2, y2)
+            raise ValueError("Region coordinates (x1, y1, x2, y2) required for region capture")
+        else:
+            # Fallback to settings or full screen
+            try:
+                return self.capture_from_settings()
+            except Exception:
+                res = self.capture_full_screen()
+                if res is None:
+                    raise RuntimeError(f"Unknown capture type '{capture_type}' and full screen fallback unavailable")
+                return res
+
+    @contextmanager
+    def capture_scoped(self, capture_type: str = "full_screen", **kwargs) -> Generator[str, None, None]:
+        """
+        Context manager for ephemeral screenshot capture with fail-open lifecycle.
+        - Captures screenshot into Data/runtime/screenshots/
+        - Yields the absolute file path to the consumer
+        - On clean exit: safely unlinks the temporary file
+        - On exception: preserves the file on disk for post-mortem analysis and re-raises
+        - Runs bounded retention pruning on exit
+        """
+        filepath = self.capture_internal(capture_type=capture_type, **kwargs)
+        try:
+            yield filepath
+            self._safe_unlink(filepath)
+        except Exception:
+            logger.warning(f"Consumer failed; preserving failure screenshot at {filepath}")
+            raise
+        finally:
+            self._prune_failure_captures(max_count=20, max_age_hours=24)
+
+    def _safe_unlink(self, filepath: str | Path | None) -> bool:
+        """Safely delete screenshot file with Windows file-lock and permission guardrails."""
+        if not filepath:
+            return False
+        try:
+            p = Path(filepath)
+            if p.exists() and p.is_file():
+                p.unlink()
+                logger.debug(f"Ephemeral screenshot safely unlinked: {filepath}")
+                return True
+        except OSError as e:
+            logger.warning(f"Could not unlink ephemeral screenshot {filepath}: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error unlinking screenshot {filepath}: {e}")
+        return False
+
+    def _prune_failure_captures(self, max_count: int = 20, max_age_hours: int = 24) -> int:
+        """
+        Prune failure/preserved screenshots to prevent unbounded disk accumulation.
+        Enforces max_count ceiling and max_age_hours retention limit.
+        Returns number of deleted files.
+        """
+        try:
+            if self.settings and self.settings.save_path and self.settings.save_path.strip():
+                dir_path = Path(self.settings.save_path)
+                if not dir_path.is_absolute():
+                    dir_path = (Path(__file__).resolve().parents[2] / dir_path).resolve()
+            else:
+                dir_path = (Path(__file__).resolve().parents[2] / "Data" / "runtime" / "screenshots").resolve()
+
+            if not dir_path.exists() or not dir_path.is_dir():
+                return 0
+
+            now = time.time()
+            max_age_seconds = max_age_hours * 3600
+            files = [f for f in dir_path.glob("*.png") if f.is_file()]
+            deleted = 0
+
+            # 1. Prune by age
+            remaining = []
+            for f in files:
+                try:
+                    mtime = f.stat().st_mtime
+                    if now - mtime > max_age_seconds:
+                        f.unlink(missing_ok=True)
+                        deleted += 1
+                    else:
+                        remaining.append((f, mtime))
+                except OSError:
+                    pass
+
+            # 2. Prune by count (keep most recent max_count)
+            if len(remaining) > max_count:
+                remaining.sort(key=lambda x: x[1])  # oldest first
+                overflow = len(remaining) - max_count
+                for f, _ in remaining[:overflow]:
+                    try:
+                        f.unlink(missing_ok=True)
+                        deleted += 1
+                    except OSError:
+                        pass
+
+            if deleted > 0:
+                logger.info(f"Pruned {deleted} expired/overflow failure screenshot(s) from {dir_path}")
+            return deleted
+        except Exception as e:
+            logger.warning(f"Error during failure screenshot pruning: {e}")
+            return 0
 
     def capture_from_settings(self) -> str:
         """

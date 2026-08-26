@@ -216,6 +216,20 @@ def get_display_brightness() -> dict[str, Any]:
     Returns:
         Dict with current_brightness, levels, and method.
     """
+    # Primary: screen_brightness_control
+    try:
+        import screen_brightness_control as sbc
+        vals = sbc.get_brightness()
+        if vals is not None:
+            lvl = vals[0] if isinstance(vals, list) and vals else int(vals)
+            return {
+                "level": lvl,
+                "supported": True,
+                "method": "sbc",
+            }
+    except Exception as e:
+        logger.debug(f"sbc brightness read notice: {e}")
+
     com_init = False
     try:
         try:
@@ -255,7 +269,7 @@ def get_display_brightness() -> dict[str, Any]:
 
 def set_display_brightness(level: int) -> dict[str, Any]:
     """
-    Set display brightness using WMI.
+    Set display brightness using screen_brightness_control with WMI fallback.
 
     Args:
         level: Target brightness level (0-100)
@@ -264,6 +278,16 @@ def set_display_brightness(level: int) -> dict[str, Any]:
         Dict with success status and level.
     """
     target_level = max(0, min(100, int(level)))
+
+    # 1. Primary: screen_brightness_control
+    try:
+        import screen_brightness_control as sbc
+        sbc.set_brightness(target_level)
+        return {"success": True, "level": target_level, "method": "sbc"}
+    except Exception as e:
+        logger.debug(f"sbc set_brightness notice: {e}")
+
+    # 2. Secondary: WMI
     com_init = False
     try:
         try:

@@ -622,6 +622,29 @@ class PiperTTSEngine(TTSEngine):
 #  Edge TTS  (fallback — online / Microsoft)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _detect_indic_voice(text: str) -> str | None:
+    import re
+    # Kannada: U+0C80–U+0CFF
+    if re.search(r"[\u0C80-\u0CFF]", text):
+        return "kn-IN-GaganNeural"
+    # Hindi / Marathi: U+0900–U+097F
+    if re.search(r"[\u0900-\u097F]", text):
+        return "hi-IN-SwaraNeural"
+    # Telugu: U+0C00–U+0C7F
+    if re.search(r"[\u0C00-\u0C7F]", text):
+        return "te-IN-MohanNeural"
+    # Tamil: U+0B80–U+0BFF
+    if re.search(r"[\u0B80-\u0BFF]", text):
+        return "ta-IN-PallaviNeural"
+    # Bengali: U+0980–U+09FF
+    if re.search(r"[\u0980-\u09FF]", text):
+        return "bn-IN-BashkarNeural"
+    # Malayalam: U+0D00–U+0D7F
+    if re.search(r"[\u0D00-\u0D7F]", text):
+        return "ml-IN-MidhunNeural"
+    return None
+
+
 class EdgeTTSEngine(TTSEngine):
     """Microsoft Edge TTS — online fallback, no subscription required."""
 
@@ -662,13 +685,15 @@ class EdgeTTSEngine(TTSEngine):
 
                 from .tts_text_cleaner import clean_for_tts
 
-                voice_name = self.settings.voice or "en-US-AriaNeural"
                 raw_text = " ".join(self._stream)
                 self._stream.clear()
                 text_to_speak = clean_for_tts(raw_text)
                 if not text_to_speak:
                     self._is_playing = False
                     return False
+
+                indic_voice = _detect_indic_voice(text_to_speak)
+                voice_name = indic_voice or self.settings.voice or "en-US-AriaNeural"
 
                 communicate = edge_tts.Communicate(
                     text_to_speak,
@@ -876,6 +901,23 @@ class TTSManger:
     def add_text(self, text: str) -> bool:
         """Add text to speech queue."""
         self._last_added_text.append(text)
+
+        indic_voice = _detect_indic_voice(text)
+        if indic_voice:
+            # Non-English / Indic text: Piper cannot synthesize it. Use EdgeTTS directly.
+            if not self.fallback_engine:
+                fallback_settings = TTSSettings(
+                    speaker=TTSSpeaker.EDGE_TTS,
+                    voice=indic_voice,
+                    rate=self.settings.rate,
+                    pitch=self.settings.pitch,
+                    volume=self.settings.volume,
+                )
+                self.fallback_engine = EdgeTTSEngine(fallback_settings)
+                self.fallback_engine.initialize()
+            if self.fallback_engine and self.fallback_engine.is_active:
+                return self.fallback_engine.add_text(text)
+
         if not self.engine and not self.fallback_engine:
             logger.debug("TTS engine not yet initialized — attempting lazy init")
             if not self.initialize():
@@ -893,6 +935,10 @@ class TTSManger:
 
     def speak(self) -> bool:
         """Start speaking."""
+        # If fallback engine already buffered text (e.g. Indic language), speak via fallback engine
+        if self.fallback_engine and getattr(self.fallback_engine, "_stream", None):
+            return self.fallback_engine.speak()
+
         if self.engine and self.engine.is_active:
             try:
                 if self.engine.speak():
@@ -902,19 +948,7 @@ class TTSManger:
                 logger.warning(f"[TTS Fallback] Primary engine speak() failed: {e}")
 
         # Engage fallback if primary failed or is not active
-        if self.settings.fallback_speaker:
-            logger.warning(
-                f"[TTS Fallback] Engaging fallback engine ({self.settings.fallback_speaker.value}) for speech."
-            )
-            import sys
-            try:
-                sys.stderr.write(
-                    f"\n⚠️ [TTS Fallback] Primary engine failed. Speaking via fallback {self.settings.fallback_speaker.value}.\n"
-                )
-                sys.stderr.flush()
-            except Exception:
-                pass
-
+        if self.settings.fallback_speaker or self.fallback_engine:
             if not self.fallback_engine:
                 if not self._init_fallback():
                     return False

@@ -174,6 +174,14 @@ class OverlayWindow(QWidget):
         self._shortcut = QShortcut(QKeySequence("Alt+Space"), self)
         self._shortcut.activated.connect(self.toggle)
 
+        # Secondary fallback hotkey in case Alt+Space collides with Windows OS menu / PowerToys
+        self._fallback_shortcut = QShortcut(QKeySequence("Ctrl+Shift+Space"), self)
+        self._fallback_shortcut.activated.connect(self.toggle)
+
+        # Escape key quick dismiss
+        self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self._esc_shortcut.activated.connect(self.hide)
+
     def _setup_shadow(self):
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(40)

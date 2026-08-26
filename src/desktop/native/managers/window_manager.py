@@ -275,6 +275,40 @@ class WindowManager(BaseNativeManager):
         # 1. Tier 1: Fast-Path Alias Resolution
         resolved_name = self.FAST_PATH_ALIASES.get(app_clean)
 
+        # Check special folders & directories
+        folder_map = {
+            "documents": "Documents",
+            "document": "Documents",
+            "docs": "Documents",
+            "downloads": "Downloads",
+            "download": "Downloads",
+            "desktop": "Desktop",
+            "pictures": "Pictures",
+            "photos": "Pictures",
+            "images": "Pictures",
+            "music": "Music",
+            "videos": "Videos",
+            "video": "Videos",
+        }
+        clean_target = app_clean.replace("my ", "").replace("the ", "").replace(" folder", "").replace(" directory", "").strip()
+        if clean_target in folder_map or app_clean in folder_map:
+            fname = folder_map.get(clean_target) or folder_map.get(app_clean)
+            from pathlib import Path
+            od_path = Path.home() / "OneDrive" / fname
+            if od_path.exists():
+                return ("folder", str(od_path))
+            std_path = Path.home() / fname
+            return ("folder", str(std_path))
+
+        if clean_target in ("c drive", "c:", "c:\\", "c"):
+            return ("folder", "C:\\")
+        if clean_target in ("d drive", "d:", "d:\\", "d"):
+            return ("folder", "D:\\")
+        if clean_target in ("explorer", "file explorer", "this pc", "my computer", "files"):
+            return ("exe", "explorer.exe")
+        if os.path.isdir(app_clean):
+            return ("folder", os.path.abspath(app_clean))
+
         # 2. Tier 2: Generalized Fuzzy Matching against KNOWN_APPS
         if not resolved_name:
             matches = difflib.get_close_matches(app_clean, self.KNOWN_APPS, n=2, cutoff=0.65)
@@ -469,6 +503,21 @@ class WindowManager(BaseNativeManager):
             )
 
         if res_type == "not_found":
+            # Check if user asked to open a document/file (e.g. Sreekanta_resume, resume, document)
+            try:
+                from tools.file_service import FileService
+                ok, msg, matched_path = FileService.get_instance().find_and_open(app)
+                if ok and matched_path:
+                    return DesktopResult.create_success(
+                        goal=goal,
+                        capability="app_open",
+                        manager=self.name,
+                        data={"file_path": str(matched_path), "file_name": matched_path.name, "reused": False, "app_name": matched_path.name},
+                        events=["file_opened"],
+                    )
+            except Exception:
+                pass
+
             return DesktopResult.create_failure(
                 goal=goal,
                 capability="app_open",
@@ -529,6 +578,32 @@ class WindowManager(BaseNativeManager):
                     error=f"Failed to launch protocol '{target}': {e}",
                 )
 
+        if res_type == "folder":
+            try:
+                folder_path = target
+                if os.name == "nt":
+                    try:
+                        os.startfile(folder_path)
+                    except Exception:
+                        subprocess.Popen(f'explorer.exe "{folder_path}"', shell=True)
+                else:
+                    subprocess.Popen(["xdg-open", folder_path])
+                time.sleep(0.3)
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability="app_open",
+                    manager=self.name,
+                    data={"folder_path": folder_path, "reused": False, "app_name": "File Explorer"},
+                    events=["folder_opened"],
+                )
+            except Exception as e:
+                return DesktopResult.create_failure(
+                    goal=goal,
+                    capability="app_open",
+                    manager=self.name,
+                    error=f"Failed to open folder '{target}': {e}",
+                )
+
         # 3. Physical Executable Launch via Windows OS with Verification
         try:
             exe_path = target
@@ -551,8 +626,8 @@ class WindowManager(BaseNativeManager):
                     args.append(str(target_file))
                 proc = subprocess.Popen(args)
 
-            # Verification poll: wait up to 1.0s for process/window to initialize
-            time.sleep(0.4)
+            # Verification poll: wait up to 0.1s for process/window to initialize
+            time.sleep(0.05)
             return DesktopResult.create_success(
                 goal=goal,
                 capability="app_open",
@@ -658,12 +733,41 @@ class WindowManager(BaseNativeManager):
         sp = SafetyPolicy.get_instance()
 
         target = window_title or app_name or goal or ""
-        if sp.is_protected_app(target):
+        clean_target = str(target).lower().replace("my ", "").replace("the ", "").replace(" folder", "").strip()
+
+        # If user explicitly asked to close a protected app (like close cmd, close vscode), block via safety policy
+        if sp.is_protected_app(target) or sp.is_protected_app(clean_target):
             raise WindowError(
                 f"Safety constraint: AuraAI is prohibited from closing protected application '{target}'."
             )
 
         target_title = window_title or app_name or (goal.split()[-1] if goal else None)
+
+        # Folder closing: close only the Explorer window for that folder
+        special_folders = ("documents", "document", "downloads", "download", "pictures", "photos", "desktop", "music", "videos", "c drive", "d drive")
+        if clean_target in special_folders or (target_title and target_title.lower() in special_folders):
+            window_handle = self._find_window(target_title, window_class, process_id)
+            if window_handle:
+                try:
+                    win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
+                except Exception:
+                    pass
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability="window.close",
+                    manager=self.name,
+                    data={"window_handle": window_handle, "window_title": f"{target_title} Explorer Window closed"},
+                    events=["window_closed"],
+                )
+            else:
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability="window.close",
+                    manager=self.name,
+                    data={"message": f"No open File Explorer window for '{target_title}' found."},
+                    events=["window_closed"],
+                )
+
         window_handle = (
             self._find_window(target_title, window_class, process_id)
             if target_title
@@ -678,9 +782,12 @@ class WindowManager(BaseNativeManager):
         if window_handle:
             info = self._get_window_info(window_handle)
             w_title = info.get("title") or ""
-            if sp.is_protected_app(w_title):
+            proc_name = (info.get("process_name") or "").lower()
+            # Double check SafetyPolicy on the discovered window's process & title
+            if sp.is_protected_app(proc_name) or sp.is_protected_app(w_title):
+                # If target was not explicitly requesting this protected app, abort
                 raise WindowError(
-                    f"Safety constraint: AuraAI is prohibited from closing protected window '{w_title}'."
+                    f"Safety constraint: AuraAI is prohibited from closing protected window '{w_title}' ({proc_name})."
                 )
 
         if not window_handle and target_title:
@@ -688,22 +795,32 @@ class WindowManager(BaseNativeManager):
             import os
             import subprocess
 
-            if sp.is_protected_app(target_title):
+            t = target_title.lower().strip()
+            if sp.is_protected_app(t):
                 raise WindowError(
                     f"Safety constraint: AuraAI is prohibited from closing protected application '{target_title}'."
                 )
-            t = target_title.lower().strip()
-            _, resolved_target = self._resolve_app_executable(t)
+            res_type, resolved_target = self._resolve_app_executable(t)
+            if res_type == "folder":
+                return DesktopResult.create_success(
+                    goal=goal,
+                    capability="window.close",
+                    manager=self.name,
+                    data={"message": f"No open folder window for '{target_title}'."},
+                    events=["window_closed"],
+                )
+
             exe_resolved = os.path.basename(resolved_target or t)
             exe_base = os.path.splitext(exe_resolved)[0].lower()
 
-            for name in {t, exe_base, f"{t}app", f"{exe_base}app"}:
-                subprocess.run(
-                    f"taskkill /f /im {name}.exe /t",
-                    shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+            for name in {t, exe_base}:
+                if not sp.is_protected_app(name) and not sp.is_protected_app(f"{name}.exe"):
+                    subprocess.run(
+                        f"taskkill /f /im {name}.exe /t",
+                        shell=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
 
             return DesktopResult.create_success(
                 goal=goal,
@@ -720,24 +837,6 @@ class WindowManager(BaseNativeManager):
             # Close window via WM_CLOSE
             if isinstance(window_handle, int) and window_handle > 0:
                 win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
-
-            # Fallback/force kill app process if app_name is explicitly provided
-            if target_title:
-                import os
-                import subprocess
-
-                t = target_title.lower().strip()
-                _, resolved_target = self._resolve_app_executable(t)
-                exe_resolved = os.path.basename(resolved_target or t)
-                exe_base = os.path.splitext(exe_resolved)[0].lower()
-
-                for name in {t, exe_base, f"{t}app", f"{exe_base}app"}:
-                    subprocess.run(
-                        f"taskkill /f /im {name}.exe /t",
-                        shell=True,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
 
             return DesktopResult.create_success(
                 goal=goal,
@@ -1406,7 +1505,36 @@ class WindowManager(BaseNativeManager):
             if window_title is not None:
                 title = info.get("title", "").lower().strip()
                 proc_name = (info.get("process_name") or "").lower()
+                class_name_lower = (info.get("class_name") or "").lower()
                 title_match = window_title.lower().strip()
+
+                clean_target = title_match.replace("my ", "").replace("the ", "").replace(" folder", "").strip()
+
+                # Special folder matching: ONLY match Explorer windows (CabinetWClass or explorer.exe)
+                special_folders = ("documents", "document", "downloads", "download", "pictures", "photos", "desktop", "music", "videos")
+                if clean_target in special_folders or title_match in special_folders:
+                    folder_kw = clean_target
+                    is_explorer = (
+                        "explorer" in proc_name
+                        or class_name_lower in ("cabinetwclass", "explorewclass")
+                    )
+                    if not is_explorer:
+                        return True
+                    if folder_kw not in title:
+                        return True
+                    window_handle = hwnd
+                    return True
+
+                # Terminal / Shell protection: do NOT match shells for generic app searches
+                shell_procs = ("cmd.exe", "powershell.exe", "windowsterminal.exe", "conhost.exe", "bash.exe")
+                is_shell_proc = any(proc_name.endswith(sp) or proc_name == sp for sp in shell_procs)
+                wants_shell = any(kw in title_match for kw in ("cmd", "command prompt", "powershell", "terminal", "console", "bash"))
+                if is_shell_proc and not wants_shell:
+                    return True
+
+                # VS Code / IDE protection: do NOT match VS Code for generic queries unless requested
+                if "code.exe" in proc_name and not any(kw in title_match for kw in ("code", "vscode", "visual studio")):
+                    return True
 
                 aliases = [title_match]
                 if title_match in ["calc", "calculator"]:
@@ -1418,10 +1546,15 @@ class WindowManager(BaseNativeManager):
                 elif title_match in ["vscode", "code", "vs code"]:
                     aliases.extend(["vscode", "code", "visual studio code"])
 
-                match = any(
-                    a in title or (title and title in a) or a in proc_name
-                    for a in aliases
-                )
+                match = False
+                for a in aliases:
+                    if a in proc_name or proc_name.startswith(a) or proc_name == f"{a}.exe":
+                        match = True
+                        break
+                    if a in title:
+                        match = True
+                        break
+
                 if not match:
                     return True
 

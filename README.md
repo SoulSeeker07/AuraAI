@@ -4,14 +4,14 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.29.0--expert--systems-green.svg)](RELEASE.md)
-[![Codebase](https://img.shields.io/badge/source-600%2B%20files%20%7C%205%2C400%2B%20KB-brightgreen.svg)](src/)
-[![Security Model](https://img.shields.io/badge/security-DPAPI%20%7C%20HMAC--SHA256%20%7C%20Isolated%20Audit-blue.svg)](docs/security.md)
-[![Regression Suite](https://img.shields.io/badge/regression-61%2F61%20passing-brightgreen.svg)](tests/)
+[![Platform Version](https://img.shields.io/badge/version-v0.33.0--smarthome--ambient--hud-green.svg)](RELEASE.md)
+[![Codebase](https://img.shields.io/badge/source-600%2B%20files%20%7C%205%2C800%2B%20KB-brightgreen.svg)](src/)
+[![Security Model](https://img.shields.io/badge/security-DPAPI%20%7C%20HMAC--SHA256%20%7C%20Job%20Object%20Sandbox-blue.svg)](docs/security.md)
+[![Regression Suite](https://img.shields.io/badge/regression-250%2B%20passing%20%7C%20100%25-brightgreen.svg)](tests/)
 
-Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies voice perception, natural language decision-making, planning, desktop OS automation, execution, reflection, and long-term memory into a single coordinated system.
+Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies voice perception, natural language decision-making, planning, desktop OS automation, dynamic Python CodeAct execution, smart home IoT control, live PySide6 HUD overlays, reflection, and long-term memory into a single coordinated system.
 
-> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the 17 Native Desktop Managers (Win32), continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), research by Gemini/Wikipedia/DuckDuckGo, and software engineering by the Engineering Engine.
+> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the 17 Native Desktop Managers (Win32), CodeAct execution by the sandboxed Python CodeAct engine, smart home IoT by the Home Assistant & Tapo integration, continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), workspace telemetry by live HUD widgets, and software engineering by the Autonomous Engineering Platform.
 
 ---
 
@@ -21,31 +21,37 @@ Aura AI is a modular, high-reliability **AI Operating System Platform** built on
 Operational Subsystems (Live on Physical System)
 ├── Core Runtime Pipeline — OPERATIONAL (7-stage MasterOrchestrator, 57KB cognitive core)
 ├── Native Desktop Engine — OPERATIONAL (17 Native Managers: Input, Terminal, ScreenAction, Window, File, Audio, Power, etc.)
-├── Unified Backend Registry — OPERATIONAL (23 Live Backend Adapters)
-├── Cognitive Memory (M17) — COMPLETE (8 typed stores: Working, Episodic, Semantic, Procedural, Preference, Project + Recall + Decay + Consolidation)
+├── Unified Backend Registry — OPERATIONAL (24 Live Backend Adapters including SmartHome)
+├── Universal Capability Registry — OPERATIONAL (8 Domain Providers with 80+ Capabilities)
+├── Dynamic CodeAct Engine (M28) — OPERATIONAL (Code-as-action, AST validation, sandbox execution, closed-loop repair)
+├── Smart Home & IoT Engine (M29) — OPERATIONAL (Home Assistant WebSocket/REST + Tapo/Kasa KLAP AES-CBC-128 crypto)
+├── PySide6 Desktop HUD Overlays (M28/M29) — OPERATIONAL (Jarvis Rings, Chat Window, System Monitor, Weather, Agent Task Status, Personal OS Dashboard, Matrix, System Status)
+├── Cognitive Memory (M17) — COMPLETE (8 typed stores: Working, Episodic, Semantic, Procedural, Preference, Project + Decay + Consolidation)
 ├── World Model (M18) — COMPLETE (Multi-provider environment model with workspace, repository, and memory integration)
-├── Universal Capability Registry (M19) — COMPLETE (Cross-domain governance, ActionRisk taxonomy, DAG plan validation, 7 capability providers)
-├── Coding Intelligence 2.0 (M20) — COMPLETE (AST analysis, code editor with rollback, Antigravity bridge, World Model integration, automated repair loop)
+├── Coding Intelligence 2.0 (M20) — COMPLETE (AST analysis, code editor with rollback, Antigravity bridge, automated repair loop)
 ├── Research & Knowledge Hardening (M21) — COMPLETE (Evidence grounding, citation preservation, zero-refetch memory recall, SSRF protection)
 ├── Multimodal Voice & Vision (M22) — COMPLETE (Pre-capture DevicePrivacyEngine fail-closed, sensitive-window default-BLOCK, UI grounding)
-├── Autonomous Daemon & Background Operations (M23) — COMPLETE (Durable state machine, crash recovery, cancellation, cryptographic HMAC autonomy governance)
+├── Autonomous Daemon & Background Operations (M23) — COMPLETE (Durable state machine, crash recovery, cancellation, cryptographic HMAC governance)
 ├── Event Runtime & Autonomous Intent Execution (M24) — COMPLETE (AuraEvent contract, signal correlation, situational awareness, closed-loop triggers)
-├── Professional Expert Systems & Cognitive Routing (M25) — COMPLETE (Cybersecurity, Network, Software, Finance, PlanDAGCompiler, Stage 2.9 routing, fail-closed confidence gates)
-├── Security Hardening Track (Phases 1–4) — COMPLETE (DPAPI master keys, HKDF derivation, isolated audit writer IPC, OS event log sink)
-└── Core Platform Regression Suite — 61 / 61 PASSING (100% Green)
+├── Professional Expert Systems & Cognitive Routing (M25) — COMPLETE (Cybersecurity, Network, Software, Finance, PlanDAGCompiler, Stage 2.9 routing)
+├── Personal Operating System (M26) — COMPLETE (DailyContextEngine, sub-second WorkspaceSearchEngine, TriggerScheduler, RequestSource isolation)
+├── Autonomous Engineering Platform (M27) — COMPLETE (Closed-loop repair, AST fault localization, safety ceiling, byte-exact rollback, PR assembler)
+├── Sandboxed Pytest Test Runner (M28) — COMPLETE (Windows Job Object + RestrictedUserSandbox privilege dropping, TD-008 resolved)
+└── Core Platform Regression Suite — 250+ PASSING (100% Green)
 ```
 
 ### Codebase Metrics
 
 | Metric | Value |
 |:---|:---|
-| **Platform Version** | `v0.29.0-expert-systems` |
+| **Platform Version** | `v0.33.0-smarthome-ambient-hud` |
 | **Native Desktop Managers** | 17 Win32 managers |
-| **Backend Adapters** | 23 registered adapters |
-| **Capability Providers** | 7 core providers |
+| **Backend Adapters** | 24 registered adapters |
+| **Capability Providers** | 8 registered providers (80+ capabilities) |
+| **Desktop HUD Overlays** | 8 live PySide6 widgets |
 | **Domain Experts** | 4 specialized experts (Cybersecurity, Network, Software, Finance) |
-| **Milestones Complete** | M01–M25 (Complete baseline) |
-| **Core Regression Suite** | 61 / 61 passing (100%) |
+| **Milestones Complete** | M01–M29 (Complete baseline) |
+| **Core Regression Suite** | 250+ passing (100% Green) |
 
 ---
 
@@ -218,7 +224,7 @@ pip install -r requirements.txt
 
 ```text
 ━━━ COMPLETE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M01–M16   Phase 0 — Foundation                    16/16 milestones
+M01–M16   Phase 0 — Foundation                    16/16 milestones ✅
 M17       Cognitive Memory                        ✅
 M18       World Model                             ✅
 M19       Capability & Tool Runtime               ✅
@@ -227,19 +233,17 @@ M21       Research & Knowledge Hardening          ✅
 M22       Multimodal Voice & Vision               ✅
 M23       Autonomous Daemon & Background Ops      ✅
 M24       Event Runtime & Autonomous Triggers     ✅
+M25       Professional Expert Systems             ✅
+M26       Personal OS Proactive Automation        ✅
+M27       Autonomous Engineering Platform         ✅
+M28       Dynamic CodeAct & Desktop HUD Overlays  ✅
 
-━━━ NEXT UP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M25       Professional Expert Systems             PLANNED
-M26       Personal OS Proactive Automation        PLANNED
-
-━━━ FUTURE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M27       Autonomous Engineering                  PLANNED
-M28       Aura OS                                 PLANNED
-M29       Natural Interaction                     PLANNED
-M30       Aura GUI Command Center                 PLANNED
+━━━ UPCOMING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+M29       Multi-User & Enterprise Governance      PLANNED
+M30       Ambient Voice & Spatial Audio           PLANNED
 ```
 
-See [roadmap.md](roadmap.md) for detailed milestone specifications.
+See [docs/roadmap.md](docs/roadmap.md) and [docs/milestones/](docs/milestones/) for detailed specifications.
 
 ---
 

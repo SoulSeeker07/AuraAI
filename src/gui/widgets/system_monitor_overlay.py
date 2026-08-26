@@ -421,6 +421,7 @@ class SystemMonitorOverlay(QWidget):
         self._save_geometry()
         if self._worker.isRunning():
             self._worker.stop()
+            self._worker.wait(1000)
         super().closeEvent(event)
 
     def mousePressEvent(self, event):

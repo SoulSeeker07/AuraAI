@@ -282,8 +282,10 @@ class BrowserStateProbe:
             return "chatgpt.com"
         elif "youtube" in txt:
             return "youtube.com"
+        elif "amazon.in" in txt:
+            return "amazon.in"
         elif "amazon" in txt:
-            return "amazon.com"
+            return "amazon.com" if "amazon.com" in txt else "amazon.in"
         elif "ebay" in txt:
             return "ebay.com"
         elif "flipkart" in txt:

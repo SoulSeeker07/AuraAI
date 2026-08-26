@@ -5,16 +5,17 @@ import sys
 from pathlib import Path
 
 # Add paths
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
-sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(1, str(SRC_DIR))
+sys.path.insert(0, str(SRC_DIR))
+sys.path.insert(1, str(PROJECT_ROOT))
 
+import pytest
 from clients.cli_client import CLIClient
 from core.aura_core import AuraCore
 
 
-async def test_commands():
+async def _async_test_commands():
     """Test all non-interactive CLI commands."""
     print("=" * 80)
     print("TESTING CLI NON-INTERACTIVE COMMANDS")
@@ -96,5 +97,10 @@ async def test_commands():
     await aura_core.shutdown()
 
 
+def test_commands():
+    """Pytest entrypoint for CLI non-interactive commands."""
+    asyncio.run(_async_test_commands())
+
+
 if __name__ == "__main__":
-    asyncio.run(test_commands())
+    test_commands()

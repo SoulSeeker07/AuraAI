@@ -45,7 +45,8 @@ class TxtParser:
                 return []
 
             # Get file metadata first
-            file_metadata = self.extract_metadata(file_path)
+            file_meta_obj = self.extract_metadata(file_path)
+            file_metadata = file_meta_obj.to_dict() if hasattr(file_meta_obj, "to_dict") else {}
 
             # Split content into chunks
             lines = content.split("\n")
@@ -64,7 +65,9 @@ class TxtParser:
                     chunk = DocumentChunk(
                         id=f"{file_path.stem}_chunk_{chunk_id}",
                         content=chunk_content,
-                        type=ChunkType.TEXT,
+                        chunk_type=ChunkType.TEXT,
+                        source_type=SourceType.TXT,
+                        source_file=str(file_path),
                         metadata={
                             **file_metadata,
                             "chunk_id": chunk_id,
@@ -89,7 +92,9 @@ class TxtParser:
                 chunk = DocumentChunk(
                     id=f"{file_path.stem}_chunk_{chunk_id}",
                     content=chunk_content,
-                    type=ChunkType.TEXT,
+                    chunk_type=ChunkType.TEXT,
+                    source_type=SourceType.TXT,
+                    source_file=str(file_path),
                     metadata={
                         **file_metadata,
                         "chunk_id": chunk_id,
@@ -111,7 +116,8 @@ class TxtParser:
                 if not content:
                     return []
 
-                file_metadata = self.extract_metadata(file_path)
+                file_meta_obj = self.extract_metadata(file_path)
+                file_metadata = file_meta_obj.to_dict() if hasattr(file_meta_obj, "to_dict") else {}
 
                 lines = content.split("\n")
                 current_chunk = []
@@ -126,7 +132,9 @@ class TxtParser:
                         chunk = DocumentChunk(
                             id=f"{file_path.stem}_chunk_{chunk_id}",
                             content=chunk_content,
-                            type=ChunkType.TEXT,
+                            chunk_type=ChunkType.TEXT,
+                            source_type=SourceType.TXT,
+                            source_file=str(file_path),
                             metadata={
                                 **file_metadata,
                                 "chunk_id": chunk_id,
@@ -149,7 +157,9 @@ class TxtParser:
                     chunk = DocumentChunk(
                         id=f"{file_path.stem}_chunk_{chunk_id}",
                         content=chunk_content,
-                        type=ChunkType.TEXT,
+                        chunk_type=ChunkType.TEXT,
+                        source_type=SourceType.TXT,
+                        source_file=str(file_path),
                         metadata={
                             **file_metadata,
                             "chunk_id": chunk_id,
@@ -170,12 +180,13 @@ class TxtParser:
 
     def extract_metadata(self, file_path: Path) -> DocumentMetadata:
         """Extract metadata from text file."""
+        from datetime import datetime
         metadata = DocumentMetadata(
-            source=file_path,
+            source=str(file_path),
             source_type=SourceType.TXT,
             title=file_path.stem,
-            created_at=file_path.stat().st_ctime if file_path.exists() else None,
-            modified_at=file_path.stat().st_mtime if file_path.exists() else None,
+            created_at=datetime.fromtimestamp(file_path.stat().st_ctime) if file_path.exists() else None,
+            modified_at=datetime.fromtimestamp(file_path.stat().st_mtime) if file_path.exists() else None,
             size=file_path.stat().st_size if file_path.exists() else 0,
         )
 

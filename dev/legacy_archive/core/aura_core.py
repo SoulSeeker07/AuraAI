@@ -719,13 +719,26 @@ class AuraCore:
         Delegates execution through MasterOrchestrator cognitive pipeline.
         """
         try:
+            # 1. Fast Conversational Engine & Hardware Controller
+            try:
+                from Memory import Memory
+                from ai.registry import build_provider_manager
+                from brain.conversation_engine import ConversationEngine
+                mem = getattr(self, "memory", None)
+                if mem is None:
+                    mem = Memory(db_path=str(self.memory_db_path), chat_log_path=str(self.chat_log_path))
+                pm = build_provider_manager(dict(os.environ))
+                engine = ConversationEngine(memory=mem, provider_manager=pm, aura_core=self)
+                conv_res = await engine.process(user_goal)
+                if conv_res and conv_res.text:
+                    return conv_res.text
+            except Exception as conv_err:
+                logger.debug(f"[AuraCore] Fast ConversationEngine notice: {conv_err}")
+
             from core.orchestration import MasterOrchestrator
 
             orchestrator = MasterOrchestrator.get_instance()
 
-            # ── Session-Scoped Confirmation: delegate yes/no to MasterOrchestrator ──
-            # Check if the previous session had a pending confirmation waiting for this answer.
-            # This is the primary path — session-scoped, typed, with audit trail.
             raw = user_goal.strip().lower()
             if raw in [
                 "yes",
@@ -740,6 +753,12 @@ class AuraCore:
                 "nope",
                 "nah",
             ]:
+                raw = user_goal.strip().lower()
+                if raw in ["quit", "exit", "bye", "goodbye", "close aura", "exit aura"]:
+                    name = ""
+                    if self.memory:
+                        name = self.memory.fact_value("profile", "name") or self.memory.fact_value("person", "name") or ""
+                    return f"Goodbye{', ' + name if name else ''}! Session closed."
                 try:
                     if orchestrator.check_pending_confirmation() is not None:
                         resolved_result = orchestrator.resolve_pending_confirmation(
@@ -889,6 +908,9 @@ class AuraCore:
                     if "pre-execution decision:" in obs.lower():
                         continue
                     if "no backend available for capability" in obs.lower():
+                        # If a capability failed or was missing, check if the request was generative text / writing
+                        if self.llm_enabled and self.groq_client is not None:
+                            return await self.get_ai_response(user_goal)
                         filtered_obs.append("I don't know how to perform that specific action on your desktop yet.")
                     else:
                         filtered_obs.append(obs)
@@ -896,9 +918,13 @@ class AuraCore:
                     return "\n".join(filtered_obs)
                 elif result.success:
                     return "Action completed successfully."
+                elif self.llm_enabled and self.groq_client is not None:
+                    return await self.get_ai_response(user_goal)
                 else:
                     return "I was unable to complete that action."
             else:
+                if not result.success and self.llm_enabled and self.groq_client is not None:
+                    return await self.get_ai_response(user_goal)
                 return f"Action completed successfully." if result.success else "I was unable to complete that action."
         except Exception as e:
             logger.error(

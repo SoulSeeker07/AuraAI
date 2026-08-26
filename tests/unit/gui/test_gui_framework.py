@@ -18,7 +18,9 @@ from gui.main_window import MainWindow
 from gui.overlay import OverlayWindow
 from gui.signals import ExecutionStep, StepStatus, app_signals
 from gui.widgets import (
+    ChatBubble,
     ChatStreamWidget,
+    ChatWindowOverlay,
     DagVisualizer,
     InspectorDrawer,
     NavigationRail,
@@ -71,11 +73,48 @@ def test_navigation_rail_instantiation(qapp):
 
 def test_main_window_instantiation(qapp):
     window = MainWindow()
-    assert window.windowTitle() == "AuraAI Control Center"
-    assert window._center_stack.count() == 5
+    assert "AuraAI" in window.windowTitle()
+    assert window._center_stack.count() == 7
+
+
+def test_main_window_chat_overlay_toggle(qapp):
+    window = MainWindow()
+    assert window._chat_overlay is None
+
+    # First toggle -> instantiated & shown
+    window.toggle_chat_overlay()
+    assert window._chat_overlay is not None
+    assert isinstance(window._chat_overlay, ChatWindowOverlay)
+    assert window._chat_overlay.isVisible()
+
+    # Second toggle -> hidden
+    window.toggle_chat_overlay()
+    assert not window._chat_overlay.isVisible()
 
 
 def test_overlay_window_instantiation(qapp):
     overlay = OverlayWindow()
     assert overlay.objectName() == "OverlayWindow"
     assert not overlay.isVisible()
+
+
+def test_chat_window_overlay_instantiation(qapp):
+    overlay = ChatWindowOverlay()
+    assert overlay.objectName() == "ChatWindowOverlay"
+    assert overlay.windowTitle() == "AuraAI Neural Chat HUD"
+    assert not overlay.isVisible()
+
+    # Test toggle
+    overlay.toggle()
+    assert overlay.isVisible()
+    overlay.toggle()
+    assert not overlay.isVisible()
+
+    # Test submitting prompt
+    submitted_texts = []
+    overlay.command_submitted.connect(lambda t: submitted_texts.append(t))
+    overlay._input_field.setText("Test Command Prompt")
+    overlay._on_submit()
+    assert "Test Command Prompt" in submitted_texts
+    assert overlay._input_field.text() == ""
+

@@ -1,6 +1,6 @@
-# Engineering Diagnostics & Quality Tooling
+# Engineering Diagnostics, Quality Tooling & Autonomous Platform
 
-The engineering module (`src/engineering/`) provides diagnostic, telemetry, and automated verification tools to maintain repository health and code quality.
+The engineering subsystem (`src/engineering/`) provides diagnostic telemetry, verification pipelines, and the **Autonomous Engineering Platform** for closed-loop bug fixing and test-driven repair.
 
 ---
 
@@ -12,7 +12,7 @@ Invoked via `python aura.py --doctor`, `AuraDoctor` executes 22 automated system
 - `architecture.json` and `capabilities.json` manifest loading
 - Groq and Gemini API key availability
 - Import hygiene and circular dependency check (AST import parsing)
-- Health status of all 6 native desktop managers
+- Health status of native desktop managers
 - Multi-agent runtime and plugin ecosystem status
 - Memory footprint (< 250 MB) and startup latency (< 5.0 s)
 
@@ -36,3 +36,15 @@ Invoked via `python aura.py --verify`, `AuraVerifier` executes the mandatory CI 
 3. **Isort Order**: `isort --check`
 4. **Mypy Type Check**: `mypy`
 5. **Architecture Tests**: `pytest tests/architecture/`
+
+---
+
+## 4. Autonomous Engineering Platform (Milestone 27 & 28)
+
+The Autonomous Engineering Platform enables closed-loop, self-healing code repair bounded by strict security guardrails:
+
+- **`FaultLocalizer`**: Parses test failure stack frames and slices AST structures to identify the innermost enclosing function/method/class scopes.
+- **`SandboxedPytestRunnerAdapter`**: Executes test suites under `AuraSandboxUser` isolated by Windows Job Objects (512MB memory cap, CPU limit, sanitized environment).
+- **`WorkspacePolicy` & Single-Write Gate**: Enforces directory containment, blocks edits to the protected safety ceiling (`PROTECTED_SAFETY_CEILING`), and ensures test-file immunity.
+- **`AutonomousEngineeringLoop`**: Orchestrates snapshotting, retry bounds (`max_retries=3`), diff generation, patch application, and byte-exact rollbacks.
+- **`PatchBundleAssembler`**: Compiles structured PR markdown summaries with unified diffs, requiring cryptographic HMAC approval tokens before git merge/push actions.

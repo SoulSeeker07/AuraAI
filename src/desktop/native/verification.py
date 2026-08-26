@@ -84,8 +84,9 @@ class ActionVerifier:
             win_found = False
             hwnds: list[int] = []
 
-            for attempt in range(5):
-                time.sleep(0.3)
+            for attempt in range(4):
+                if attempt > 0:
+                    time.sleep(0.08)
                 after_snap = WorldSnapshotProvider().snapshot()
                 after_procs = getattr(after_snap, "running_processes", []) or []
                 after_windows = getattr(after_snap, "window_titles", []) or []

@@ -205,6 +205,7 @@ class BackendRegistry:
         from .adapters.settings_backend import SettingsBackendAdapter
         from .adapters.software_backend import SoftwareBackendAdapter
         from .adapters.security_backend import SecurityBackendAdapter
+        from .adapters.smarthome_backend import SmartHomeBackendAdapter
         from .adapters.vision_backend import VisionEngineBackend
         from .adapters.voice_backend import VoiceEngineBackend
         from .adapters.daemon_backend import DaemonEngineBackend
@@ -235,6 +236,7 @@ class BackendRegistry:
         self.register(SettingsBackendAdapter())
         self.register(SoftwareBackendAdapter())
         self.register(SecurityBackendAdapter())
+        self.register(SmartHomeBackendAdapter())
 
     def load_capability_manifest(self, manifest_path: Path | None = None) -> None:
         """Load capability mapping manifest from config/capabilities.json or .yaml."""
