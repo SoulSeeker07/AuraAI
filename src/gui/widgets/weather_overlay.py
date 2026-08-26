@@ -170,9 +170,7 @@ class WeatherOverlay(QWidget):
         self._settings.setValue("pos", self.pos())
         self._settings.setValue("size", self.size())
 
-    def closeEvent(self, event):
-        self._save_geometry()
-        super().closeEvent(event)
+
 
     # ------------------------------------------------------------------
     # Drag to move

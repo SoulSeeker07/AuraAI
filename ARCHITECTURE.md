@@ -26,7 +26,7 @@ graph TD
   subgraph USER_LAYER ["🚀 1. USER & APPLICATION INTERFACES"]
     USER(("👤 User Input"))
     CLI["💻 CLI Client (cli.py)"]
-    GUI["🎨 Desktop GUI Client"]
+    GUI["🎨 Holographic AI Core GUI (main_window.py)"]
     VOICE["🎙️ Voice Interface"]
   end
 
@@ -34,6 +34,7 @@ graph TD
     CORE["⚙️ AuraCore (aura_core.py)"]
     SESSION["📋 RuntimeSession"]
     EVENTBUS["⚡ EventBus (Broadcaster)"]
+    BRIDGE["🌉 RealBackendBridge (Telemetry Bus)"]
   end
 
   subgraph ACA_LAYER ["🧠 3. AURA COGNITIVE ARCHITECTURE (ACA)"]
@@ -57,11 +58,11 @@ graph TD
     ENGINEERING_ENG["🛠️ EngineeringManager → AST & Refactor"]
     VISION_ENG["👁️ VisionManager → OCR & Element Detect"]
     VOICE_ENG["🔊 VoiceManager → STT / TTS"]
-    HUD_LAYER["📊 Desktop HUD Overlays → PySide6 Translucent"]
+    HUD_LAYER["📊 Desktop HUD Overlays & DAG Visualizer"]
   end
 
   subgraph MEMORY_LAYER ["📚 5. KNOWLEDGE & PERSISTENCE"]
-    MEMORY["💾 Memory 2.0 (Fact & Vector Store)"]
+    MEMORY["💾 Cognitive Memory (Fact, Vector, Claude/ChatGPT Importers)"]
     GOALS["🎯 GoalManager (Long-term Goals)"]
     ARTIFACTS["📦 ArtifactManager"]
   end

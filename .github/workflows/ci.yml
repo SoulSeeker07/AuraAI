@@ -79,6 +79,9 @@ jobs:
       - name: Import Convention Check (split-singleton guard)
         run: python scripts/check_import_convention.py
 
+      - name: AST Method Shadowing & Integrity Check
+        run: python scripts/check_duplicate_methods.py
+
       - name: Architecture Tests
         run: pytest tests/architecture -v
 

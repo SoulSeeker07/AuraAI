@@ -4,6 +4,30 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v1.0.0-holographic-ai-core`] - 2026-08-27
+
+### Added
+- **Milestone 30 — Holographic AI Core GUI & Unified Command Center Parity (COMPLETE)**: Delivery of the full Sci-Fi Holographic Command Center (`src/gui/main_window.py`) and tactical telemetry widgets. Features real-time reactive DAG visualizer (`src/gui/widgets/dag_visualizer.py`), live system log monitors, persistent multi-account token tracker, and interactive memory vector browser.
+- **Cognitive Memory Import Pipeline**: Multi-source conversation ingestion framework (`src/memory/importers/`) supporting Claude JSON (`claude_importer.py`) and ChatGPT ZIP/JSON exports (`chatgpt_importer.py`) with fuzzy deduplication, schema normalization, multi-turn role preservation, and background memory consolidation (`consolidation_task.py`).
+- **RealBackendBridge Non-Blocking Telemetry Bus** (`src/gui/real_backend_bridge.py`): Real-time asynchronous bridge streaming CPU, GPU, RAM, token consumption, task execution graphs, and environmental sensor metrics directly to Qt GUI overlays without UI thread stalls.
+- **Live Meteorological & Weather Engine** (`tools/weather_service.py`): Integrated live weather data fetching with intelligent in-memory caching and fallback to environmental telemetry.
+- **Fastpath Intent Matrix & Precedence Hardening** (`src/brain/intent_router.py`, `src/core/nlu/nlu_engine.py`): Hardened intent routing rules with deterministic fast-path keyword evaluation, unambiguous HUD overlay toggling, and clean system restart controls (`src/tools/restart_manager.py`).
+- **Codebase AST Integrity Suite** (`tests/test_codebase_ast_integrity.py`): AST validation test runner scanning 600+ Python files to safeguard against duplicate method definitions and syntax regressions.
+
+---
+
+## [`v0.33.0-smarthome-ambient-hud`] - 2026-08-25
+
+### Added
+- **Milestone 29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction (COMPLETE)**: Physical ambient intelligence and bidirectional multi-device control across Home Assistant and TP-Link Tapo/Kasa ecosystems.
+- **Home Assistant WebSocket & REST Integration** (`src/integrations/smarthome/ha_client.py`, `src/integrations/smarthome/ha_ws.py`): Bidirectional WebSocket client with optimistic command execution, entity registry caching, and state rollback on failure.
+- **TP-Link Tapo / Kasa KLAP Driver** (`src/integrations/smarthome/tapo_client.py`): Zero-cloud local device encryption driver implementing KLAP handshake, SHA-256 seed negotiation, and AES-CBC-128 crypto for Tapo L530 bulbs and smart plugs.
+- **SmartHome Backend & Provider** (`src/core/backends/adapters/smarthome_backend.py`, `src/core/capabilities/providers/smarthome_provider.py`): 12 registered capabilities covering lights, switches, climate, cameras, and scenes with 4-tier risk classification and offline graceful degradation.
+- **Ambient Desktop HUD Overlays** (`src/gui/widgets/`): Translucent PySide6 widgets including `JarvisRingsOverlay`, `ChatWindowOverlay`, `WeatherOverlay`, `SystemMonitorOverlay`, `PersonalOSDashboardOverlay`, `AgentTaskStatusOverlay`, `MatrixOverlay`, and `SystemStatusOverlay`.
+- **Single-Owner Screenshot Lifecycle & Leak Fix**: Consolidated all screen capture implementations under `ScreenshotManager` with canonical runtime storage (`Data/runtime/screenshots/`), collision-proof UUID naming, and fail-open `capture_scoped()` context manager.
+
+---
+
 ## [`v0.32.0-dynamic-codeact`] - 2026-08-22
 
 ### Added

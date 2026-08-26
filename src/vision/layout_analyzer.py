@@ -144,7 +144,7 @@ class LayoutAnalyzer:
         header = self._detect_header(gray, image, margins)
 
         # Detect footer
-        footer = self._detect_footer(gray, image, margins)
+        footer = self._detect_document_footer(gray, image, margins)
 
         # Detect body
         body = self._detect_body(image, margins, header, footer)
@@ -523,7 +523,7 @@ class LayoutAnalyzer:
 
         return None
 
-    def _detect_footer(
+    def _detect_document_footer(
         self, gray: np.ndarray, image: np.ndarray, margins: dict
     ) -> dict[str, Any]:
         """Detect document footer."""

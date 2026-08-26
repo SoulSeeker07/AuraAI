@@ -696,17 +696,8 @@ class ChatWindowOverlay(QWidget):
             """)
 
     # -------------------------------------------------------------------------
-    # TOGGLE & GEOMETRY
+    # GEOMETRY RESTORATION
     # -------------------------------------------------------------------------
-    def toggle(self):
-        if self.isVisible():
-            self.hide()
-        else:
-            self.show()
-            self.raise_()
-            self.activateWindow()
-            self._input_field.setFocus()
-
     def _restore_geometry(self):
         screen = QApplication.primaryScreen().availableGeometry()
         pos = self._settings.value("pos", None)

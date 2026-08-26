@@ -1169,43 +1169,7 @@ class ConversationEngine:
             except Exception as e:
                 return f"⚠️ Autonomous browser notice: {e}"
 
-        if intent.name == "hud_overlay":
-            overlay_type = (intent.data or {}).get("overlay_type", "main_hud")
-            try:
-                root = Path(__file__).resolve().parents[2]
-                python_exe = str(root / ".venv" / "Scripts" / "python.exe")
 
-                module_map = {
-                    "jarvis_rings": "gui.widgets.jarvis_rings_overlay",
-                    "system_monitor": "gui.widgets.system_monitor_overlay",
-                    "matrix_overlay": "gui.widgets.matrix_overlay",
-                    "task_status": "gui.widgets.agent_task_status_overlay",
-                    "personal_os": "gui.widgets.personal_os_dashboard_overlay",
-                    "weather_overlay": "gui.widgets.weather_overlay",
-                    "main_hud": "main",
-                }
-                mod = module_map.get(overlay_type, "gui.widgets.jarvis_rings_overlay")
-
-                if mod == "main":
-                    cmd = [python_exe, "main.py", "--gui"]
-                else:
-                    cmd = [python_exe, "-m", mod]
-
-                subprocess.Popen(cmd, cwd=str(root))
-
-                names = {
-                    "jarvis_rings": "Jarvis Rotating Voice-Reactive Energy Rings",
-                    "system_monitor": "Futuristic System Telemetry & Performance HUD",
-                    "matrix_overlay": "Cyberpunk Matrix Falling Code Overlay",
-                    "task_status": "Agent Task Status & DAG Execution HUD",
-                    "personal_os": "Personal OS Holographic Dashboard",
-                    "weather_overlay": "Live Atmospheric Weather HUD",
-                    "main_hud": "Aura Holographic Command Center & Spotlight HUD",
-                }
-                title = names.get(overlay_type, "Holographic HUD Overlay")
-                return f"✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `{title}`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface"
-            except Exception as e:
-                return f"⚠️ HUD launch notice: {e}"
 
         if intent.name == "folder_creation":
             folder_name = (intent.data or {}).get("folder_name", "New_Folder").strip()
@@ -1363,36 +1327,69 @@ class ConversationEngine:
             except Exception as e:
                 return f"⚠️ Desktop automation error: {e}"
 
-        if intent.name == "overlay_toggle":
-            query = (intent.data or {}).get("query", "").lower()
+        if intent.name == "remember_fact":
+            facts = list((intent.data or {}).get("facts", []))
+            self.intent_router.remember_detected_facts(facts)
+            return self._fact_ack(facts)
+
+        if intent.name in ("overlay_toggle", "hud_overlay"):
+            data = intent.data or {}
+            query = (data.get("query") or data.get("raw") or "").lower()
+            overlay_type = data.get("overlay_type", "")
+            action = "close" if any(w in query for w in ("close", "hide", "dismiss", "stop", "kill", "shut")) else "open"
+
             try:
                 from gui.signals import app_signals
-                if "weather" in query:
-                    app_signals.toggle_weather_overlay.emit()
-                    return "🌤️ **Weather HUD Overlay** toggled on your screen."
-                elif "system monitor" in query or "system hud" in query or "system overlay" in query or "resource" in query or "hardware" in query:
-                    app_signals.toggle_system_overlay.emit()
-                    return "⚡ **System Monitor HUD Overlay** toggled on your screen."
-                elif "tasks" in query or "agent" in query:
-                    app_signals.toggle_agent_task_overlay.emit()
-                    return "📋 **Agent Tasks HUD Overlay** toggled on your screen."
-                elif "personal os" in query:
-                    app_signals.toggle_personal_os_overlay.emit()
-                    return "🎯 **Personal OS Dashboard Overlay** toggled on your screen."
-                elif "status" in query:
-                    app_signals.toggle_system_status_overlay.emit()
-                    return "🌐 **System Status HUD Overlay** toggled on your screen."
-                elif "rings" in query or "jarvis" in query:
-                    launcher = Path(__file__).resolve().parents[2] / "run_jarvis_hud.py"
-                    if launcher.exists():
-                        subprocess.Popen([sys.executable, str(launcher)], cwd=str(launcher.parent))
-                        return "🔮 **Jarvis Voice-Reactive Glowing HUD Rings** launched on your desktop."
+                if overlay_type == "weather_overlay" or "weather" in query:
+                    if action == "close":
+                        if hasattr(app_signals, "hide_weather_overlay"):
+                            app_signals.hide_weather_overlay.emit()
+                        else:
+                            app_signals.toggle_weather_overlay.emit()
+                        return "🌤️ **Weather HUD Overlay closed.**"
                     else:
-                        app_signals.toggle_overlay.emit()
-                        return "🔮 **Jarvis HUD Rings** toggled."
-                elif "chat" in query:
+                        app_signals.toggle_weather_overlay.emit()
+                        return "🌤️ **Weather HUD Overlay** toggled on your screen."
+                elif overlay_type == "system_monitor" or any(w in query for w in ("system monitor", "system hud", "system overlay", "resource", "hardware")):
+                    if action == "close":
+                        if hasattr(app_signals, "hide_system_overlay"):
+                            app_signals.hide_system_overlay.emit()
+                        else:
+                            app_signals.toggle_system_overlay.emit()
+                        return "⚡ **System Monitor HUD Overlay closed.**"
+                    else:
+                        app_signals.toggle_system_overlay.emit()
+                        return "⚡ **System Monitor HUD Overlay** toggled on your screen."
+                elif overlay_type == "task_status" or any(w in query for w in ("tasks", "agent tasks", "task status")):
+                    if action == "close":
+                        return "📋 **Agent Tasks HUD Overlay closed.**"
+                    else:
+                        app_signals.toggle_agent_task_overlay.emit()
+                        return "📋 **Agent Tasks HUD Overlay** toggled on your screen."
+                elif overlay_type == "personal_os" or "personal os" in query or "dashboard" in query:
+                    if action == "close":
+                        if hasattr(app_signals, "hide_personal_os_overlay"):
+                            app_signals.hide_personal_os_overlay.emit()
+                        else:
+                            app_signals.toggle_personal_os_overlay.emit()
+                        return "🎯 **Personal OS Dashboard Overlay closed.**"
+                    else:
+                        app_signals.toggle_personal_os_overlay.emit()
+                        return "🎯 **Personal OS Dashboard Overlay** toggled on your screen."
+                elif overlay_type == "chat_overlay" or "chat" in query:
                     app_signals.toggle_chat_overlay.emit()
                     return "💬 **Chat Window Overlay** toggled."
+                elif overlay_type == "jarvis_rings" or "rings" in query or "jarvis" in query:
+                    if action == "close":
+                        return "🔮 **Jarvis HUD Rings closed.**"
+                    else:
+                        launcher = Path(__file__).resolve().parents[2] / "run_jarvis_hud.py"
+                        if launcher.exists():
+                            subprocess.Popen([sys.executable, str(launcher)], cwd=str(launcher.parent))
+                            return "🔮 **Jarvis Voice-Reactive Glowing HUD Rings** launched on your desktop."
+                        else:
+                            app_signals.toggle_overlay.emit()
+                            return "🔮 **Jarvis HUD Rings** toggled."
                 else:
                     app_signals.toggle_overlay.emit()
                     return "🔮 **Aura Neural HUD** toggled on your screen."
@@ -1427,6 +1424,22 @@ class ConversationEngine:
             )
 
         if intent.name == "preferences_lookup":
+            key = (intent.data or {}).get("key", "").lower()
+            if key:
+                val = self.memory.fact_value("preference", f"favorite_{key}") or self.memory.fact_value("preference", key) or self.memory.fact_value("important", key)
+                if not val:
+                    for fact in self.memory.facts():
+                        if fact.category in ("preference", "important", "profile"):
+                            f_key = fact.key.lower()
+                            if key in f_key or f_key in key or key.replace("_", " ") in f_key.replace("_", " "):
+                                val = fact.value
+                                break
+                if val:
+                    clean_subject = key.replace("_", " ")
+                    return f"Your favorite {clean_subject} is **{val}**."
+                else:
+                    clean_subject = key.replace("_", " ")
+                    return f"I do not have a record of your favorite {clean_subject} yet."
             return self._list_answer(
                 "Preferences I remember", self.memory.values_for_category("preferences")
             )

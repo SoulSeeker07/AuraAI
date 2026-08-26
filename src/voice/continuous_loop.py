@@ -167,6 +167,11 @@ class ContinuousVoiceLoop:
             self.voice_manager._start_active_listening()
 
         logger.info("ContinuousVoiceLoop started and listening")
+        try:
+            from gui.signals import app_signals
+            app_signals.voice_status_changed.emit(True)
+        except Exception:
+            pass
         return True
 
     def stop(self) -> None:
@@ -189,6 +194,11 @@ class ContinuousVoiceLoop:
         logger.info("[MIC] Stream released: PASS")
         logger.info("[ContinuousVoiceLoop] State: STOPPED")
         self._set_state(VoiceState.IDLE)
+        try:
+            from gui.signals import app_signals
+            app_signals.voice_status_changed.emit(False)
+        except Exception:
+            pass
         if callable(getattr(self, "on_stop", None)):
             try:
                 self.on_stop()
@@ -613,6 +623,11 @@ class ContinuousVoiceLoop:
             try:
                 if aura_core and hasattr(aura_core, "add_to_conversation"):
                     aura_core.add_to_conversation("user", transcript)
+                try:
+                    from gui.signals import app_signals
+                    app_signals.message_received.emit("voice", transcript, True)
+                except Exception:
+                    pass
                 _safe_print("Aura > ")
 
                 # Async token generator from ConversationEngine or AuraCore
@@ -697,6 +712,12 @@ class ContinuousVoiceLoop:
                 _safe_print("\n")
                 if complete_resp and aura_core and hasattr(aura_core, "add_to_conversation"):
                     aura_core.add_to_conversation("assistant", complete_resp)
+                try:
+                    from gui.signals import app_signals
+                    if complete_resp:
+                        app_signals.message_received.emit("voice", complete_resp, False)
+                except Exception:
+                    pass
 
                 turn_record["success"] = bool(complete_resp)
                 turn_record["spoken_summary"] = complete_resp

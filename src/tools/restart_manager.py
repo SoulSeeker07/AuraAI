@@ -143,12 +143,16 @@ class RestartManager:
                 argv_str = " ".join(sys.argv)
                 if "run_chat_window.py" in argv_str:
                     cmd = [sys.executable, str(PROJECT_ROOT / "run_chat_window.py")]
+                elif "run_gui.py" in argv_str:
+                    cmd = [sys.executable, str(PROJECT_ROOT / "run_gui.py")]
                 elif "--gui" in sys.argv:
                     cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--gui"]
                 elif "--cli" in sys.argv and "restart" not in sys.argv:
                     cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--cli"]
+                elif "main.py" in argv_str:
+                    cmd = [sys.executable, str(PROJECT_ROOT / "main.py")]
                 else:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "run_chat_window.py")]
+                    cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--gui"]
 
                 logger.info(f"[RestartManager] Launching new instance: {' '.join(cmd)}")
                 subprocess.Popen(

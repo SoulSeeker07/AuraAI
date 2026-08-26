@@ -111,7 +111,7 @@ class NativeExecutionContext:
         """Set execution status"""
         self.status = status
 
-    def abort(self, reason: str) -> None:
+    def abort(self, reason: str | None = None) -> None:
         """Abort execution"""
         self.aborted = True
         self.abort_reason = reason
@@ -213,17 +213,7 @@ class NativeExecutionContext:
         self.verification_passed = passed
         self.verification_error = error
 
-    # ==================== Status Management ====================
 
-    def set_status(self, status: ExecutionStatus) -> None:
-        """Set the execution status"""
-        self.status = status
-
-    def abort(self, reason: str | None = None) -> None:
-        """Abort execution"""
-        self.aborted = True
-        self.abort_reason = reason
-        self.status = ExecutionStatus.CANCELLED
 
     # ==================== Helper Methods ====================
 

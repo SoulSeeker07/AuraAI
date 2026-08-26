@@ -545,10 +545,16 @@ class AuraCore:
 
         try:
             # Use Groq streaming API directly
+            sys_prompt = (
+                "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant. "
+                "You are NOT base GPT-4 or OpenAI; you are AuraAI running on Windows with local tools, "
+                "PySide6 HUD, multi-agent planners, Playwright browsing, and real-time hardware telemetry. "
+                "Always be direct, concise, factual, and helpful. Never hallucinate outdated knowledge cutoff dates."
+            )
             messages = [
                 {
                     "role": "system",
-                    "content": "You are Aura, a fast, helpful, concise desktop AI assistant.",
+                    "content": sys_prompt,
                 },
                 {"role": "user", "content": user_message},
             ]
@@ -598,10 +604,16 @@ class AuraCore:
             import asyncio
 
             target_model = getattr(self, "reasoning_llm_model", "openai/gpt-oss-120b")
+            sys_prompt = (
+                "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant. "
+                "You are NOT base GPT-4 or OpenAI; you are AuraAI running on Windows with local tools, "
+                "PySide6 HUD, multi-agent planners, Playwright browsing, and real-time hardware telemetry. "
+                "Always be direct, concise, factual, and helpful. Never hallucinate outdated knowledge cutoff dates."
+            )
             messages = [
                 {
                     "role": "system",
-                    "content": "You are AuraAI, an advanced next-gen autonomous agent OS. Provide helpful, direct, concise, intelligent responses.",
+                    "content": sys_prompt,
                 },
                 {"role": "user", "content": user_message},
             ]
@@ -737,9 +749,30 @@ class AuraCore:
     async def process_request(self, user_goal: str) -> str:
         """
         Unified OS Kernel request entry point.
-        Delegates execution through MasterOrchestrator cognitive pipeline.
+        Delegates local hardware/environmental/HUD intents to ConversationEngine,
+        and multi-agent cognitive workflows to MasterOrchestrator.
         """
         try:
+            # ── 1. Fast-Path / Deterministic Local Hardware & Environmental Intents ──
+            # (Smart Home bulb control, Display brightness, Live Weather, Audio mute/volume, Battery, HUD overlays, Memory facts)
+            conv_engine = getattr(self, "conversation_engine", None)
+            if conv_engine is not None:
+                try:
+                    intent = conv_engine.intent_router.detect(user_goal)
+                    local_answer = conv_engine._answer_local_intent(intent)
+                    if local_answer is not None:
+                        from brain.models import ConversationContext
+                        ctx = ConversationContext(
+                            user_input=user_goal,
+                            intent=intent,
+                            messages=[],
+                            attachments=[],
+                        )
+                        conv_engine._save_turn(ctx, local_answer)
+                        return local_answer
+                except Exception as ce_err:
+                    logger.debug(f"[AuraCore.process_request] Local intent fast-path bypassed: {ce_err}")
+
             from core.orchestration import MasterOrchestrator
 
             orchestrator = MasterOrchestrator.get_instance()

@@ -831,7 +831,7 @@ class CodingBackendAdapter(BaseBackendAdapter):
             mgr.close()
             return self._error_result(goal, "code.analyze", str(e))
 
-    def _execute_report(
+    def _execute_architecture_report(
         self, goal: str, args: dict[str, Any], repo_path: Path
     ) -> ExecutionResult:
         """
@@ -1202,14 +1202,7 @@ class CodingBackendAdapter(BaseBackendAdapter):
                 return True, count
         return False, count
 
-    def _resolve_repo_path(self, args: dict[str, Any]) -> Path:
-        """Resolve repository path from arguments or fall back to cwd."""
-        repo_path_str = args.get("repository_path") or args.get("project_path")
-        if repo_path_str:
-            p = Path(repo_path_str)
-            if p.exists():
-                return p.resolve()
-        return Path.cwd().resolve()
+
 
     def _is_generation_request(self, goal: str, args: dict[str, Any]) -> bool:
         """

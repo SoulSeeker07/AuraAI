@@ -4,14 +4,14 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Platform Version](https://img.shields.io/badge/version-v0.33.0--smarthome--ambient--hud-green.svg)](RELEASE.md)
+[![Platform Version](https://img.shields.io/badge/version-v1.0.0--holographic--ai--core-green.svg)](RELEASE.md)
 [![Codebase](https://img.shields.io/badge/source-600%2B%20files%20%7C%205%2C800%2B%20KB-brightgreen.svg)](src/)
 [![Security Model](https://img.shields.io/badge/security-DPAPI%20%7C%20HMAC--SHA256%20%7C%20Job%20Object%20Sandbox-blue.svg)](docs/security.md)
-[![Regression Suite](https://img.shields.io/badge/regression-250%2B%20passing%20%7C%20100%25-brightgreen.svg)](tests/)
+[![Regression Suite](https://img.shields.io/badge/regression-260%2B%20passing%20%7C%20100%25-brightgreen.svg)](tests/)
 
 Aura AI is a modular, high-reliability **AI Operating System Platform** built on the **Aura Cognitive Architecture (ACA)** — a staged cognitive runtime that unifies voice perception, natural language decision-making, planning, desktop OS automation, dynamic Python CodeAct execution, smart home IoT control, live PySide6 HUD overlays, reflection, and long-term memory into a single coordinated system.
 
-> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the 17 Native Desktop Managers (Win32), CodeAct execution by the sandboxed Python CodeAct engine, smart home IoT by the Home Assistant & Tapo integration, continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), workspace telemetry by live HUD widgets, and software engineering by the Autonomous Engineering Platform.
+> **Aura is an AI Operating System rather than a chatbot.** It separates cognition from execution. The ACA acts as the cognitive runtime — understanding goals, reasoning about context, planning execution maps, coordinating specialized engines, verifying outcomes, reflecting on failures, and learning from interactions. Desktop operations are handled by the 17 Native Desktop Managers (Win32), CodeAct execution by the sandboxed Python CodeAct engine, smart home IoT by the Home Assistant & Tapo integration, continuous voice by the low-latency Speech System (AuraWake + Google STT + Piper TTS), workspace telemetry by live HUD widgets, Holographic Command Center by PySide6 Core GUI, and software engineering by the Autonomous Engineering Platform.
 
 ---
 
@@ -26,6 +26,8 @@ Operational Subsystems (Live on Physical System)
 ├── Dynamic CodeAct Engine (M28) — OPERATIONAL (Code-as-action, AST validation, sandbox execution, closed-loop repair)
 ├── Smart Home & IoT Engine (M29) — OPERATIONAL (Home Assistant WebSocket/REST + Tapo/Kasa KLAP AES-CBC-128 crypto)
 ├── PySide6 Desktop HUD Overlays (M28/M29) — OPERATIONAL (Jarvis Rings, Chat Window, System Monitor, Weather, Agent Task Status, Personal OS Dashboard, Matrix, System Status)
+├── Holographic AI Core GUI & Command Center (M30) — OPERATIONAL (RealBackendBridge, Reactive DAG Visualizer, Tactical Telemetry, Token Tracker)
+├── Cognitive Memory Importers (M30) — OPERATIONAL (Claude JSON + ChatGPT ZIP/JSON parsers, Fuzzy Deduplication, Retrieval Gate, Consolidation)
 ├── Cognitive Memory (M17) — COMPLETE (8 typed stores: Working, Episodic, Semantic, Procedural, Preference, Project + Decay + Consolidation)
 ├── World Model (M18) — COMPLETE (Multi-provider environment model with workspace, repository, and memory integration)
 ├── Coding Intelligence 2.0 (M20) — COMPLETE (AST analysis, code editor with rollback, Antigravity bridge, automated repair loop)
@@ -37,21 +39,22 @@ Operational Subsystems (Live on Physical System)
 ├── Personal Operating System (M26) — COMPLETE (DailyContextEngine, sub-second WorkspaceSearchEngine, TriggerScheduler, RequestSource isolation)
 ├── Autonomous Engineering Platform (M27) — COMPLETE (Closed-loop repair, AST fault localization, safety ceiling, byte-exact rollback, PR assembler)
 ├── Sandboxed Pytest Test Runner (M28) — COMPLETE (Windows Job Object + RestrictedUserSandbox privilege dropping, TD-008 resolved)
-└── Core Platform Regression Suite — 250+ PASSING (100% Green)
+└── Core Platform Regression Suite — 260+ PASSING (100% Green)
 ```
 
 ### Codebase Metrics
 
 | Metric | Value |
 |:---|:---|
-| **Platform Version** | `v0.33.0-smarthome-ambient-hud` |
+| **Platform Version** | `v1.0.0-holographic-ai-core` |
 | **Native Desktop Managers** | 17 Win32 managers |
 | **Backend Adapters** | 24 registered adapters |
 | **Capability Providers** | 8 registered providers (80+ capabilities) |
 | **Desktop HUD Overlays** | 8 live PySide6 widgets |
+| **Holographic Core GUI** | Full Command Center with DAG Visualizer & Telemetry |
 | **Domain Experts** | 4 specialized experts (Cybersecurity, Network, Software, Finance) |
-| **Milestones Complete** | M01–M29 (Complete baseline) |
-| **Core Regression Suite** | 250+ passing (100% Green) |
+| **Milestones Complete** | M01–M30 (30/30 baseline complete) |
+| **Core Regression Suite** | 260+ passing (100% Green) |
 
 ---
 

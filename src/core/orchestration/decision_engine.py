@@ -109,7 +109,15 @@ class DecisionEngine:
         """
         active_budget = budget or ExecutionBudget()
         mem = memory_context or {}
-        goal_lower = goal.lower()
+        
+        # Normalize goal through Stage 0 NLU Perception to fix typos, shorthand, and grammar
+        try:
+            from core.nlu.nlu_engine import NLUEngine
+            normalized_goal, _ = NLUEngine().normalize_text(goal)
+        except Exception:
+            normalized_goal = goal
+
+        goal_lower = normalized_goal.lower()
 
         # Check if context is a pending question
         is_pending_question = context is not None and (
@@ -181,6 +189,10 @@ class DecisionEngine:
             "who are you",
             "capabilities you currently have",
             "what capabilities",
+            "your capabilities",
+            "tell me your capabilities",
+            "capabilities",
+            "features",
             "what can you do",
             "can't you do",
             "cannot do",
@@ -212,15 +224,19 @@ class DecisionEngine:
             "reasoning graph",
             "tokens left",
             "token usage",
-            "tokens remaining",
-            "how many tokens",
-            "tokens consumed",
             "token quota",
+            "aura version",
+            "what version",
+            "which version",
+            "build number",
+            "release version",
+            "system version",
         ]
-        system_exact_words = ["cpu", "gpu", "ram", "dag", "swarm", "diagnostics", "hardware"]
-        is_system_query = any(w in goal_lower for w in system_phrases) or any(
-            re.search(r'\b' + re.escape(w) + r'\b', goal_lower) for w in system_exact_words
-        )
+        system_exact_words = ["cpu", "gpu", "ram", "dag", "swarm", "diagnostics", "hardware", "version"]
+        is_system_query = (
+            any(w in goal_lower for w in system_phrases)
+            or any(re.search(r'\b' + re.escape(w) + r'\b', goal_lower) for w in system_exact_words)
+        ) and "conversion" not in goal_lower
         # Desktop window control / app management takes precedence over browsing
         app_verbs = [
             "open",

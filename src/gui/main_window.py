@@ -1668,16 +1668,38 @@ class MainWindow(QMainWindow):
         self._mic_active = not self._mic_active
         self._mic_btn.setChecked(self._mic_active)
         self._update_mic_style(self._mic_active)
+        app_signals.voice_status_changed.emit(self._mic_active)
+
         if self._mic_active:
             self._holo_core_small.set_state("LISTENING")
-            self._core_state_lbl.setText("STATE: LISTENING")
-            self._core_state_lbl.setStyleSheet("color: #10b981;")
-            self._chat_input.setPlaceholderText("🎙️ Live Mic Active... (Speak or click mic to stop)")
+            self._core_state_lbl.setText("STATE: LISTENING (WAKE WORD: 'AURA')")
+            self._core_state_lbl.setStyleSheet("color: #00e5ff;")
+            self._chat_input.setPlaceholderText("🎙️ Continuous Voice Active • Say 'Aura' to speak command or click mic to stop...")
+            self.execute_command("start listening")
         else:
             self._holo_core_small.set_state("IDLE")
             self._core_state_lbl.setText("STATE: IDLE")
             self._core_state_lbl.setStyleSheet("color: #10b981;")
             self._chat_input.setPlaceholderText("Enter command or prompt AuraAI (Press Enter)...")
+            self.execute_command("stop listening")
+
+    def _on_voice_status_changed(self, active: bool):
+        if self._mic_active != active:
+            self._mic_active = active
+            self._mic_btn.blockSignals(True)
+            self._mic_btn.setChecked(active)
+            self._mic_btn.blockSignals(False)
+            self._update_mic_style(active)
+            if active:
+                self._holo_core_small.set_state("LISTENING")
+                self._core_state_lbl.setText("STATE: LISTENING (WAKE WORD: 'AURA')")
+                self._core_state_lbl.setStyleSheet("color: #00e5ff;")
+                self._chat_input.setPlaceholderText("🎙️ Continuous Voice Active • Say 'Aura' to speak command or click mic to stop...")
+            else:
+                self._holo_core_small.set_state("IDLE")
+                self._core_state_lbl.setText("STATE: IDLE")
+                self._core_state_lbl.setStyleSheet("color: #10b981;")
+                self._chat_input.setPlaceholderText("Enter command or prompt AuraAI (Press Enter)...")
 
     def _send_quick_command(self, cmd: str):
         self._add_message("user", cmd)
@@ -1988,64 +2010,186 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(22, 16, 22, 16)
         layout.setSpacing(14)
 
+        # Header Row with Title and Live Badge
+        hdr = QHBoxLayout()
         t_lbl = QLabel("NEURAL MEMORY // VECTOR VAULT & RETRIEVAL MATRIX")
         t_lbl.setFont(QFont("Consolas", 11, QFont.Bold))
         t_lbl.setStyleSheet("color: #00e5ff; letter-spacing: 1px;")
-        layout.addWidget(t_lbl)
+        hdr.addWidget(t_lbl)
+        hdr.addStretch()
 
+        self._mem_count_badge = QLabel("INDEXED")
+        self._mem_count_badge.setFont(QFont("Consolas", 8, QFont.Bold))
+        self._mem_count_badge.setStyleSheet(
+            "color: #00e5ff; background: rgba(0, 229, 255, 0.12); "
+            "border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 4px; padding: 2px 8px;"
+        )
+        hdr.addWidget(self._mem_count_badge)
+        layout.addLayout(hdr)
+
+        # Search Bar with Instant Query, Enter Handler, Search Button, and Clear Button
         search_box = SciFiTechCard(chamfer_size=6)
         sb_l = QHBoxLayout(search_box)
         sb_l.setContentsMargins(12, 6, 12, 6)
-        s_input = QLineEdit()
-        s_input.setPlaceholderText("Search memory entries, preferences, session context...")
-        s_input.setStyleSheet("background: transparent; border: none; color: #ffffff;")
-        sb_l.addWidget(s_input)
+        sb_l.setSpacing(8)
+
+        search_icon = QLabel("🔍")
+        search_icon.setFont(QFont("Segoe UI Emoji", 10))
+        search_icon.setStyleSheet("color: #00e5ff; background: transparent;")
+        sb_l.addWidget(search_icon)
+
+        self._mem_search_input = QLineEdit()
+        self._mem_search_input.setPlaceholderText("Search memory entries, preferences, session context...")
+        self._mem_search_input.setStyleSheet("background: transparent; border: none; color: #ffffff; font-family: Segoe UI, Consolas; font-size: 10pt;")
+        sb_l.addWidget(self._mem_search_input, 1)
+
+        # Clear Button
+        btn_clear = QPushButton("✖")
+        btn_clear.setFont(QFont("Segoe UI", 8, QFont.Bold))
+        btn_clear.setCursor(Qt.PointingHandCursor)
+        btn_clear.setToolTip("Clear search query")
+        btn_clear.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+                color: #a5b4cb;
+                padding: 3px 8px;
+            }
+            QPushButton:hover {
+                background: rgba(239, 68, 68, 0.2);
+                border: 1px solid #ef4444;
+                color: #ffffff;
+            }
+        """)
+        btn_clear.clicked.connect(lambda: self._mem_search_input.clear())
+        sb_l.addWidget(btn_clear)
+
+        # Search Button
+        btn_search = QPushButton("SEARCH")
+        btn_search.setFont(QFont("Consolas", 8, QFont.Bold))
+        btn_search.setCursor(Qt.PointingHandCursor)
+        btn_search.setStyleSheet("""
+            QPushButton {
+                background: rgba(0, 229, 255, 0.15);
+                border: 1px solid #00e5ff;
+                border-radius: 4px;
+                color: #00e5ff;
+                padding: 4px 12px;
+                letter-spacing: 0.5px;
+            }
+            QPushButton:hover {
+                background: rgba(0, 229, 255, 0.35);
+                color: #ffffff;
+            }
+        """)
+        sb_l.addWidget(btn_search)
         layout.addWidget(search_box)
 
+        # Scroll Area for Memory Cards
         mem_scroll = QScrollArea()
         mem_scroll.setWidgetResizable(True)
         mem_scroll.setStyleSheet("background: transparent; border: none;")
 
-        mem_cont = QWidget()
-        mem_l = QVBoxLayout(mem_cont)
-        mem_l.setSpacing(10)
+        self._mem_container = QWidget()
+        self._mem_layout = QVBoxLayout(self._mem_container)
+        self._mem_layout.setSpacing(10)
+        self._mem_layout.setContentsMargins(0, 0, 0, 0)
 
-        entries = [
-            ("PREFERENCE", "User prefers futuristic HUD interface with glassmorphism and cyan telemetry.", "1.00"),
-            ("WORKSPACE", "Project root mapped to D:/Sreekanta/VS Code Project/Desktop AI/AuraAI.", "0.99"),
-            ("HARDWARE", "Intel Wi-Fi 6 AX201, NVIDIA GTX 1650, 16GB RAM.", "0.98"),
-            ("GUARDRAIL", "Always use project virtual environment (.venv) for command execution.", "1.00"),
-        ]
-
-        for tag, content, conf in entries:
-            card = SciFiTechCard(accent_color=QColor(80, 170, 255), chamfer_size=6)
-            c_l = QVBoxLayout(card)
-            c_l.setContentsMargins(14, 10, 14, 10)
-
-            ch = QHBoxLayout()
-            b = QLabel(f"[{tag}]")
-            b.setFont(QFont("Consolas", 8, QFont.Bold))
-            b.setStyleSheet("color: #fbbf24; background: rgba(251, 191, 36, 0.12); padding: 2px 6px; border-radius: 3px;")
-            ch.addWidget(b)
-            ch.addStretch()
-
-            cf = QLabel(f"CONFIDENCE: {conf}")
-            cf.setFont(QFont("Consolas", 8))
-            cf.setStyleSheet("color: #627289;")
-            ch.addWidget(cf)
-            c_l.addLayout(ch)
-
-            ct = QLabel(content)
-            ct.setFont(QFont("Segoe UI", 9))
-            ct.setStyleSheet("color: #f3f6fc;")
-            ct.setWordWrap(True)
-            c_l.addWidget(ct)
-
-            mem_l.addWidget(card)
-
-        mem_l.addStretch()
-        mem_scroll.setWidget(mem_cont)
+        mem_scroll.setWidget(self._mem_container)
         layout.addWidget(mem_scroll, 1)
+
+        # Helper method to load all memories (both database + active system profile)
+        def _get_all_memory_entries() -> list[tuple[str, str, str]]:
+            memories: list[tuple[str, str, str]] = [
+                ("PREFERENCE", "User prefers futuristic HUD interface with glassmorphism and cyan telemetry.", "1.00"),
+                ("WORKSPACE", "Project root mapped to D:/Sreekanta/VS Code Project/Desktop AI/AuraAI.", "0.99"),
+                ("HARDWARE", "Intel Wi-Fi 6 AX201, NVIDIA GTX 1650, 16GB RAM.", "0.98"),
+                ("GUARDRAIL", "Always use project virtual environment (.venv) for command execution.", "1.00"),
+            ]
+
+            # Try loading live facts from SQLite Memory.db
+            try:
+                import Memory
+                mem = Memory.Memory()
+                db_facts = mem.facts()
+                for fact in db_facts:
+                    cat = (fact.category or "FACT").upper()
+                    val = f"{fact.key}: {fact.value}" if fact.key and fact.key.lower() not in fact.value.lower() else str(fact.value)
+                    if not any(val.lower() in existing[1].lower() for existing in memories):
+                        memories.append((cat, val, "0.96"))
+            except Exception as e:
+                logger.debug(f"[MemoryTab] Could not load Memory.db facts: {e}")
+
+            return memories
+
+        self._all_memories = _get_all_memory_entries()
+
+        # Dynamic render function
+        def _render_memories(filter_text: str = ""):
+            while self._mem_layout.count():
+                child = self._mem_layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+
+            query = filter_text.strip().lower()
+            matching = []
+            for tag, content, conf in self._all_memories:
+                if not query or query in tag.lower() or query in content.lower():
+                    matching.append((tag, content, conf))
+
+            self._mem_count_badge.setText(f"{len(matching)} / {len(self._all_memories)} VECTORS")
+
+            if not matching:
+                empty_card = SciFiTechCard(accent_color=QColor(239, 68, 68), chamfer_size=6)
+                ec_l = QVBoxLayout(empty_card)
+                ec_l.setContentsMargins(16, 16, 16, 16)
+                no_res = QLabel(f"NO MATCHING MEMORY VECTORS LOCATED FOR '{filter_text}'")
+                no_res.setFont(QFont("Consolas", 9, QFont.Bold))
+                no_res.setStyleSheet("color: #ef4444; letter-spacing: 0.5px;")
+                ec_l.addWidget(no_res)
+                sub_res = QLabel("Try broad keywords (e.g. 'preference', 'workspace', 'hardware', 'name', 'developer', 'editor').")
+                sub_res.setFont(QFont("Segoe UI", 8))
+                sub_res.setStyleSheet("color: #8b9bb4;")
+                ec_l.addWidget(sub_res)
+                self._mem_layout.addWidget(empty_card)
+            else:
+                for tag, content, conf in matching:
+                    card = SciFiTechCard(accent_color=QColor(80, 170, 255), chamfer_size=6)
+                    c_l = QVBoxLayout(card)
+                    c_l.setContentsMargins(14, 10, 14, 10)
+
+                    ch = QHBoxLayout()
+                    b = QLabel(f"[{tag}]")
+                    b.setFont(QFont("Consolas", 8, QFont.Bold))
+                    b.setStyleSheet("color: #fbbf24; background: rgba(251, 191, 36, 0.12); padding: 2px 6px; border-radius: 3px;")
+                    ch.addWidget(b)
+                    ch.addStretch()
+
+                    cf = QLabel(f"CONFIDENCE: {conf}")
+                    cf.setFont(QFont("Consolas", 8))
+                    cf.setStyleSheet("color: #627289;")
+                    ch.addWidget(cf)
+                    c_l.addLayout(ch)
+
+                    ct = QLabel(content)
+                    ct.setFont(QFont("Segoe UI", 9))
+                    ct.setStyleSheet("color: #f3f6fc;")
+                    ct.setWordWrap(True)
+                    c_l.addWidget(ct)
+
+                    self._mem_layout.addWidget(card)
+
+            self._mem_layout.addStretch()
+
+        # Connect text changes and enter key for instant and explicit search
+        self._mem_search_input.textChanged.connect(lambda txt: _render_memories(txt))
+        self._mem_search_input.returnPressed.connect(lambda: _render_memories(self._mem_search_input.text()))
+        btn_search.clicked.connect(lambda: _render_memories(self._mem_search_input.text()))
+
+        # Initial render
+        _render_memories()
+
         return tab
 
     # -------------------------------------------------------------------------
@@ -2268,6 +2412,7 @@ class MainWindow(QMainWindow):
         app_signals.toggle_system_status_overlay.connect(self.toggle_system_status_overlay)
         app_signals.toggle_agent_task_overlay.connect(self.toggle_agent_task_overlay)
         app_signals.toggle_personal_os_overlay.connect(self.toggle_personal_os_overlay)
+        app_signals.voice_status_changed.connect(self._on_voice_status_changed)
 
         # Real-Time Telemetry & Desktop Perception Background Timers
         self._live_telemetry_timer = QTimer(self)

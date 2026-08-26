@@ -1,0 +1,38 @@
+#!/bin/sh
+# AuraAI Pre-Commit Hook
+# Prevents committing code with duplicate class methods (silent shadowing)
+
+echo "🔍 Running AST Method Shadowing & Integrity Check..."
+
+# Execute scanner using virtualenv python if present, else fallback to python3/python
+if [ -f ".venv/Scripts/python.exe" ]; then
+    PYTHON_BIN=".venv/Scripts/python.exe"
+elif [ -f ".venv/bin/python" ]; then
+    PYTHON_BIN=".venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+else
+    PYTHON_BIN="python"
+fi
+
+# Identify staged Python files for lightning-fast incremental checking
+STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+
+if [ -n "$STAGED_PY_FILES" ]; then
+    echo "⚡ Scanning staged Python files..."
+    "$PYTHON_BIN" scripts/check_duplicate_methods.py $STAGED_PY_FILES
+    RESULT=$?
+else
+    echo "🔍 Scanning src/ directory..."
+    "$PYTHON_BIN" scripts/check_duplicate_methods.py
+    RESULT=$?
+fi
+
+if [ $RESULT -ne 0 ]; then
+    echo "❌ Commit rejected: Duplicate class method definitions detected."
+    echo "Please resolve the duplicate methods before committing."
+    exit 1
+fi
+
+echo "✅ AST Check passed."
+exit 0

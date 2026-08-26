@@ -430,8 +430,7 @@ class GUIClient:
         # Add to conversation
         self.aura_core.add_to_conversation("user", message)
 
-        # Placeholder - in real implementation, this would call the AI API
-        response = f"I received: {message}"
+        response = await self.aura_core.process_request(message)
         self.aura_core.add_to_conversation("assistant", response)
 
         return response

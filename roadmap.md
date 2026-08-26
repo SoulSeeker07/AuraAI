@@ -106,7 +106,7 @@ A milestone may ship across one or more releases.
 | M27 | `v0.31.0` | Phase 7 — Autonomous Engineering Platform | `COMPLETE` |
 | M28 | `v0.32.0` | Phase 8 — Dynamic CodeAct Runtime & Integrated Aura OS | `COMPLETE` |
 | M29 | `v0.33.0` | Phase 9 — Smart Home / IoT & Ambient Desktop HUDs | `COMPLETE` |
-| M30 | `v1.0.0` | Phase 10 — Multi-User & Enterprise Governance | `PLANNED` |
+| M30 | `v1.0.0` | Phase 9 — Aura GUI & Unified Command Center Parity | `COMPLETE` |
 
 ---
 
@@ -1529,10 +1529,10 @@ Streaming STT/TTS      — real-time transcription and synthesis
 
 ---
 
-### M30 — Aura Command Center
+### M30 — Aura Command Center & Unified GUI Parity
 
-**Status:** `PLANNED`
-**Priority:** 🟠 Experience milestone
+**Status:** `COMPLETE`
+**Priority:** 🟢 Core Interface & Parity Milestone
 
 A visualization of Aura's intelligence — **not the place where the intelligence lives.**
 
@@ -1667,11 +1667,11 @@ Phase 6 — Personal OS & Daily Workflows ████████████�
 Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
 Phase 8 — Integrated Aura OS & HUDs     ████████████████████   1/1   COMPLETE (M28)
 Phase 9 — Smart Home & Ambient HUDs     ████████████████████   1/1   COMPLETE (M29)
-Phase 10 — Multi-User & Enterprise Sinks░░░░░░░░░░░░░░░░░░░░   0/1   PLANNED (M30)
+Phase 9 — Aura GUI & Capability Parity  ████████████████████   1/1   COMPLETE (M30)
 ```
 
-**Overall:** 29 / 30 milestones complete baseline (M01–M29). 600+ source files (~140K lines), 220+ test files (~35K lines), ~5.8 MB source code.
-Next critical milestone: M30 (Multi-User & Enterprise Policy Governance & Continuous Spatial Interaction).
+**Overall:** 30 / 30 milestones complete baseline (M01–M30). 600+ source files (~140K lines), 220+ test files (~35K lines), ~5.8 MB source code.
+Next: Post-v1.0.0 Enterprise Sinks & Multi-PC Mesh Coordination.
 
 ---
 
@@ -1679,9 +1679,9 @@ Next critical milestone: M30 (Multi-User & Enterprise Policy Governance & Contin
 
 | Priority | Milestone | Status | Hard Blocker |
 | :--- | :--- | :--- | :--- |
-| 1 | **M30** — Multi-User & Enterprise Policy Governance | `PLANNED` | None (M01–M29 baseline complete) |
-| 2 | **Enterprise Sinks** — Active Directory, Splunk, Azure Sentinel Integration | `PLANNED` | M30 |
-| 3 | **Distributed Aura Nodes** — Multi-PC LAN Mesh Coordination | `PLANNED` | M30 |
+| 1 | **M31** — Multi-User & Enterprise Policy Governance | `PLANNED` | None (M01–M30 baseline complete) |
+| 2 | **Enterprise Sinks** — Active Directory, Splunk, Azure Sentinel Integration | `PLANNED` | M31 |
+| 3 | **Distributed Aura Nodes** — Multi-PC LAN Mesh Coordination | `PLANNED` | M31 |
 
 ---
 
@@ -1693,4 +1693,4 @@ and contributor extension guidelines.
 
 ---
 
-*Last Updated: August 25, 2026 — v0.33.0-smarthome-ambient-hud*
+*Last Updated: August 27, 2026 — v1.0.0-holographic-ai-core*

@@ -53,6 +53,10 @@ class IntentRouter:
             logger.info("[IntentRouter] Intent detected: memory_summary")
             return Intent("memory_summary")
 
+        if self._asks_for_restart(normalized):
+            logger.info("[IntentRouter] Intent detected: restart_aura")
+            return Intent("restart_aura", {"raw": user_input})
+
         if self._asks_for_time_or_date(normalized):
             logger.info("[IntentRouter] Intent detected: local_time")
             return Intent("local_time")
@@ -86,7 +90,8 @@ class IntentRouter:
 
         if self._asks_for_preferences_lookup(normalized):
             logger.info("[IntentRouter] Intent detected: preferences_lookup")
-            return Intent("preferences_lookup")
+            key = self._parse_specific_preference(normalized)
+            return Intent("preferences_lookup", {"key": key, "raw": user_input, "normalized": normalized})
 
         if self._asks_for_doc_update(normalized):
             logger.info("[IntentRouter] Intent detected: project_doc_update")
@@ -119,7 +124,7 @@ class IntentRouter:
         if self._asks_for_hud_overlay(normalized):
             overlay_type = self._parse_hud_overlay(normalized)
             logger.info(f"[IntentRouter] Intent detected: hud_overlay ({overlay_type})")
-            return Intent("hud_overlay", {"overlay_type": overlay_type, "raw": user_input})
+            return Intent("hud_overlay", {"overlay_type": overlay_type, "raw": user_input, "query": user_input})
 
         if self._asks_for_voice_control(normalized):
             logger.info("[IntentRouter] Intent detected: voice_control")
@@ -238,9 +243,41 @@ class IntentRouter:
         lookup_triggers = (
             "what are my preferences", "what is my preference", "what's my preference",
             "list my preferences", "show my preferences", "tell me my preferences",
-            "preferences i remember", "do you remember my preferences"
+            "preferences i remember", "do you remember my preferences",
+            "what is my favorite", "what's my favorite", "whats my favorite",
+            "what is my favourite", "what's my favourite", "whats my favourite",
+            "what is my preferred", "what's my preferred", "whats my preferred",
+            "what is my editor", "what's my editor", "whats my editor",
+            "what is my language", "what's my language", "whats my language",
+            "do you remember my favorite", "do you know my favorite"
         )
         return any(t in normalized for t in lookup_triggers) or normalized in {"my preferences", "my preference list"}
+
+    def _parse_specific_preference(self, normalized: str) -> str:
+        import re
+        m = re.search(r"(?:favorite|favourite|preferred)\s+(.+?)(?:\?|$)", normalized, re.IGNORECASE)
+        if m:
+            sub = m.group(1).strip()
+            return re.sub(r"[^a-zA-Z0-9_]+", "_", sub).strip("_")
+        if "editor" in normalized or "ide" in normalized:
+            return "editor"
+        if "programming language" in normalized or "language" in normalized:
+            return "programming_language"
+        return ""
+
+    def _asks_for_restart(self, normalized: str) -> bool:
+        clean = re.sub(r"^aura\s+", "", normalized).strip()
+        triggers = (
+            "restart aura", "restart aura ai", "restart", "reboot aura", "reboot",
+            "restart app", "restart the app", "restart application", "restart yourself",
+            "reload aura", "relaunch aura", "restart system", "reboot system",
+            "graceful restart", "restart now", "please restart", "aura restart"
+        )
+        if clean in triggers or normalized in triggers:
+            return True
+        if any(clean.startswith(t) for t in ("restart aura", "reboot aura", "relaunch aura", "reload aura")):
+            return True
+        return False
 
     def _asks_for_time_or_date(self, normalized: str) -> bool:
         # Prevent freshness constraints like "today's exchange rate" from matching
@@ -300,6 +337,9 @@ class IntentRouter:
         if normalized.startswith(("what is", "how does", "explain", "why", "tell me about")):
             return False
 
+        if self._asks_for_folder_creation(normalized) or self._asks_for_document_creation(normalized):
+            return False
+
         clean_norm = re.sub(r"^aura\s+", "", normalized).strip()
         verbs = ("add ", "implement ", "build ", "create ", "fix ", "repair ", "refactor ", "write code ", "write a script ", "code a ", "modify code ", "edit code ", "develop ")
         targets = ("widget", "feature", "component", "class", "function", "module", "script", "api", "endpoint", "test", "overlay", "service", "handler", "adapter", "manager", "plugin", "bug", "code", "file", ".py")
@@ -333,6 +373,8 @@ class IntentRouter:
             if any(a in normalized for a in actions) or "overlay" in normalized or "widget" in normalized or "hud" in normalized or "rings" in normalized:
                 return True
         return False
+
+    _asks_for_hud_overlay = _asks_for_overlay_toggle
 
     def _asks_for_voice_control(self, normalized: str) -> bool:
         start_triggers = (
@@ -408,6 +450,10 @@ class IntentRouter:
             "powerpoint", "whatsapp", "antigravity", "antigravity ide", "start menu", "start"
         )
         if clean_target.lower() in known_folders or clean_target.lower() in known_apps or clean.lower() in known_apps:
+            return False
+
+        hud_triggers = ("weather hud", "weather overlay", "weather widget", "system hud", "system monitor", "system overlay", "jarvis rings", "jarvis hud", "chat overlay", "chat hud", "task overlay", "task hud", "personal os", "matrix overlay")
+        if any(ht in clean.lower() for ht in hud_triggers):
             return False
 
         # If user explicitly said "file" or "document" (e.g. "open importent file") -> Always file!
@@ -538,30 +584,37 @@ class IntentRouter:
     def _asks_for_hud_overlay(self, normalized: str) -> bool:
         clean = re.sub(r"^aura\s+", "", normalized).strip()
         triggers = (
-            "open hud", "show hud", "launch hud", "toggle hud", "hud overlay",
-            "jarvis rings", "voice rings", "audio rings", "core rings",
-            "system monitor", "hardware monitor", "performance hud", "telemetry hud",
+            "weather widget", "weather hud", "weather overlay",
+            "system monitor", "system hud", "system overlay", "resource monitor", "hardware monitor", "performance hud", "telemetry hud",
+            "tasks widget", "tasks overlay", "agent tasks", "agent status overlay", "agent status", "task status", "task hud",
+            "personal os widget", "personal os overlay", "personal os dashboard", "personal os", "dashboard overlay", "os dashboard",
+            "system status widget", "system status overlay", "chat hud", "chat overlay",
+            "jarvis rings", "jarvis widget", "rings hud", "jarvis hud", "rings overlay", "voice rings", "audio rings", "core rings", "jarvis",
             "matrix overlay", "matrix falling code", "matrix rain", "matrix", "cyberpunk",
-            "task hud", "agent status overlay", "agent status", "task status",
-            "personal os", "dashboard overlay", "os dashboard",
-            "open gui", "launch gui", "show gui", "control center"
+            "open hud", "show hud", "launch hud", "toggle hud", "hud overlay", "open gui", "launch gui", "show gui", "control center"
         )
-        return any(t in clean for t in triggers)
+        actions = ("open", "show", "toggle", "launch", "display", "hide", "close", "bring up")
+        if any(t in clean for t in triggers):
+            if any(a in clean for a in actions) or any(k in clean for k in ("overlay", "widget", "hud", "rings", "dashboard", "monitor")):
+                return True
+        return False
 
     def _parse_hud_overlay(self, normalized: str) -> str:
         clean = normalized.lower()
-        if any(w in clean for w in ("jarvis", "ring", "core", "voice ring")):
+        if any(w in clean for w in ("weather",)):
+            return "weather_overlay"
+        elif any(w in clean for w in ("jarvis", "ring", "core", "voice ring")):
             return "jarvis_rings"
-        elif any(w in clean for w in ("system", "monitor", "hardware", "telemetry", "performance")):
+        elif any(w in clean for w in ("system", "monitor", "hardware", "telemetry", "performance", "resource")):
             return "system_monitor"
         elif any(w in clean for w in ("matrix", "rain", "falling code", "cyberpunk")):
             return "matrix_overlay"
         elif any(w in clean for w in ("task", "agent status", "dag")):
             return "task_status"
-        elif any(w in clean for w in ("personal", "dashboard", "os")):
+        elif any(re.search(r"\b" + re.escape(w) + r"\b", clean) for w in ("personal", "dashboard", "personal os", "os dashboard")):
             return "personal_os"
-        elif any(w in clean for w in ("weather",)):
-            return "weather_overlay"
+        elif any(w in clean for w in ("chat",)):
+            return "chat_overlay"
         return "main_hud"
 
     def _asks_for_desktop_action(self, normalized: str) -> bool:
@@ -613,7 +666,27 @@ class IntentRouter:
         return detected_verb, target
 
     def _is_memory_statement(self, user_input: str) -> bool:
-        return not user_input.strip().endswith("?")
+        clean = user_input.strip()
+        if clean.endswith("?"):
+            return False
+        lower = clean.lower()
+        # Question indicators disqualify memory storage statements
+        question_words = (
+            "what is", "what's", "whats", "what are", "who is", "who's", "which is", "which are",
+            "where is", "when is", "how is", "how are", "can you", "do you", "tell me", "show me",
+            "recall", "lookup", "what do you", "do you remember", "what was", "who was"
+        )
+        if any(lower.startswith(qw) or f" {qw} " in f" {lower} " for qw in question_words):
+            return False
+
+        # Declarative memory triggers
+        statement_triggers = (
+            "remember that", "remember:", "save that", "note that", "keep in mind",
+            "my favorite", "my favourite", "my preferred", "my name is", "i like", "i prefer",
+            "i love", "my editor is", "my goal is", "i work on", "i am building", "set my",
+            "learning", "studying", "i'm learning", "i am learning"
+        )
+        return any(t in lower for t in statement_triggers)
 
     def _needs_realtime_data(self, normalized: str) -> bool:
         realtime_terms = (
@@ -757,22 +830,5 @@ class IntentRouter:
         if any(w in normalized for w in ("traffic light", "flashlight", "highlight", "flight", "flights", "skylight")):
             return False
         return True
-
-    def _asks_for_autonomous_browser(self, normalized: str) -> bool:
-        triggers = (
-            "browse to", "browse for", "navigate to", "open website", "visit website",
-            "go to http", "go to www", "go to github", "go to amazon", "go to youtube",
-            "go to wikipedia", "go to reddit", "search on amazon", "search on google",
-            "search on youtube", "search on reddit", "find on amazon", "shop for",
-            "buy on amazon", "order on amazon", "add to cart", "check on amazon",
-            "look up on amazon", "look up on google", "look up on wikipedia",
-        )
-        if any(t in normalized for t in triggers):
-            return True
-        # Check for direct domains or URLs with action verbs
-        if any(d in normalized for d in (".com", ".org", ".io", ".net", ".edu", "http://", "https://", "www.")):
-            if any(v in normalized for v in ("go to", "open", "visit", "browse", "check", "search", "find", "look up", "navigate")):
-                return True
-        return False
 
 

@@ -63,6 +63,14 @@ pytest tests/
 pip install -e .
 ```
 
+### 5. Install Git Pre-Commit Hooks
+
+Activate local AST integrity and method shadowing prevention hooks:
+
+```bash
+python scripts/install_git_hooks.py
+```
+
 ---
 
 ## Development Workflow

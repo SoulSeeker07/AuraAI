@@ -453,44 +453,7 @@ class RealBackendBridge:
 
         return logs
 
-    # -------------------------------------------------------------------------
-    # 6. LIVE ENVIRONMENTAL SENSORS
-    # -------------------------------------------------------------------------
-    def get_weather_data(self) -> Dict[str, Any]:
-        """Fetch live weather data from wttr.in or local environmental fallback."""
-        import urllib.request
-        try:
-            req = urllib.request.Request(
-                "https://wttr.in/?format=j1",
-                headers={"User-Agent": "curl/7.68.0"},
-            )
-            with urllib.request.urlopen(req, timeout=2.5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                current = data.get("current_condition", [{}])[0]
-                area = data.get("nearest_area", [{}])[0]
-                city = area.get("areaName", [{}])[0].get("value", "Local Area")
-                weather_today = data.get("weather", [{}])[0]
-                return {
-                    "city": city,
-                    "temp": f"{current.get('temp_C', '--')}°C",
-                    "condition": current.get("weatherDesc", [{}])[0].get("value", "Clear"),
-                    "humidity": f"{current.get('humidity', '--')}%",
-                    "wind_speed": f"{current.get('windspeedKmph', '--')} km/h",
-                    "uv_index": current.get("uvIndex", "--"),
-                    "temp_max": f"{weather_today.get('maxtempC', '--')}°C",
-                    "temp_min": f"{weather_today.get('mintempC', '--')}°C",
-                }
-        except Exception:
-            return {
-                "city": "Local Region",
-                "temp": "28°C",
-                "condition": "Clear",
-                "humidity": "58%",
-                "wind_speed": "12 km/h",
-                "uv_index": "4",
-                "temp_max": "31°C",
-                "temp_min": "22°C",
-            }
+
 
     # -------------------------------------------------------------------------
     # 7. LIVE PERSISTENT DAILY TOKEN TRACKER (MULTI-ACCOUNT POOL)
@@ -596,6 +559,44 @@ class RealBackendBridge:
             "pct_used": pct_used,
             "pct_remaining": round(100.0 - pct_used, 1),
         }
+
+    # -------------------------------------------------------------------------
+    # 6. LIVE WEATHER & ENVIRONMENTAL METRICS
+    # -------------------------------------------------------------------------
+    def get_weather_data(self) -> Dict[str, Any]:
+        """Fetch live meteorological weather data via LiveWeatherService."""
+        try:
+            from tools.weather_service import LiveWeatherService
+            w = LiveWeatherService.get_live_weather()
+            cond_str = w.get("condition", "Clear").replace("_", " ").replace(".STATUS", "").replace(".ACTIVE", "").replace(".STABLE", "").replace(".OPTIMAL", "").title()
+            return {
+                "city": w.get("city", "Bangalore"),
+                "region": w.get("region", "Karnataka"),
+                "temp": f"{w.get('temp_c', 24)}°C",
+                "temp_c": w.get("temp_c", 24),
+                "temp_max": f"{w.get('high', 28)}°C",
+                "temp_min": f"{w.get('low', 19)}°C",
+                "condition": cond_str,
+                "humidity": f"{w.get('humidity', 65)}%",
+                "wind_speed": f"{w.get('wind_kmh', 12)} km/h",
+                "uv_index": str(w.get("uv", 0)),
+                "icon": w.get("icon", "🌤️"),
+            }
+        except Exception as e:
+            logger.debug(f"[RealBackendBridge] Weather fetch error: {e}")
+            return {
+                "city": "Bangalore",
+                "region": "Karnataka",
+                "temp": "24°C",
+                "temp_c": 24,
+                "temp_max": "28°C",
+                "temp_min": "19°C",
+                "condition": "Clear",
+                "humidity": "65%",
+                "wind_speed": "12 km/h",
+                "uv_index": "0",
+                "icon": "🌤️",
+            }
 
     # -------------------------------------------------------------------------
     # 7. OBSERVATORY & WORLD STATE TRACKER

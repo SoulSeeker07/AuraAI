@@ -5,6 +5,22 @@ All notable changes to Aura AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-holographic-ai-core] - 2026-08-27
+
+### Added
+- **M30 — Holographic AI Core GUI & Unified Command Center Parity (COMPLETE)**: Sci-Fi holographic interface with real-time HUD telemetry, reactive DAG visualizer, cognitive memory search & vector browsing, persistent daily token tracker, and system diagnostics (`src/gui/main_window.py`, `src/gui/real_backend_bridge.py`, `src/gui/widgets/tactical_telemetry_widget.py`, `src/gui/widgets/dag_visualizer.py`).
+- **Cognitive Memory Import Pipeline** (`src/memory/importers/`): Extensible conversation import framework with dedicated Claude JSON and ChatGPT JSON/ZIP parser adapters, fuzzy deduplication, multi-turn role preservation, schema normalization, and automated background consolidation tasks (`src/memory/consolidation_task.py`, `src/memory/retrieval_gate.py`).
+- **Real-Time Vector Memory Search & Live Inspector**: Interactive memory vector browsing and search across semantic, episodic, fact, preference, and imported conversational memories with confidence score tagging.
+- **Live Weather & Environmental Service** (`tools/weather_service.py`, `src/gui/real_backend_bridge.py`): Integrated `LiveWeatherService` with local meteorological caching, automatic unit normalization, and fallback to environmental sensor telemetry.
+- **Fastpath Intent Matrix & Precedence Hardening** (`src/brain/intent_router.py`, `src/core/nlu/nlu_engine.py`): Deterministic intent prioritization, fast-path keyword evaluation, unambiguous HUD overlay toggling, and `RestartManager` system restart controls.
+- **Codebase AST Integrity & Verification Suite** (`tests/test_codebase_ast_integrity.py`): Automated AST verification across 600+ source files, eliminating syntax regressions and duplicate method definitions across the codebase.
+
+### Changed
+- Refactored `RealBackendBridge` to stream live system metrics, task graphs, memory facts, and smart home status without blocking Qt UI threads.
+- Consolidated intent evaluation logic to prioritize exact HUD overlay toggle matches over generic conversational fallbacks.
+
+---
+
 ## [0.33.0-smarthome-ambient-hud] - 2026-08-25
 
 ### Added

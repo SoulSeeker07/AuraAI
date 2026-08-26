@@ -26,7 +26,12 @@ logger = logging.getLogger(__name__)
 _VOCABULARY = {
     "open", "chrome", "google", "youtube", "tutorial", "video", "videos",
     "notepad", "vscode", "sublime", "search", "find", "delete", "remove",
-    "close", "minimize", "maximize", "restore", "play", "select"
+    "close", "minimize", "maximize", "restore", "play", "select",
+    "version", "hardware", "weather", "temperature", "diagnostics",
+    "capabilities", "limitations", "planners", "backends", "memory",
+    "workspace", "tokens", "button", "hallucination", "mistake", "grammar",
+    "thought", "update", "system", "command", "desktop", "browser",
+    "conversion", "exchange", "currency", "rate", "dollar", "dollars", "rupee", "rupees"
 }
 
 # Common shorthand, STT noise, and typos mapped to clean English
@@ -66,12 +71,57 @@ _TYPO_MAP = {
     "cant": "can not",
     "wont": "will not",
     "dont": "do not",
+    "didnt": "did not",
+    "did'nt": "did not",
+    "couldnt": "could not",
+    "wouldnt": "would not",
+    "isnt": "is not",
+    "arent": "are not",
     "im": "i am",
     "doller": "dollar",
     "dollers": "dollars",
     "covertion": "conversion",
     "convertion": "conversion",
     "calculater": "calculator",
+    "verison": "version",
+    "versin": "version",
+    "vrsion": "version",
+    "verision": "version",
+    "capabilites": "capabilities",
+    "capabiltes": "capabilities",
+    "capabilties": "capabilities",
+    "featurs": "features",
+    "weater": "weather",
+    "wether": "weather",
+    "temprature": "temperature",
+    "tempratur": "temperature",
+    "hardwaer": "hardware",
+    "hardwere": "hardware",
+    "diagnotics": "diagnostics",
+    "diagnstics": "diagnostics",
+    "workspce": "workspace",
+    "wrkspace": "workspace",
+    "memry": "memory",
+    "memor": "memory",
+    "memori": "memory",
+    "plannr": "planner",
+    "planers": "planners",
+    "plannrs": "planners",
+    "tokn": "token",
+    "tokns": "tokens",
+    "mistke": "mistake",
+    "mistk": "mistake",
+    "grammer": "grammar",
+    "grammr": "grammar",
+    "thoght": "thought",
+    "thot": "thought",
+    "halusination": "hallucination",
+    "halucination": "hallucination",
+    "serch": "search",
+    "buttion": "button",
+    "buton": "button",
+    "updat": "update",
+    "updte": "update",
 }
 
 
@@ -154,8 +204,8 @@ class NLUEngine:
                 normalized_words.append(replacement)
                 typos_fixed.append(f"'{word_clean}'→'{replacement}'")
             elif word_lower not in _VOCABULARY and len(word_lower) >= 4:
-                matches = difflib.get_close_matches(word_lower, list(_VOCABULARY), n=1, cutoff=0.75)
-                if matches:
+                matches = difflib.get_close_matches(word_lower, list(_VOCABULARY), n=1, cutoff=0.82)
+                if matches and abs(len(word_lower) - len(matches[0])) <= 2:
                     replacement = matches[0]
                     normalized_words.append(replacement)
                     typos_fixed.append(f"Fuzzy '{word_clean}'→'{replacement}'")
@@ -166,15 +216,23 @@ class NLUEngine:
 
         normalized = " ".join(normalized_words)
 
-        # STT Multi-word phrase cleanup
-        stt_phrases = [
+        # STT and Grammar Multi-word phrase cleanup
+        grammar_phrases = [
             (r"\byou\s+tube\b", "youtube"),
             (r"\ban\s+(search|find|open|play)\b", r"and \1"),
+            (r"\b(whats|what's|wats)\s+is\b", "what is"),
+            (r"\b(who's|whos)\s+is\b", "who is"),
+            (r"\b(where's|wheres)\s+is\b", "where is"),
+            (r"\bhow\s+search\s+(?:work|works)\b", "how does search work"),
+            (r"\bhow\s+memory\s+(?:work|works)\b", "how does memory work"),
+            (r"\bwhat\s+this\s+memory\b", "what is this memory"),
+            (r"\bi\s+thoght\s+we\s+did\s+something\s+to\s+halusination\b", "how does anti-hallucination work"),
+            (r"\bwhy\s+its\s+telling\s+lie\b", "why did it hallucinate"),
         ]
-        for pat, repl in stt_phrases:
+        for pat, repl in grammar_phrases:
             if re.search(pat, normalized, flags=re.IGNORECASE):
                 normalized = re.sub(pat, repl, normalized, flags=re.IGNORECASE)
-                typos_fixed.append(f"STT phrase '{pat}'→'{repl}'")
+                typos_fixed.append(f"Grammar/Phrase '{pat}'→'{repl}'")
 
         # Handle conversational prefixes like "can u open", "please open", "show me"
         normalized = re.sub(

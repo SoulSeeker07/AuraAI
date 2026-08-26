@@ -25,7 +25,26 @@ class SystemKnowledgeResolver:
 
     @classmethod
     def resolve(cls, query: str, context: dict[str, Any] | None = None) -> str:
-        q = query.lower().strip()
+        try:
+            from core.nlu.nlu_engine import NLUEngine
+            normalized_query, _ = NLUEngine().normalize_text(query)
+        except Exception:
+            normalized_query = query
+        q = normalized_query.lower().strip()
+
+        # 0. Version & Release Queries ("What is your version?", "whats is aura version?", "build")
+        if "conversion" not in q and (
+            any(w in q for w in ["aura version", "what version", "which version", "build number", "release version", "system version"])
+            or bool(re.search(r"\bversion\b", q))
+        ):
+            return (
+                "⚡ **AuraAI Cyber Command OS** — `v17.0` (Core Runtime Kernel)\n\n"
+                "  • Version: AuraAI v17.0 (Cognitive Orchestration Layer)\n"
+                "  • Architecture: Multi-Agent Swarm + Directed Acyclic Graph (DAG) Reasoning\n"
+                "  • Executive Brain: Groq LPU Accelerated Multi-Account Engine\n"
+                "  • Memory Vault: SQLite Persistent Facts + ChromaDB Local Vector Store\n"
+                "  • GUI Interface: Next-Gen Holographic PySide6 Cyber Command OS"
+            )
 
         # 1. Limitations Queries ("What can't you do?")
         if any(
