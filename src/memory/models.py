@@ -35,6 +35,8 @@ class ProvenanceSource(str, Enum):
     RUNTIME_SESSION = "runtime_session"
     EXECUTION_RESULT = "execution_result"
     IMPORTED = "imported"
+    CLAUDE_IMPORT = "claude_import"
+    CHATGPT_IMPORT = "chatgpt_import"
     INFERRED = "inferred"
 
 

@@ -60,7 +60,8 @@ class RecallEngine:
         if not candidates:
             return []
 
-        query_terms = set(query.lower().split()) if query else set()
+        import re
+        query_terms = set(re.findall(r"\b\w+\b", query.lower())) if query else set()
         scored: list[tuple[float, MemoryItem]] = []
 
         now = dt.datetime.now()

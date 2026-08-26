@@ -174,6 +174,7 @@ class CognitiveMemoryEngine:
         memory_type: MemoryType | str | None = None,
         project_id: str = "global",
         limit: int = 20,
+        include_expired: bool = False,
     ) -> list[MemoryItem]:
         """
         Search memories matching query, optionally filtering by type and project.
@@ -210,7 +211,9 @@ class CognitiveMemoryEngine:
         # Apply project isolation filter
         items = self.project_filter.filter_for_project(items, active_project=project_id)
 
-        # Apply decay filter to discard expired items
+        # Apply decay filter to discard expired items unless explicitly requested
+        if include_expired:
+            return items[:limit]
         valid_items = [m for m in items if not self.decay_engine.is_expired(m)]
         return valid_items[:limit]
 
@@ -259,3 +262,66 @@ class CognitiveMemoryEngine:
             expires_at=row[12],
             metadata=meta_dict,
         )
+
+    def import_from_external(
+        self,
+        export_path: str,
+        source: str = "claude",
+        dry_run: bool = False,
+    ) -> Any:
+        """
+        Import memories from an external assistant export (Claude / ChatGPT).
+        """
+        source_lower = source.lower().strip()
+        if source_lower == "claude":
+            from .importers.claude_importer import ClaudeImporter
+            importer = ClaudeImporter()
+        elif source_lower in ("chatgpt", "openai"):
+            from .importers.chatgpt_importer import ChatGPTImporter
+            importer = ChatGPTImporter()
+        else:
+            raise ValueError(f"Unsupported memory import source: {source}. Expected 'claude' or 'chatgpt'.")
+
+        return importer.import_to_memory(export_path, self, dry_run=dry_run)
+
+    def rollback_import(self, batch_id: str) -> int:
+        """
+        Delete all memories created under a specific import batch_id.
+        """
+        deleted_count = 0
+        with self._connect() as conn:
+            cursor = conn.execute("SELECT memory_id, content, metadata FROM cognitive_memories")
+            to_delete = []
+            for row in cursor.fetchall():
+                mem_id, content, meta_json = row[0], row[1], row[2]
+                if meta_json:
+                    try:
+                        meta = json.loads(meta_json)
+                        if meta.get("import_batch_id") == batch_id:
+                            to_delete.append((mem_id, content))
+                    except Exception:
+                        pass
+
+            for mem_id, content in to_delete:
+                conn.execute("DELETE FROM cognitive_memories WHERE memory_id = ?", (mem_id,))
+                deleted_count += 1
+                logger.info(f"[CognitiveMemoryEngine] Rollback deleted '{mem_id}': {content[:60]!r}")
+
+        logger.info(f"[CognitiveMemoryEngine] Rolled back batch '{batch_id}': deleted {deleted_count} memories.")
+        return deleted_count
+
+    def run_consolidation(self, dry_run: bool = False) -> Any:
+        """
+        Run the Auto-Dream consolidation pipeline (dedup, prune, promote).
+        """
+        from .consolidation_task import MemoryConsolidationTask
+        task = MemoryConsolidationTask()
+        return task.run(self, dry_run=dry_run)
+
+    def get_retrieval_gate(self, **kwargs: Any) -> Any:
+        """
+        Factory method to get a configured MemoryRetrievalGate wired to this engine.
+        """
+        from .retrieval_gate import MemoryRetrievalGate
+        return MemoryRetrievalGate(self, **kwargs)
+
