@@ -36,6 +36,7 @@ from PySide6.QtCore import (
     QTimer,
     QDateTime,
     Signal,
+    QThread,
 )
 from PySide6.QtGui import (
     QPainter,
@@ -93,6 +94,68 @@ from gui.widgets.agent_task_status_overlay import AgentTaskStatusOverlay
 from gui.widgets.personal_os_dashboard_overlay import PersonalOSDashboardOverlay
 from gui.widgets.chat_window_overlay import ChatWindowOverlay
 from gui.real_backend_bridge import RealBackendBridge
+
+
+class CommandWorker(QThread):
+    """Executes AuraCore tasks asynchronously in a background thread."""
+
+    finished_signal = Signal(str, str)  # task_id, response_text
+    error_signal = Signal(str, str)  # task_id, error_message
+    step_signal = Signal(object)  # ExecutionStep
+
+    def __init__(self, command: str, parent=None):
+        super().__init__(parent)
+        self.command = command
+
+    def run(self):
+        import asyncio
+        task_id = f"T-{int(time.time()) % 10000:04d}"
+        start_time = time.time()
+
+        # Step 1: Parsing
+        step1 = ExecutionStep(
+            index=0,
+            title="Analyzing Intent",
+            description=f"Routing goal to ACA Cognitive Pipeline: '{self.command[:45]}'",
+            status=StepStatus.RUNNING,
+            timestamp=start_time,
+        )
+        self.step_signal.emit(step1)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            from core.aura_core import AuraCore
+
+            core = AuraCore.get_instance()
+
+            step1.status = StepStatus.COMPLETED
+            self.step_signal.emit(step1)
+
+            # Step 2: Cognitive Reasoning & Groq LLM Execution
+            step2 = ExecutionStep(
+                index=1,
+                title="Executive Brain Reasoning",
+                description="Executing via Groq LLM & Master Orchestrator...",
+                status=StepStatus.RUNNING,
+                timestamp=time.time(),
+            )
+            self.step_signal.emit(step2)
+
+            if hasattr(core, "process_request"):
+                response_text = loop.run_until_complete(core.process_request(self.command))
+            else:
+                response_text = loop.run_until_complete(core.get_ai_response(self.command))
+
+            step2.status = StepStatus.COMPLETED
+            self.step_signal.emit(step2)
+
+            self.finished_signal.emit(task_id, str(response_text))
+        except Exception as e:
+            logger.error(f"Command execution error: {e}", exc_info=True)
+            self.error_signal.emit(task_id, str(e))
+        finally:
+            loop.close()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -483,6 +546,7 @@ class MainWindow(QMainWindow):
         self._task_overlay: Optional[AgentTaskStatusOverlay] = None
         self._personal_os_overlay: Optional[PersonalOSDashboardOverlay] = None
         self._chat_overlay: Optional[ChatWindowOverlay] = None
+        self._active_worker: Optional[CommandWorker] = None
 
         # Telemetry worker
         self._telemetry_worker = TelemetryWorker(self)
@@ -492,8 +556,17 @@ class MainWindow(QMainWindow):
         self._setup_titlebar()
         self._connect_signals()
         self._restore_geometry()
-
         self._telemetry_worker.start()
+
+        # Background pre-warm AuraCore
+        import threading
+        def _prewarm_core():
+            try:
+                from core.aura_core import AuraCore
+                AuraCore.get_instance()
+            except Exception:
+                pass
+        threading.Thread(target=_prewarm_core, daemon=True, name="AuraCorePrewarmer").start()
 
     # -------------------------------------------------------------------------
     # MAIN UI ASSEMBLE
@@ -1295,9 +1368,12 @@ class MainWindow(QMainWindow):
                 color: #50657a;
             }
         """)
+        self._home_input.returnPressed.connect(self._on_home_submit)
+        ic_l.addWidget(self._home_input, 1)
+
         # Send Button
         send_btn = QPushButton("DISPATCH ➤")
-        send_btn.setFixedHeight(34)
+        send_btn.setFixedSize(110, 34)
         send_btn.setFont(QFont("Consolas", 9, QFont.Bold))
         send_btn.setCursor(Qt.PointingHandCursor)
         send_btn.setStyleSheet("""
@@ -1306,7 +1382,7 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 4px;
                 color: #06090f;
-                padding: 0 16px;
+                padding: 0 10px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #33eeff, stop:1 #80c4ff);
@@ -1361,12 +1437,8 @@ class MainWindow(QMainWindow):
             return
         self._home_input.clear()
         self._add_message("user", text)
-        self._holo_core_small.set_state("THINKING")
-        self._core_state_lbl.setText("STATE: THINKING")
-        self._core_state_lbl.setStyleSheet("color: #50aaff;")
-        self._right_goal_lbl.setText(f"PROCESSING:\n{text[:45]}...")
         self._on_tab_selected(1)
-        app_signals.message_received.emit("user", text, True)
+        self.execute_command(text)
 
     # -------------------------------------------------------------------------
     # TAB 1: CONSOLE (INTERACTIVE NEURAL CHAT)
@@ -1561,8 +1633,9 @@ class MainWindow(QMainWindow):
             self._chat_input.setPlaceholderText("Enter command or prompt AuraAI (Press Enter)...")
 
     def _send_quick_command(self, cmd: str):
-        self._chat_input.setText(cmd)
-        self._on_chat_submit()
+        self._add_message("user", cmd)
+        self._on_tab_selected(1)
+        self.execute_command(cmd)
 
     def _on_chat_submit(self):
         text = self._chat_input.text().strip()
@@ -1571,10 +1644,52 @@ class MainWindow(QMainWindow):
 
         self._add_message("user", text)
         self._chat_input.clear()
-        self._holo_core_small.set_state("THINKING")
-        self._core_state_lbl.setText("STATE: THINKING")
-        self._core_state_lbl.setStyleSheet("color: #818cf8;")
-        app_signals.message_received.emit("user", text, True)
+        self.execute_command(text)
+
+    def execute_command(self, text: str):
+        if not text:
+            return
+        self._holo_core_small.set_state("EXECUTING")
+        self._core_state_lbl.setText("STATE: EXECUTING")
+        self._core_state_lbl.setStyleSheet("color: #fbbf24;")
+        if hasattr(self, "_console_status_pill"):
+            self._console_status_pill.set_active(True)
+            self._console_status_pill.set_label("Executing")
+        self._right_goal_lbl.setText(f"PROCESSING:\n{text[:45]}...")
+
+        app_signals.execution_started.emit("user-task")
+
+        if self._active_worker and self._active_worker.isRunning():
+            self._active_worker.quit()
+            self._active_worker.wait(400)
+
+        self._active_worker = CommandWorker(text, parent=self)
+        self._active_worker.step_signal.connect(self._on_step_updated)
+        self._active_worker.finished_signal.connect(self._on_worker_finished)
+        self._active_worker.error_signal.connect(self._on_worker_error)
+        self._active_worker.start()
+
+    def _on_worker_finished(self, task_id: str, response: str):
+        self._add_message("agent", response, intent_tag="REASONING")
+        self._holo_core_small.set_state("IDLE")
+        self._core_state_lbl.setText("STATE: IDLE")
+        self._core_state_lbl.setStyleSheet("color: #10b981;")
+        if hasattr(self, "_console_status_pill"):
+            self._console_status_pill.set_active(False)
+            self._console_status_pill.set_label("Ready")
+        self._right_goal_lbl.setText("STANDBY // Awaiting Operator Input")
+        app_signals.execution_finished.emit(task_id, True)
+
+    def _on_worker_error(self, task_id: str, error: str):
+        self._add_message("agent", f"⚠️ Error executing task: {error}", intent_tag="ERROR")
+        self._holo_core_small.set_state("IDLE")
+        self._core_state_lbl.setText("STATE: IDLE")
+        self._core_state_lbl.setStyleSheet("color: #10b981;")
+        if hasattr(self, "_console_status_pill"):
+            self._console_status_pill.set_active(False)
+            self._console_status_pill.set_label("Ready")
+        self._right_goal_lbl.setText("STANDBY // Awaiting Operator Input")
+        app_signals.execution_finished.emit(task_id, False)
 
     def _add_message(self, sender: str, text: str, intent_tag: str = "EXECUTION"):
         card = HoloMessageCard(sender, text, intent_tag=intent_tag)
@@ -1974,11 +2089,13 @@ class MainWindow(QMainWindow):
         app_signals.toggle_personal_os_overlay.connect(self.toggle_personal_os_overlay)
 
     def _on_message_received(self, sender: str, content: str, is_user: bool):
-        if not is_user:
-            self._add_message("agent", content, intent_tag="REASONING")
-            self._holo_core_small.set_state("IDLE")
-            self._core_state_lbl.setText("STATE: IDLE")
-            self._core_state_lbl.setStyleSheet("color: #10b981;")
+        # Only handle messages from external systems (e.g. voice loop or floating chat overlay)
+        if sender in ("voice", "overlay", "external"):
+            self._add_message("user" if is_user else "agent", content, intent_tag="VOICE" if sender == "voice" else "REASONING")
+            if not is_user:
+                self._holo_core_small.set_state("IDLE")
+                self._core_state_lbl.setText("STATE: IDLE")
+                self._core_state_lbl.setStyleSheet("color: #10b981;")
 
     def _on_execution_started(self, task_id: str):
         self._console_status_pill.set_active(True)
@@ -1997,6 +2114,8 @@ class MainWindow(QMainWindow):
         self._right_goal_lbl.setText("STANDBY // Awaiting Operator Input")
 
     def _on_step_updated(self, step: ExecutionStep):
+        if hasattr(self, "_dag_visualizer") and self._dag_visualizer:
+            self._dag_visualizer.add_or_update_step(step)
         if step.description:
             self._right_goal_lbl.setText(f"STEP: {step.title}\n{step.description[:50]}...")
 

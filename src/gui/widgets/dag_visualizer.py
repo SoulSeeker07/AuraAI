@@ -207,6 +207,38 @@ class DagVisualizer(QGraphicsView):
             for edge in self._edges:
                 edge.update_position()
 
+    def add_or_update_step(self, step):
+        """Map an ExecutionStep into a visual DAG node."""
+        from gui.signals import StepStatus
+
+        status_map = {
+            StepStatus.PENDING: TaskNodeStatus.PENDING,
+            StepStatus.RUNNING: TaskNodeStatus.RUNNING,
+            StepStatus.COMPLETED: TaskNodeStatus.COMPLETED,
+            StepStatus.FAILED: TaskNodeStatus.FAILED,
+        }
+        node_status = status_map.get(step.status, TaskNodeStatus.RUNNING)
+        progress = (
+            1.0
+            if step.status == StepStatus.COMPLETED
+            else (0.5 if step.status == StepStatus.RUNNING else 0.0)
+        )
+        node_id = f"step_{step.index}"
+        parent_ids = [f"step_{step.index - 1}"] if step.index > 0 else []
+
+        label_desc = f": {step.description[:20]}..." if step.description else ""
+        node = TaskNode(
+            id=node_id,
+            label=f"{step.title}{label_desc}",
+            status=node_status,
+            progress=progress,
+            parent_ids=parent_ids,
+        )
+        if node_id in self._nodes:
+            self._on_node_updated(node)
+        else:
+            self._on_node_added(node)
+
     def _clear(self):
         self._scene.clear()
         self._nodes.clear()

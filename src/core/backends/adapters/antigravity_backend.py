@@ -263,6 +263,21 @@ class CodingBackendAdapter(BaseBackendAdapter):
 
     # ── Private: route handlers ────────────────────────────────────────────
 
+    def _resolve_repo_path(self, args: dict[str, Any]) -> Path:
+        """Resolve target repository / workspace root path."""
+        target = (
+            args.get("repository_path")
+            or args.get("repo_path")
+            or args.get("workspace_path")
+            or args.get("path")
+        )
+        if target:
+            p = Path(target).resolve()
+            if p.exists():
+                return p
+        # Default to project root
+        return Path(__file__).resolve().parent.parent.parent.parent.parent
+
     def _execute_walk(
         self, goal: str, args: dict[str, Any], repo_path: Path
     ) -> ExecutionResult:

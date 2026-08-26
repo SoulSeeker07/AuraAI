@@ -417,6 +417,16 @@ class DecisionEngine:
                     "write python",
                     "create python",
                     "generate python",
+                    "scan workspace",
+                    "inspect workspace",
+                    "workspace.walk",
+                    "workspace.search",
+                    "inspect files",
+                    "scan files",
+                    "list workspace",
+                    "scan project",
+                    "scan repository",
+                    "inspect repository",
                 ]
             )
             or (

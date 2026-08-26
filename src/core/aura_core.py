@@ -719,7 +719,20 @@ class AuraCore:
         Delegates execution through MasterOrchestrator cognitive pipeline.
         """
         try:
-            # 1. Fast Conversational Engine & Hardware Controller
+            from core.orchestration import MasterOrchestrator
+
+            orchestrator = MasterOrchestrator.get_instance()
+            decision = orchestrator.decision_engine.evaluate(user_goal)
+
+            # If it requires planner / tool execution or system inspection, run through MasterOrchestrator
+            if decision.needs_planner or decision.intent_type != "chat":
+                res = await orchestrator.process_request_async(user_goal)
+                if hasattr(res, "final_output") and res.final_output:
+                    return str(res.final_output)
+                if hasattr(res, "observations") and res.observations:
+                    return "\n".join(res.observations)
+
+            # Fast Conversational Engine fallback
             try:
                 from Memory import Memory
                 from ai.registry import build_provider_manager
@@ -734,10 +747,6 @@ class AuraCore:
                     return conv_res.text
             except Exception as conv_err:
                 logger.debug(f"[AuraCore] Fast ConversationEngine notice: {conv_err}")
-
-            from core.orchestration import MasterOrchestrator
-
-            orchestrator = MasterOrchestrator.get_instance()
 
             raw = user_goal.strip().lower()
             if raw in [
