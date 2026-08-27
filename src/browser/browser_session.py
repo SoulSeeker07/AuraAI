@@ -79,10 +79,24 @@ class BrowserSession:
         except Exception:
             pass
 
-        # 2. Launch persistent profile directory (sessions saved here are never overwritten)
+        # 2. Sync and launch persistent profile directory (uses user's real Chrome profile & logins)
         user_data_dir = os.getenv(
             "AURA_CHROME_USER_DATA_DIR", str(Path.home() / ".aura" / "browser_profile")
         )
+        if not os.getenv("AURA_CHROME_PROFILE"):
+            try:
+                from browser.profile_sync import discover_target_profile_dir
+                target_profile = discover_target_profile_dir("sreekanta")
+            except Exception:
+                target_profile = "Default"
+        else:
+            target_profile = os.getenv("AURA_CHROME_PROFILE", "Default")
+
+        try:
+            from browser.profile_sync import sync_chrome_profile
+            sync_chrome_profile(target_profile_dir=target_profile, aura_user_data_dir=Path(user_data_dir))
+        except Exception as ex:
+            logger.debug("[BrowserSession] Profile sync notice: %s", ex)
 
         try:
             self._context = self._playwright.chromium.launch_persistent_context(

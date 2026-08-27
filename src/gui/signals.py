@@ -121,6 +121,7 @@ class AppSignals(QObject):
     # ── Voice ──
     voice_status_changed = Signal(bool)  # is_active
     voice_level = Signal(float)  # Audio level 0.0-1.0
+    voice_state_name_changed = Signal(str)  # FSM state: IDLE, LISTENING, SPEAKING, etc.
 
     # ── Screen / Vision ──
     screen_status_changed = Signal(bool, str)  # is_sharing, window_title

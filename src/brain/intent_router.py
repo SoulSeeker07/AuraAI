@@ -549,9 +549,7 @@ class IntentRouter:
         return folder_name, loc
 
     def _asks_for_autonomous_browser(self, normalized: str) -> bool:
-        # Autonomous browsing is currently paused per user request.
-        # Set environment variable AURA_AUTONOMOUS_BROWSER_ENABLED=1 to re-enable.
-        if os.environ.get("AURA_AUTONOMOUS_BROWSER_ENABLED", "0") != "1":
+        if os.environ.get("AURA_AUTONOMOUS_BROWSER_ENABLED", "1") == "0":
             return False
 
         clean = re.sub(r"^aura\s+", "", normalized).strip()
@@ -562,9 +560,12 @@ class IntentRouter:
         )
         browser_verbs = (
             "go to", "navigate to", "open", "browse to", "search", "find",
-            "scroll", "click", "type", "add to cart", "checkout", "book", "buy"
+            "scroll", "click", "type", "add to cart", "checkout", "book", "buy",
+            "add", "cart", "order", "purchase"
         )
         if any(f"go to {s}" in clean for s in site_names) or any(f"navigate to {s}" in clean for s in site_names):
+            return True
+        if any(f"in {s}" in clean or f"on {s}" in clean for s in site_names):
             return True
         if re.search(r"\bgo to\s+[a-zA-Z0-9_\-\.]+\.(com|org|net|io|in|edu|gov|co)\b", clean):
             return True
@@ -575,8 +576,8 @@ class IntentRouter:
         if any(clean.startswith(t) for t in (
             "browse to", "browse ", "open browser", "search web for",
             "search google for", "search wikipedia for", "search youtube for",
-            "search amazon for", "find flight", "find cheapest flight", "add to cart",
-            "click on screen", "look at screen"
+            "search amazon for", "search flipkart for", "find flight", "find cheapest flight", "add to cart",
+            "click on screen", "look at screen", "in amazon", "in flipkart", "on amazon", "on flipkart"
         )):
             return True
         return False

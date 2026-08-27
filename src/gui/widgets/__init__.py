@@ -19,6 +19,8 @@ from .agent_task_status_overlay import AgentTaskStatusOverlay
 from .personal_os_dashboard_overlay import PersonalOSDashboardOverlay
 from .chat_window_overlay import ChatWindowOverlay
 from .jarvis_rings_overlay import JarvisRingsOverlay
+from .tactical_telemetry_widget import TacticalTelemetryWidget
+from .tactical_voice_waveform_widget import TacticalVoiceWaveformWidget
 
 __all__ = [
     "MatrixOverlay",
@@ -38,4 +40,6 @@ __all__ = [
     "PersonalOSDashboardOverlay",
     "ChatWindowOverlay",
     "JarvisRingsOverlay",
+    "TacticalTelemetryWidget",
+    "TacticalVoiceWaveformWidget",
 ]

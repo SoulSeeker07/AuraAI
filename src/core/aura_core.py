@@ -366,12 +366,10 @@ class AuraCore:
                 from autonomy.trigger_registry import TriggerRegistry
                 from autonomy.trigger_scheduler import TriggerScheduler
                 from core.orchestration.execution_policy import ExecutionPolicy
-                from voice.continuous_loop import ContinuousVoiceLoop
             except (ImportError, ModuleNotFoundError):
-                from autonomy.trigger_registry import TriggerRegistry
-                from autonomy.trigger_scheduler import TriggerScheduler
-                from core.orchestration.execution_policy import ExecutionPolicy
-                from voice.continuous_loop import ContinuousVoiceLoop
+                from src.autonomy.trigger_registry import TriggerRegistry
+                from src.autonomy.trigger_scheduler import TriggerScheduler
+                from src.core.orchestration.execution_policy import ExecutionPolicy
 
             self.policy = ExecutionPolicy.get_instance()
             self.trigger_registry = TriggerRegistry(
@@ -384,12 +382,28 @@ class AuraCore:
                 orchestrator=orchestrator,
             )
 
-            self.voice_loop = ContinuousVoiceLoop(
-                coordinator=self.coordinator,
-                nlu_engine=getattr(self, "nlu_engine", None),
-            )
-            self.voice_loop._aura_core = self
-            ContinuousVoiceLoop.set_global_aura_core(self)
+            ContinuousVoiceLoop = None
+            try:
+                from voice.continuous_loop import ContinuousVoiceLoop
+            except (ImportError, ModuleNotFoundError):
+                try:
+                    from src.voice.continuous_loop import ContinuousVoiceLoop
+                except Exception as e:
+                    logger.debug(f"ContinuousVoiceLoop import skipped: {e}")
+
+            if ContinuousVoiceLoop is not None:
+                try:
+                    self.voice_loop = ContinuousVoiceLoop(
+                        coordinator=self.coordinator,
+                        nlu_engine=getattr(self, "nlu_engine", None),
+                    )
+                    self.voice_loop._aura_core = self
+                    ContinuousVoiceLoop.set_global_aura_core(self)
+                except Exception as e:
+                    logger.warning(f"Continuous voice loop initialization notice: {e}")
+                    self.voice_loop = None
+            else:
+                self.voice_loop = None
 
             # ── Wire Real Engine Callbacks ─────────────────────────────────
             # Replace mock callbacks with real engines so there is ONE execution path.
@@ -608,7 +622,7 @@ class AuraCore:
                 "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant. "
                 "You are NOT base GPT-4 or OpenAI; you are AuraAI running on Windows with local tools, "
                 "PySide6 HUD, multi-agent planners, Playwright browsing, and real-time hardware telemetry. "
-                "Always be direct, concise, factual, and helpful. Never hallucinate outdated knowledge cutoff dates."
+                "Always be direct, concise, factual, and helpful. Output clear natural language text responses."
             )
             messages = [
                 {
@@ -626,13 +640,26 @@ class AuraCore:
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = "medium"
 
-            def _call_groq():
-                res = self.groq_client.chat.completions.create(**kwargs)
+            def _call_groq(model_name: str):
+                call_kw = dict(kwargs)
+                call_kw["model"] = model_name
+                if "gpt-oss-120b" not in model_name:
+                    call_kw.pop("reasoning_effort", None)
+                res = self.groq_client.chat.completions.create(**call_kw)
                 if res and res.choices and res.choices[0].message:
                     return res.choices[0].message.content or ""
                 return ""
 
-            response_text = await asyncio.to_thread(_call_groq)
+            try:
+                response_text = await asyncio.to_thread(_call_groq, target_model)
+            except Exception as call_err:
+                err_str = str(call_err)
+                if "tool_use_failed" in err_str or "Tool choice is none" in err_str or "400" in err_str:
+                    logger.warning(f"Groq primary model returned tool constraint error, failing over to qwen/qwen3.6-27b: {call_err}")
+                    response_text = await asyncio.to_thread(_call_groq, "qwen/qwen3.6-27b")
+                else:
+                    raise call_err
+
             return response_text.strip()
 
         except Exception as e:

@@ -254,10 +254,24 @@ class HoloDagNodeItem(QGraphicsItem):
         fill_w = max(0.0, min(prog_w, prog_w * self._node.progress))
         if fill_w > 0:
             fill_grad = QLinearGradient(12, 0, 12 + fill_w, 0)
-            fill_grad.setColorAt(0.0, QColor(0, 229, 255))
-            fill_grad.setColorAt(1.0, border_col)
+            if self._node.status == TaskNodeStatus.FAILED:
+                fill_grad.setColorAt(0.0, QColor("#f43f5e"))
+                fill_grad.setColorAt(1.0, QColor("#ef4444"))
+            elif self._node.status == TaskNodeStatus.COMPLETED:
+                fill_grad.setColorAt(0.0, QColor("#00e5ff"))
+                fill_grad.setColorAt(1.0, QColor("#10b981"))
+            else:
+                fill_grad.setColorAt(0.0, QColor("#00e5ff"))
+                fill_grad.setColorAt(1.0, border_col)
             painter.setBrush(fill_grad)
             painter.drawRoundedRect(QRectF(12, self.HEIGHT - 12, fill_w, 4), 2, 2)
+
+            # Active moving laser scan beam only while actively running
+            if self._node.status == TaskNodeStatus.RUNNING:
+                scan_x = 12 + ((math.sin(self._anim_phase) + 1.0) / 2.0) * fill_w
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QColor("#ffffff"))
+                painter.drawEllipse(QPointF(scan_x, self.HEIGHT - 10), 2.5, 2.5)
 
         # Sci-Fi Corner Bracket Accents
         painter.setPen(QPen(QColor(border_col.red(), border_col.green(), border_col.blue(), 120), 1))
@@ -290,8 +304,11 @@ class HoloDagNodeItem(QGraphicsItem):
 
 class HoloDagEdgeItem(QGraphicsPathItem):
     """
-    Glowing futuristic neon laser interconnect line between nodes
-    with smooth Bezier curves, flowing energy particles, and directional transit markers.
+    Glowing futuristic neon laser interconnect line between nodes.
+    - When RUNNING / in progress: active flowing energy laser particles move down the pipeline.
+    - When COMPLETED / RESOLVED: steady, solid, completed glowing data conduit with sealed connection dot.
+    - When FAILED / FAULT: warning crimson conduit indicating broken pipeline transit.
+    - When PENDING: subtle dim queued link waiting for activation.
     """
 
     def __init__(self, source: HoloDagNodeItem, target: HoloDagNodeItem, parent=None):
@@ -306,8 +323,12 @@ class HoloDagEdgeItem(QGraphicsPathItem):
         self._update_path()
 
     def advance_pulse(self):
-        self._phase = (self._phase + 0.04) % 1.0
-        self.update()
+        # Only advance particle motion if the connected nodes are actively in progress / running
+        src_st = self._source._node.status
+        tgt_st = self._target._node.status
+        if src_st == TaskNodeStatus.RUNNING or tgt_st == TaskNodeStatus.RUNNING:
+            self._phase = (self._phase + 0.035) % 1.0
+            self.update()
 
     def _update_path(self):
         src_rect = self._source.sceneBoundingRect()
@@ -329,24 +350,70 @@ class HoloDagEdgeItem(QGraphicsPathItem):
     def paint(self, painter: QPainter, option, widget=None):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         path = self.path()
+        if path.isEmpty():
+            return
 
-        # 1. Base Glow Tube
-        glow_pen = QPen(QColor(0, 229, 255, 35), 5)
-        painter.strokePath(path, glow_pen)
+        src_st = self._source._node.status
+        tgt_st = self._target._node.status
 
-        # 2. Main Laser Core
-        core_pen = QPen(QColor(0, 229, 255, 190), 1.8, Qt.PenStyle.SolidLine)
-        painter.strokePath(path, core_pen)
+        # 1. State Determination
+        is_failed = src_st == TaskNodeStatus.FAILED or tgt_st == TaskNodeStatus.FAILED
+        is_running = src_st == TaskNodeStatus.RUNNING or tgt_st == TaskNodeStatus.RUNNING
+        is_completed = src_st == TaskNodeStatus.COMPLETED and tgt_st == TaskNodeStatus.COMPLETED
 
-        # 3. Flowing Energy Particle Pulse
-        pt = path.pointAtPercent(self._phase)
-        p_grad = QRadialGradient(pt, 6)
-        p_grad.setColorAt(0.0, QColor("#ffffff"))
-        p_grad.setColorAt(0.5, QColor(0, 229, 255, 220))
-        p_grad.setColorAt(1.0, QColor(0, 229, 255, 0))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(p_grad)
-        painter.drawEllipse(pt, 5, 5)
+        if is_failed:
+            # Failure State: Crimson warning conduit
+            glow_pen = QPen(QColor(244, 63, 94, 45), 5)
+            painter.strokePath(path, glow_pen)
+
+            core_pen = QPen(QColor(244, 63, 94, 210), 1.8, Qt.PenStyle.DashLine)
+            painter.strokePath(path, core_pen)
+
+            # Center Fault Indicator
+            mid_pt = path.pointAtPercent(0.5)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor("#f43f5e"))
+            painter.drawEllipse(mid_pt, 4, 4)
+
+        elif is_running:
+            # Active State: Glowing Laser Beam with Flowing Energy Particle
+            glow_pen = QPen(QColor(0, 229, 255, 55), 6)
+            painter.strokePath(path, glow_pen)
+
+            core_pen = QPen(QColor(0, 229, 255, 230), 2.0, Qt.PenStyle.SolidLine)
+            painter.strokePath(path, core_pen)
+
+            # Flowing Laser Pulse
+            pt = path.pointAtPercent(self._phase)
+            p_grad = QRadialGradient(pt, 7)
+            p_grad.setColorAt(0.0, QColor("#ffffff"))
+            p_grad.setColorAt(0.4, QColor(0, 229, 255, 240))
+            p_grad.setColorAt(1.0, QColor(0, 229, 255, 0))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(p_grad)
+            painter.drawEllipse(pt, 6, 6)
+
+        elif is_completed:
+            # Completed / Resolved State: Steady, solid, sealed completed circuit (laser stopped)
+            glow_pen = QPen(QColor(0, 229, 255, 30), 4)
+            painter.strokePath(path, glow_pen)
+
+            core_pen = QPen(QColor(0, 229, 255, 180), 1.6, Qt.PenStyle.SolidLine)
+            painter.strokePath(path, core_pen)
+
+            # Steady Connection Dot at Midpoint (no moving particle)
+            mid_pt = path.pointAtPercent(0.5)
+            painter.setPen(QPen(QColor(0, 229, 255, 100), 1))
+            painter.setBrush(QColor(0, 229, 255, 220))
+            painter.drawEllipse(mid_pt, 3.5, 3.5)
+
+        else:
+            # Pending / Queued State: Dim subtle link
+            glow_pen = QPen(QColor(59, 130, 246, 20), 3)
+            painter.strokePath(path, glow_pen)
+
+            core_pen = QPen(QColor(59, 130, 246, 120), 1.2, Qt.PenStyle.DashLine)
+            painter.strokePath(path, core_pen)
 
 
 class DagVisualizer(QGraphicsView):

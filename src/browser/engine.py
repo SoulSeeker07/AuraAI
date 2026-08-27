@@ -125,31 +125,74 @@ class BrowserEngine:
             else:
                 launcher = self._playwright.chromium
 
-            self._browser = await launcher.launch(
-                headless=self.headless,
-                args=[
+                import os
+                from pathlib import Path
+
+                channel = os.getenv("AURA_BROWSER_CHANNEL", "chrome")
+                user_data_dir = os.getenv(
+                    "AURA_CHROME_USER_DATA_DIR", str(Path.home() / ".aura" / "browser_profile")
+                )
+                target_profile = os.getenv("AURA_CHROME_PROFILE", "Default")
+
+                try:
+                    from browser.profile_sync import sync_chrome_profile, discover_target_profile_dir
+                    if not os.getenv("AURA_CHROME_PROFILE"):
+                        target_profile = discover_target_profile_dir("sreekanta")
+                    sync_chrome_profile(target_profile_dir=target_profile, aura_user_data_dir=Path(user_data_dir))
+                except Exception as ex:
+                    logger.debug("[BrowserEngine] Profile sync notice: %s", ex)
+
+                common_args = [
                     "--autoplay-policy=no-user-gesture-required",
                     "--disable-blink-features=AutomationControlled",
                     "--no-sandbox",
-                ],
-            )
-            self._context = await self._browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent=(
+                    "--disable-infobars",
+                    "--window-size=1280,850",
+                    f"--profile-directory={target_profile}",
+                ]
+                user_agent = (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-            )
+                )
+
+                try:
+                    self._context = await launcher.launch_persistent_context(
+                        user_data_dir=user_data_dir,
+                        channel=channel,
+                        headless=self.headless,
+                        viewport={"width": 1280, "height": 800},
+                        user_agent=user_agent,
+                        args=common_args,
+                    )
+                    self._browser = None
+                except Exception as e:
+                    logger.debug("[BrowserEngine] Persistent launch notice (%s), using standard launch", e)
+                    try:
+                        self._browser = await launcher.launch(
+                            channel=channel,
+                            headless=self.headless,
+                            args=common_args,
+                        )
+                    except Exception:
+                        self._browser = await launcher.launch(
+                            headless=self.headless,
+                            args=common_args,
+                        )
+                    self._context = await self._browser.new_context(
+                        viewport={"width": 1280, "height": 800},
+                        user_agent=user_agent,
+                    )
+
             # Attach global network policy route interceptor
             await self._context.route("**/*", self._route_network_policy_interceptor)
 
             # Capture the event loop for use in sync callbacks
             self._loop = asyncio.get_running_loop()
             self._context.on("page", self._on_new_page)
-            self._page = await self._context.new_page()
+            self._page = self._context.pages[0] if self._context.pages else await self._context.new_page()
             self.is_active = True
             logger.info(
-                f"BrowserEngine started ({self.browser_type_name}, headless={self.headless})"
+                f"BrowserEngine started ({self.browser_type_name}, channel={channel}, headless={self.headless})"
             )
             return True
         except Exception as e:

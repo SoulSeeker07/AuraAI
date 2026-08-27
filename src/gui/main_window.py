@@ -94,6 +94,7 @@ from gui.widgets.agent_task_status_overlay import AgentTaskStatusOverlay
 from gui.widgets.personal_os_dashboard_overlay import PersonalOSDashboardOverlay
 from gui.widgets.chat_window_overlay import ChatWindowOverlay
 from gui.widgets.tactical_telemetry_widget import TacticalTelemetryWidget
+from gui.widgets.tactical_voice_waveform_widget import TacticalVoiceWaveformWidget
 from gui.real_backend_bridge import RealBackendBridge
 
 
@@ -167,38 +168,70 @@ class CommandWorker(QThread):
             self.step_signal.emit(step2)
 
             t_exec_start = time.perf_counter()
+            response_text = ""
+            is_error = False
+
             if hasattr(core, "process_request"):
                 response_text = loop.run_until_complete(core.process_request(self.command))
                 if not response_text or str(response_text).startswith("❌"):
                     response_text = loop.run_until_complete(core.get_ai_response(self.command))
             else:
                 response_text = loop.run_until_complete(core.get_ai_response(self.command))
+
+            resp_str = str(response_text).strip()
+            if not resp_str or resp_str.startswith("❌") or resp_str.startswith("✗") or "Error processing message" in resp_str or "Error code:" in resp_str or "tool_use_failed" in resp_str:
+                is_error = True
+
             t_exec_dur = round((time.perf_counter() - t_exec_start) * 1000, 1)
 
-            step1.duration_ms = max(18.5, round(t_exec_dur * 0.45, 1))
-            step1.status = StepStatus.COMPLETED
-            self.step_signal.emit(step1)
+            if is_error:
+                step1.duration_ms = max(18.5, round(t_exec_dur * 0.45, 1))
+                step1.status = StepStatus.COMPLETED
+                self.step_signal.emit(step1)
 
-            step2.duration_ms = max(12.0, round(t_exec_dur * 0.55, 1))
-            step2.status = StepStatus.COMPLETED
-            self.step_signal.emit(step2)
+                step2.duration_ms = max(12.0, round(t_exec_dur * 0.55, 1))
+                step2.status = StepStatus.FAILED
+                self.step_signal.emit(step2)
 
-            # Step 3: Synthesis & Verification
-            t3 = time.perf_counter()
-            step3 = ExecutionStep(
-                index=3,
-                title="Neural Synthesis & Output",
-                description="Synthesized verified response • Delivered to Operator Console",
-                status=StepStatus.COMPLETED,
-                timestamp=time.time(),
-                duration_ms=max(6.5, round((time.perf_counter() - t3) * 1000, 1)),
-                engine="Groq Output Synthesizer",
-                role="Response Aggregator & Verifier",
-                payload=str(response_text)[:80],
-            )
-            self.step_signal.emit(step3)
+                # Step 3: Synthesis & Verification Fault
+                t3 = time.perf_counter()
+                step3 = ExecutionStep(
+                    index=3,
+                    title="Pipeline Execution Fault",
+                    description=f"Fault detected: {resp_str[:50]}",
+                    status=StepStatus.FAILED,
+                    timestamp=time.time(),
+                    duration_ms=max(6.5, round((time.perf_counter() - t3) * 1000, 1)),
+                    engine="Groq Output Synthesizer",
+                    role="Response Aggregator & Verifier",
+                    payload=resp_str[:80],
+                )
+                self.step_signal.emit(step3)
+                self.finished_signal.emit(task_id, resp_str)
+            else:
+                step1.duration_ms = max(18.5, round(t_exec_dur * 0.45, 1))
+                step1.status = StepStatus.COMPLETED
+                self.step_signal.emit(step1)
 
-            self.finished_signal.emit(task_id, str(response_text))
+                step2.duration_ms = max(12.0, round(t_exec_dur * 0.55, 1))
+                step2.status = StepStatus.COMPLETED
+                self.step_signal.emit(step2)
+
+                # Step 3: Synthesis & Verification
+                t3 = time.perf_counter()
+                step3 = ExecutionStep(
+                    index=3,
+                    title="Neural Synthesis & Output",
+                    description="Synthesized verified response • Delivered to Operator Console",
+                    status=StepStatus.COMPLETED,
+                    timestamp=time.time(),
+                    duration_ms=max(6.5, round((time.perf_counter() - t3) * 1000, 1)),
+                    engine="Groq Output Synthesizer",
+                    role="Response Aggregator & Verifier",
+                    payload=resp_str[:80],
+                )
+                self.step_signal.emit(step3)
+                self.finished_signal.emit(task_id, resp_str)
         except Exception as e:
             logger.error(f"Command execution error: {e}", exc_info=True)
             self.error_signal.emit(task_id, str(e))
@@ -658,7 +691,7 @@ class MainWindow(QMainWindow):
         self._nav_dock = self._build_nav_dock()
         work_area.addWidget(_wrap_panel(self._nav_dock, 190))
 
-        # Center Stage Stack (7 Tabs)
+        # Center Stage Stack (4 Tabs)
         self._center_stack = QStackedWidget()
         self._center_stack.setObjectName("CenterStage")
         self._center_stack.setStyleSheet("background: #090d15;")
@@ -681,15 +714,6 @@ class MainWindow(QMainWindow):
 
         self._tab_cognition = self._build_cognition_tab()
         self._center_stack.addWidget(_wrap_tab(self._tab_cognition))
-
-        self._tab_observatory = self._build_observatory_tab()
-        self._center_stack.addWidget(_wrap_tab(self._tab_observatory))
-
-        self._tab_memory = self._build_memory_tab()
-        self._center_stack.addWidget(_wrap_tab(self._tab_memory))
-
-        self._tab_telemetry = self._build_telemetry_tab()
-        self._center_stack.addWidget(_wrap_tab(self._tab_telemetry))
 
         self._tab_settings = self._build_settings_tab()
         self._center_stack.addWidget(_wrap_tab(self._tab_settings))
@@ -924,10 +948,7 @@ class MainWindow(QMainWindow):
             ("00", "🏠", "Home", "Control Center"),
             ("01", "💬", "Console", "Neural Chat"),
             ("02", "🧠", "Cognition", "DAG Planner"),
-            ("03", "👁️", "Observer", "World Vision"),
-            ("04", "💾", "Memory", "Vector Vault"),
-            ("05", "⚡", "Telemetry", "Hardware Hub"),
-            ("06", "⚙️", "Settings", "Engine Config"),
+            ("03", "⚙️", "Settings", "Engine Config"),
         ]
         for idx, (num, icon, title, subtitle) in enumerate(tabs):
             btn = SciFiNavButton(num, icon, title, subtitle)
@@ -1664,6 +1685,36 @@ class MainWindow(QMainWindow):
                 }
             """)
 
+    def _start_voice_listening(self):
+        import threading
+        def _bg_start():
+            try:
+                from core.aura_core import AuraCore
+                core = AuraCore.get_instance()
+                if hasattr(core, "voice_loop") and core.voice_loop:
+                    core.voice_loop._aura_core = core
+                    core.voice_loop.start()
+                elif hasattr(core, "conversation_engine"):
+                    from voice.continuous_loop import ContinuousVoiceLoop
+                    v_loop = ContinuousVoiceLoop(aura_core=core)
+                    setattr(core, "voice_loop", v_loop)
+                    v_loop.start()
+            except Exception as e:
+                logger.error(f"[MainWindow] Start voice error: {e}")
+        threading.Thread(target=_bg_start, daemon=True, name="VoiceStarterThread").start()
+
+    def _stop_voice_listening(self):
+        import threading
+        def _bg_stop():
+            try:
+                from core.aura_core import AuraCore
+                core = AuraCore.get_instance()
+                if hasattr(core, "voice_loop") and core.voice_loop:
+                    core.voice_loop.stop()
+            except Exception as e:
+                logger.error(f"[MainWindow] Stop voice error: {e}")
+        threading.Thread(target=_bg_stop, daemon=True, name="VoiceStopperThread").start()
+
     def _on_mic_toggle(self):
         self._mic_active = not self._mic_active
         self._mic_btn.setChecked(self._mic_active)
@@ -1672,16 +1723,39 @@ class MainWindow(QMainWindow):
 
         if self._mic_active:
             self._holo_core_small.set_state("LISTENING")
-            self._core_state_lbl.setText("STATE: LISTENING (WAKE WORD: 'AURA')")
+            self._core_state_lbl.setText("STATE: WAITING FOR WAKE WORD ('AURA')")
             self._core_state_lbl.setStyleSheet("color: #00e5ff;")
-            self._chat_input.setPlaceholderText("🎙️ Continuous Voice Active • Say 'Aura' to speak command or click mic to stop...")
-            self.execute_command("start listening")
+            self._chat_input.setPlaceholderText("🎙️ Voice Active • Waiting for wake word 'Aura' (Say 'Aura' or click mic to stop)")
+            self._add_message("agent", "🎙️ **Voice Listening Activated.** Waiting for wake word: *'Aura'* (or *'Hey Aura'*). Speak your command after the chime.", intent_tag="VOICE")
+            self._start_voice_listening()
         else:
             self._holo_core_small.set_state("IDLE")
             self._core_state_lbl.setText("STATE: IDLE")
             self._core_state_lbl.setStyleSheet("color: #10b981;")
             self._chat_input.setPlaceholderText("Enter command or prompt AuraAI (Press Enter)...")
-            self.execute_command("stop listening")
+            self._add_message("agent", "🎙️ **Voice Listening Deactivated.** Microphone is idle.", intent_tag="VOICE")
+            self._stop_voice_listening()
+
+    def _on_voice_state_name_changed(self, state_name: str):
+        if not getattr(self, "_mic_active", False):
+            return
+        state_upper = (state_name or "").upper()
+        if state_upper in ("IDLE", "WAITING_FOR_WAKE", "COOLDOWN"):
+            self._holo_core_small.set_state("LISTENING")
+            self._core_state_lbl.setText("STATE: WAITING FOR WAKE WORD ('AURA')")
+            self._core_state_lbl.setStyleSheet("color: #00e5ff;")
+        elif state_upper in ("WAKE_DETECTED", "LISTENING", "FOLLOW_UP_LISTENING"):
+            self._holo_core_small.set_state("LISTENING")
+            self._core_state_lbl.setText("STATE: LISTENING TO COMMAND...")
+            self._core_state_lbl.setStyleSheet("color: #38bdf8;")
+        elif state_upper in ("TRANSCRIBING", "UNDERSTANDING"):
+            self._holo_core_small.set_state("THINKING")
+            self._core_state_lbl.setText("STATE: REASONING (GROQ LPU)...")
+            self._core_state_lbl.setStyleSheet("color: #fbbf24;")
+        elif state_upper in ("SPEAKING", "AI_RESPONSE"):
+            self._holo_core_small.set_state("SPEAKING")
+            self._core_state_lbl.setText("STATE: SPEAKING (TTS)...")
+            self._core_state_lbl.setStyleSheet("color: #10b981;")
 
     def _on_voice_status_changed(self, active: bool):
         if self._mic_active != active:
@@ -1692,9 +1766,9 @@ class MainWindow(QMainWindow):
             self._update_mic_style(active)
             if active:
                 self._holo_core_small.set_state("LISTENING")
-                self._core_state_lbl.setText("STATE: LISTENING (WAKE WORD: 'AURA')")
+                self._core_state_lbl.setText("STATE: WAITING FOR WAKE WORD ('AURA')")
                 self._core_state_lbl.setStyleSheet("color: #00e5ff;")
-                self._chat_input.setPlaceholderText("🎙️ Continuous Voice Active • Say 'Aura' to speak command or click mic to stop...")
+                self._chat_input.setPlaceholderText("🎙️ Voice Active • Waiting for wake word 'Aura' (Say 'Aura' or click mic to stop)")
             else:
                 self._holo_core_small.set_state("IDLE")
                 self._core_state_lbl.setText("STATE: IDLE")
@@ -1764,21 +1838,35 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-        self._add_message("agent", response, intent_tag="REASONING")
-        self._holo_core_small.set_state("IDLE")
-        self._core_state_lbl.setText("STATE: IDLE")
-        self._core_state_lbl.setStyleSheet("color: #10b981;")
+        resp_str = str(response).strip()
+        is_error = not resp_str or resp_str.startswith("❌") or resp_str.startswith("✗") or "Error processing message" in resp_str or "Error code:" in resp_str or "tool_use_failed" in resp_str
+
+        intent_tag = "ERROR" if is_error else "REASONING"
+        self._add_message("agent", response, intent_tag=intent_tag)
+        if getattr(self, "_mic_active", False):
+            self._holo_core_small.set_state("LISTENING")
+            self._core_state_lbl.setText("STATE: WAITING FOR WAKE WORD ('AURA')")
+            self._core_state_lbl.setStyleSheet("color: #00e5ff;")
+        else:
+            self._holo_core_small.set_state("IDLE")
+            self._core_state_lbl.setText("STATE: IDLE")
+            self._core_state_lbl.setStyleSheet("color: #10b981;")
         if hasattr(self, "_console_status_pill"):
             self._console_status_pill.set_active(False)
-            self._console_status_pill.set_label("Ready")
+            self._console_status_pill.set_label("Fault" if is_error else "Ready")
         self._right_goal_lbl.setText("STANDBY // Awaiting Operator Input")
-        app_signals.execution_finished.emit(task_id, True)
+        app_signals.execution_finished.emit(task_id, not is_error)
 
     def _on_worker_error(self, task_id: str, error: str):
         self._add_message("agent", f"⚠️ Error executing task: {error}", intent_tag="ERROR")
-        self._holo_core_small.set_state("IDLE")
-        self._core_state_lbl.setText("STATE: IDLE")
-        self._core_state_lbl.setStyleSheet("color: #10b981;")
+        if getattr(self, "_mic_active", False):
+            self._holo_core_small.set_state("LISTENING")
+            self._core_state_lbl.setText("STATE: WAITING FOR WAKE WORD ('AURA')")
+            self._core_state_lbl.setStyleSheet("color: #00e5ff;")
+        else:
+            self._holo_core_small.set_state("IDLE")
+            self._core_state_lbl.setText("STATE: IDLE")
+            self._core_state_lbl.setStyleSheet("color: #10b981;")
         if hasattr(self, "_console_status_pill"):
             self._console_status_pill.set_active(False)
             self._console_status_pill.set_label("Ready")
@@ -2358,6 +2446,10 @@ class MainWindow(QMainWindow):
         self._tactical_telemetry = TacticalTelemetryWidget(chamfer_size=6)
         layout.addWidget(self._tactical_telemetry)
 
+        # Real-Time Cyberpunk Voice Waveform Perception Spectrum
+        self._tactical_waveform = TacticalVoiceWaveformWidget(chamfer_size=6)
+        layout.addWidget(self._tactical_waveform)
+
         layout.addStretch()
         return deck
 
@@ -2413,6 +2505,7 @@ class MainWindow(QMainWindow):
         app_signals.toggle_agent_task_overlay.connect(self.toggle_agent_task_overlay)
         app_signals.toggle_personal_os_overlay.connect(self.toggle_personal_os_overlay)
         app_signals.voice_status_changed.connect(self._on_voice_status_changed)
+        app_signals.voice_state_name_changed.connect(self._on_voice_state_name_changed)
 
         # Real-Time Telemetry & Desktop Perception Background Timers
         self._live_telemetry_timer = QTimer(self)
@@ -2542,10 +2635,7 @@ class MainWindow(QMainWindow):
     def toggle_system_status_overlay(self):
         if self._status_overlay is None:
             self._status_overlay = SystemStatusOverlay()
-        if self._status_overlay.isVisible():
-            self._status_overlay.hide()
-        else:
-            self._status_overlay.show()
+        self._status_overlay.toggle()
 
     def toggle_agent_task_overlay(self):
         if self._task_overlay is None:

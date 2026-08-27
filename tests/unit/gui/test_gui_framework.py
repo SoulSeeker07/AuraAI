@@ -26,6 +26,7 @@ from gui.widgets import (
     NavigationRail,
     StatusPill,
     StepCard,
+    SystemStatusOverlay,
     VoiceWaveform,
 )
 
@@ -74,7 +75,7 @@ def test_navigation_rail_instantiation(qapp):
 def test_main_window_instantiation(qapp):
     window = MainWindow()
     assert "AuraAI" in window.windowTitle()
-    assert window._center_stack.count() == 7
+    assert window._center_stack.count() == 4
 
 
 def test_main_window_chat_overlay_toggle(qapp):
@@ -117,4 +118,18 @@ def test_chat_window_overlay_instantiation(qapp):
     overlay._on_submit()
     assert "Test Command Prompt" in submitted_texts
     assert overlay._input_field.text() == ""
+
+
+def test_system_status_overlay_instantiation(qapp):
+    overlay = SystemStatusOverlay()
+    assert overlay.objectName() == "SystemStatusOverlay"
+    assert overlay.windowTitle() == "AuraAI System Status"
+    assert not overlay.isVisible()
+
+    # Test toggle
+    overlay.toggle()
+    assert overlay.isVisible()
+    overlay.toggle()
+    assert not overlay.isVisible()
+
 

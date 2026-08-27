@@ -1,362 +1,362 @@
 [
   {
     "role": "user",
-    "content": "remember that my favorite programming language is Python",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:25:45.720163"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Research findings on 'Remember that the primary server port is 8080': Research findings on 'Remember that the primary server port is 8080': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:25:45.720163"
-  },
-  {
-    "role": "user",
-    "content": "what is my favorite programming language",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:26:15.252900"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Research findings on 'remember that my favorite programming language is Python': Research findings on 'Remember that the primary server port is 8080': Research findings on 'Remember that the primary server port is 8080': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:26:15.252900"
-  },
-  {
-    "role": "user",
-    "content": "summarize my memory",
-    "topic": "Summarize Memory",
-    "timestamp": "2026-08-27T01:26:31.722138"
-  },
-  {
-    "role": "assistant",
-    "content": "Goals: Complete autonomous assistant\nImportant: my favorite editor is VS Code\nPerson: 30, Developer, Sreekanta\nPreference: Pizza, Python, VS Code, blue, editor, editor?, pizza\nPreferences: Dark mode, dark\nProfile: Sreekanta\nProjects: AuraAI, Desktop cyber command OS\nSkills: Python, advanced\nTest: value1, value2\nTopic: AI Operating System, Modular\nWork: AuraAI, Developer\nRecent topics: memory, Light, Unmute, What Battery Percentage, Screen Brightness",
-    "topic": "Summarize Memory",
-    "timestamp": "2026-08-27T01:26:31.722138"
-  },
-  {
-    "role": "user",
-    "content": "summarize my memory",
-    "topic": "Summarize Memory",
-    "timestamp": "2026-08-27T01:26:31.732138"
-  },
-  {
-    "role": "assistant",
-    "content": "Goals: Complete autonomous assistant\nImportant: my favorite editor is VS Code\nPerson: 30, Developer, Sreekanta\nPreference: Pizza, Python, VS Code, blue, editor, editor?, pizza\nPreferences: Dark mode, dark\nProfile: Sreekanta\nProjects: AuraAI, Desktop cyber command OS\nSkills: Python, advanced\nTest: value1, value2\nTopic: AI Operating System, Modular\nWork: AuraAI, Developer\nRecent topics: memory, Light, Unmute, What Battery Percentage, Screen Brightness",
-    "topic": "Summarize Memory",
-    "timestamp": "2026-08-27T01:26:31.732138"
-  },
-  {
-    "role": "user",
-    "content": "open weather hud",
-    "topic": "Open Weather",
-    "timestamp": "2026-08-27T01:26:47.958207"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Live Atmospheric Weather HUD`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Open Weather",
-    "timestamp": "2026-08-27T01:26:47.958207"
-  },
-  {
-    "role": "user",
-    "content": "open weather hud",
-    "topic": "Open Weather",
-    "timestamp": "2026-08-27T01:26:47.969213"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Live Atmospheric Weather HUD`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Open Weather",
-    "timestamp": "2026-08-27T01:26:47.969213"
-  },
-  {
-    "role": "user",
-    "content": "close weather hud",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:26:55.698090"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Personal OS Holographic Dashboard`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:26:55.698090"
-  },
-  {
-    "role": "user",
-    "content": "close weather hud",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:26:55.711089"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Personal OS Holographic Dashboard`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:26:55.711089"
-  },
-  {
-    "role": "user",
-    "content": "open jarvis rings",
-    "topic": "Open Jarvis Rings",
-    "timestamp": "2026-08-27T01:27:56.046827"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Jarvis Rotating Voice-Reactive Energy Rings`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Open Jarvis Rings",
-    "timestamp": "2026-08-27T01:27:56.046827"
-  },
-  {
-    "role": "user",
-    "content": "open jarvis rings",
-    "topic": "Open Jarvis Rings",
-    "timestamp": "2026-08-27T01:27:56.054829"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Jarvis Rotating Voice-Reactive Energy Rings`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Open Jarvis Rings",
-    "timestamp": "2026-08-27T01:27:56.054829"
-  },
-  {
-    "role": "user",
-    "content": "close jarvis rings",
-    "topic": "Close Jarvis Rings",
-    "timestamp": "2026-08-27T01:28:06.813139"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Jarvis Rotating Voice-Reactive Energy Rings`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Close Jarvis Rings",
-    "timestamp": "2026-08-27T01:28:06.813139"
-  },
-  {
-    "role": "user",
-    "content": "close jarvis rings",
-    "topic": "Close Jarvis Rings",
-    "timestamp": "2026-08-27T01:28:06.823140"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Jarvis Rotating Voice-Reactive Energy Rings`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Close Jarvis Rings",
-    "timestamp": "2026-08-27T01:28:06.823140"
-  },
-  {
-    "role": "user",
-    "content": "restart aura",
-    "topic": "Restart Aura",
-    "timestamp": "2026-08-27T01:28:20.484858"
-  },
-  {
-    "role": "assistant",
-    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
-    "topic": "Restart Aura",
-    "timestamp": "2026-08-27T01:28:20.484858"
-  },
-  {
-    "role": "user",
-    "content": "restart aura",
-    "topic": "Restart Aura",
-    "timestamp": "2026-08-27T01:28:20.494860"
-  },
-  {
-    "role": "assistant",
-    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
-    "topic": "Restart Aura",
-    "timestamp": "2026-08-27T01:28:20.494860"
-  },
-  {
-    "role": "user",
-    "content": "remember that my favorite programming language is Python",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:31:48.920138"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Research findings on 'what is my favorite programming language': Research findings on 'remember that my favorite programming language is Python': Research findings on 'Remember that the primary server port is 8080': Research findings on 'Remember that the primary server port is 8080': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:31:48.920138"
-  },
-  {
-    "role": "user",
-    "content": "what is my favorite programming language",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:31:48.995910"
-  },
-  {
-    "role": "assistant",
-    "content": "Result success=True. Research findings on 'remember that my favorite programming language is Python': Research findings on 'what is my favorite programming language': Research findings on 'remember that my favorite programming language is Python': Research findings on 'Remember that the primary server port is 8080': Research findings on 'Remember that the primary server port is 8080': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'recall research on quantum computing': Research findings on 'research the key principles of quantum computing': Quantum computing uses quantum superposition.",
-    "topic": "memory",
-    "timestamp": "2026-08-27T01:31:48.995910"
-  },
-  {
-    "role": "user",
-    "content": "close weather hud",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:31:49.027063"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Personal OS Holographic Dashboard`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:31:49.027063"
-  },
-  {
-    "role": "user",
-    "content": "close weather hud",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:31:49.036103"
-  },
-  {
-    "role": "assistant",
-    "content": "✨ **Holographic HUD Deployed to Desktop!**\n\n🎯 **Active Overlay:** `Personal OS Holographic Dashboard`\n🔒 **Rendering:** PySide6 GPU-Accelerated Frameless Translucent Surface",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:31:49.036103"
-  },
-  {
-    "role": "user",
-    "content": "remember that my favorite programming language is Python",
-    "topic": "Remember That Favorite",
-    "timestamp": "2026-08-27T01:37:15.366952"
-  },
-  {
-    "role": "assistant",
-    "content": "Remembered. Important: my favorite programming language is Python | Preference: Python, programming language",
-    "topic": "Remember That Favorite",
-    "timestamp": "2026-08-27T01:37:15.366952"
-  },
-  {
-    "role": "user",
-    "content": "remember that my favorite programming language is Python",
-    "topic": "Remember That Favorite",
-    "timestamp": "2026-08-27T01:37:15.380075"
-  },
-  {
-    "role": "assistant",
-    "content": "Remembered. Important: my favorite programming language is Python | Preference: Python, programming language",
-    "topic": "Remember That Favorite",
-    "timestamp": "2026-08-27T01:37:15.380075"
-  },
-  {
-    "role": "user",
-    "content": "what is my favorite programming language",
-    "topic": "What Favorite Programming",
-    "timestamp": "2026-08-27T01:37:15.400519"
-  },
-  {
-    "role": "assistant",
-    "content": "Your favorite programming language is **Python**.",
-    "topic": "What Favorite Programming",
-    "timestamp": "2026-08-27T01:37:15.400519"
-  },
-  {
-    "role": "user",
-    "content": "what is my favorite programming language",
-    "topic": "What Favorite Programming",
-    "timestamp": "2026-08-27T01:37:15.412715"
-  },
-  {
-    "role": "assistant",
-    "content": "Your favorite programming language is **Python**.",
-    "topic": "What Favorite Programming",
-    "timestamp": "2026-08-27T01:37:15.412715"
-  },
-  {
-    "role": "user",
-    "content": "close weather hud",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:37:15.544358"
-  },
-  {
-    "role": "assistant",
-    "content": "🌤️ **Weather HUD Overlay closed.**",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:37:15.544358"
-  },
-  {
-    "role": "user",
-    "content": "close weather hud",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:37:15.558367"
-  },
-  {
-    "role": "assistant",
-    "content": "🌤️ **Weather HUD Overlay closed.**",
-    "topic": "Close Weather",
-    "timestamp": "2026-08-27T01:37:15.558367"
-  },
-  {
-    "role": "user",
     "content": "start listening",
     "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:01:48.781173"
+    "timestamp": "2026-08-27T02:08:10.951576"
   },
   {
     "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
     "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:01:48.781173"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:01:48.789701"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:01:48.789701"
-  },
-  {
-    "role": "user",
-    "content": "voice listening status",
-    "topic": "Voice Listening Status",
-    "timestamp": "2026-08-27T02:01:48.802241"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Status:** **Active (Listening)**",
-    "topic": "Voice Listening Status",
-    "timestamp": "2026-08-27T02:01:48.802241"
-  },
-  {
-    "role": "user",
-    "content": "voice listening status",
-    "topic": "Voice Listening Status",
-    "timestamp": "2026-08-27T02:01:48.810767"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Status:** **Active (Listening)**",
-    "topic": "Voice Listening Status",
-    "timestamp": "2026-08-27T02:01:48.810767"
+    "timestamp": "2026-08-27T02:08:10.951576"
   },
   {
     "role": "user",
     "content": "stop listening",
     "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:01:48.847908"
+    "timestamp": "2026-08-27T02:08:12.415573"
   },
   {
     "role": "assistant",
     "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
     "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:01:48.847908"
+    "timestamp": "2026-08-27T02:08:12.415573"
   },
   {
     "role": "user",
     "content": "stop listening",
     "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:01:48.856847"
+    "timestamp": "2026-08-27T02:08:12.428092"
   },
   {
     "role": "assistant",
     "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
     "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:01:48.856847"
+    "timestamp": "2026-08-27T02:08:12.428092"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:13.401557"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:13.401557"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:13.411557"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:13.411557"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:27.071116"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:27.071116"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:27.079115"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:27.079115"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:28.137241"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:28.137241"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:28.146240"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:28.146240"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:33.184490"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:33.184490"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:33.192499"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:08:33.192499"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:41.788224"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:41.788224"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:41.796470"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:08:41.796470"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:09:39.544001"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:09:39.544001"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:09:39.550999"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:09:39.550999"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:09:43.761068"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:09:43.761068"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:09:43.770067"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T02:09:43.770067"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:10:00.544425"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:10:00.544425"
+  },
+  {
+    "role": "user",
+    "content": "stop listening",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:10:00.552431"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
+    "topic": "Stop Listening",
+    "timestamp": "2026-08-27T02:10:00.552431"
+  },
+  {
+    "role": "user",
+    "content": "restart",
+    "topic": "Restart",
+    "timestamp": "2026-08-27T11:48:46.370123"
+  },
+  {
+    "role": "assistant",
+    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
+    "topic": "Restart",
+    "timestamp": "2026-08-27T11:48:46.370123"
+  },
+  {
+    "role": "user",
+    "content": "restart",
+    "topic": "Restart",
+    "timestamp": "2026-08-27T11:48:46.380174"
+  },
+  {
+    "role": "assistant",
+    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
+    "topic": "Restart",
+    "timestamp": "2026-08-27T11:48:46.380174"
+  },
+  {
+    "role": "user",
+    "content": "show my instagram profile",
+    "topic": "Show Instagram Profile",
+    "timestamp": "2026-08-27T11:56:08.163507"
+  },
+  {
+    "role": "assistant",
+    "content": "✓ Opened 'api-ms-win-core-profile-l1-1-0.dll'\n📍 Location: D:\\Sreekanta\\Rockstar Games\\api-ms-win-core-profile-l1-1-0.dll",
+    "topic": "Show Instagram Profile",
+    "timestamp": "2026-08-27T11:56:08.163507"
+  },
+  {
+    "role": "user",
+    "content": "show my instagram profile",
+    "topic": "Show Instagram Profile",
+    "timestamp": "2026-08-27T11:56:08.179058"
+  },
+  {
+    "role": "assistant",
+    "content": "✓ Opened 'api-ms-win-core-profile-l1-1-0.dll'\n📍 Location: D:\\Sreekanta\\Rockstar Games\\api-ms-win-core-profile-l1-1-0.dll",
+    "topic": "Show Instagram Profile",
+    "timestamp": "2026-08-27T11:56:08.179058"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T11:56:49.765287"
+  },
+  {
+    "role": "assistant",
+    "content": "✓ Instagram is open.",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T11:56:49.765287"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T11:56:49.778370"
+  },
+  {
+    "role": "assistant",
+    "content": "✓ Instagram is open.",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T11:56:49.778370"
+  },
+  {
+    "role": "user",
+    "content": "create a test folder on desktop",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T12:02:36.001104"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. No backend available for capability 'unknown_action'",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T12:02:36.001104"
+  },
+  {
+    "role": "user",
+    "content": "create a test folder on desktop",
+    "topic": "Create Test Folder",
+    "timestamp": "2026-08-27T12:06:37.543810"
+  },
+  {
+    "role": "assistant",
+    "content": "✅ **Folder Created Successfully!**\n\n📁 **Path:** `C:\\Users\\yrsre\\Desktop\\test`\n*(Verified on disk in Windows User Profile)*",
+    "topic": "Create Test Folder",
+    "timestamp": "2026-08-27T12:06:37.543810"
+  },
+  {
+    "role": "user",
+    "content": "create a test folder on desktop",
+    "topic": "Create Test Folder",
+    "timestamp": "2026-08-27T12:06:37.572951"
+  },
+  {
+    "role": "assistant",
+    "content": "✅ **Folder Created Successfully!**\n\n📁 **Path:** `C:\\Users\\yrsre\\Desktop\\test`\n*(Verified on disk in Windows User Profile)*",
+    "topic": "Create Test Folder",
+    "timestamp": "2026-08-27T12:06:37.572951"
+  },
+  {
+    "role": "user",
+    "content": "on flipkart add s24 ultra to cart",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-27T12:07:07.570524"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://www.flipkart.com/search?q=add+s24+ultra+cart (Title: 'Add S24 Ultra Cart- Buy Products Online at Best Price in India - All Categories | Flipkart.com').; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-27T12:07:07.570524"
+  },
+  {
+    "role": "user",
+    "content": "in flipkart add samsung s24 ultra to cart",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-27T12:40:52.432561"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://www.flipkart.com/search?q=add+samsung+s24+ultra+cart (Title: 'Add Samsung S24 Ultra Cart- Buy Products Online at Best Price in India - All Categories | Flipkart.com').; Verified browser authentication context.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-27T12:40:52.432561"
   }
 ]

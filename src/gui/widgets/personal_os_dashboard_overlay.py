@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QCheckBox,
     QSizePolicy,
+    QInputDialog,
 )
 
 from gui.real_backend_bridge import RealBackendBridge
@@ -509,6 +510,7 @@ class PersonalOSDashboardOverlay(QWidget):
         self._clear_layout(self._tasks_list_layout)
         filter_mode = self._filter_cb.currentText() if hasattr(self, "_filter_cb") else "All tasks"
 
+        rendered_count = 0
         for task in tasks:
             t_id = task.get("id", "")
             t_title = task.get("title", "")
@@ -524,6 +526,7 @@ class PersonalOSDashboardOverlay(QWidget):
             if filter_mode == "Overdue only" and t_status != "overdue":
                 continue
 
+            rendered_count += 1
             bg = "rgba(239, 68, 68, 0.08)" if t_status == "overdue" else ("rgba(102, 255, 153, 0.04)" if t_checked else "transparent")
             col = "#ef4444" if t_status == "overdue" else ("#66ff99" if t_checked else "#fbbf24")
 
@@ -571,12 +574,37 @@ class PersonalOSDashboardOverlay(QWidget):
 
             self._tasks_list_layout.addWidget(item_frame)
 
+        if rendered_count == 0:
+            empty_frame = QFrame()
+            empty_frame.setStyleSheet("background: rgba(100, 150, 255, 0.03); border: 1px dashed rgba(100, 150, 255, 0.18); border-radius: 8px; padding: 12px;")
+            el = QVBoxLayout(empty_frame)
+            el.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            el_lbl = QLabel("No active tasks in this view.\nClick '+ Capture' above or ask Aura to schedule tasks.")
+            el_lbl.setFont(QFont("Segoe UI", 8))
+            el_lbl.setStyleSheet("color: #7b8c9f; background: transparent; border: none;")
+            el_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            el.addWidget(el_lbl)
+            self._tasks_list_layout.addWidget(empty_frame)
+
     def _on_task_toggled(self, task_id: str, checked: bool):
         self._bridge.toggle_task_completion(task_id, checked)
         self._refresh_data()
 
     def _render_events(self, events: List[Dict[str, Any]]):
         self._clear_layout(self._events_list_layout)
+        if not events:
+            empty_frame = QFrame()
+            empty_frame.setStyleSheet("background: rgba(100, 150, 255, 0.03); border: 1px dashed rgba(100, 150, 255, 0.18); border-radius: 8px; padding: 10px;")
+            el = QVBoxLayout(empty_frame)
+            el.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            el_lbl = QLabel("No upcoming calendar events today.")
+            el_lbl.setFont(QFont("Segoe UI", 8))
+            el_lbl.setStyleSheet("color: #7b8c9f; background: transparent; border: none;")
+            el_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            el.addWidget(el_lbl)
+            self._events_list_layout.addWidget(empty_frame)
+            return
+
         for ev in events:
             ev_frame = QFrame()
             ev_frame.setStyleSheet("""
@@ -753,15 +781,17 @@ class PersonalOSDashboardOverlay(QWidget):
         try:
             from personal_os.state_store import PersonalOSStateStore, PersonalOSTrigger
             store = PersonalOSStateStore.get_instance()
-            new_trig = PersonalOSTrigger(
-                trigger_id=f"trig_user_{int(QDateTime.currentSecsSinceEpoch())}",
-                name="Quick Auto-Trigger",
-                goal_text="Periodic workspace audit and system memory consolidation",
-                schedule="every 30m",
-                enabled=True,
-            )
-            store.save_trigger(new_trig)
-            self._refresh_data()
+            text, ok = QInputDialog.getText(self, "New Automation Trigger", "Enter automation trigger goal / routine:")
+            if ok and text.strip():
+                new_trig = PersonalOSTrigger(
+                    trigger_id=f"trig_user_{int(QDateTime.currentSecsSinceEpoch())}",
+                    name=text.strip()[:24],
+                    goal_text=text.strip(),
+                    schedule="every 1h",
+                    enabled=True,
+                )
+                store.save_trigger(new_trig)
+                self._refresh_data()
         except Exception as e:
             logger.debug(f"Trigger create: {e}")
 
@@ -769,17 +799,19 @@ class PersonalOSDashboardOverlay(QWidget):
         try:
             from personal_os.state_store import PersonalOSStateStore
             store = PersonalOSStateStore.get_instance()
-            tasks = store.get_preference("personal_os_tasks", [])
-            tasks.append({
-                "id": f"T-{len(tasks) + 101}",
-                "title": f"Captured task #{len(tasks) + 1}",
-                "category": "QuickCapture",
-                "status": "in_progress",
-                "due": "Today",
-                "completed": False,
-            })
-            store.set_preference("personal_os_tasks", tasks)
-            self._refresh_data()
+            text, ok = QInputDialog.getText(self, "Capture New Task", "Enter task description or reminder:")
+            if ok and text.strip():
+                tasks = store.get_preference("personal_os_tasks", [])
+                tasks.append({
+                    "id": f"T-{len(tasks) + 101}",
+                    "title": text.strip(),
+                    "category": "UserTask",
+                    "status": "in_progress",
+                    "due": "Today",
+                    "completed": False,
+                })
+                store.set_preference("personal_os_tasks", tasks)
+                self._refresh_data()
         except Exception as e:
             logger.debug(f"Task capture: {e}")
 

@@ -48,8 +48,6 @@ class NavigationRail(QWidget):
     TABS = [
         ("💬", "Chat"),
         ("🧠", "DAG"),
-        ("👁️", "Observer"),
-        ("📚", "Memory"),
         ("⚙️", "Settings"),
     ]
 

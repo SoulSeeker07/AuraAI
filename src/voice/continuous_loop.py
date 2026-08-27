@@ -114,6 +114,12 @@ class ContinuousVoiceLoop:
     def _set_state(self, new_state: VoiceState):
         logger.info(f"[ContinuousVoiceLoop] State: {new_state.name}")
         self.state = new_state
+        try:
+            from gui.signals import app_signals
+            if hasattr(app_signals, "voice_state_name_changed"):
+                app_signals.voice_state_name_changed.emit(new_state.name)
+        except Exception:
+            pass
 
     def _on_command_timeout(self):
         """Timeout if user says wake word but doesn't speak a command within 5s."""

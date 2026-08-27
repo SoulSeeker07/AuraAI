@@ -643,7 +643,7 @@ class ChatWindowOverlay(QWidget):
 
     def toggle(self):
         """Toggle visibility, focus, and state of the Chat Window HUD."""
-        if self.isVisible() and not self.isMinimized() and self.isActiveWindow():
+        if self.isVisible():
             self.hide()
         else:
             self.show()
