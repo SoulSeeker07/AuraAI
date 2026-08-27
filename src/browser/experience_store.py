@@ -116,7 +116,9 @@ class BrowserExperienceStore:
 
         try:
             if self._embedder is not None:
-                vec = self._embedder.encode(document_text).tolist()
+                # CRITICAL: normalize_embeddings=True ensures unit length vectors (|v|=1) for accurate cosine/L2 composite ranking.
+                # If embedding model or normalization changes, the entire Chroma collection must be purged/re-embedded.
+                vec = self._embedder.encode(document_text, normalize_embeddings=True).tolist()
                 self._collection.add(
                     ids=[trace_id],
                     embeddings=[vec],
@@ -153,43 +155,133 @@ class BrowserExperienceStore:
 
         try:
             where = {"domain": dom} if dom and dom != "general" else None
+            pool_size = min(max(top_k * 5, 5), 20)
             if self._embedder is not None:
-                vec = self._embedder.encode(query_text).tolist()
+                vec = self._embedder.encode(query_text, normalize_embeddings=True).tolist()
                 results = self._collection.query(
                     query_embeddings=[vec],
-                    n_results=top_k,
+                    n_results=pool_size,
                     where=where,
+                    include=["metadatas", "distances"],
                 )
             else:
                 results = self._collection.query(
                     query_texts=[query_text],
-                    n_results=top_k,
+                    n_results=pool_size,
                     where=where,
+                    include=["metadatas", "distances"],
                 )
 
             if not results or not results.get("ids") or not results["ids"][0]:
                 return None
 
-            metadata = results["metadatas"][0][0]
-            confidence = float(metadata.get("confidence", 0.0))
-            if confidence < min_confidence or metadata.get("success") != "True":
+            candidates = []
+            ids = results["ids"][0]
+            metadatas = results.get("metadatas", [[]])[0]
+            distances = results.get("distances", [[]])[0] if results.get("distances") else [0.0] * len(ids)
+
+            for i, trace_id in enumerate(ids):
+                meta = metadatas[i] if i < len(metadatas) else {}
+                dist = distances[i] if i < len(distances) else 0.0
+                conf = float(meta.get("confidence", 1.0))
+                
+                if conf < min_confidence:
+                    continue
+
+                # Similarity score in [0.0, 1.0] from distance
+                sim = 1.0 / (1.0 + dist)
+                composite_score = sim * conf
+
+                try:
+                    action_sequence = json.loads(meta.get("action_sequence_json", "[]"))
+                except Exception:
+                    action_sequence = []
+
+                try:
+                    selectors_used = json.loads(meta.get("selectors_json", "[]"))
+                except Exception:
+                    selectors_used = []
+
+                candidates.append({
+                    "trace_id": trace_id,
+                    "domain": meta.get("domain", ""),
+                    "goal": meta.get("goal", ""),
+                    "action_sequence": action_sequence,
+                    "selectors_used": selectors_used,
+                    "confidence": conf,
+                    "summary": meta.get("summary", ""),
+                    "timestamp": float(meta.get("timestamp", 0.0)),
+                    "composite_score": composite_score,
+                })
+
+            if not candidates:
                 return None
 
-            actions = json.loads(metadata.get("action_sequence_json", "[]"))
-            selectors = json.loads(metadata.get("selectors_json", "[]"))
-
+            # Sort descending by composite score (similarity * confidence)
+            candidates.sort(key=lambda c: c["composite_score"], reverse=True)
+            best = candidates[0]
             return {
-                "trace_id": metadata.get("trace_id"),
-                "domain": metadata.get("domain"),
-                "goal": metadata.get("goal"),
-                "confidence": confidence,
-                "summary": metadata.get("summary"),
-                "action_sequence": actions,
-                "selectors": selectors,
+                "trace_id": best["trace_id"],
+                "domain": best["domain"],
+                "goal": best["goal"],
+                "action_sequence": best["action_sequence"],
+                "selectors_used": best["selectors_used"],
+                "selectors": best["selectors_used"],
+                "confidence": best["confidence"],
+                "summary": best["summary"],
+                "timestamp": best["timestamp"],
             }
         except Exception as ex:
-            logger.debug("[BrowserExperienceStore] Retrieval notice: %s", ex)
+            logger.debug("[BrowserExperienceStore] Trace retrieval error: %s", ex)
             return None
+
+    def get_trace(self, trace_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a specific trace by ID."""
+        if not self._collection:
+            return None
+        try:
+            results = self._collection.get(ids=[trace_id], include=["metadatas"])
+            if not results or not results.get("ids") or not results["ids"]:
+                return None
+            meta = results["metadatas"][0]
+            try:
+                action_sequence = json.loads(meta.get("action_sequence_json", "[]"))
+            except Exception:
+                action_sequence = []
+            try:
+                selectors_used = json.loads(meta.get("selectors_json", "[]"))
+            except Exception:
+                selectors_used = []
+            return {
+                "trace_id": trace_id,
+                "domain": meta.get("domain", ""),
+                "goal": meta.get("goal", ""),
+                "action_sequence": action_sequence,
+                "selectors_used": selectors_used,
+                "selectors": selectors_used,
+                "confidence": float(meta.get("confidence", 1.0)),
+                "summary": meta.get("summary", ""),
+                "timestamp": float(meta.get("timestamp", 0.0)),
+            }
+        except Exception as ex:
+            logger.debug("[BrowserExperienceStore] Get trace error: %s", ex)
+            return None
+
+    def purge_domain(self, domain: str) -> int:
+        """Purge all stored traces for a specific domain (useful for test resets)."""
+        if not self._collection:
+            return 0
+        try:
+            dom = domain.lower().replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
+            results = self._collection.get(where={"domain": dom})
+            ids_to_del = results.get("ids", []) if results else []
+            if ids_to_del:
+                self._collection.delete(ids=ids_to_del)
+                logger.info("[BrowserExperienceStore] Purged %d traces for domain '%s'", len(ids_to_del), dom)
+            return len(ids_to_del)
+        except Exception as ex:
+            logger.debug("[BrowserExperienceStore] Purge domain error: %s", ex)
+            return 0
 
     def discount_trace(
         self,

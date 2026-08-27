@@ -25,6 +25,14 @@ def main():
     from browser.run_browser_goal import run_browser_goal
     from browser.experience_store import BrowserExperienceStore
 
+    store = BrowserExperienceStore.get_instance()
+
+    print("\n" + "="*70)
+    print("STEP 0: CLEANING UP PREVIOUS TEST TRACES FOR en.wikipedia.org")
+    print("="*70)
+    purged_count = store.purge_domain("en.wikipedia.org")
+    print(f"Purged {purged_count} previous trace(s) for en.wikipedia.org")
+
     print("\n" + "="*70)
     print("STEP 1: EXECUTING LIVE AUTONOMOUS BROWSER GOAL VIA GROQ (openai/gpt-oss-120b)")
     print("="*70)
@@ -39,39 +47,45 @@ def main():
     for i, s in enumerate(result.get('steps', [])):
         print(f"  Step {i+1}: {s.get('tool')} -> {s.get('args')}")
 
+    assert result.get("status") == "SUCCESS", f"Expected SUCCESS but got {result.get('status')}"
+
     print("\n" + "="*70)
     print("STEP 2: VERIFYING EPISODIC MEMORY TRACE PERSISTENCE & RETRIEVAL")
     print("="*70)
 
-    store = BrowserExperienceStore.get_instance()
     retrieved = store.retrieve_trace("en.wikipedia.org", "wikipedia python programming language", min_confidence=0.5)
 
-    if not retrieved:
-        # Also check general domain
-        retrieved = store.retrieve_trace("wikipedia.org", "python programming language", min_confidence=0.5)
-
-    print(f"Retrieved Trace ID   : {retrieved.get('trace_id') if retrieved else 'NOT FOUND'}")
-    print(f"Retrieved Domain     : {retrieved.get('domain') if retrieved else 'N/A'}")
-    print(f"Initial Confidence   : {retrieved.get('confidence') if retrieved else 'N/A'}")
-    print(f"Cached Actions Count : {len(retrieved.get('action_sequence', [])) if retrieved else 0}")
-
-    if retrieved:
-        trace_id = retrieved.get("trace_id")
-        print("\n" + "="*70)
-        print("STEP 3: FORCING LIVE STALE SELECTOR HARD FAILURE DISCOUNT (-0.50)")
-        print("="*70)
-
-        store.discount_trace(
-            trace_id=trace_id,
-            failure_type="hard",
-            reason="Tool 'click' error: Could not find an element matching 'Stale Obsolete Link'",
-        )
-
-        discounted = store.retrieve_trace(retrieved.get("domain", "en.wikipedia.org"), "wikipedia python programming language", min_confidence=0.4)
-        print(f"Confidence after hard structural penalty (-0.50): {discounted.get('confidence') if discounted else 'EXPIRED'}")
+    assert retrieved is not None, "Failed to retrieve recorded trace from Chroma!"
+    trace_id = retrieved.get("trace_id")
+    print(f"Retrieved Trace ID   : {trace_id}")
+    print(f"Retrieved Domain     : {retrieved.get('domain')}")
+    print(f"Initial Confidence   : {retrieved.get('confidence')}")
+    print(f"Cached Actions Count : {len(retrieved.get('action_sequence', []))}")
+    assert retrieved.get("domain") == "en.wikipedia.org"
+    assert retrieved.get("confidence") == 1.0
 
     print("\n" + "="*70)
-    print("ALL LIVE SMOKE TEST GATES COMPLETED SUCCESSFULLY")
+    print(f"STEP 3: FORCING LIVE STALE SELECTOR HARD FAILURE DISCOUNT ON {trace_id}")
+    print("="*70)
+
+    store.discount_trace(
+        trace_id=trace_id,
+        failure_type="hard",
+        reason="Tool 'click' error: Could not find an element matching 'Obsolete Button'",
+    )
+
+    discounted = store.retrieve_trace("en.wikipedia.org", "wikipedia python programming language", min_confidence=0.4)
+    assert discounted is not None, "Discounted trace not found!"
+    assert discounted.get("trace_id") == trace_id, "Retrieved trace ID mismatch!"
+    print(f"Discounted Trace ID  : {discounted.get('trace_id')}")
+    print(f"Confidence after -0.50 penalty : {discounted.get('confidence')}")
+    assert discounted.get("confidence") == 0.5, f"Expected 0.5 but got {discounted.get('confidence')}"
+
+    # Clean up test trace
+    store.purge_domain("en.wikipedia.org")
+
+    print("\n" + "="*70)
+    print("ALL LIVE SMOKE TEST GATES VERIFIED: EXACT TRACE ID MATCH (RECORD -> RETRIEVE -> DISCOUNT)")
     print("="*70 + "\n")
 
 if __name__ == "__main__":

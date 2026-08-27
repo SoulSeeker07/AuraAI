@@ -101,6 +101,19 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "screenshot",
+            "description": "Capture a live visual screenshot of the current page to inspect visual layout, logos, canvas, or elements that cannot be read from DOM text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {"type": "string", "description": "Why visual screenshot is needed"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "extract_text",
             "description": "Read the visible text of the page (or a described section/element) so you can reason about it. Use this instead of guessing what's on the page.",
             "parameters": {
@@ -291,6 +304,21 @@ class BrowserTools:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         cleaned = "\n".join(lines[:60])  # limit to top 60 relevant lines
         return {"url": page.url, "title": page.title(), "text": cleaned[:2000]}
+
+    def screenshot(self, reason: str = "") -> Dict[str, Any]:
+        """Capture a live screenshot and return base64 image data for multimodal visual reasoning."""
+        import base64
+        page = self.page
+        try:
+            bytes_data = page.screenshot()
+            b64_str = base64.b64encode(bytes_data).decode("utf-8")
+            return {
+                "screenshot_url": f"data:image/png;base64,{b64_str}",
+                "note": f"Captured screenshot ({len(bytes_data)} bytes) for reason: {reason}",
+                "url": page.url,
+            }
+        except Exception as ex:
+            return {"error": f"Failed to take screenshot: {ex}"}
 
     # -- shared post-action bookkeeping --------------------------------------
 

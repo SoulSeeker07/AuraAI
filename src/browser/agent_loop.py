@@ -105,6 +105,7 @@ def _run_loop(
     from browser.experience_store import BrowserExperienceStore
 
     provider = GroqProvider()
+    consecutive_no_tool_calls = 0
 
     for step in range(max_steps):
         try:
@@ -119,14 +120,31 @@ def _run_loop(
             raise
 
         msg = resp.choices[0].message
+        used_model = getattr(resp, "model", None) or model or "unknown"
+        logger.info("[AgentLoop] step=%d model_used=%s", step, used_model)
         asst_msg = {"role": "assistant", "content": msg.content or ""}
         if msg.tool_calls:
             asst_msg["tool_calls"] = msg.tool_calls
         messages.append(asst_msg)
 
         if not msg.tool_calls:
+            consecutive_no_tool_calls += 1
+            if consecutive_no_tool_calls >= 2:
+                logger.warning(
+                    "[AgentLoop] NO_TOOL_CALL_ABORT goal='%s' step=%d model='%s' consecutive=%d reason='Model returned plain text without tool calls'",
+                    goal, step, used_model, consecutive_no_tool_calls
+                )
+                return {
+                    "status": "ASK_USER",
+                    "summary": msg.content or "Model returned text reasoning without executing browser tools.",
+                    "url": tools.page.url if tools.page else "",
+                    "steps": step_log,
+                    "close_session": not _should_keep_browser_open(goal, session.headless),
+                }
             messages.append({"role": "user", "content": "Please call a tool to make progress, or `done`/`ask_user` if finished."})
             continue
+
+        consecutive_no_tool_calls = 0
 
         for tool_call in msg.tool_calls:
             name = tool_call.function.name
@@ -230,8 +248,21 @@ def _run_loop(
                 )
 
             gate.record_outcome(name, args, gate_result["risk"], "EXECUTED")
-            step_log.append({"step": step, "tool": name, "args": args, "result": result})
-            messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(result)})
+            step_log.append({"step": step, "tool": name, "args": args, "result": {k: v for k, v in result.items() if k != "screenshot_url"} if isinstance(result, dict) else result})
+            
+            if isinstance(result, dict) and result.get("screenshot_url"):
+                img_url = result["screenshot_url"]
+                clean_res = {k: v for k, v in result.items() if k != "screenshot_url"}
+                messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(clean_res)})
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f"Screenshot of {tools.page.url}: {result.get('note', '')}"},
+                        {"type": "image_url", "image_url": {"url": img_url}},
+                    ],
+                })
+            else:
+                messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": json.dumps(result)})
 
             if isinstance(result, dict) and result.get("challenge_detected"):
                 remaining_steps = max_steps - step - 1

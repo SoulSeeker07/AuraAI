@@ -3,54 +3,6 @@
     "role": "user",
     "content": "start listening",
     "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:13.411557"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:13.411557"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:27.071116"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:27.071116"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:27.079115"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:27.079115"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:28.137241"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:28.137241"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
     "timestamp": "2026-08-27T02:08:28.146240"
   },
   {
@@ -358,5 +310,53 @@
     "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
     "topic": "Open Instagram",
     "timestamp": "2026-08-27T12:58:20.175131"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:23:03.889093"
+  },
+  {
+    "role": "assistant",
+    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:23:03.889093"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:23:03.899129"
+  },
+  {
+    "role": "assistant",
+    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:23:03.899129"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:27:30.907613"
+  },
+  {
+    "role": "assistant",
+    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **extract_text**: `{'description': ''}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:27:30.907613"
+  },
+  {
+    "role": "user",
+    "content": "open chrome",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:27:30.917162"
+  },
+  {
+    "role": "assistant",
+    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **extract_text**: `{'description': ''}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
+    "topic": "Open Chrome",
+    "timestamp": "2026-08-27T17:27:30.917162"
   }
 ]

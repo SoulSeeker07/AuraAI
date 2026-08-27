@@ -140,27 +140,108 @@ def test_agent_loop_stale_selector_triggers_discount(monkeypatch, temp_store):
     mock_tools.click.side_effect = ToolExecutionError("Could not find an element matching 'Stale Nonexistent Button'")
     mock_tools.page.url = "https://www.amazon.in"
 
+    # Mock session & gate
     mock_session = MagicMock()
-    mock_session.headless = True
+    mock_session.headless = False
 
-    gate = SafetyGate()
     step_log = []
-    messages = [{"role": "user", "content": "buy mechanical keyboard"}]
-
-    result = _run_loop(
+    res = _run_loop(
         session=mock_session,
+        messages=[{"role": "user", "content": "buy mechanical keyboard"}],
         tools=mock_tools,
-        gate=gate,
+        gate=SafetyGate(),
         goal="buy mechanical keyboard",
-        messages=messages,
-        model="qwen/qwen3.6-27b",
-        max_steps=3,
+        model="openai/gpt-oss-120b",
+        max_steps=5,
         step_log=step_log,
         candidate_trace_id=trace_id,
     )
 
-    # Assert hard discount (-0.50) was executed on the candidate trace in episodic memory
-    retrieved = temp_store.retrieve_trace("amazon.in", "buy mechanical keyboard", min_confidence=0.4)
-    assert retrieved is not None
-    assert pytest.approx(retrieved["confidence"], 0.01) == 0.50
+    # Assert original candidate trace confidence was discounted by 0.50 due to hard ToolExecutionError
+    discounted = temp_store.get_trace(trace_id)
+    assert discounted is not None
+    assert discounted["confidence"] == 0.50
+
+
+def test_multiple_traces_composite_ranking(temp_store):
+    # Record trace 1 with degraded confidence 0.40 on exact query keywords
+    t1 = temp_store.record_trace(
+        domain="github.com",
+        goal="search python repository",
+        action_sequence=[{"tool": "navigate", "args": {"url": "https://github.com"}}],
+        selectors_used=["search-box"],
+        confidence=0.40,
+    )
+
+    # Record trace 2 with high confidence 1.00 on slightly paraphrased keywords
+    t2 = temp_store.record_trace(
+        domain="github.com",
+        goal="find python projects on github",
+        action_sequence=[{"tool": "navigate", "args": {"url": "https://github.com/search"}}],
+        selectors_used=["search-input"],
+        confidence=1.00,
+    )
+
+    # Query: "search python repository"
+    # Even though t1 has higher lexical overlap, t2's 1.00 confidence vs t1's 0.40 degraded confidence
+    # produces a higher composite score (0.85+ vs 0.40), properly preferring the reliable trace.
+    best = temp_store.retrieve_trace("github.com", "search python repository", min_confidence=0.3)
+    assert best is not None
+    assert best["trace_id"] == t2
+    assert best["confidence"] == 1.00
+
+
+def test_purge_domain(temp_store):
+    temp_store.record_trace(
+        domain="reddit.com",
+        goal="check python subreddit",
+        action_sequence=[{"tool": "navigate", "args": {"url": "https://reddit.com/r/python"}}],
+        selectors_used=[],
+        confidence=1.00,
+    )
+    assert temp_store.retrieve_trace("reddit.com", "check python subreddit") is not None
+
+    deleted_count = temp_store.purge_domain("reddit.com")
+    assert deleted_count >= 1
+    assert temp_store.retrieve_trace("reddit.com", "check python subreddit") is None
+
+
+def test_agent_loop_aborts_on_consecutive_no_tool_calls(monkeypatch):
+    from unittest.mock import MagicMock
+    from browser.agent_loop import _run_loop
+    from browser.safety_gate import SafetyGate
+
+    mock_msg = MagicMock()
+    mock_msg.content = "I am thinking about what to do next..."
+    mock_msg.tool_calls = None  # No tool calls
+
+    mock_resp = MagicMock()
+    mock_resp.choices = [MagicMock(message=mock_msg)]
+    mock_resp.model = "openai/gpt-oss-120b"
+
+    mock_chat = MagicMock(return_value=mock_resp)
+    monkeypatch.setattr("ai.groq_provider.GroqProvider.chat_with_tools", mock_chat)
+
+    mock_session = MagicMock()
+    mock_session.headless = True
+    mock_tools = MagicMock()
+    mock_tools.page.url = "https://example.com"
+
+    step_log = []
+    res = _run_loop(
+        session=mock_session,
+        messages=[{"role": "user", "content": "test goal"}],
+        tools=mock_tools,
+        gate=SafetyGate(),
+        goal="test goal",
+        model="openai/gpt-oss-120b",
+        max_steps=10,
+        step_log=step_log,
+    )
+
+    # Must abort cleanly on 2 consecutive no-tool turns with ASK_USER status
+    assert res["status"] == "ASK_USER"
+    assert "I am thinking" in res["summary"]
+    # Proves the loop aborted early at 2 calls rather than running all 10 max_steps
+    assert mock_chat.call_count == 2
 
