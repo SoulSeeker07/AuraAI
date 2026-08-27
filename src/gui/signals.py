@@ -147,7 +147,7 @@ class AppSignals(QObject):
     toggle_agent_task_logs = Signal()
     toggle_log_viewer_overlay = Signal()
     toggle_personal_os_overlay = Signal()
-    toggle_voice_notch = Signal()  # Show/hide the VoiceOS-style notch overlay
+    toggle_voice_notch = Signal()  # Show/hide the Dynamic Island notch overlay
     show_notification = Signal(str, str)  # title, message
 
 

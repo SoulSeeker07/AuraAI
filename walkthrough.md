@@ -67,7 +67,7 @@ The complete regression suite passes with 100% green status across all subsystem
 
 ---
 
-## 4. Milestone 31 — VoiceOS Neural Notch HUD & Dedicated Live Log Console
+## 4. Milestone 31 — Aura Neural Notch HUD & Dedicated Live Log Console
 
 ### A. Next-Gen Voice Notch HUD (`VoiceNotchOverlay`)
 - **Top-Center Pinned Geometry**: Anchored directly flush to the top display edge/taskbar with smooth 120Hz size/position morphing.

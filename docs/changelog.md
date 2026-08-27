@@ -2,8 +2,8 @@
 
 All notable changes to the Aura AI platform are documented in detail in [RELEASE.md](../RELEASE.md).
 
-## [v1.1.0] - 2026-08-28 — Milestone 31: VoiceOS Holographic Neural Notch HUD & Dedicated Live Log Console
-- Next-Gen VoiceOS Dynamic Island Notch HUD (`VoiceNotchOverlay`) anchored flush to the top taskbar with 120Hz smooth state morphing (IDLE -> LISTENING -> PROCESSING -> SUCCESS -> EXPANDED).
+## [v1.1.0] - 2026-08-28 — Milestone 31: Aura Holographic Neural Notch HUD & Dedicated Live Log Console
+- Next-Gen Aura Dynamic Island Notch HUD (`VoiceNotchOverlay`) anchored flush to the top taskbar with 120Hz smooth state morphing (IDLE -> LISTENING -> PROCESSING -> SUCCESS -> EXPANDED).
 - Hardware-linked multi-frequency rainbow waveform visualizer powered by real-time microphone level streaming.
 - Context-aware Dynamic Action & Source chips with instant execution and clean-slate resets.
 - Auto-collapsing 5-second expanded result card with hover recall and 30-second processing safety recovery.

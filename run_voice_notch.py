@@ -1,7 +1,8 @@
 """
 AuraAI — Voice Notch Overlay with Real Live Backend Voice Loop
 ==============================================================
-Launches the VoiceOS-style Dynamic Island Notch overlay directly
+Standalone runner for VoiceNotchOverlay.
+Launches the Aura Neural Notch Dynamic Island overlay directly
 connected to Aura's real backend voice engine:
 - Continuous background wake-word listening ("Aura" / "Hey Aura")
 - Live STT (Speech-to-Text) with real-time waveform visualization

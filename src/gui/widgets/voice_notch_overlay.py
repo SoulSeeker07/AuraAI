@@ -254,7 +254,7 @@ class _GlowingOrb(QWidget):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _RainbowWaveform(QWidget):
-    """Full-Spectrum Rainbow Waveform matching the Colorful VoiceOS UI."""
+    """Full-Spectrum Rainbow Waveform matching the Holographic UI."""
 
     def __init__(self, bar_count: int = 22, bar_w: float = 2.2, gap: float = 1.8, h: int = 20, parent=None):
         super().__init__(parent)
