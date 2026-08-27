@@ -271,9 +271,9 @@ class AuraCore:
 
         def _warm():
             try:
-                # 1. Pre-warm FasterWhisper STT
+                # 1. Pre-warm Groq Turbo STT (Cloud LPU — instant)
                 from voice.stt_manager import STTManager, STTSettings, STTProvider
-                stt = STTManager(STTSettings(provider=STTProvider.FASTER_WHISPER, model_size="small"))
+                stt = STTManager(STTSettings(provider=STTProvider.GROQ))
                 stt.initialize()
 
                 # 2. Pre-warm Piper TTS
@@ -1003,37 +1003,16 @@ class AuraCore:
         """Initialize all core components."""
         logger.info("Initializing Aura Core...")
 
-        # Brain (Memory + ConversationEngine) - must be first to create self.memory
         self._init_brain()
-
-        # Memory - now self.memory exists
         self._init_memory()
-
-        # Research Engine
         self._init_research()
-
-        # Planner
         self._init_planner()
-
-        # Knowledge
         self._init_knowledge()
-
-        # Plugins
         self._init_plugins()
-
-        # Workspace
         self._init_workspace()
-
-        # Multi-Agent Intelligence
         self._init_multi_agent()
-
-        # Agent Runtime
         self._init_agent_runtime()
-
-        # Workflow Engine
         self._init_workflow()
-
-        # Vision System
         self._init_vision()
 
         logger.info("Aura Core initialized successfully")
@@ -1191,17 +1170,29 @@ class AuraCore:
                     "folders": 0,
                 }
 
-                # Count files and folders
-                for item in workspace_path.rglob("*"):
-                    if item.is_file():
-                        self.workspace_info["files"] += 1
-                    elif item.is_dir() and not item.is_symlink():
-                        self.workspace_info["folders"] += 1
+                def _count_in_background():
+                    try:
+                        files, folders = 0, 0
+                        # Quick top-level scan without freezing startup
+                        for item in workspace_path.iterdir():
+                            if item.name.startswith((".", "node_modules", "venv", "__pycache__")):
+                                continue
+                            if item.is_file():
+                                files += 1
+                            elif item.is_dir():
+                                folders += 1
+                        self.workspace_info["files"] = files
+                        self.workspace_info["folders"] = folders
+                    except Exception:
+                        pass
+
+                import threading
+                threading.Thread(target=_count_in_background, daemon=True, name="WorkspaceScanner").start()
 
                 self.components["workspace"] = ComponentStatus(
                     name="Workspace",
                     status=AuraCoreStatus.READY,
-                    message=f'{self.workspace_info["files"]} files, {self.workspace_info["folders"]} folders',
+                    message="Workspace attached",
                 )
             else:
                 logger.warning(f"Workspace path does not exist: {self.workspace}")

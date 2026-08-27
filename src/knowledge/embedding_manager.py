@@ -178,6 +178,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
             device: Device to run on (cpu/cuda, or auto-detect if None)
         """
         self.model_name = model_name
+        self._model = None
         if device is None or device == "cpu":
             try:
                 import torch
@@ -187,18 +188,22 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
         else:
             self.device = device
 
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            self.model = SentenceTransformer(model_name, device=self.device)
-            logger.info(
-                f"Local embedding provider initialized with model: {model_name} on {self.device.upper()}"
-            )
-        except ImportError:
-            raise ImportError(
-                "sentence-transformers package not installed. "
-                "Install with: pip install sentence-transformers"
-            )
+    @property
+    def model(self):
+        """Lazy-load SentenceTransformer model only when embedding calculation is performed."""
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._model = SentenceTransformer(self.model_name, device=self.device)
+                logger.info(
+                    f"Local embedding provider initialized with model: {self.model_name} on {self.device.upper()}"
+                )
+            except ImportError:
+                raise ImportError(
+                    "sentence-transformers package not installed. "
+                    "Install with: pip install sentence-transformers"
+                )
+        return self._model
 
     def get_default_model(self) -> str:
         """Get default model."""

@@ -7,6 +7,7 @@ Unit tests verifying GroqProvider.chat_with_tools:
 - KeyPool failover and fallback key handling
 """
 
+import json
 from unittest.mock import MagicMock
 import pytest
 from ai.groq_provider import GroqProvider
@@ -145,5 +146,35 @@ def test_chat_with_tools_real_keypool_exhaustion_triggers_fallback(monkeypatch):
     assert mock_fallback_client.chat.completions.create.called
     kwargs = mock_fallback_client.chat.completions.create.call_args[1]
     assert kwargs["model"] == "openai/gpt-oss-120b"
+
+
+def test_chat_with_tools_detects_two_message_tool_handoff_image_payload(monkeypatch):
+    provider = GroqProvider(api_key="test_key")
+    mock_client = MagicMock()
+    monkeypatch.setattr(provider, "_get_client", lambda key: mock_client)
+
+    # Reconstruct the exact 2-message sequence emitted when tool screenshot executes:
+    # 1. role: tool with JSON string content
+    # 2. role: user with multimodal text + image_url blocks
+    messages = [
+        {"role": "user", "content": "open page and inspect"},
+        {"role": "assistant", "content": "", "tool_calls": [{"id": "call_1", "type": "function", "function": {"name": "screenshot"}}]},
+        {"role": "tool", "tool_call_id": "call_1", "content": json.dumps({"note": "Captured screenshot (150KB)"})},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Screenshot of https://example.com: Captured screenshot"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA"}},
+            ],
+        },
+    ]
+
+    provider.chat_with_tools(messages=messages, tools=[], model="openai/gpt-oss-120b")
+
+    # Verify provider detected image_url in messages[3] and auto-selected vision_model
+    assert mock_client.chat.completions.create.called
+    kwargs = mock_client.chat.completions.create.call_args[1]
+    assert kwargs["model"] == "qwen/qwen3.6-27b"
+
 
 

@@ -13,6 +13,12 @@ Usage:
     .\.venv\Scripts\python run_voice_notch.py
 """
 
+import os
+import sys
+import threading
+import time
+from pathlib import Path
+
 # Silence third-party library progress bars and warnings in CLI
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
@@ -29,6 +35,12 @@ if str(_SRC_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(1, str(_PROJECT_ROOT))
 
+# Ensure safe stdout and stderr when running windowless (pythonw.exe)
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="replace")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="replace")
+
 # Configure stdout and stderr to UTF-8
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -41,16 +53,41 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
-# Move logs to file and silence noisy HTTP / Hub loggers
+def _safe_print(*args, **kwargs):
+    try:
+        if sys.stdout and not sys.stdout.closed:
+            print(*args, **kwargs)
+    except Exception:
+        pass
+
+# Move all general logs to file while keeping ONLY Voice Model and Neural events in the console
 import logging
+
 _logs_dir = _PROJECT_ROOT / "logs"
 _logs_dir.mkdir(exist_ok=True)
-logging.basicConfig(
-    filename=str(_logs_dir / "aura.log"),
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    encoding="utf-8",
-)
+_file_handler = logging.FileHandler(str(_logs_dir / "aura.log"), encoding="utf-8")
+_file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+
+class VoiceNeuralConsoleFilter(logging.Filter):
+    """Filter that only permits Voice Model and Neural events on the console."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        name_lower = record.name.lower()
+        msg_lower = record.getMessage().lower()
+        if any(k in name_lower for k in ("voice", "stt", "tts", "continuous_loop", "neural", "auracore", "wakeword", "groq")):
+            return True
+        if any(k in msg_lower for k in ("wake word", "stt", "tts", "piper", "groq", "listening", "transcribed", "neural", "turn #")):
+            return True
+        return False
+
+_console_handler = logging.StreamHandler(sys.stdout)
+_console_handler.setLevel(logging.INFO)
+_console_handler.addFilter(VoiceNeuralConsoleFilter())
+_console_handler.setFormatter(logging.Formatter("  [VOICE OS] %(message)s"))
+
+_root_logger = logging.getLogger()
+_root_logger.setLevel(logging.INFO)
+_root_logger.handlers = [_file_handler, _console_handler]
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -82,34 +119,36 @@ class VoiceBackendWorker(QThread):
 
     def run(self):
         try:
-            self.status_message.emit("Initializing AuraCore neural backend...")
-            from core.aura_core import AuraCore
-
-            self._core = AuraCore.get_instance()
-            self.status_message.emit("AuraCore initialized. Connecting continuous voice loop...")
-
+            # 1. Instant Startup: Start Continuous Voice Loop immediately (<400ms)
             try:
                 from voice.continuous_loop import ContinuousVoiceLoop
             except (ImportError, ModuleNotFoundError):
                 from src.voice.continuous_loop import ContinuousVoiceLoop
 
-            if hasattr(self._core, "voice_loop") and self._core.voice_loop:
-                self._voice_loop = self._core.voice_loop
-            else:
-                self._voice_loop = ContinuousVoiceLoop(aura_core=self._core)
-                setattr(self._core, "voice_loop", self._voice_loop)
-
-            self._voice_loop._aura_core = self._core
-            ContinuousVoiceLoop.set_global_aura_core(self._core)
-
-            self.status_message.emit("Starting microphone stream & wake-word detector...")
+            self._voice_loop = ContinuousVoiceLoop(aura_core=None)
             started = self._voice_loop.start()
 
             if started:
-                self.status_message.emit("Voice Loop ACTIVE: Say 'Aura' or 'Hey Aura' to speak.")
+                self.status_message.emit("🟢 Standby: Listening for 'Aura' or 'Hey Aura' (Instant Ready)")
                 self.ready.emit()
             else:
                 self.error.emit("Failed to activate microphone / wake-word detector.")
+                return
+
+            # 2. Parallel Background Init: Load AuraCore neural agents concurrently
+            def _load_core_in_background():
+                try:
+                    from core.aura_core import AuraCore, get_default_instance
+                    core = get_default_instance() or AuraCore()
+                    self._core = core
+                    self._voice_loop._aura_core = core
+                    ContinuousVoiceLoop.set_global_aura_core(core)
+                    self.status_message.emit("⚡ Neural Engines & Autonomous Agents Attached")
+                except Exception as e:
+                    self.status_message.emit(f"Neural core attached in lightweight mode: {e}")
+
+            threading.Thread(target=_load_core_in_background, daemon=True, name="AuraCoreAsyncLoader").start()
+
         except Exception as exc:
             self.error.emit(f"Voice backend initialization failed: {exc}")
 
@@ -152,28 +191,28 @@ def main():
     fps_info = f"{hz:.0f} Hz (Auto-FPS Native)"
 
     geom = notch.geometry()
-    print("╔══════════════════════════════════════════════════════════╗")
-    print("║      AURA AI — VOICE NOTCH (DYNAMIC ISLAND HUD)          ║")
-    print(f"║      {fps_info:<12} · Full HD · GPU-Accelerated Voice      ║")
-    print("╠══════════════════════════════════════════════════════════╣")
-    print(f"║  • Display Mode:          {fps_info:<30} ║")
-    print(f"║  • Hardware Acceleration: {gpu_info:<30} ║")
-    print(f"║  • Notch Position:        (X={geom.x()}, Y={geom.y()})                    ║")
-    print("║  • Wake Word:             Say 'Aura' or 'Hey Aura'       ║")
-    print("║  • Direct Talk:           Press Space when focused       ║")
-    print("║  • Global Hotkey:         Alt + N to toggle              ║")
-    print("║  • Exit:                  Right-click notch → Hide Notch ║")
-    print("╚══════════════════════════════════════════════════════════╝\n")
+    _safe_print("╔══════════════════════════════════════════════════════════╗", flush=True)
+    _safe_print("║      AURA AI — VOICE NOTCH (DYNAMIC ISLAND HUD)          ║", flush=True)
+    _safe_print(f"║      {fps_info:<12} · Full HD · GPU-Accelerated Voice      ║", flush=True)
+    _safe_print("╠══════════════════════════════════════════════════════════╣", flush=True)
+    _safe_print(f"║  • Display Mode:          {fps_info:<30} ║", flush=True)
+    _safe_print(f"║  • Hardware Acceleration: {gpu_info:<30} ║", flush=True)
+    _safe_print(f"║  • Notch Position:        (X={geom.x()}, Y={geom.y()})                    ║", flush=True)
+    _safe_print("║  • Wake Word:             Say 'Aura' or 'Hey Aura'       ║", flush=True)
+    _safe_print("║  • Direct Talk:           Press Space when focused       ║", flush=True)
+    _safe_print("║  • Global Hotkey:         Alt + N to toggle              ║", flush=True)
+    _safe_print("║  • Exit:                  Right-click notch → Hide Notch ║", flush=True)
+    _safe_print("╚══════════════════════════════════════════════════════════╝\n", flush=True)
 
     # Start the real voice backend in background
     worker = VoiceBackendWorker()
-    worker.status_message.connect(lambda msg: print(f"  [VOICE OS] {msg}"))
-    worker.ready.connect(lambda: print("  [VOICE OS] 🟢 Standby: Listening for 'Aura'...\n"))
-    worker.error.connect(lambda err: print(f"  [ERROR] {err}"))
+    worker.status_message.connect(lambda msg: _safe_print(f"  [VOICE OS] {msg}", flush=True))
+    worker.ready.connect(lambda: _safe_print("  [VOICE OS] 🟢 Standby: Listening for 'Aura'...\n", flush=True))
+    worker.error.connect(lambda err: _safe_print(f"  [ERROR] {err}", flush=True))
     worker.start()
 
     def _cleanup():
-        print("\n  [VOICE OS] Shutting down voice backend...")
+        _safe_print("\n  [VOICE OS] Shutting down voice backend...", flush=True)
         worker.stop()
         worker.wait(2000)
 

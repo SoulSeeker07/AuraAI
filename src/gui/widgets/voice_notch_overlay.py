@@ -108,7 +108,7 @@ WAVEFORM_BAR_COLOR_ACTIVE = CYAN
 
 # ── Notch Geometry ──
 NOTCH_RADIUS = 20.0
-TOP_MARGIN = 10
+TOP_MARGIN = 0
 
 # ── Font ──
 FONT_FAMILY = "Segoe UI, Inter, -apple-system, sans-serif"
@@ -937,20 +937,55 @@ class VoiceNotchOverlay(QWidget):
             f"}}"
         )
 
+        gui_action = menu.addAction("🖥️  Open Full GUI Dashboard")
+        chat_action = menu.addAction("💬  Open Spotlight Chat (Alt+Space)")
+        menu.addSeparator()
         dictation_action = menu.addAction("🎤  Dictation Mode")
         agent_action = menu.addAction("⚡  Agent Mode")
         menu.addSeparator()
-        reset_pos_action = menu.addAction("📍  Reset Position to Top Center")
+        try:
+            from system.autostart import is_autostart_enabled, enable_autostart, disable_autostart
+            autostart_active = is_autostart_enabled()
+        except Exception:
+            autostart_active = False
+
+        autostart_label = "✅  Start with Windows" if autostart_active else "⬜  Start with Windows"
+        autostart_action = menu.addAction(autostart_label)
+        menu.addSeparator()
+
+        snap_action = menu.addAction("📌  Snap to Top Center (Touch Taskbar)")
+        reset_pos_action = menu.addAction("📍  Reset Position to Center")
         menu.addSeparator()
         hide_action = menu.addAction("✕  Hide Notch")
 
         action = menu.exec(pos)
 
-        if action == dictation_action:
+        if action == gui_action:
+            import subprocess
+            from pathlib import Path
+            root = Path(__file__).resolve().parents[3]
+            py = root / ".venv" / "Scripts" / "python.exe"
+            subprocess.Popen([str(py), str(root / "main.py"), "--gui"], cwd=str(root))
+        elif action == chat_action:
+            import subprocess
+            from pathlib import Path
+            root = Path(__file__).resolve().parents[3]
+            py = root / ".venv" / "Scripts" / "python.exe"
+            subprocess.Popen([str(py), str(root / "run_chat_window.py")], cwd=str(root))
+        elif action == autostart_action:
+            try:
+                from system.autostart import enable_autostart, disable_autostart
+                if autostart_active:
+                    disable_autostart()
+                else:
+                    enable_autostart()
+            except Exception:
+                pass
+        elif action == dictation_action:
             self.mode_changed.emit("dictation")
         elif action == agent_action:
             self.mode_changed.emit("agent")
-        elif action == reset_pos_action:
+        elif action in (snap_action, reset_pos_action):
             self._settings.remove("notch_x")
             self._settings.remove("notch_y")
             self._settings.sync()
@@ -984,9 +1019,8 @@ class VoiceNotchOverlay(QWidget):
             pass
 
     def _on_voice_status(self, active: bool):
-        if active:
-            self.set_state(NotchState.LISTENING)
-        elif self._state == NotchState.LISTENING:
+        # Do not force LISTENING state on background mic start; standby stays as 'Aura AI' (IDLE)
+        if not active and self._state == NotchState.LISTENING:
             self.set_state(NotchState.IDLE)
 
     def _on_voice_level(self, level: float):
@@ -994,15 +1028,16 @@ class VoiceNotchOverlay(QWidget):
 
     def _on_voice_state_name(self, name: str):
         name_upper = (name or "").upper()
-        if name_upper in ("WAKE_DETECTED", "LISTENING", "FOLLOW_UP_LISTENING"):
+        if name_upper in ("WAKE_DETECTED", "COMMAND_LISTENING", "ACTIVE_LISTENING", "FOLLOW_UP_LISTENING"):
             self.set_state(NotchState.LISTENING, "Listening...")
         elif name_upper == "TRANSCRIBING":
             self.set_state(NotchState.PROCESSING, "Transcribing...")
-        elif name_upper in ("UNDERSTANDING", "EXECUTING", "AI_RESPONSE"):
+        elif name_upper in ("UNDERSTANDING", "EXECUTING", "AI_RESPONSE", "PLANNING", "THINKING"):
             self.set_state(NotchState.PROCESSING, "Aura Core...")
         elif name_upper == "SPEAKING":
             self.set_state(NotchState.SUCCESS, "Speaking...")
-        elif name_upper in ("IDLE", "COOLDOWN"):
+        elif name_upper in ("IDLE", "LISTENING", "COOLDOWN", "WAITING_FOR_WAKE_WORD", "STANDBY"):
+            # When in standby waiting for wake word, state remains IDLE ("Aura AI")
             self.set_state(NotchState.IDLE)
         else:
             if self._state == NotchState.LISTENING:

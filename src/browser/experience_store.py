@@ -45,15 +45,6 @@ class BrowserExperienceStore:
 
     def _init_store(self) -> None:
         try:
-            import torch
-            from sentence_transformers import SentenceTransformer
-            dev = "cuda" if torch.cuda.is_available() else "cpu"
-            self._embedder = SentenceTransformer("all-MiniLM-L6-v2", device=dev, local_files_only=True)
-        except Exception as e:
-            logger.debug("[BrowserExperienceStore] Local embedding model notice: %s", e)
-            self._embedder = None
-
-        try:
             import chromadb
             client = chromadb.PersistentClient(path=self.persist_dir)
             self._collection = client.get_or_create_collection("browser_experience")

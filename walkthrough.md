@@ -31,7 +31,7 @@ This document records the complete architecture hardening, centralized provider 
 
 ---
 
-## 2. Automated Test Suite (12 Tests Passing)
+## 2. Automated Test Suite (13 Tests Passing)
 
 ```powershell
 .\.venv\Scripts\pytest.exe tests/unit/ai/test_groq_provider_tools.py tests/browser/test_experience_store.py -v
@@ -40,25 +40,24 @@ This document records the complete architecture hardening, centralized provider 
 ============================= test session starts =============================
 platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0
 rootdir: D:\Sreekanta\VS Code Project\Desktop AI\AuraAI
-collected 12 items
+collected 13 items
 
-tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_selects_default_text_model_when_text_only PASSED [  8%]
-tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_selects_vision_model_when_image_present PASSED [ 16%]
-tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_respects_explicit_model_override PASSED [ 25%]
-tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_falls_back_when_keypool_exhausted PASSED [ 33%]
-tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_image_overrides_explicit_text_model PASSED [ 41%]
-tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_real_keypool_exhaustion_triggers_fallback PASSED [ 50%]
-tests/browser/test_experience_store.py::test_record_and_retrieve_trace PASSED [ 58%]
-tests/browser/test_experience_store.py::test_staleness_invalidation_and_decay PASSED [ 66%]
-tests/browser/test_experience_store.py::test_agent_loop_stale_selector_triggers_discount PASSED [ 75%]
-tests/browser/test_experience_store.py::test_multiple_traces_composite_ranking PASSED [ 83%]
-tests/browser/test_experience_store.py::test_purge_domain PASSED         [ 91%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_selects_default_text_model_when_text_only PASSED [  7%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_selects_vision_model_when_image_present PASSED [ 15%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_respects_explicit_model_override PASSED [ 23%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_falls_back_when_keypool_exhausted PASSED [ 30%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_image_overrides_explicit_text_model PASSED [ 38%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_real_keypool_exhaustion_triggers_fallback PASSED [ 46%]
+tests/unit/ai/test_groq_provider_tools.py::test_chat_with_tools_detects_two_message_tool_handoff_image_payload PASSED [ 53%]
+tests/browser/test_experience_store.py::test_record_and_retrieve_trace PASSED [ 61%]
+tests/browser/test_experience_store.py::test_staleness_invalidation_and_decay PASSED [ 69%]
+tests/browser/test_experience_store.py::test_agent_loop_stale_selector_triggers_discount PASSED [ 76%]
+tests/browser/test_experience_store.py::test_multiple_traces_composite_ranking PASSED [ 84%]
+tests/browser/test_experience_store.py::test_purge_domain PASSED         [ 92%]
 tests/browser/test_experience_store.py::test_agent_loop_aborts_on_consecutive_no_tool_calls PASSED [100%]
 
-============================= 12 passed in 13.60s =============================
+============================= 13 passed in 39.31s =============================
 ```
-
----
 
 ---
 
@@ -101,11 +100,18 @@ tests/browser/test_experience_store.py::test_agent_loop_aborts_on_consecutive_no
 2. **`task-1076.log`**:
    - *Failure*: `test_agent_loop_stale_selector_triggers_discount` failed `assert 1.0 == 0.5` because calling `done` recorded a fresh `confidence=1.00` trace for the domain, which `retrieve_trace` returned rather than the original discounted trace.
    - *Resolution*: Added dedicated `get_trace(trace_id)` method to query specific traces directly by ID.
+3. **`task-1268.log`**:
+   - *Failure*: `groq.BadRequestError: Error code: 400 - {'error': {'message': 'messages[5].content must be a string', 'type': 'invalid_request_error', 'param': 'messages[5].content'}}`.
+   - *Root Cause*: Attempted to append multimodal content blocks `[{"type": "text"}, {"type": "image_url"}]` directly into a `role: "tool"` message. Groq / OpenAI API strictly requires `role: "tool"` content to be a string.
+   - *Resolution*: Formatted tool execution output as JSON string under `role: "tool"`, and appended a following synthetic `role: "user"` message containing the base64 image block. Verified with `test_chat_with_tools_detects_two_message_tool_handoff_image_payload`.
 
 ---
 
 ## 5. Known Limitations & Roadmap
 
+- **Synthetic User Role for Vision Handoff**: The two-message screenshot handoff uses a synthetic `role: "user"` message to inject image data. If conversation logs are exported or summarized, this message must be attributed to system perception rather than user input.
+- **Image Token & Concurrency Ceiling**: Each screenshot consumes ~2048 image tokens on Groq. Groq limits vision requests to 5 images per request. Future work will introduce sliding-window screenshot eviction.
 - **Time-based Decay**: Confidence currently discounts on observed failures (`-0.50` hard / `-0.25` soft). Future iterations will add an exponential recency decay or `last_verified_timestamp` threshold to downrank unvisited traces over time.
 - **Consecutive No-Tool-Call Guard**: Added a hard limit of `2` consecutive non-tool-call text responses in [agent_loop.py](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/browser/agent_loop.py#L128-L140) to abort and hand back control (`status="ASK_USER"`) rather than burning `max_steps` on text loops.
 - **Data Hygiene**: Purged all temporary debug traces from `./aura_memory_db` (`REMAINING: 0`).
+

@@ -108,6 +108,33 @@ class ContinuousVoiceLoop:
         self._pending_standby: bool = False
         self._turn_telemetry: dict[str, float] = {}
 
+        # Ensure reasoning engine is immediately wired and ready
+        self.conversation_engine = getattr(self._aura_core, "conversation_engine", None) if self._aura_core else None
+        if self.conversation_engine is None:
+            try:
+                import os
+                from pathlib import Path
+                project_root = Path(__file__).resolve().parents[2]
+                try:
+                    from Memory import Memory
+                except Exception:
+                    from src.Memory import Memory
+                try:
+                    from brain.conversation_engine import ConversationEngine
+                    from ai.registry import build_provider_manager
+                except Exception:
+                    from src.brain.conversation_engine import ConversationEngine
+                    from src.ai.registry import build_provider_manager
+
+                mem = Memory(
+                    db_path=str(project_root / "Memory.db"),
+                    chat_log_path=str(project_root / "Data" / "ChatLog.json"),
+                )
+                pm = build_provider_manager(dict(os.environ))
+                self.conversation_engine = ConversationEngine(memory=mem, provider_manager=pm, aura_core=self._aura_core)
+            except Exception as e:
+                logger.debug(f"[ContinuousVoiceLoop] ConversationEngine init notice: {e}")
+
         logger.info("[ContinuousVoiceLoop] INITIALIZING")
         self._set_state(VoiceState.IDLE)
 
@@ -585,13 +612,59 @@ class ContinuousVoiceLoop:
         aura_core = getattr(self, "_aura_core", None) or self._global_aura_core
         conversation_engine = getattr(self, "conversation_engine", None)
 
+        # Fast-Path Direct Spoken GUI & Chat Triggers
+        norm_t = transcript.lower().strip(" .!?,")
+        if norm_t in ("open full gui", "open main gui", "open gui", "open main window", "open dashboard", "open aura gui", "launch gui", "show gui"):
+            self.voice_manager.speak("Opening Aura full GUI dashboard.")
+            import subprocess
+            from pathlib import Path
+            root = Path(__file__).resolve().parents[2]
+            py = root / ".venv" / "Scripts" / "python.exe"
+            subprocess.Popen([str(py), str(root / "main.py"), "--gui"], cwd=str(root))
+            self.history.append({
+                "turn": self.turn_count,
+                "transcript": transcript,
+                "success": True,
+                "spoken_summary": "Opening Aura full GUI dashboard.",
+            })
+            self._return_to_listening_or_idle()
+            return
+
+        if norm_t in ("open chat", "open chat window", "open spotlight chat", "launch chat", "show chat"):
+            self.voice_manager.speak("Opening Aura chat window.")
+            import subprocess
+            from pathlib import Path
+            root = Path(__file__).resolve().parents[2]
+            py = root / ".venv" / "Scripts" / "python.exe"
+            subprocess.Popen([str(py), str(root / "run_chat_window.py")], cwd=str(root))
+            self.history.append({
+                "turn": self.turn_count,
+                "transcript": transcript,
+                "success": True,
+                "spoken_summary": "Opening Aura chat window.",
+            })
+            self._return_to_listening_or_idle()
+            return
+
         if conversation_engine is None and aura_core is not None:
             conversation_engine = getattr(aura_core, "conversation_engine", None)
 
         if conversation_engine is None:
             try:
                 import os
+                from pathlib import Path
                 project_root = Path(__file__).resolve().parents[2]
+                try:
+                    from Memory import Memory
+                except Exception:
+                    from src.Memory import Memory
+                try:
+                    from brain.conversation_engine import ConversationEngine
+                    from ai.registry import build_provider_manager
+                except Exception:
+                    from src.brain.conversation_engine import ConversationEngine
+                    from src.ai.registry import build_provider_manager
+
                 mem = Memory(
                     db_path=str(project_root / "Memory.db"),
                     chat_log_path=str(project_root / "Data" / "ChatLog.json"),
@@ -669,10 +742,24 @@ class ContinuousVoiceLoop:
                         yield resp
                     token_gen = _fallback_gen()
                 elif conversation_engine is not None:
-                    async def _engine_gen():
-                        res = await conversation_engine.process(transcript)
-                        yield res.text
-                    token_gen = _engine_gen()
+                    # Check fast action intent (e.g. open chrome, close notepad) for instant 50ms voice feedback
+                    t_lower = transcript.lower().strip()
+                    if t_lower.startswith(("open ", "launch ", "start ", "run ")):
+                        app_name = t_lower.split(" ", 1)[1].strip()
+                        # Speak early acknowledgement immediately
+                        self.voice_manager.speak(f"Opening {app_name.title()}.")
+
+                    if hasattr(conversation_engine, "stream"):
+                        async def _stream_engine_gen():
+                            for token in conversation_engine.stream(transcript):
+                                yield token
+                                await asyncio.sleep(0.001)
+                        token_gen = _stream_engine_gen()
+                    else:
+                        async def _engine_gen():
+                            res = await conversation_engine.process(transcript)
+                            yield res.text
+                        token_gen = _engine_gen()
                 elif hasattr(aura_core, "process_via_executive_brain"):
                     async def _exec_gen():
                         resp = await aura_core.process_via_executive_brain(transcript)

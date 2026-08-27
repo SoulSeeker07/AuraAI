@@ -222,6 +222,34 @@ class BrowserCapabilityProvider(ICapabilityProvider):
                 tags=["browser", "extract", "live"],
             ),
             Capability(
+                name="browser.screenshot",
+                domain=self.DOMAIN,
+                description="Capture a visual screenshot of the active browser page for multimodal inspection.",
+                category="inspection",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "reason": {"type": "string", "description": "Why visual screenshot is needed"},
+                    },
+                },
+                output_schema={
+                    "type": "object",
+                    "properties": {
+                        "screenshot_url": {"type": "string"},
+                        "note": {"type": "string"},
+                        "url": {"type": "string"},
+                    },
+                },
+                risk_level=ActionRisk.LOW,
+                permissions=["browser:read"],
+                execution_backend="browser",
+                is_live=True,
+                availability="available",
+                requires=["browser.navigate"],
+                verifies=[],
+                tags=["browser", "screenshot", "vision", "live"],
+            ),
+            Capability(
                 name="browser.observe",
                 domain=self.DOMAIN,
                 description="Capture current page DOM accessibility tree, snapshot, or title.",

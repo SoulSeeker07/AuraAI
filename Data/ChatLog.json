@@ -1,54 +1,6 @@
 [
   {
     "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:10:00.552431"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:10:00.552431"
-  },
-  {
-    "role": "user",
-    "content": "restart",
-    "topic": "Restart",
-    "timestamp": "2026-08-27T11:48:46.370123"
-  },
-  {
-    "role": "assistant",
-    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
-    "topic": "Restart",
-    "timestamp": "2026-08-27T11:48:46.370123"
-  },
-  {
-    "role": "user",
-    "content": "restart",
-    "topic": "Restart",
-    "timestamp": "2026-08-27T11:48:46.380174"
-  },
-  {
-    "role": "assistant",
-    "content": "🔄 **AuraAI Graceful Restart Initiated**\n\n• **State & Memory:** Saved to disk\n• **Active Tasks & Routines:** Preserved and scheduled for automatic recovery\n• **Respawning System:** Relaunching in 1 second...",
-    "topic": "Restart",
-    "timestamp": "2026-08-27T11:48:46.380174"
-  },
-  {
-    "role": "user",
-    "content": "show my instagram profile",
-    "topic": "Show Instagram Profile",
-    "timestamp": "2026-08-27T11:56:08.163507"
-  },
-  {
-    "role": "assistant",
-    "content": "✓ Opened 'api-ms-win-core-profile-l1-1-0.dll'\n📍 Location: D:\\Sreekanta\\Rockstar Games\\api-ms-win-core-profile-l1-1-0.dll",
-    "topic": "Show Instagram Profile",
-    "timestamp": "2026-08-27T11:56:08.163507"
-  },
-  {
-    "role": "user",
     "content": "show my instagram profile",
     "topic": "Show Instagram Profile",
     "timestamp": "2026-08-27T11:56:08.179058"
@@ -358,5 +310,53 @@
     "content": "Result success=False. ✓ Up is open.; No backend available for capability 'unknown_action'",
     "topic": "cognitive_orchestrator",
     "timestamp": "2026-08-27T22:57:29.049527"
+  },
+  {
+    "role": "user",
+    "content": "open voice noutch",
+    "topic": "Open Voice Noutch",
+    "timestamp": "2026-08-27T23:07:12.645486"
+  },
+  {
+    "role": "assistant",
+    "content": "✓ Opened 'GST INVOICE (3).xlsx'\n📍 Location: C:\\Users\\yrsre\\Documents\\Spreadsheets\\GST INVOICE (3).xlsx",
+    "topic": "Open Voice Noutch",
+    "timestamp": "2026-08-27T23:07:12.645486"
+  },
+  {
+    "role": "user",
+    "content": "open voice noutch",
+    "topic": "Open Voice Noutch",
+    "timestamp": "2026-08-27T23:07:12.658493"
+  },
+  {
+    "role": "assistant",
+    "content": "✓ Opened 'GST INVOICE (3).xlsx'\n📍 Location: C:\\Users\\yrsre\\Documents\\Spreadsheets\\GST INVOICE (3).xlsx",
+    "topic": "Open Voice Noutch",
+    "timestamp": "2026-08-27T23:07:12.658493"
+  },
+  {
+    "role": "user",
+    "content": "Open Google Chrome.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T23:37:52.329928"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Google Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T23:37:52.329928"
+  },
+  {
+    "role": "user",
+    "content": "Open notepad",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T23:38:10.861719"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Notepad is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T23:38:10.861719"
   }
 ]

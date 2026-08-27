@@ -43,15 +43,33 @@ class MemoryManager:
     ):
         self.provider_manager = provider_manager
         self.summarizer_model = summarizer_model
+        self._persist_dir = persist_dir
         self.short_term = ShortTermMemory(**(short_term_kwargs or {}))
+        self._long_term = None
+        self._long_term_initialized = False
 
-        if ENABLE_LONG_TERM_MEMORY:
-            self.long_term = LongTermMemory(
-                provider_manager=self.provider_manager,
-                persist_dir=persist_dir,
-            )
-        else:
-            self.long_term = None
+    @property
+    def long_term(self):
+        """Lazy-load LongTermMemory on first semantic retrieval/consolidation."""
+        if not self._long_term_initialized:
+            self._long_term_initialized = True
+            if ENABLE_LONG_TERM_MEMORY:
+                try:
+                    self._long_term = LongTermMemory(
+                        provider_manager=self.provider_manager,
+                        persist_dir=self._persist_dir,
+                    )
+                except Exception as e:
+                    logger.warning("[MemoryManager] LongTermMemory lazy load notice: %s", e)
+                    self._long_term = None
+            else:
+                self._long_term = None
+        return self._long_term
+
+    @long_term.setter
+    def long_term(self, val):
+        self._long_term = val
+        self._long_term_initialized = True
 
     # ---------------------------------------------------------- summarizing
 

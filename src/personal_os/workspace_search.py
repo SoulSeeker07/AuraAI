@@ -49,7 +49,8 @@ class WorkspaceSearchEngine:
         self.walker = WorkspaceWalker(root=self.root_dir, max_files=50000)
         self._index: list[IndexedFile] = []
         self._last_indexed: float = 0.0
-        self.rebuild_index()
+        import threading
+        threading.Thread(target=self.rebuild_index, daemon=True, name="WorkspaceSearchIndexer").start()
 
     @classmethod
     def get_instance(

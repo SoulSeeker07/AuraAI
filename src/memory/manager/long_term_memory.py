@@ -22,10 +22,7 @@ import logging
 import time
 import threading
 import uuid
-from typing import Optional
-
-import chromadb
-from sentence_transformers import SentenceTransformer
+from typing import Optional, Any
 
 from ai.models import ChatMessage, ChatRequest
 from ai.provider_manager import ProviderManager
@@ -59,28 +56,62 @@ class LongTermMemory:
         collection_name: str = "aura_long_term",
         embed_model: str = "all-MiniLM-L6-v2",
     ):
-        try:
-            import torch
-            dev = "cuda" if torch.cuda.is_available() else "cpu"
-            self.embedder = SentenceTransformer(embed_model, device=dev, local_files_only=True)
-            logger.info(f"[LongTermMemory] Embedding model '{embed_model}' loaded on {dev.upper()}")
-        except Exception as e:
-            logger.warning(
-                f"[LongTermMemory] Local embedding model '{embed_model}' not found in cache or offline: {e}. "
-                "Disabling semantic embedding recall gracefully to eliminate network lookup freezes during turns."
-            )
-            self.embedder = None
-        self.client = chromadb.PersistentClient(path=persist_dir)
-        self.collection = self.client.get_or_create_collection(collection_name)
+        self._embed_model = embed_model
+        self._persist_dir = persist_dir
+        self._collection_name = collection_name
+        self._embedder_initialized = False
+        self._embedder_instance = None
+        self._client = None
+        self._collection = None
         self.provider_manager = provider_manager
-        # Fallback chain from config — do NOT override here
         self._extraction_models = MEMORY_EXTRACTION_MODELS
-        # Serializes concurrent store()/retrieve() calls from the consolidation
-        # thread and the synchronous retrieve() on the main path.
-        # threading.Lock (non-reentrant) is safe here: extract_candidates() makes
-        # no calls to store() or retrieve(), and no other code path holds this lock
-        # while calling into either method.
         self._lock = threading.Lock()
+
+    @property
+    def client(self):
+        """Lazy-load ChromaDB persistent client."""
+        if self._client is None:
+            import chromadb
+            self._client = chromadb.PersistentClient(path=self._persist_dir)
+        return self._client
+
+    @client.setter
+    def client(self, val):
+        self._client = val
+
+    @property
+    def collection(self):
+        """Lazy-load ChromaDB collection."""
+        if self._collection is None:
+            self._collection = self.client.get_or_create_collection(self._collection_name)
+        return self._collection
+
+    @collection.setter
+    def collection(self, val):
+        self._collection = val
+
+    @property
+    def embedder(self):
+        """Lazy-load the SentenceTransformer embedding model only when required."""
+        if not self._embedder_initialized:
+            self._embedder_initialized = True
+            try:
+                import torch
+                dev = "cuda" if torch.cuda.is_available() else "cpu"
+                self._embedder_instance = SentenceTransformer(self._embed_model, device=dev, local_files_only=True)
+                logger.info(f"[LongTermMemory] Embedding model '{self._embed_model}' loaded on {dev.upper()}")
+            except Exception as e:
+                logger.warning(
+                    f"[LongTermMemory] Local embedding model '{self._embed_model}' not found in cache or offline: {e}. "
+                    "Disabling semantic embedding recall gracefully to eliminate network lookup freezes during turns."
+                )
+                self._embedder_instance = None
+        return self._embedder_instance
+
+    @embedder.setter
+    def embedder(self, value):
+        self._embedder_instance = value
+        self._embedder_initialized = True
 
     # ---------------------------------------------------------------- write
 

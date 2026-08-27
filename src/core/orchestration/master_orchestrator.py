@@ -87,26 +87,27 @@ class MasterOrchestrator:
         self._execution_sink: Any = None
         self._sink_error_count: int = 0
 
-        # Milestone 17.0: Build the identity layer at startup.
-        # The PromptBuilder reads knowledge/ YAMLs + live registries and assembles
-        # Aura's full self-knowledge context. Built once, cached for the session.
-        try:
-            self._prompt_builder: PromptBuilder = PromptBuilder.get_instance()
-            self._identity_context: str = self._prompt_builder.build_system_prompt(
-                include_examples=False  # keep shared_context lean; examples in separate key
-            )
-            logger.info(
-                f"MasterOrchestrator: identity context loaded "
-                f"({len(self._identity_context)} chars)."
-            )
-        except Exception as exc:
-            logger.warning(f"MasterOrchestrator: PromptBuilder unavailable: {exc}")
-            self._prompt_builder = None  # type: ignore[assignment]
-            self._identity_context = "(identity layer unavailable)"
+        self._prompt_builder: PromptBuilder | None = None
+        self._identity_context: str | None = None
 
         logger.info(
             f"MasterOrchestrator initialized (Cognitive Orchestration Layer v17.0, expert_routing={self.expert_routing_enabled})"
         )
+
+    @property
+    def identity_context(self) -> str:
+        """Lazy-load and cache the full Aura system prompt."""
+        if self._identity_context is None:
+            try:
+                if self._prompt_builder is None:
+                    self._prompt_builder = PromptBuilder.get_instance()
+                self._identity_context = self._prompt_builder.build_system_prompt(
+                    include_examples=False
+                )
+            except Exception as exc:
+                logger.warning(f"MasterOrchestrator: PromptBuilder unavailable: {exc}")
+                self._identity_context = "(identity layer unavailable)"
+        return self._identity_context
 
     @classmethod
     def get_instance(
