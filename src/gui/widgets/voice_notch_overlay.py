@@ -80,7 +80,7 @@ SUCCESS_W, SUCCESS_H = 440, 76
 EXPANDED_W, EXPANDED_H = 500, 240
 
 # 120 FPS High-Refresh Animation Duration
-MORPH_DURATION_MS = 180
+MORPH_DURATION_MS = 220
 SUCCESS_HOLD_MS = 6000
 
 # Modern Corner Radius
@@ -701,15 +701,15 @@ class VoiceNotchOverlay(QWidget):
         self._has_interacted_voice = False
         self._has_last_result = False  # True = hover can re-show last result
 
-        # 120Hz Hover Timers
+        # 120Hz Responsive Hover Timers
         self._hover_timer = QTimer(self)
         self._hover_timer.setSingleShot(True)
-        self._hover_timer.setInterval(160)
+        self._hover_timer.setInterval(35)
         self._hover_timer.timeout.connect(self._expand_from_hover)
 
         self._collapse_timer = QTimer(self)
         self._collapse_timer.setSingleShot(True)
-        self._collapse_timer.setInterval(380)
+        self._collapse_timer.setInterval(200)
         self._collapse_timer.timeout.connect(self._collapse_from_hover)
 
         # Result Auto-Collapse Timer (5s after showing result)
@@ -1146,11 +1146,15 @@ class VoiceNotchOverlay(QWidget):
 
         target_geom = QRect(target_x, target_y, target_w, target_h)
 
+        if hasattr(self, "_morph_anim") and self._morph_anim is not None:
+            self._morph_anim.stop()
+
         self._morph_anim = QPropertyAnimation(self, b"geometry")
         self._morph_anim.setDuration(MORPH_DURATION_MS)
         self._morph_anim.setStartValue(self.geometry())
         self._morph_anim.setEndValue(target_geom)
         self._morph_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._morph_anim.valueChanged.connect(lambda: self.update())
         self._morph_anim.start()
 
         self.update()
