@@ -42,6 +42,9 @@ class AuraTrayIcon(QSystemTrayIcon):
         chat_action = QAction("Chat HUD", self)
         chat_action.triggered.connect(self._toggle_chat_overlay)
 
+        notch_action = QAction("Voice Notch", self)
+        notch_action.triggered.connect(self._toggle_voice_notch)
+
         self.live_screen_action = QAction("Live Screen", self)
         self.live_screen_action.setCheckable(True)
         self.live_screen_action.toggled.connect(self.live_screen_toggled.emit)
@@ -64,6 +67,7 @@ class AuraTrayIcon(QSystemTrayIcon):
         menu.addAction(self.hide_action)
         menu.addAction(overlay_action)
         menu.addAction(chat_action)
+        menu.addAction(notch_action)
         menu.addAction(self.live_screen_action)
         menu.addSeparator()
         menu.addAction(self.startup_action)
@@ -88,6 +92,10 @@ class AuraTrayIcon(QSystemTrayIcon):
     def _toggle_chat_overlay(self) -> None:
         if hasattr(self.main_window, "toggle_chat_overlay"):
             self.main_window.toggle_chat_overlay()
+
+    def _toggle_voice_notch(self) -> None:
+        if hasattr(self.main_window, "toggle_voice_notch"):
+            self.main_window.toggle_voice_notch()
 
     def restart_app(self) -> None:
         executable = sys.executable

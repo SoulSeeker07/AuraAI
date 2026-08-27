@@ -3,54 +3,6 @@
     "role": "user",
     "content": "stop listening",
     "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:09:39.550999"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:09:39.550999"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:09:43.761068"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:09:43.761068"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:09:43.770067"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:09:43.770067"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:10:00.544425"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:10:00.544425"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
     "timestamp": "2026-08-27T02:10:00.552431"
   },
   {
@@ -358,5 +310,53 @@
     "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
     "topic": "Start Listening",
     "timestamp": "2026-08-27T17:55:25.315902"
+  },
+  {
+    "role": "user",
+    "content": "open Google Chrome",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T22:25:32.354802"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Google Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T22:25:32.354802"
+  },
+  {
+    "role": "user",
+    "content": "open Google Chrome",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T22:27:48.053099"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Google Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T22:27:48.053099"
+  },
+  {
+    "role": "user",
+    "content": "Open Google Chrome.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T22:57:15.594325"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Google Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-27T22:57:15.594325"
+  },
+  {
+    "role": "user",
+    "content": "Open up and open.",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-27T22:57:29.049527"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ✓ Up is open.; No backend available for capability 'unknown_action'",
+    "topic": "cognitive_orchestrator",
+    "timestamp": "2026-08-27T22:57:29.049527"
   }
 ]

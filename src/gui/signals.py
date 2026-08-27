@@ -122,6 +122,7 @@ class AppSignals(QObject):
     voice_status_changed = Signal(bool)  # is_active
     voice_level = Signal(float)  # Audio level 0.0-1.0
     voice_state_name_changed = Signal(str)  # FSM state: IDLE, LISTENING, SPEAKING, etc.
+    live_speech_transcribed = Signal(str, bool)  # text, is_final
 
     # ── Screen / Vision ──
     screen_status_changed = Signal(bool, str)  # is_sharing, window_title
@@ -144,6 +145,7 @@ class AppSignals(QObject):
     toggle_system_status_overlay = Signal()
     toggle_agent_task_overlay = Signal()
     toggle_personal_os_overlay = Signal()
+    toggle_voice_notch = Signal()  # Show/hide the VoiceOS-style notch overlay
     show_notification = Signal(str, str)  # title, message
 
 

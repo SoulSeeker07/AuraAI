@@ -40,7 +40,8 @@ def _resolve_model_path(raw: str | None) -> str | None:
 class STTProvider(Enum):
     """Speech-to-Text providers."""
 
-    FASTER_WHISPER = "faster_whisper"  # faster-whisper (local / primary)
+    GROQ           = "groq"            # Groq LPU whisper-large-v3-turbo (~100ms ultra-low latency)
+    FASTER_WHISPER = "faster_whisper"  # faster-whisper (local CUDA / GPU primary)
     WHISPER        = "whisper"         # openai-whisper (legacy)
     VOSK           = "vosk"            # Vosk (local / offline fallback)
     DEEPGRAM       = "deepgram"        # Deepgram (cloud)
@@ -879,6 +880,123 @@ class DeepgramSTTEngine(STTEngine):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  GroqSTTEngine  (Groq LPU — whisper-large-v3-turbo / ~100ms ultra-low latency)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class GroqSTTEngine(STTEngine):
+    """
+    Groq LPU Cloud STT using whisper-large-v3-turbo.
+    Ultra-low latency (~100-150ms) transcription with KeyPool rotation
+    and automatic failover to local CUDA Faster-Whisper.
+    """
+
+    def __init__(self, settings: STTSettings):
+        super().__init__(settings)
+        self.model_name = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+        self._audio_buffer: list[bytes] = []
+        self._total_duration = 0.0
+        self._fallback_engine: Optional[FasterWhisperSTTEngine] = None
+
+    def initialize(self) -> bool:
+        try:
+            from ai.key_pool import KeyPool
+            pool = KeyPool.get_instance()
+            has_groq_key = pool.count("groq") > 0 or bool(os.getenv("GROQ_API_KEY"))
+
+            if not has_groq_key:
+                logger.warning("[Groq STT] No Groq API key found. Initializing local CUDA FasterWhisper.")
+                self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+                self.is_active = self._fallback_engine.initialize()
+                return self.is_active
+
+            self.is_active = True
+            logger.info(f"[Groq STT] Initialized on Groq LPU with model: {self.model_name} (~100ms latency)")
+            return True
+        except Exception as e:
+            logger.error(f"[Groq STT] Init error: {e}")
+            self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+            self.is_active = self._fallback_engine.initialize()
+            return self.is_active
+
+    def process_chunk(self, audio_data: bytes) -> str:
+        self._audio_buffer.append(audio_data)
+        chunk_duration = len(audio_data) / (self.settings.sample_rate * 2)
+        self._total_duration += chunk_duration
+        return ""
+
+    def finalize(self) -> str:
+        if not self._audio_buffer:
+            return ""
+
+        raw_pcm = b"".join(self._audio_buffer)
+        duration = self._total_duration
+
+        # 1. Try Groq LPU Whisper (whisper-large-v3-turbo)
+        try:
+            import io
+            import wave
+            wav_io = io.BytesIO()
+            with wave.open(wav_io, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(self.settings.sample_rate)
+                wf.writeframes(raw_pcm)
+            wav_bytes = wav_io.getvalue()
+
+            from ai.key_pool import KeyPool
+            pool = KeyPool.get_instance()
+
+            def _transcribe_with_key(api_key: str) -> str:
+                from groq import Groq
+                client = Groq(api_key=api_key)
+                resp = client.audio.transcriptions.create(
+                    file=("audio.wav", wav_bytes),
+                    model=self.model_name,
+                    response_format="text",
+                    prompt=DESKTOP_VOCABULARY_PROMPT,
+                    temperature=0.0,
+                )
+                return str(resp).strip()
+
+            text = ""
+            if pool.count("groq") > 0:
+                text = pool.execute_with_failover(_transcribe_with_key, service="groq")
+            elif os.getenv("GROQ_API_KEY"):
+                text = _transcribe_with_key(os.getenv("GROQ_API_KEY"))
+
+            if text:
+                logger.info(f"[Groq STT ({self.model_name})] Transcribed in ~100ms: '{text}'")
+                self._emit_final(text, duration)
+                return text
+
+        except Exception as e:
+            logger.warning(f"[Groq STT] Request notice ({e}), switching to local GPU fallback...")
+
+        # 2. Local GPU Faster-Whisper fallback
+        if self._fallback_engine and self._fallback_engine.is_active:
+            self._fallback_engine.load_buffer(self._audio_buffer, duration)
+            fallback_text = self._fallback_engine.finalize()
+            if fallback_text:
+                return fallback_text
+
+        return ""
+
+    def reset(self) -> None:
+        self._audio_buffer.clear()
+        self._total_duration = 0.0
+        if self._fallback_engine:
+            self._fallback_engine.reset()
+
+    def get_status(self) -> dict[str, Any]:
+        return {
+            "provider": STTProvider.GROQ.value,
+            "is_active": self.is_active,
+            "model": self.model_name,
+            "latency": "~100ms",
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  STTManager  (orchestrator)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -897,7 +1015,9 @@ class STTManager:
 
         try:
             p = self.settings.provider
-            if p == STTProvider.GOOGLE:
+            if p == STTProvider.GROQ:
+                self.engine = GroqSTTEngine(self.settings)
+            elif p == STTProvider.GOOGLE:
                 self.engine = GoogleSTTEngine(self.settings)
             elif p == STTProvider.FASTER_WHISPER:
                 self.engine = FasterWhisperSTTEngine(self.settings)

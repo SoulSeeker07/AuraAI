@@ -113,13 +113,17 @@ class VoiceManager:
         if settings is None:
             settings = {}
 
-        provider_env = os.getenv("STT_PROVIDER", STTProvider.GOOGLE.value).lower()
-        if provider_env in ("faster_whisper", "local", "whisper"):
+        provider_env = os.getenv("STT_PROVIDER", "groq").lower()
+        if provider_env in ("groq", "whisper-turbo", "whisper_turbo"):
+            stt_prov = STTProvider.GROQ.value
+        elif provider_env in ("faster_whisper", "local", "whisper", "cuda"):
             stt_prov = STTProvider.FASTER_WHISPER.value
-        else:
+        elif provider_env in ("google", "gtts"):
             stt_prov = STTProvider.GOOGLE.value
+        else:
+            stt_prov = STTProvider.GROQ.value
 
-        stt_lang = os.getenv("STT_LANGUAGE", "en-in")
+        stt_lang = os.getenv("STT_LANGUAGE", "en")
 
         defaults = {
             "vad_mode": VADMode.BOTH.value,
@@ -315,6 +319,13 @@ class VoiceManager:
 
                 # Process VAD
                 vad_state, energy = self.vad.process_audio(audio_data, sample_rate)
+                if energy is not None:
+                    try:
+                        from gui.signals import app_signals
+                        norm_level = min(1.0, max(0.0, float(energy) * 2.5))
+                        app_signals.voice_level.emit(norm_level)
+                    except Exception:
+                        pass
 
                 # Update barge-in handler
                 self.barge_in_handler.set_aura_speaking(

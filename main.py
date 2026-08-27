@@ -266,6 +266,8 @@ Modes:
 
     parser.add_argument("--gui", action="store_true", help="Run in GUI mode")
 
+    parser.add_argument("--notch", "--voice", action="store_true", help="Launch Voice Notch overlay (Dynamic Island HUD)")
+
     parser.add_argument("--tts", "--speak", action="store_true", help="Speak Aura's response aloud using Text-to-Speech")
 
     parser.add_argument("--workspace", type=str, help="Override workspace path")
@@ -294,10 +296,16 @@ Modes:
         verifier = AuraVerifier(project_root=PROJECT_ROOT)
         success = verifier.run_verify()
         sys.exit(0 if success else 1)
+    elif args.notch:
+        import run_voice_notch
+        return run_voice_notch.main()
     elif args.gui:
         # GUI mode
         gui_client = main_gui()
         return gui_client
+    elif query_text.lower() in ("notch", "voice"):
+        import run_voice_notch
+        return run_voice_notch.main()
     else:
         # CLI mode (interactive or one-shot query)
         asyncio.run(main_cli(query_text, tts_enabled=args.tts))

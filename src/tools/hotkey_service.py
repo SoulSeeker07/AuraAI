@@ -23,11 +23,15 @@ MOD_CONTROL = 0x0002
 MOD_NOREPEAT = 0x4000
 VK_SPACE = 0x20
 VK_Q = 0x51
+VK_N = 0x4E
+VK_V = 0x56
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
 
 HOTKEY_ALT_SPACE = 9001
 HOTKEY_CTRL_Q = 9002
+HOTKEY_ALT_N = 9003
+HOTKEY_ALT_V = 9004
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -99,6 +103,22 @@ class GlobalHotkeyService:
         else:
             logger.warning(f"[GlobalHotkeyService] Win32 Ctrl+Q registration failed (Error: {ctypes.GetLastError()}).")
 
+        # 3. Register Alt + N (ID 9003) - Voice Notch
+        user32.RegisterHotKey(
+            None,
+            HOTKEY_ALT_N,
+            MOD_ALT | MOD_NOREPEAT,
+            VK_N,
+        )
+
+        # 4. Register Alt + V (ID 9004) - Voice Toggle
+        user32.RegisterHotKey(
+            None,
+            HOTKEY_ALT_V,
+            MOD_ALT | MOD_NOREPEAT,
+            VK_V,
+        )
+
         # Win32 Message Loop
         msg = ctypes.wintypes.MSG()
         while self._running:
@@ -112,6 +132,8 @@ class GlobalHotkeyService:
                     self._on_alt_space()
                 elif hotkey_id == HOTKEY_CTRL_Q:
                     self._on_ctrl_q()
+                elif hotkey_id in (HOTKEY_ALT_N, HOTKEY_ALT_V):
+                    self._on_alt_n()
 
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
@@ -119,6 +141,17 @@ class GlobalHotkeyService:
         # Cleanup
         user32.UnregisterHotKey(None, HOTKEY_ALT_SPACE)
         user32.UnregisterHotKey(None, HOTKEY_CTRL_Q)
+        user32.UnregisterHotKey(None, HOTKEY_ALT_N)
+        user32.UnregisterHotKey(None, HOTKEY_ALT_V)
+
+    def _on_alt_n(self) -> None:
+        """Triggered on Alt+N or Alt+V anywhere on Windows."""
+        logger.info("[GlobalHotkeyService] Alt+N/Alt+V detected -> Toggling Voice Notch.")
+        try:
+            from gui.signals import app_signals
+            app_signals.toggle_voice_notch.emit()
+        except Exception as e:
+            logger.debug(f"[GlobalHotkeyService] Signal emit error: {e}")
 
     def _on_alt_space(self) -> None:
         """Triggered on Alt+Space anywhere."""

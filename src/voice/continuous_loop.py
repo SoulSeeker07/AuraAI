@@ -364,6 +364,11 @@ class ContinuousVoiceLoop:
             if self._followup_timer is not None:
                 self._followup_timer.cancel()
                 self._followup_timer = None
+        try:
+            from gui.signals import app_signals
+            app_signals.live_speech_transcribed.emit(transcript, True)
+        except Exception:
+            pass
         self._turn_telemetry["T4_stt"] = time.time()
 
         if (
@@ -477,6 +482,12 @@ class ContinuousVoiceLoop:
             if tentative:
                 output += f"\033[2m{tentative}\033[0m"
             _safe_print(output, end="", flush=True)
+            try:
+                from gui.signals import app_signals
+                full_live = f"{confirmed} {tentative}".strip()
+                app_signals.live_speech_transcribed.emit(full_live, False)
+            except Exception:
+                pass
 
     def _on_state_change(self, new_state: Any) -> None:
         """Callback when underlying VoiceManager state changes."""
@@ -690,6 +701,11 @@ class ContinuousVoiceLoop:
                 # Speak full synthesized response as a unified utterance
                 complete_text = " ".join(full_response_parts).strip()
                 if self._running and complete_text:
+                    try:
+                        from gui.signals import app_signals
+                        app_signals.message_received.emit("Aura", complete_text, False)
+                    except Exception:
+                        pass
                     self.voice_manager.speak(complete_text)
 
             except Exception as e:

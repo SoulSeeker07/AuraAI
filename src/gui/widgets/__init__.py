@@ -21,6 +21,7 @@ from .chat_window_overlay import ChatWindowOverlay
 from .jarvis_rings_overlay import JarvisRingsOverlay
 from .tactical_telemetry_widget import TacticalTelemetryWidget
 from .tactical_voice_waveform_widget import TacticalVoiceWaveformWidget
+from .voice_notch_overlay import VoiceNotchOverlay
 
 __all__ = [
     "MatrixOverlay",
@@ -42,4 +43,5 @@ __all__ = [
     "JarvisRingsOverlay",
     "TacticalTelemetryWidget",
     "TacticalVoiceWaveformWidget",
+    "VoiceNotchOverlay",
 ]

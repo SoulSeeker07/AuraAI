@@ -92,9 +92,10 @@ from gui.widgets.system_monitor_overlay import SystemMonitorOverlay, TelemetryWo
 from gui.widgets.system_status_overlay import SystemStatusOverlay
 from gui.widgets.agent_task_status_overlay import AgentTaskStatusOverlay
 from gui.widgets.personal_os_dashboard_overlay import PersonalOSDashboardOverlay
-from gui.widgets.chat_window_overlay import ChatWindowOverlay
-from gui.widgets.tactical_telemetry_widget import TacticalTelemetryWidget
-from gui.widgets.tactical_voice_waveform_widget import TacticalVoiceWaveformWidget
+from .widgets.chat_window_overlay import ChatWindowOverlay
+from .widgets.tactical_telemetry_widget import TacticalTelemetryWidget
+from .widgets.tactical_voice_waveform_widget import TacticalVoiceWaveformWidget
+from .widgets.voice_notch_overlay import VoiceNotchOverlay
 from gui.real_backend_bridge import RealBackendBridge
 
 
@@ -627,6 +628,7 @@ class MainWindow(QMainWindow):
         self._task_overlay: Optional[AgentTaskStatusOverlay] = None
         self._personal_os_overlay: Optional[PersonalOSDashboardOverlay] = None
         self._chat_overlay: Optional[ChatWindowOverlay] = None
+        self._voice_notch: Optional[VoiceNotchOverlay] = None
         self._active_worker: Optional[CommandWorker] = None
 
         # Telemetry worker
@@ -827,6 +829,7 @@ class MainWindow(QMainWindow):
         """)
 
         overlays_menu.addAction("💬  Chat HUD", self.toggle_chat_overlay)
+        overlays_menu.addAction("🎙  Voice Notch", self.toggle_voice_notch)
         overlays_menu.addAction("🎯  Personal OS", self.toggle_personal_os_overlay)
         overlays_menu.addAction("📋  Agent Tasks", self.toggle_agent_task_overlay)
         overlays_menu.addAction("🌐  System Status", self.toggle_system_status_overlay)
@@ -2499,6 +2502,7 @@ class MainWindow(QMainWindow):
         app_signals.step_updated.connect(self._on_step_updated)
         app_signals.world_state_changed.connect(self._on_world_state)
         app_signals.toggle_chat_overlay.connect(self.toggle_chat_overlay)
+        app_signals.toggle_voice_notch.connect(self.toggle_voice_notch)
         app_signals.toggle_weather_overlay.connect(self.toggle_weather_overlay)
         app_signals.toggle_system_overlay.connect(self.toggle_system_overlay)
         app_signals.toggle_system_status_overlay.connect(self.toggle_system_status_overlay)
@@ -2662,6 +2666,19 @@ class MainWindow(QMainWindow):
             self._chat_overlay.show()
             self._chat_overlay.raise_()
             self._chat_overlay.activateWindow()
+
+    def toggle_voice_notch(self):
+        if self._voice_notch is None:
+            self._voice_notch = VoiceNotchOverlay()
+        if self._voice_notch.isVisible():
+            self._voice_notch.hide()
+        else:
+            self._voice_notch.show()
+            self._voice_notch.raise_()
+            self._voice_notch._position_at_top()
+            if not getattr(self, "_mic_active", False):
+                self._on_mic_toggle()
+
 
     # -------------------------------------------------------------------------
     # GEOMETRY PERSISTENCE (QSETTINGS) & AUTO LAPTOP RESIZING
