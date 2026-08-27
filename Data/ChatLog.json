@@ -1,78 +1,6 @@
 [
   {
     "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:28.146240"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:28.146240"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:33.184490"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:33.184490"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:33.192499"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:33.192499"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:41.788224"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:41.788224"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:41.796470"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:41.796470"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:09:39.544001"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:09:39.544001"
-  },
-  {
-    "role": "user",
     "content": "stop listening",
     "topic": "Stop Listening",
     "timestamp": "2026-08-27T02:09:39.550999"
@@ -358,5 +286,77 @@
     "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **extract_text**: `{'description': ''}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
     "topic": "Open Chrome",
     "timestamp": "2026-08-27T17:27:30.917162"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-27T17:52:21.874955"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi! How can I help you today?",
+    "topic": "General",
+    "timestamp": "2026-08-27T17:52:21.874955"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-27T17:52:21.882969"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi! How can I help you today?",
+    "topic": "General",
+    "timestamp": "2026-08-27T17:52:21.882969"
+  },
+  {
+    "role": "user",
+    "content": "start lisitening",
+    "topic": "Start Lisitening",
+    "timestamp": "2026-08-27T17:54:12.811624"
+  },
+  {
+    "role": "assistant",
+    "content": "❌ Application 'lisitening' not found on system.",
+    "topic": "Start Lisitening",
+    "timestamp": "2026-08-27T17:54:12.811624"
+  },
+  {
+    "role": "user",
+    "content": "start lisitening",
+    "topic": "Start Lisitening",
+    "timestamp": "2026-08-27T17:54:12.819952"
+  },
+  {
+    "role": "assistant",
+    "content": "❌ Application 'lisitening' not found on system.",
+    "topic": "Start Lisitening",
+    "timestamp": "2026-08-27T17:54:12.819952"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T17:55:25.303816"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T17:55:25.303816"
+  },
+  {
+    "role": "user",
+    "content": "start listening",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T17:55:25.315902"
+  },
+  {
+    "role": "assistant",
+    "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
+    "topic": "Start Listening",
+    "timestamp": "2026-08-27T17:55:25.315902"
   }
 ]
