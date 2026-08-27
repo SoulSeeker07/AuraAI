@@ -5,7 +5,7 @@ import logging
 import re
 from typing import Optional
 
-from ai.exceptions import ProviderNotConfiguredError
+from ai.exceptions import KeyPoolExhaustedError, ProviderNotConfiguredError
 from ai.key_pool import KeyPool
 from ai.models import ChatRequest, ProviderCapabilities, ProviderResponse, VisionRequest
 from ai.provider import Provider
@@ -147,6 +147,50 @@ class GroqProvider(Provider):
             parts = text.split("<think>")
             text = parts[0].strip() if parts[0].strip() else (parts[-1].split("</think>")[-1].strip() if "</think>" in text else "")
         return ProviderResponse(text=text.strip(), provider="groq", model=model)
+
+    def chat_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        model: Optional[str] = None,
+        temperature: float = 0.0,
+    ) -> Any:
+        """Execute chat completions with function/tool calling through centralized KeyPool failover."""
+        has_image = any(
+            isinstance(m.get("content"), list) and any(item.get("type") == "image_url" for item in m.get("content", []))
+            for m in messages if isinstance(m, dict)
+        )
+        if has_image:
+            chosen_model = self.vision_model
+        else:
+            chosen_model = model or self.default_model
+
+        def _do_call(key: str):
+            client = self._get_client(key)
+            return client.chat.completions.create(
+                model=chosen_model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                temperature=temperature,
+            )
+
+        try:
+            return self._key_pool.execute_with_failover(_do_call, service="groq")
+        except (KeyPoolExhaustedError, ProviderNotConfiguredError) as exc:
+            logger.debug("[GroqProvider] KeyPool exhausted: %s, checking fallback key", exc)
+            fallback_key = self.api_key or os.getenv("GROQ_API_KEY")
+            pool_keys = self._key_pool.get_all_keys("groq")
+            if fallback_key and fallback_key not in pool_keys:
+                client = self._get_client(fallback_key)
+                return client.chat.completions.create(
+                    model=chosen_model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    temperature=temperature,
+                )
+            raise
 
     def _get_client(self, api_key: Optional[str] = None):
         key = api_key or self.api_key

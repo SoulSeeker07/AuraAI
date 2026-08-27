@@ -43,5 +43,18 @@ class ProviderManager:
     ) -> ProviderResponse:
         return self.get(provider).vision(request)
 
+    def chat_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        model: str | None = None,
+        temperature: float = 0.0,
+        provider: str | None = None,
+    ) -> Any:
+        p = self.get(provider)
+        if hasattr(p, "chat_with_tools"):
+            return p.chat_with_tools(messages, tools, model=model, temperature=temperature)
+        raise NotImplementedError(f"Provider {p} does not support chat_with_tools")
+
     def capabilities(self, provider: str | None = None) -> ProviderCapabilities:
         return self.get(provider).capabilities

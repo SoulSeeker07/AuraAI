@@ -219,7 +219,8 @@ class KeyPool:
         """
         keys = self.get_all_keys(service)
         if not keys:
-            raise RuntimeError(f"No API keys configured for {service}.")
+            from ai.exceptions import KeyPoolExhaustedError
+            raise KeyPoolExhaustedError(f"No API keys configured for {service}.")
 
         attempts = max_retries or len(keys)
         last_exception: Optional[Exception] = None
@@ -230,8 +231,10 @@ class KeyPool:
                 return operation(key)
             except Exception as exc:
                 err_str = str(exc).lower()
+                status_code = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
                 is_rate_limit = (
-                    "429" in err_str
+                    status_code == 429
+                    or "429" in err_str
                     or "rate_limit" in err_str
                     or "rate limit" in err_str
                     or "tokens per day" in err_str
@@ -261,6 +264,7 @@ class KeyPool:
                     # Non-rate-limit error: re-raise immediately
                     raise
 
+        from ai.exceptions import KeyPoolExhaustedError
         if last_exception:
-            raise last_exception
-        raise RuntimeError(f"Failed to execute operation across all {attempts} {service} keys.")
+            raise KeyPoolExhaustedError(f"All {attempts} {service} keys rate-limited: {last_exception}") from last_exception
+        raise KeyPoolExhaustedError(f"Failed to execute operation across all {attempts} {service} keys.")

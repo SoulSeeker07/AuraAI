@@ -3,54 +3,6 @@
     "role": "user",
     "content": "start listening",
     "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:10.951576"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:10.951576"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:12.415573"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:12.415573"
-  },
-  {
-    "role": "user",
-    "content": "stop listening",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:12.428092"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Deactivated.** Microphone is idle.",
-    "topic": "Stop Listening",
-    "timestamp": "2026-08-27T02:08:12.428092"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:13.401557"
-  },
-  {
-    "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Listening for voice commands.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T02:08:13.401557"
-  },
-  {
-    "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
     "timestamp": "2026-08-27T02:08:13.411557"
   },
   {
@@ -358,5 +310,53 @@
     "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://www.flipkart.com/search?q=add+samsung+s24+ultra+cart (Title: 'Add Samsung S24 Ultra Cart- Buy Products Online at Best Price in India - All Categories | Flipkart.com').; Verified browser authentication context.",
     "topic": "cognitive_orchestrator",
     "timestamp": "2026-08-27T12:40:52.432561"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:54:35.739604"
+  },
+  {
+    "role": "assistant",
+    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:54:35.739604"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:54:35.751352"
+  },
+  {
+    "role": "assistant",
+    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:54:35.751352"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:58:20.164135"
+  },
+  {
+    "role": "assistant",
+    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:58:20.164135"
+  },
+  {
+    "role": "user",
+    "content": "open instagram",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:58:20.175131"
+  },
+  {
+    "role": "assistant",
+    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
+    "topic": "Open Instagram",
+    "timestamp": "2026-08-27T12:58:20.175131"
   }
 ]

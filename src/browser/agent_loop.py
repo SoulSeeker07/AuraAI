@@ -31,7 +31,7 @@ from browser.paused_session import PausedSession, PausedSessionStore
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.getenv("AURA_AGENT_MODEL", "qwen/qwen3.6-27b")
+DEFAULT_MODEL: Optional[str] = os.getenv("AURA_AGENT_MODEL", None)
 DEFAULT_MAX_STEPS = 15
 
 
@@ -78,9 +78,10 @@ Key Directives:
 
 
 def _should_keep_browser_open(goal: str, headless: bool) -> bool:
+    # Always keep the browser open when visible so the user can use and view the webpage
     if not headless:
         return True
-    keep_keywords = ["cart", "buy", "order", "checkout", "login", "open", "keep open", "book", "reserve"]
+    keep_keywords = ["cart", "buy", "order", "checkout", "login", "open", "keep open", "book", "reserve", "instagram", "youtube", "flipkart", "amazon"]
     return any(k in goal.lower() for k in keep_keywords)
 
 
@@ -93,31 +94,29 @@ def _run_loop(
     model: str,
     max_steps: int,
     step_log: List[Dict[str, Any]],
+    candidate_trace_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     The actual turn loop, shared by run_goal() and resume_goal(). Does NOT
     own the session's lifecycle — the caller decides whether to close it,
     based on the returned status.
     """
-    from groq import Groq
+    from ai.groq_provider import GroqProvider
+    from browser.experience_store import BrowserExperienceStore
+
+    provider = GroqProvider()
 
     for step in range(max_steps):
-        def _call_groq(api_key: str):
-            c = Groq(api_key=api_key) if api_key else Groq()
-            return c.chat.completions.create(
-                model=model,
+        try:
+            resp = provider.chat_with_tools(
                 messages=messages,
                 tools=TOOL_SCHEMAS,
-                tool_choice="auto",
+                model=model,
                 temperature=0.0,
             )
-
-        try:
-            from ai.key_pool import KeyPool
-            resp = KeyPool.get_instance().execute_with_failover(_call_groq, service="groq")
         except Exception as ex:
-            logger.debug("[AgentLoop] KeyPool failover fallback: %s", ex)
-            resp = _call_groq(os.getenv("GROQ_API_KEY", ""))
+            logger.debug("[AgentLoop] Provider chat_with_tools error: %s", ex)
+            raise
 
         msg = resp.choices[0].message
         asst_msg = {"role": "assistant", "content": msg.content or ""}
@@ -145,6 +144,29 @@ def _run_loop(
                 status = "SUCCESS" if name == "done" else "ASK_USER"
                 summary = args.get("summary") if name == "done" else args.get("reason")
                 keep_open = _should_keep_browser_open(goal, session.headless)
+
+                # Persist verified trace to episodic memory on verified SUCCESS
+                if status == "SUCCESS":
+                    try:
+                        selectors = []
+                        for s in step_log:
+                            s_args = s.get("args", {})
+                            for k in ("selector", "query", "text", "url"):
+                                if s_args.get(k):
+                                    selectors.append(str(s_args[k]))
+                        dom = BrowserExperienceStore.get_instance()._extract_domain(tools.page.url if tools.page else goal)
+                        BrowserExperienceStore.get_instance().record_trace(
+                            domain=dom,
+                            goal=goal,
+                            action_sequence=[{"tool": s["tool"], "args": s["args"]} for s in step_log if "tool" in s],
+                            selectors_used=selectors,
+                            success=True,
+                            confidence=1.0,
+                            summary=summary or "",
+                        )
+                    except Exception as ex:
+                        logger.debug("[AgentLoop] Experience recording notice: %s", ex)
+
                 if keep_open:
                     PausedSessionStore.get_instance().save(
                         PausedSession(
@@ -191,12 +213,21 @@ def _run_loop(
                 }
 
             clean_args = {k: v for k, v in args.items() if v is not None}
+            failure_type = None
             try:
                 result = getattr(tools, name)(**clean_args)
             except ToolExecutionError as ex:
                 result = {"error": str(ex)}
+                failure_type = "hard"
             except Exception as ex:
                 result = {"error": f"Tool execution failed: {ex}"}
+                failure_type = "soft"
+
+            # Staleness Invalidation: if candidate trace had a selector that failed, discount its confidence
+            if isinstance(result, dict) and "error" in result and candidate_trace_id and failure_type:
+                BrowserExperienceStore.get_instance().discount_trace(
+                    candidate_trace_id, failure_type=failure_type, reason=f"Tool '{name}' error: {result['error']}"
+                )
 
             gate.record_outcome(name, args, gate_result["risk"], "EXECUTED")
             step_log.append({"step": step, "tool": name, "args": args, "result": result})
@@ -240,6 +271,28 @@ def run_goal(goal: str, start_url: Optional[str] = None, max_steps: int = DEFAUL
     ]
     step_log: List[Dict[str, Any]] = []
 
+    # Episodic Memory Recall (Candidate Hypothesis)
+    candidate_trace_id = None
+    try:
+        from browser.experience_store import BrowserExperienceStore
+        exp_store = BrowserExperienceStore.get_instance()
+        candidate = exp_store.retrieve_trace(domain="", goal=goal)
+        if candidate:
+            candidate_trace_id = candidate.get("trace_id")
+            steps_preview = "\n".join(
+                [f"   - Step {i+1}: `{a.get('tool')}` {json.dumps(a.get('args', {}))}" for i, a in enumerate(candidate.get("action_sequence", [])[:4])]
+            )
+            messages.append({
+                "role": "user",
+                "content": (
+                    f"💡 [Episodic Memory Candidate Trace — Domain: {candidate.get('domain')}, Confidence: {candidate.get('confidence'):.2f}]\n"
+                    f"Prior verified trace hypothesis:\n{steps_preview}\n\n"
+                    "⚠️ CLOSED-LOOP VERIFICATION MANDATE: Treat this strictly as a candidate hypothesis. You MUST observe the live DOM and verify before every click/type action. Never assume cached selectors still exist without live confirmation."
+                ),
+            })
+    except Exception as ex:
+        logger.debug("[AgentLoop] Experience recall notice: %s", ex)
+
     session = BrowserSession()
     session.__enter__()
     tools = BrowserTools(session)
@@ -266,8 +319,11 @@ def run_goal(goal: str, start_url: Optional[str] = None, max_steps: int = DEFAUL
                 "steps": step_log,
             }
 
-    result = _run_loop(session, tools, gate, goal, messages, model, max_steps, step_log)
-    if result.pop("close_session", True):
+    result = _run_loop(session, tools, gate, goal, messages, model, max_steps, step_log, candidate_trace_id=candidate_trace_id)
+    if not session.headless:
+        result["close_session"] = False
+
+    if result.pop("close_session", False):
         session.__exit__(None, None, None)
     return result
 

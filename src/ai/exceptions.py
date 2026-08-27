@@ -8,3 +8,7 @@ class ProviderNotConfiguredError(ProviderError):
 
 class ProviderNotFoundError(ProviderError):
     """Raised when a requested provider is not registered."""
+
+
+class KeyPoolExhaustedError(ProviderError):
+    """Raised when all API keys in the rotation pool are exhausted or rate-limited."""

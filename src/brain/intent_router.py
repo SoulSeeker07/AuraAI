@@ -178,7 +178,7 @@ class IntentRouter:
             logger.info("[IntentRouter] Intent detected: restart_aura")
             return Intent("restart_aura")
 
-        # Use ResearchDecision to determine if research is needed
+        # Use ResearchDecision to determine if research or web lookup is needed
         needs_research, reason, search_mode = self.research_decision.analyze(user_input)
 
         logger.info(
@@ -186,15 +186,8 @@ class IntentRouter:
         )
 
         if needs_research:
-            intent_type = (
-                "web_search"
-                if search_mode == SearchMode.QUICK
-                else (
-                    "deep_research" if search_mode == SearchMode.DEEP else "web_search"
-                )
-            )
-            logger.info(f"[IntentRouter] Intent detected: {intent_type}")
-            return Intent(intent_type, {"mode": search_mode.value})
+            logger.info("[IntentRouter] Web research requested -> routing to autonomous_browser")
+            return Intent("autonomous_browser", {"goal": user_input, "mode": search_mode.value})
 
         logger.info("[IntentRouter] Intent detected: provider_chat")
         return Intent("provider_chat")
@@ -555,30 +548,45 @@ class IntentRouter:
         clean = re.sub(r"^aura\s+", "", normalized).strip()
         site_names = (
             "wikipedia", "amazon", "google", "youtube", "github", "reddit",
-            "flipkart", "ebay", "twitter", "flights", "flight", "browser",
-            "website", "webpage", "web page"
+            "flipkart", "ebay", "twitter", "x.com", "instagram", "facebook",
+            "linkedin", "myntra", "ajio", "meesho", "swiggy", "zomato", "zepto",
+            "blinkit", "netflix", "spotify", "chatgpt", "gmail", "walmart",
+            "makemytrip", "booking.com", "airbnb", "irctc", "weather.com",
+            "stackoverflow", "quora", "medium", "imdb", "cricbuzz", "flights",
+            "flight", "browser", "website", "webpage", "web page", "chrome"
         )
         browser_verbs = (
-            "go to", "navigate to", "open", "browse to", "search", "find",
-            "scroll", "click", "type", "add to cart", "checkout", "book", "buy",
-            "add", "cart", "order", "purchase"
+            "go to", "navigate to", "open", "browse to", "browse", "search", "find",
+            "scroll", "click", "type", "add to cart", "add in cart", "checkout", "book", "buy",
+            "add", "cart", "order", "purchase", "check price", "look up", "play", "track", "visit"
         )
+        # Any mention of a known site or domain
         if any(f"go to {s}" in clean for s in site_names) or any(f"navigate to {s}" in clean for s in site_names):
             return True
         if any(f"in {s}" in clean or f"on {s}" in clean for s in site_names):
             return True
-        if re.search(r"\bgo to\s+[a-zA-Z0-9_\-\.]+\.(com|org|net|io|in|edu|gov|co)\b", clean):
+        if any(f"{s}.com" in clean or f"{s}.in" in clean or f"{s}.org" in clean or f"{s}.net" in clean for s in site_names):
             return True
-        if re.search(r"\bhttps?://[^\s]+", clean):
+        # Any URL or domain pattern
+        if re.search(r"\b[a-zA-Z0-9_\-\.]+\.(com|org|net|io|in|co|co\.in|ai|app|dev|edu|gov)\b", clean):
             return True
+        if re.search(r"\bhttps?://[^\s]+", clean) or clean.startswith("www."):
+            return True
+        # Any site name combined with an action verb
         if any(s in clean for s in site_names) and any(v in clean for v in browser_verbs):
             return True
+        # Any explicit web search or browsing phrasing
         if any(clean.startswith(t) for t in (
-            "browse to", "browse ", "open browser", "search web for",
-            "search google for", "search wikipedia for", "search youtube for",
-            "search amazon for", "search flipkart for", "find flight", "find cheapest flight", "add to cart",
-            "click on screen", "look at screen", "in amazon", "in flipkart", "on amazon", "on flipkart"
+            "browse to", "browse ", "open browser", "search web", "search internet",
+            "search google", "search wikipedia", "search youtube", "search amazon",
+            "search flipkart", "search online", "look up on web", "find flight",
+            "find cheapest flight", "add to cart", "buy on", "order on",
+            "click on screen", "look at screen", "in amazon", "in flipkart", "on amazon",
+            "on flipkart", "in youtube", "on youtube", "in google", "on google", "open in chrome", "open website"
         )):
+            return True
+        # Any general web search query like "search for ... on the web" or "find ... online"
+        if "on the web" in clean or "in the web" in clean or "on internet" in clean or "online" in clean or "in browser" in clean:
             return True
         return False
 

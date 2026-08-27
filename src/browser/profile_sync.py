@@ -107,15 +107,15 @@ def sync_chrome_profile(
                     except Exception:
                         pass
 
-        # 4. Copy Local Storage & Session Storage for modern web sessions & auth tokens
-        for storage_dir_name in ["Local Storage", "Session Storage"]:
+        # 4. Copy Local Storage, Session Storage & IndexedDB for modern web sessions & auth tokens
+        for storage_dir_name in ["Local Storage", "Session Storage", "IndexedDB"]:
             src_storage = src_prof / storage_dir_name
             dst_storage = dst_prof / storage_dir_name
             if src_storage.exists():
                 try:
-                    shutil.copytree(src_storage, dst_storage, dirs_exist_ok=True)
-                except Exception:
-                    pass
+                    shutil.copytree(src_storage, dst_storage, dirs_exist_ok=True, ignore=shutil.ignore_patterns("*.lock", "*.tmp", "*LOCK*"))
+                except Exception as ex:
+                    logger.debug(f"[ProfileSync] Storage sync notice for {storage_dir_name}: {ex}")
 
     logger.info(f"[ProfileSync] Profile '{target_profile_dir}' synced to {dst_root}")
     return dst_root
