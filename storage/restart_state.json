@@ -1,0 +1,20 @@
+{
+  "timestamp": 1787869748.968906,
+  "iso_time": "2026-08-28 03:59:08",
+  "pid": 13460,
+  "argv": [
+    "D:\\Sreekanta\\VS Code Project\\Desktop AI\\AuraAI\\run_voice_notch.py"
+  ],
+  "executable": "D:\\Sreekanta\\VS Code Project\\Desktop AI\\AuraAI\\.venv\\Scripts\\python.exe",
+  "cwd": "D:\\Sreekanta\\VS Code Project\\Desktop AI\\AuraAI",
+  "running_tasks": [],
+  "active_routines": [
+    {
+      "id": "trig_mem_consolidate",
+      "goal": "Consolidate daily facts and Chroma vector store topic indexing",
+      "schedule": "every 2h"
+    }
+  ],
+  "extra": {},
+  "recent_history": []
+}

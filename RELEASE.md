@@ -4,6 +4,19 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v1.1.0-voiceos-hud`] - 2026-08-28
+
+### Added
+- **Milestone 31 — VoiceOS Holographic Neural Notch HUD & Dedicated Live Log Console (COMPLETE)**:
+  - **Voice Notch Dynamic Island HUD** (`src/gui/widgets/voice_notch_overlay.py`, `run_voice_notch.py`): Compact always-on-top HUD pinned flush to the top display edge/taskbar. Implements dynamic geometry morphing with state transitions across `IDLE`, `LISTENING`, `PROCESSING`, `SUCCESS`, and `EXPANDED`.
+  - **Hardware-Linked Rainbow Spectrum Visualizer**: Multi-frequency rainbow audio visualizer linked directly to live PortAudio/microphone input signals (`app_signals.voice_level`).
+  - **Context-Aware Dynamic Action Cards**: Automatically generates situational action cards (`desktop`, `web`, `file`, `chat`) and clickable source chips (`_extract_sources`) derived from real execution output, with automatic clean-slate resetting on new queries.
+  - **Auto-Expanding 5-Second Result Lifecycle**: Automatically morphs to expanded view on AI reply, displays complete transcript and metadata for 5 seconds, auto-collapses to idle, and allows instant hover recall of previous results.
+  - **Dedicated Live System Logs Console** (`src/gui/widgets/live_log_viewer_overlay.py`, `run_log_viewer.py`): Sub-millisecond binary seek tailing (`_tail_file`) of active session logs, engine traces, and `Data/ChatLog.json`. Includes 6 real-time filter categories (`ALL`, `CHAT`, `INFO`, `DEBUG`, `WARNING`, `ERROR`) with live badge counters, regex search, and auto-scrolling.
+  - **Logs vs. Agent Task Overlay Separation**: Discrete routing ensuring `show logs` toggles the dedicated Log Console while `tasks` / `task status` toggles the `AgentTaskStatusOverlay`.
+
+---
+
 ## [`v1.0.0-holographic-ai-core`] - 2026-08-27
 
 ### Added

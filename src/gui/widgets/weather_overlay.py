@@ -69,7 +69,6 @@ class WeatherOverlay(QWidget):
         super().__init__(parent)
         self.setWindowFlags(
             Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
             | Qt.Tool  # keeps it off the taskbar, HUD-style
         )
         self.setAttribute(Qt.WA_TranslucentBackground)

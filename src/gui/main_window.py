@@ -443,12 +443,12 @@ class SciFiTechCard(QFrame):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class SciFiNavButton(QPushButton):
-    """Tactical Cyber Navigation Tab Button with glowing status bar."""
+    """Next-Gen Futuristic Sci-Fi Navigation Tab Button with glowing holographic badges & power line."""
 
     def __init__(self, code: str, icon_glyph: str, title: str, subtitle: str = "", parent=None):
         super().__init__(parent)
         self.setCheckable(True)
-        self.setFixedHeight(58)
+        self.setFixedHeight(64)
         self.setCursor(Qt.PointingHandCursor)
         self.code = code
         self.icon_glyph = icon_glyph
@@ -460,33 +460,26 @@ class SciFiNavButton(QPushButton):
         if checked:
             self.setStyleSheet("""
                 QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 229, 255, 0.22), stop:1 rgba(15, 22, 35, 0.7));
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 229, 255, 0.18), stop:0.7 rgba(0, 119, 255, 0.08), stop:1 rgba(8, 14, 26, 0.2));
+                    border: 1px solid rgba(0, 229, 255, 0.35);
                     border-left: 4px solid #00e5ff;
-                    border-top: 1px solid rgba(0, 229, 255, 0.35);
-                    border-bottom: 1px solid rgba(0, 229, 255, 0.35);
-                    border-right: none;
-                    color: #00e5ff;
-                    text-align: left;
-                    padding-left: 16px;
-                    font-family: Consolas;
-                    font-weight: bold;
+                    border-radius: 8px;
+                    margin: 2px 8px;
                 }
             """)
         else:
             self.setStyleSheet("""
                 QPushButton {
-                    background: transparent;
-                    border: none;
+                    background: rgba(255, 255, 255, 0.02);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
                     border-left: 4px solid transparent;
-                    color: #7b8c9f;
-                    text-align: left;
-                    padding-left: 16px;
-                    font-family: Consolas;
+                    border-radius: 8px;
+                    margin: 2px 8px;
                 }
                 QPushButton:hover {
-                    background: rgba(255, 255, 255, 0.04);
-                    color: #e2eaf4;
-                    border-left: 4px solid rgba(0, 229, 255, 0.5);
+                    background: rgba(0, 229, 255, 0.08);
+                    border: 1px solid rgba(0, 229, 255, 0.25);
+                    border-left: 4px solid rgba(0, 229, 255, 0.7);
                 }
             """)
 
@@ -499,21 +492,34 @@ class SciFiNavButton(QPushButton):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
 
-        # Render custom HUD typography inside the button
         w, h = self.width(), self.height()
         is_chk = self.isChecked()
 
-        p.setFont(QFont("Segoe UI Emoji", 12))
+        # 1. Holographic Icon Capsule on left
+        icon_box = QRect(16, 12, 38, 40)
+        p.setPen(QPen(QColor(0, 229, 255, 140 if is_chk else 45), 1))
+        p.setBrush(QBrush(QColor(0, 229, 255, 32 if is_chk else 10)))
+        p.drawRoundedRect(icon_box, 6, 6)
+
+        p.setFont(QFont("Segoe UI Emoji", 14))
         p.setPen(QPen(QColor(0, 229, 255) if is_chk else QColor(140, 160, 180)))
-        p.drawText(QRect(18, 12, 28, 32), Qt.AlignVCenter | Qt.AlignLeft, self.icon_glyph)
+        p.drawText(icon_box, Qt.AlignCenter, self.icon_glyph)
 
-        p.setFont(QFont("Consolas", 10, QFont.Bold if is_chk else QFont.Normal))
-        p.setPen(QPen(QColor(245, 248, 255) if is_chk else QColor(165, 178, 195)))
-        p.drawText(QRect(52, 12, w - 80, 18), Qt.AlignVCenter | Qt.AlignLeft, self.title_str.upper())
+        # 2. Main Title Text
+        p.setFont(QFont("Consolas", 10, QFont.Bold))
+        p.setPen(QPen(QColor(255, 255, 255) if is_chk else QColor(180, 195, 215)))
+        p.drawText(QRect(64, 14, w - 74, 18), Qt.AlignVCenter | Qt.AlignLeft, self.title_str.upper())
 
-        p.setFont(QFont("Consolas", 7))
-        p.setPen(QPen(QColor(0, 229, 255, 180) if is_chk else QColor(95, 110, 128)))
-        p.drawText(QRect(52, 32, w - 80, 14), Qt.AlignVCenter | Qt.AlignLeft, f"SYS.{self.code} // {self.sub_str.upper()}")
+        # 3. Next-Gen Subtitle & Code Tag
+        p.setFont(QFont("Consolas", 7, QFont.Bold))
+        p.setPen(QPen(QColor(0, 229, 255, 220) if is_chk else QColor(100, 120, 145)))
+        p.drawText(QRect(64, 34, w - 74, 16), Qt.AlignVCenter | Qt.AlignLeft, f"SYS. {self.code} // {self.sub_str.upper()}")
+
+        # 4. Active Glowing Right Indicator Dot
+        if is_chk:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(0, 229, 255)))
+            p.drawEllipse(QPointF(w - 18, h / 2), 3, 3)
 
         p.end()
 
@@ -581,9 +587,10 @@ class HoloMessageCard(SciFiTechCard):
 
 ORG_NAME = "AuraAI"
 APP_NAME = "MainWindowHUD"
-REF_W, REF_H = 1920, 1080
-MIN_W, MIN_H = 760, 520
-GRIP_SIZE = 20
+REF_W = 1920
+REF_H = 1080
+MIN_W, MIN_H = 1080, 680
+GRIP_SIZE = 18
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -689,11 +696,11 @@ class MainWindow(QMainWindow):
             scroll.setStyleSheet("background: transparent; border: none;")
             return scroll
 
-        # Left Nav Dock (190px)
+        # Left Nav Dock (230px for Full HD spacious layout)
         self._nav_dock = self._build_nav_dock()
-        work_area.addWidget(_wrap_panel(self._nav_dock, 190))
+        work_area.addWidget(_wrap_panel(self._nav_dock, 230))
 
-        # Center Stage Stack (4 Tabs)
+        # Center Stage Stack (3 Tabs: Home / Autonomous Agent OS, Cognition, Settings)
         self._center_stack = QStackedWidget()
         self._center_stack.setObjectName("CenterStage")
         self._center_stack.setStyleSheet("background: #090d15;")
@@ -709,10 +716,7 @@ class MainWindow(QMainWindow):
             return scroll
 
         self._tab_home = self._build_home_tab()
-        self._center_stack.addWidget(_wrap_tab(self._tab_home))
-
-        self._tab_console = self._build_console_tab()
-        self._center_stack.addWidget(_wrap_tab(self._tab_console))
+        self._center_stack.addWidget(self._tab_home)
 
         self._tab_cognition = self._build_cognition_tab()
         self._center_stack.addWidget(_wrap_tab(self._tab_cognition))
@@ -722,9 +726,9 @@ class MainWindow(QMainWindow):
 
         work_area.addWidget(self._center_stack, 1)
 
-        # Right Live Deck (280px)
+        # Right Live Deck (320px for Full HD telemetry)
         self._right_deck = self._build_right_deck()
-        work_area.addWidget(_wrap_panel(self._right_deck, 280))
+        work_area.addWidget(_wrap_panel(self._right_deck, 320))
 
         main_layout.addLayout(work_area, 1)
 
@@ -832,21 +836,57 @@ class MainWindow(QMainWindow):
         overlays_menu.addAction("🎙  Voice Notch", self.toggle_voice_notch)
         overlays_menu.addAction("🎯  Personal OS", self.toggle_personal_os_overlay)
         overlays_menu.addAction("📋  Agent Tasks", self.toggle_agent_task_overlay)
+        overlays_menu.addAction("📜  Live Logs", self.show_agent_task_logs)
         overlays_menu.addAction("🌐  System Status", self.toggle_system_status_overlay)
         overlays_menu.addAction("⚡  System HUD", self.toggle_system_overlay)
         overlays_menu.addAction("☁  Weather HUD", self.toggle_weather_overlay)
         btn_overlays.setMenu(overlays_menu)
         tb_layout.addWidget(btn_overlays)
 
-        tb_layout.addStretch(1)
+        # Dedicated Top Bar Quick Logs Button
+        btn_logs_bar = QPushButton("📜 Logs")
+        btn_logs_bar.setFont(QFont("Segoe UI", 8, QFont.Weight.Medium))
+        btn_logs_bar.setCursor(Qt.PointingHandCursor)
+        btn_logs_bar.setToolTip("Toggle Live System & Multi-Agent Execution Logs")
+        btn_logs_bar.setStyleSheet("""
+            QPushButton {
+                background: rgba(0, 229, 255, 0.08);
+                border: 1px solid rgba(0, 229, 255, 0.3);
+                border-radius: 4px;
+                color: #00e5ff;
+                padding: 3px 10px;
+            }
+            QPushButton:hover {
+                background: rgba(0, 229, 255, 0.22);
+                border: 1px solid #00e5ff;
+                color: #ffffff;
+            }
+        """)
+        btn_logs_bar.clicked.connect(self.show_agent_task_logs)
+        tb_layout.addWidget(btn_logs_bar)
 
-        # Live Top Ticker
-        self._title_ticker = QLabel("CPU: --% | RAM: --GB")
-        self._title_ticker.setFont(QFont("Consolas", 8))
-        self._title_ticker.setStyleSheet("color: #50aaff;")
-        self._title_ticker.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        self._title_ticker.setMinimumWidth(0)
-        tb_layout.addWidget(self._title_ticker)
+        # 6 Autonomous Tool & Policy Guardrail Badges
+        tools = [
+            ("⚡ Terminal & CLI", "#66ff99"),
+            ("🌐 Headless Browser", "#66ff99"),
+            ("📁 File System IO", "#66ff99"),
+            ("🧠 Multi-Agent DAG", "#66ff99"),
+            ("👁️ Vision & Screen", "#66ff99"),
+            ("🔒 Policy Guardrails", "#66ff99"),
+        ]
+        for name, col in tools:
+            badge = QLabel(f"{name} ✓")
+            badge.setFont(QFont("Segoe UI", 7, QFont.Weight.Medium))
+            badge.setStyleSheet(f"""
+                color: {col};
+                background: rgba(0, 229, 255, 0.05);
+                border: 1px solid rgba(0, 229, 255, 0.22);
+                border-radius: 4px;
+                padding: 2px 6px;
+            """)
+            tb_layout.addWidget(badge)
+
+        tb_layout.addStretch(1)
 
         # Clock
         self._title_clock = QLabel()
@@ -918,8 +958,8 @@ class MainWindow(QMainWindow):
     # -------------------------------------------------------------------------
     def _build_nav_dock(self) -> QWidget:
         dock = QWidget()
-        dock.setFixedWidth(190)
-        dock.setStyleSheet("background: #06090f; border-right: 1px solid rgba(255, 255, 255, 0.06);")
+        dock.setFixedWidth(230)
+        dock.setStyleSheet("background: #06090f; border-right: 1px solid rgba(0, 229, 255, 0.15);")
 
         layout = QVBoxLayout(dock)
         layout.setContentsMargins(0, 16, 0, 16)
@@ -945,11 +985,10 @@ class MainWindow(QMainWindow):
         core_box.addLayout(core_info)
         layout.addLayout(core_box)
 
-        # Nav Buttons
+        # Nav Buttons (3 tabs matching Autonomous Agent OS screenshot)
         self._nav_buttons: List[SciFiNavButton] = []
         tabs = [
             ("00", "🏠", "Home", "Control Center"),
-            ("01", "💬", "Console", "Neural Chat"),
             ("02", "🧠", "Cognition", "DAG Planner"),
             ("03", "⚙️", "Settings", "Engine Config"),
         ]
@@ -961,155 +1000,10 @@ class MainWindow(QMainWindow):
 
         layout.addStretch()
 
-        # Standalone HUD Overlay Launcher Box
-        hud_box = QVBoxLayout()
-        hud_box.setContentsMargins(12, 0, 12, 0)
-        hud_box.setSpacing(6)
-
-        h_title = QLabel("STANDALONE HUDS")
-        h_title.setFont(QFont("Consolas", 7, QFont.Bold))
-        h_title.setStyleSheet("color: #50aaff; letter-spacing: 1px;")
-        hud_box.addWidget(h_title)
-
-        # Weather HUD Launch Button
-        btn_weather_hud = QPushButton("☁ Launch Weather HUD")
-        btn_weather_hud.setFont(QFont("Consolas", 8))
-        btn_weather_hud.setCursor(Qt.PointingHandCursor)
-        btn_weather_hud.setStyleSheet("""
-            QPushButton {
-                background: rgba(0, 229, 255, 0.08);
-                border: 1px solid rgba(0, 229, 255, 0.3);
-                border-radius: 4px;
-                color: #00e5ff;
-                padding: 6px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: rgba(0, 229, 255, 0.2);
-                border: 1px solid #00e5ff;
-                color: #ffffff;
-            }
-        """)
-        btn_weather_hud.clicked.connect(self.toggle_weather_overlay)
-        hud_box.addWidget(btn_weather_hud)
-
-        # System Monitor HUD Launch Button
-        btn_sys_hud = QPushButton("⚡ Launch System HUD")
-        btn_sys_hud.setFont(QFont("Consolas", 8))
-        btn_sys_hud.setCursor(Qt.PointingHandCursor)
-        btn_sys_hud.setStyleSheet("""
-            QPushButton {
-                background: rgba(16, 185, 129, 0.08);
-                border: 1px solid rgba(16, 185, 129, 0.3);
-                border-radius: 4px;
-                color: #10b981;
-                padding: 6px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: rgba(16, 185, 129, 0.2);
-                border: 1px solid #10b981;
-                color: #ffffff;
-            }
-        """)
-        btn_sys_hud.clicked.connect(self.toggle_system_overlay)
-        hud_box.addWidget(btn_sys_hud)
-
-        # System Status HUD Launch Button
-        btn_status_hud = QPushButton("🌐 System Status HUD")
-        btn_status_hud.setFont(QFont("Consolas", 8))
-        btn_status_hud.setCursor(Qt.PointingHandCursor)
-        btn_status_hud.setStyleSheet("""
-            QPushButton {
-                background: rgba(102, 255, 153, 0.08);
-                border: 1px solid rgba(102, 255, 153, 0.3);
-                border-radius: 4px;
-                color: #66ff99;
-                padding: 6px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: rgba(102, 255, 153, 0.2);
-                border: 1px solid #66ff99;
-                color: #ffffff;
-            }
-        """)
-        btn_status_hud.clicked.connect(self.toggle_system_status_overlay)
-        hud_box.addWidget(btn_status_hud)
-
-        # Agent Task Status HUD Launch Button
-        btn_task_hud = QPushButton("📋 Agent Tasks HUD")
-        btn_task_hud.setFont(QFont("Consolas", 8))
-        btn_task_hud.setCursor(Qt.PointingHandCursor)
-        btn_task_hud.setStyleSheet("""
-            QPushButton {
-                background: rgba(192, 132, 252, 0.08);
-                border: 1px solid rgba(192, 132, 252, 0.3);
-                border-radius: 4px;
-                color: #c084fc;
-                padding: 6px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: rgba(192, 132, 252, 0.2);
-                border: 1px solid #c084fc;
-                color: #ffffff;
-            }
-        """)
-        btn_task_hud.clicked.connect(self.toggle_agent_task_overlay)
-        hud_box.addWidget(btn_task_hud)
-
-        # Personal OS Dashboard HUD Launch Button
-        btn_pos = QPushButton("🎯 Personal OS HUD")
-        btn_pos.setFont(QFont("Consolas", 8))
-        btn_pos.setCursor(Qt.PointingHandCursor)
-        btn_pos.setStyleSheet("""
-            QPushButton {
-                background: rgba(251, 191, 36, 0.08);
-                border: 1px solid rgba(251, 191, 36, 0.3);
-                border-radius: 4px;
-                color: #fbbf24;
-                padding: 6px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: rgba(251, 191, 36, 0.2);
-                border: 1px solid #fbbf24;
-                color: #ffffff;
-            }
-        """)
-        btn_pos.clicked.connect(self.toggle_personal_os_overlay)
-        hud_box.addWidget(btn_pos)
-
-        # Chat Window HUD Launch Button
-        btn_chat = QPushButton("💬 Chat Window HUD")
-        btn_chat.setFont(QFont("Consolas", 8))
-        btn_chat.setCursor(Qt.PointingHandCursor)
-        btn_chat.setStyleSheet("""
-            QPushButton {
-                background: rgba(56, 189, 248, 0.08);
-                border: 1px solid rgba(56, 189, 248, 0.3);
-                border-radius: 4px;
-                color: #38bdf8;
-                padding: 6px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: rgba(56, 189, 248, 0.2);
-                border: 1px solid #38bdf8;
-                color: #ffffff;
-            }
-        """)
-        btn_chat.clicked.connect(self.toggle_chat_overlay)
-        hud_box.addWidget(btn_chat)
-
-        layout.addLayout(hud_box)
-        layout.addSpacing(10)
-
         # Version stamp
-        v_lbl = QLabel("AURAAI // v0.32.0-os")
-        v_lbl.setFont(QFont("Consolas", 6))
-        v_lbl.setStyleSheet("color: #334155; padding-left: 14px;")
+        v_lbl = QLabel("AURA// v0.3.21-os // QUANTUM")
+        v_lbl.setFont(QFont("Consolas", 7))
+        v_lbl.setStyleSheet("color: #475569; padding-left: 14px;")
         layout.addWidget(v_lbl)
 
         # Set default active
@@ -1124,7 +1018,7 @@ class MainWindow(QMainWindow):
         self._center_stack.setCurrentIndex(index)
 
     # -------------------------------------------------------------------------
-    # TAB 0: HOME DASHBOARD (UNIFIED CONTROL CENTER)
+    # TAB 0: HOME DASHBOARD (AUTONOMOUS AGENT OS & NEURAL CHAT CONSOLE)
     # -------------------------------------------------------------------------
     def _build_home_tab(self) -> QWidget:
         tab = QWidget()
@@ -1132,11 +1026,11 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(18, 14, 18, 12)
         layout.setSpacing(12)
 
-        # Header with dynamic timestamp
+        # Header with dynamic timestamp & Core Active status pill
         head = QHBoxLayout()
         h_info = QVBoxLayout()
         h_info.setSpacing(2)
-        h_title = QLabel("MISSION CONTROL // AUTONOMOUS AGENT OS")
+        h_title = QLabel("AUTONOMOUS AGENT OS")
         h_title.setFont(QFont("Consolas", 12, QFont.Bold))
         h_title.setStyleSheet("color: #00e5ff; letter-spacing: 1.5px; background: transparent; border: none;")
         h_info.addWidget(h_title)
@@ -1148,437 +1042,38 @@ class MainWindow(QMainWindow):
         head.addLayout(h_info)
         head.addStretch()
 
-        live_pill = StatusPill("●", "Core Active", active=True)
-        head.addWidget(live_pill)
-        layout.addLayout(head)
-
-        # Scroll area for Home Content
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("background: transparent; border: none;")
-
-        body = QWidget()
-        body.setStyleSheet("background: transparent;")
-        b_layout = QVBoxLayout(body)
-        b_layout.setContentsMargins(0, 0, 0, 0)
-        b_layout.setSpacing(12)
-
-        # Fetch real backend data
-        bridge = RealBackendBridge.get_instance()
-        pos_data = bridge.get_personal_os_data()
-        ag_data = bridge.get_agent_orchestration_stats()
-        tp_data = bridge.get_throughput_stats()
-        dg_data = bridge.get_dag_health_stats()
-
-        t_comp = pos_data["stats"]["tasks_completed"]
-        t_tot = pos_data["stats"]["tasks_total"]
-        t_pend = pos_data["stats"]["pending"]
-        t_over = pos_data["stats"]["overdue"]
-
-        # 1. Top HUD Metric Ribbon (Sleek Compact Stat Strip)
-        kpi_grid = QGridLayout()
-        kpi_grid.setSpacing(10)
-
-        card_ag = self._create_home_kpi("🧠 PRIMARY AGENT BRAIN", tp_data["model"].upper(), tp_data["subtitle"], "#6496ff", "rgba(100, 150, 255, 0.06)", "rgba(100, 150, 255, 0.2)")
-        kpi_grid.addWidget(card_ag, 0, 0)
-
-        card_tp = self._create_home_kpi("⚡ AGENT SWARM POOL", f"{ag_data['active_count']} Active", ag_data["subtitle"], "#66ff99", "rgba(102, 255, 153, 0.06)", "rgba(102, 255, 153, 0.2)")
-        kpi_grid.addWidget(card_tp, 0, 1)
-
-        tk_sub = f"{t_pend} pending • {t_over} overdue" if t_tot > 0 else "0 queued tasks"
-        card_tk = self._create_home_kpi("📋 ROUTINES & TASKS", f"{t_comp}/{t_tot}", tk_sub, "#fbbf24", "rgba(251, 191, 36, 0.06)", "rgba(251, 191, 36, 0.2)")
-        kpi_grid.addWidget(card_tk, 0, 2)
-
-        card_dg = self._create_home_kpi("🛡️ SAFETY & DAG HEALTH", dg_data["score"], dg_data["subtitle"], "#a855f7", "rgba(168, 85, 247, 0.06)", "rgba(168, 85, 247, 0.2)")
-        kpi_grid.addWidget(card_dg, 0, 3)
-
-        b_layout.addLayout(kpi_grid)
-
-        # 2. Main 2-Column Command Grid: Left 60% (Mission Hub) | Right 40% (Capabilities & Triggers)
-        split_layout = QHBoxLayout()
-        split_layout.setSpacing(12)
-
-        # LEFT COLUMN: Mission Dispatch & Live Tasks
-        left_col = QVBoxLayout()
-        left_col.setSpacing(12)
-
-        # Mission Quick-Dispatch Deck
-        mission_card = SciFiTechCard(accent_color=QColor(0, 229, 255), chamfer_size=6)
-        m_layout = QVBoxLayout(mission_card)
-        m_layout.setContentsMargins(14, 12, 14, 12)
-        m_layout.setSpacing(10)
-
-        m_head = QHBoxLayout()
-        mh_title = QLabel("⚡ QUICK MISSION DISPATCH")
-        mh_title.setFont(QFont("Consolas", 9, QFont.Bold))
-        mh_title.setStyleSheet("color: #00e5ff; letter-spacing: 0.8px;")
-        m_head.addWidget(mh_title)
-        m_head.addStretch()
-
-        m_tag = QLabel("ONE-TOUCH DISPATCH")
-        m_tag.setFont(QFont("Consolas", 7))
-        m_tag.setStyleSheet("color: #a5b4cb; background: rgba(255, 255, 255, 0.04); border-radius: 4px; padding: 2px 6px;")
-        m_head.addWidget(m_tag)
-        m_layout.addLayout(m_head)
-
-        chips_grid = QGridLayout()
-        chips_grid.setSpacing(8)
-        quick_missions = [
-            ("⚡ Run System Diagnostics", "run full system diagnostics and check hardware health", "#66ff99"),
-            ("🔍 Scan Workspace & Symbols", "scan workspace and inspect files", "#00e5ff"),
-            ("🌤️ Weather & Briefing", "what is the current weather and news briefing?", "#80c4ff"),
-            ("🧠 Inspect DAG Reasoner", "inspect active DAG reasoning graph and subagent pool", "#c084fc"),
-            ("📊 Hardware & GPU Health", "check cpu, nvidia gtx 1650 gpu and ram status", "#fbbf24"),
-        ]
-        for idx, (label, cmd, col) in enumerate(quick_missions):
-            btn = QPushButton(label)
-            btn.setFont(QFont("Consolas", 8))
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: rgba(22, 30, 44, 0.7);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 6px;
-                    color: {col};
-                    padding: 8px 10px;
-                    text-align: left;
-                }}
-                QPushButton:hover {{
-                    background: rgba(0, 229, 255, 0.12);
-                    border: 1px solid {col};
-                    color: #ffffff;
-                }}
-            """)
-            btn.clicked.connect(lambda checked, c=cmd: self._send_quick_command(c))
-            chips_grid.addWidget(btn, idx // 2, idx % 2)
-
-        m_layout.addLayout(chips_grid)
-        left_col.addWidget(mission_card)
-
-        # Active Tasks Queue Card
-        t_card = SciFiTechCard(accent_color=QColor(100, 150, 255), chamfer_size=6)
-        t_layout = QVBoxLayout(t_card)
-        t_layout.setContentsMargins(14, 12, 14, 12)
-        t_layout.setSpacing(10)
-
-        t_head = QHBoxLayout()
-        th_l = QLabel("📋 ACTIVE TASK QUEUE")
-        th_l.setFont(QFont("Consolas", 9, QFont.Bold))
-        th_l.setStyleSheet("color: #6496ff; letter-spacing: 0.8px;")
-        t_head.addWidget(th_l)
-        t_head.addStretch()
-        th_sub = QLabel(f"{t_pend} pending • {t_over} overdue" if t_tot > 0 else "0 tasks in queue")
-        th_sub.setFont(QFont("Segoe UI", 8))
-        th_sub.setStyleSheet("color: #7b8c9f;")
-        t_head.addWidget(th_sub)
-        t_layout.addLayout(t_head)
-
-        tasks_data = pos_data.get("tasks", [])[:4]
-        if tasks_data:
-            for t in tasks_data:
-                item = QFrame()
-                item.setStyleSheet("background: rgba(255, 255, 255, 0.02); border-radius: 6px; padding: 2px;")
-                il = QHBoxLayout(item)
-                il.setContentsMargins(8, 6, 8, 6)
-                il.setSpacing(8)
-
-                t_lbl = QLabel(t.get("title", ""))
-                t_lbl.setFont(QFont("Segoe UI", 9))
-                t_lbl.setStyleSheet("color: #ffffff; background: transparent;")
-                il.addWidget(t_lbl, 2)
-
-                st = t.get("status", "pending")
-                col = "#ef4444" if st == "overdue" else ("#66ff99" if st in ("completed", "executing") else "#fbbf24")
-                s_lbl = QLabel(f"● {st.replace('_', ' ').title()}")
-                s_lbl.setFont(QFont("Segoe UI", 8))
-                s_lbl.setStyleSheet(f"color: {col}; background: transparent;")
-                il.addWidget(s_lbl, 1)
-
-                c_lbl = QLabel(t.get("category", "General"))
-                c_lbl.setFont(QFont("Segoe UI", 8))
-                c_lbl.setStyleSheet("color: #7b8c9f; background: transparent;")
-                il.addWidget(c_lbl)
-
-                t_layout.addWidget(item)
-        else:
-            empty_task = QLabel("No active tasks in queue. Type a goal or click a mission chip above.")
-            empty_task.setFont(QFont("Segoe UI", 8))
-            empty_task.setStyleSheet("color: #7b8c9f; padding: 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px;")
-            t_layout.addWidget(empty_task)
-
-        left_col.addWidget(t_card)
-        split_layout.addLayout(left_col, 6)
-
-        # RIGHT COLUMN: Tools Matrix & Automated Triggers
-        right_col = QVBoxLayout()
-        right_col.setSpacing(12)
-
-        # System Capabilities & Tool Matrix
-        cap_card = SciFiTechCard(accent_color=QColor(0, 229, 255), chamfer_size=6)
-        cap_layout = QVBoxLayout(cap_card)
-        cap_layout.setContentsMargins(14, 12, 14, 12)
-        cap_layout.setSpacing(10)
-
-        cap_head = QLabel("🛠️ AUTONOMOUS CAPABILITIES & TOOLS")
-        cap_head.setFont(QFont("Consolas", 9, QFont.Bold))
-        cap_head.setStyleSheet("color: #00e5ff; letter-spacing: 0.8px;")
-        cap_layout.addWidget(cap_head)
-
-        cap_grid = QGridLayout()
-        cap_grid.setSpacing(6)
-        tools = [
-            ("⚡ Terminal & CLI", "#66ff99"),
-            ("🌐 Headless Browser", "#66ff99"),
-            ("📁 File System IO", "#66ff99"),
-            ("🧠 Multi-Agent DAG", "#66ff99"),
-            ("👁️ Vision & Screen", "#66ff99"),
-            ("🔒 Policy Guardrails", "#66ff99"),
-        ]
-        for i, (name, col) in enumerate(tools):
-            badge = QLabel(f"{name} ✓")
-            badge.setFont(QFont("Segoe UI", 8))
-            badge.setStyleSheet(f"""
-                color: {col};
-                background: rgba(0, 229, 255, 0.06);
-                border: 1px solid rgba(0, 229, 255, 0.2);
-                border-radius: 4px;
-                padding: 6px 8px;
-            """)
-            cap_grid.addWidget(badge, i // 2, i % 2)
-
-        cap_layout.addLayout(cap_grid)
-        right_col.addWidget(cap_card)
-
-        # Active Triggers & Routines Card
-        tr_card = SciFiTechCard(accent_color=QColor(102, 255, 153), chamfer_size=6)
-        tr_layout = QVBoxLayout(tr_card)
-        tr_layout.setContentsMargins(14, 12, 14, 12)
-        tr_layout.setSpacing(8)
-
-        tr_head = QHBoxLayout()
-        trh_l = QLabel("⏰ AUTOMATION TRIGGERS")
-        trh_l.setFont(QFont("Consolas", 9, QFont.Bold))
-        trh_l.setStyleSheet("color: #66ff99; letter-spacing: 0.8px;")
-        tr_head.addWidget(trh_l)
-        tr_head.addStretch()
-
-        tr_cnt = pos_data["stats"]["active_triggers_count"]
-        tr_badge = QLabel(f"● {tr_cnt} live" if tr_cnt > 0 else "0 live")
-        tr_badge.setFont(QFont("Segoe UI", 8))
-        tr_badge.setStyleSheet("color: #66ff99;" if tr_cnt > 0 else "color: #7b8c9f;")
-        tr_head.addWidget(tr_badge)
-        tr_layout.addLayout(tr_head)
-
-        tr_list = pos_data.get("triggers", [])[:4]
-        if tr_list:
-            for tr in tr_list:
-                tr_row = QHBoxLayout()
-                tn_lbl = QLabel(tr.get("name", "Trigger"))
-                tn_lbl.setFont(QFont("Segoe UI", 8))
-                tn_lbl.setStyleSheet("color: #ffffff;")
-                tr_row.addWidget(tn_lbl)
-                tr_row.addStretch()
-                tm_lbl = QLabel(tr.get("schedule", "on_demand"))
-                tm_lbl.setFont(QFont("Segoe UI", 7))
-                tm_lbl.setStyleSheet("color: #7b8c9f;")
-                tr_row.addWidget(tm_lbl)
-                tr_layout.addLayout(tr_row)
-        else:
-            empty_tr = QLabel("No automated triggers configured. Use /schedule to set routines.")
-            empty_tr.setFont(QFont("Segoe UI", 8))
-            empty_tr.setStyleSheet("color: #7b8c9f; padding: 10px; background: rgba(255, 255, 255, 0.02); border-radius: 4px;")
-            tr_layout.addWidget(empty_tr)
-
-        right_col.addWidget(tr_card)
-        split_layout.addLayout(right_col, 4)
-
-        b_layout.addLayout(split_layout)
-        scroll.setWidget(body)
-        layout.addWidget(scroll, 1)
-
-        # 3. Bottom Multi-Modal Input Capsule
-        input_card = SciFiTechCard(accent_color=QColor(0, 229, 255), chamfer_size=8)
-        ic_l = QHBoxLayout(input_card)
-        ic_l.setContentsMargins(14, 8, 14, 8)
-        ic_l.setSpacing(12)
-
-        # Live Mic Button
-        home_mic_btn = QPushButton("🎙️")
-        home_mic_btn.setFixedSize(36, 34)
-        home_mic_btn.setCursor(Qt.PointingHandCursor)
-        home_mic_btn.setStyleSheet("""
+        btn_home_logs = QPushButton("📜 Show Logs")
+        btn_home_logs.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        btn_home_logs.setCursor(Qt.PointingHandCursor)
+        btn_home_logs.setToolTip("Open Agent Task Queue & Real-Time Log Viewer")
+        btn_home_logs.setStyleSheet("""
             QPushButton {
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(0, 229, 255, 0.25);
-                border-radius: 4px;
-                color: #a5b4cb;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background: rgba(0, 229, 255, 0.15);
-                border: 1px solid #00e5ff;
+                background: rgba(0, 229, 255, 0.1);
+                border: 1px solid rgba(0, 229, 255, 0.4);
+                border-radius: 6px;
                 color: #00e5ff;
-            }
-        """)
-        home_mic_btn.clicked.connect(self._on_mic_toggle)
-        ic_l.addWidget(home_mic_btn)
-
-        # Chat Input
-        self._home_input = QLineEdit()
-        self._home_input.setPlaceholderText("Enter autonomous goal or command (Press Enter)...")
-        self._home_input.setFont(QFont("Segoe UI", 10))
-        self._home_input.setStyleSheet("""
-            QLineEdit {
-                background: transparent;
-                border: none;
-                color: #ffffff;
-                padding: 4px;
-            }
-            QLineEdit::placeholder {
-                color: #50657a;
-            }
-        """)
-        self._home_input.returnPressed.connect(self._on_home_submit)
-        ic_l.addWidget(self._home_input, 1)
-
-        # Send Button
-        send_btn = QPushButton("DISPATCH ➤")
-        send_btn.setFixedSize(110, 34)
-        send_btn.setFont(QFont("Consolas", 9, QFont.Bold))
-        send_btn.setCursor(Qt.PointingHandCursor)
-        send_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #00e5ff, stop:1 #50aaff);
-                border: none;
-                border-radius: 4px;
-                color: #06090f;
-                padding: 0 10px;
+                padding: 4px 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #33eeff, stop:1 #80c4ff);
-                color: #000000;
+                background: rgba(0, 229, 255, 0.25);
+                border: 1px solid #00e5ff;
+                color: #ffffff;
             }
         """)
-        send_btn.clicked.connect(self._on_home_submit)
-        ic_l.addWidget(send_btn)
+        btn_home_logs.clicked.connect(self.show_agent_task_logs)
+        head.addWidget(btn_home_logs)
 
-        layout.addWidget(input_card)
-        return tab
-
-    def _create_home_kpi(self, title: str, main_val: str, sub_val: str, text_color: str, bg_rgba: str, border_rgba: str) -> QFrame:
-        card = QFrame()
-        card.setFixedHeight(68)
-        card.setStyleSheet(f"""
-            QFrame {{
-                background: {bg_rgba};
-                border: 1px solid {border_rgba};
-                border-radius: 8px;
-            }}
-        """)
-        l = QVBoxLayout(card)
-        l.setContentsMargins(12, 8, 12, 8)
-        l.setSpacing(2)
-
-        t_lbl = QLabel(title)
-        t_lbl.setFont(QFont("Consolas", 7, QFont.Bold))
-        t_lbl.setStyleSheet(f"color: {text_color}; letter-spacing: 0.8px; background: transparent; border: none;")
-        l.addWidget(t_lbl)
-
-        val_row = QHBoxLayout()
-        val_row.setSpacing(8)
-
-        v_lbl = QLabel(main_val)
-        v_lbl.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        v_lbl.setStyleSheet("color: #ffffff; background: transparent; border: none;")
-        val_row.addWidget(v_lbl)
-
-        s_lbl = QLabel(f"• {sub_val}")
-        s_lbl.setFont(QFont("Segoe UI", 8))
-        s_lbl.setStyleSheet("color: #7b8c9f; background: transparent; border: none;")
-        val_row.addWidget(s_lbl)
-        val_row.addStretch()
-
-        l.addLayout(val_row)
-        return card
-
-    def _on_home_submit(self):
-        text = self._home_input.text().strip()
-        if not text:
-            return
-        self._home_input.clear()
-        self._add_message("user", text)
-        self._on_tab_selected(1)
-        self.execute_command(text)
-
-    # -------------------------------------------------------------------------
-    # TAB 1: CONSOLE (INTERACTIVE NEURAL CHAT)
-    # -------------------------------------------------------------------------
-    def _build_console_tab(self) -> QWidget:
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(22, 16, 22, 16)
-        layout.setSpacing(12)
-
-        # Header with Holographic Status
-        head = QHBoxLayout()
-        t_lbl = QLabel("NEURAL CONSOLE // MULTIMODAL EXECUTIVE")
-        t_lbl.setFont(QFont("Consolas", 11, QFont.Bold))
-        t_lbl.setStyleSheet("color: #00e5ff; letter-spacing: 1px;")
-        head.addWidget(t_lbl)
-
-        head.addStretch()
-
-        self._console_status_pill = StatusPill("●", "Ready", active=True)
+        self._console_status_pill = StatusPill("●●", "Core Active", active=True)
         head.addWidget(self._console_status_pill)
         layout.addLayout(head)
 
-        # Quick Action Chips inside a horizontal scroll area so they don't bloat min width
-        chips_container = QWidget()
-        chips_container.setStyleSheet("background: transparent;")
-        chips_layout = QHBoxLayout(chips_container)
-        chips_layout.setContentsMargins(0, 0, 0, 0)
-        chips_layout.setSpacing(8)
-        prompts = [
-            ("🌤️ Weather Check", "what is the current weather?"),
-            ("⚡ System Diagnostics", "run full system diagnostics"),
-            ("🧠 Inspect Memory", "inspect active working memory"),
-            ("🔍 Scan Workspace", "scan workspace and inspect files"),
-            ("📊 Hardware Health", "check cpu and gpu status"),
-        ]
-        for label, cmd in prompts:
-            btn = QPushButton(label)
-            btn.setFont(QFont("Consolas", 8))
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background: rgba(22, 30, 44, 0.8);
-                    border: 1px solid rgba(0, 229, 255, 0.25);
-                    border-radius: 12px;
-                    color: #a5b4cb;
-                    padding: 5px 12px;
-                }
-                QPushButton:hover {
-                    background: rgba(0, 229, 255, 0.15);
-                    border: 1px solid #00e5ff;
-                    color: #ffffff;
-                }
-            """)
-            btn.clicked.connect(lambda checked, c=cmd: self._send_quick_command(c))
-            chips_layout.addWidget(btn)
-        chips_layout.addStretch()
+        # Center Cyber Container with Scrollable Console / Chat
+        center_card = SciFiTechCard(accent_color=QColor(0, 229, 255), chamfer_size=10)
+        c_layout = QVBoxLayout(center_card)
+        c_layout.setContentsMargins(14, 14, 14, 14)
+        c_layout.setSpacing(10)
 
-        chips_scroll = QScrollArea()
-        chips_scroll.setWidget(chips_container)
-        chips_scroll.setWidgetResizable(True)
-        chips_scroll.setFixedHeight(36)
-        chips_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        chips_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        chips_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        chips_scroll.setStyleSheet("background: transparent; border: none;")
-        layout.addWidget(chips_scroll)
-
-        # Scroll Area for Messages
+        # Scroll Area for interactive console / chat messages
         self._chat_scroll = QScrollArea()
         self._chat_scroll.setWidgetResizable(True)
         self._chat_scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -1592,53 +1087,68 @@ class MainWindow(QMainWindow):
         self._chat_layout.addStretch()
 
         self._chat_scroll.setWidget(self._chat_container)
-        layout.addWidget(self._chat_scroll, 1)
+        c_layout.addWidget(self._chat_scroll, 1)
 
-        # Initial Welcome Card
-        self._add_message(
-            "agent",
-            "AuraAI Holographic Cognitive Core active. Multi-agent routing, hardware telemetry, vector memory vaults, and tool execution pipelines standing by.",
-            intent_tag="INITIALIZE",
-        )
+        layout.addWidget(center_card, 1)
 
-        # Input Capsule
+        # Bottom Multi-Modal Input Capsule
         input_card = SciFiTechCard(accent_color=QColor(0, 229, 255), chamfer_size=8)
         ic_l = QHBoxLayout(input_card)
-        ic_l.setContentsMargins(14, 8, 14, 8)
-        ic_l.setSpacing(12)
+        ic_l.setContentsMargins(12, 8, 12, 8)
+        ic_l.setSpacing(10)
 
-        # Live Mic Toggle Button
+        # Left Mic / Run Button [ |> ]
         self._mic_active = False
-        self._mic_btn = QPushButton("🎙️")
+        self._mic_btn = QPushButton("▷")
         self._mic_btn.setCheckable(True)
         self._mic_btn.setFixedSize(36, 34)
         self._mic_btn.setCursor(Qt.PointingHandCursor)
-        self._mic_btn.setToolTip("Toggle Live Microphone")
+        self._mic_btn.setToolTip("Toggle Live Microphone / Audio Perception")
         self._update_mic_style(False)
         self._mic_btn.clicked.connect(self._on_mic_toggle)
         ic_l.addWidget(self._mic_btn)
 
-        # Text input
+        # Chat Input
         self._chat_input = QLineEdit()
-        self._chat_input.setPlaceholderText("Enter command or prompt AuraAI (Press Enter)...")
+        self._chat_input.setPlaceholderText("Enter autonomous goal or command (Press Enter)...")
         self._chat_input.setFont(QFont("Segoe UI", 10))
         self._chat_input.setStyleSheet("""
             QLineEdit {
                 background: transparent;
                 border: none;
                 color: #ffffff;
-                padding: 6px;
+                padding: 4px;
             }
             QLineEdit::placeholder {
-                color: #55657a;
+                color: #50657a;
             }
         """)
         self._chat_input.returnPressed.connect(self._on_chat_submit)
+        self._home_input = self._chat_input
         ic_l.addWidget(self._chat_input, 1)
 
-        send_btn = QPushButton("SEND ➤")
+        # Primary Agent Brain Badge (Middle Right)
+        brain_box = QFrame()
+        brain_box.setStyleSheet("background: transparent; border: none;")
+        bb_layout = QVBoxLayout(brain_box)
+        bb_layout.setContentsMargins(6, 0, 8, 0)
+        bb_layout.setSpacing(1)
+
+        brain_top = QLabel("● PRIMARY AGENT BRAIN")
+        brain_top.setFont(QFont("Consolas", 7, QFont.Bold))
+        brain_top.setStyleSheet("color: #ec4899; letter-spacing: 0.6px; background: transparent;")
+        bb_layout.addWidget(brain_top)
+
+        brain_sub = QLabel("GPT-OSS-120B   Groq • gpt-oss-120b")
+        brain_sub.setFont(QFont("Segoe UI", 8, QFont.Bold))
+        brain_sub.setStyleSheet("color: #cbd5e1; background: transparent;")
+        bb_layout.addWidget(brain_sub)
+        ic_l.addWidget(brain_box)
+
+        # Send Button (changed "DISPATCH" to "SEND  ")
+        send_btn = QPushButton("SEND  ➤")
+        send_btn.setFixedSize(105, 34)
         send_btn.setFont(QFont("Consolas", 9, QFont.Bold))
-        send_btn.setFixedSize(85, 34)
         send_btn.setCursor(Qt.PointingHandCursor)
         send_btn.setStyleSheet("""
             QPushButton {
@@ -1646,10 +1156,12 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-radius: 4px;
                 color: #06090f;
+                padding: 0 10px;
                 font-weight: bold;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #33eeff, stop:1 #80c4ff);
+                color: #000000;
             }
         """)
         send_btn.clicked.connect(self._on_chat_submit)
@@ -1780,7 +1292,6 @@ class MainWindow(QMainWindow):
 
     def _send_quick_command(self, cmd: str):
         self._add_message("user", cmd)
-        self._on_tab_selected(1)
         self.execute_command(cmd)
 
     def _on_chat_submit(self):
@@ -2507,6 +2018,7 @@ class MainWindow(QMainWindow):
         app_signals.toggle_system_overlay.connect(self.toggle_system_overlay)
         app_signals.toggle_system_status_overlay.connect(self.toggle_system_status_overlay)
         app_signals.toggle_agent_task_overlay.connect(self.toggle_agent_task_overlay)
+        app_signals.toggle_agent_task_logs.connect(self.show_agent_task_logs)
         app_signals.toggle_personal_os_overlay.connect(self.toggle_personal_os_overlay)
         app_signals.voice_status_changed.connect(self._on_voice_status_changed)
         app_signals.voice_state_name_changed.connect(self._on_voice_state_name_changed)
@@ -2649,6 +2161,14 @@ class MainWindow(QMainWindow):
         else:
             self._task_overlay.show()
 
+    def show_agent_task_logs(self):
+        if self._task_overlay is None:
+            self._task_overlay = AgentTaskStatusOverlay()
+        if not self._task_overlay.isVisible():
+            self._task_overlay.show()
+        if not getattr(self._task_overlay, "_show_logs", False):
+            self._task_overlay.toggle_logs_view()
+
     def toggle_personal_os_overlay(self):
         if self._personal_os_overlay is None:
             self._personal_os_overlay = PersonalOSDashboardOverlay()
@@ -2688,17 +2208,15 @@ class MainWindow(QMainWindow):
         pos = self._settings.value("pos", None)
         size = self._settings.value("size", None)
 
-        # Comfortable laptop scaling (~76% width, ~68% height, max 580px height to stay well clear of taskbars)
-        target_w = max(MIN_W, min(int(screen.width() * 0.76), 1140, screen.width() - 40))
-        target_h = max(MIN_H, min(int(screen.height() * 0.68), 580, screen.height() - 100))
+        # Full HD (1920x1080) responsive scaling
+        target_w = max(1360, min(int(screen.width() * 0.94), 1920, screen.width() - 20))
+        target_h = max(760, min(int(screen.height() * 0.90), 1080, screen.height() - 40))
 
         if size is not None:
             try:
                 w, h = int(size.width()), int(size.height())
-                if w > int(screen.width() * 0.80) or h > 600 or h > int(screen.height() * 0.72):
-                    w, h = target_w, target_h
-                w = max(MIN_W, min(w, screen.width() - 40))
-                h = max(MIN_H, min(h, 580, screen.height() - 100))
+                w = max(MIN_W, min(w, screen.width() - 20))
+                h = max(MIN_H, min(h, screen.height() - 40))
             except Exception:
                 w, h = target_w, target_h
             self.resize(w, h)
@@ -2715,7 +2233,6 @@ class MainWindow(QMainWindow):
             try:
                 x = int(pos.x()) if hasattr(pos, "x") else int(pos[0])
                 y = int(pos.y()) if hasattr(pos, "y") else int(pos[1])
-                # If cached position would push bottom or right off screen, re-center
                 if x < screen.left() or (x + w_curr) > screen.right() or y < screen.top() or (y + h_curr) > (screen.bottom() - 10):
                     x, y = safe_x, safe_y
                 self.move(x, y)
@@ -2725,10 +2242,10 @@ class MainWindow(QMainWindow):
             self.move(safe_x, safe_y)
 
     def auto_fit_screen(self):
-        """Auto-adjust window to perfectly fit current laptop display."""
+        """Auto-adjust window to Full HD / maximum screen display."""
         screen = QApplication.primaryScreen().availableGeometry()
-        auto_w = max(MIN_W, min(int(screen.width() * 0.76), 1140, screen.width() - 40))
-        auto_h = max(MIN_H, min(int(screen.height() * 0.68), 580, screen.height() - 100))
+        auto_w = max(1360, min(int(screen.width() * 0.94), 1920, screen.width() - 20))
+        auto_h = max(760, min(int(screen.height() * 0.90), 1080, screen.height() - 40))
         self.resize(auto_w, auto_h)
         self.move(
             screen.left() + (screen.width() - auto_w) // 2,

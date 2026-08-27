@@ -6,7 +6,9 @@ and ensures proper device handling and resource management.
 """
 
 import logging
+import queue
 import threading
+import time
 import wave
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -75,9 +77,15 @@ class AudioManager:
         # State tracking
         self._is_recording = False
         self._is_playing = False
+        self._capture_enabled = False
+        self._last_chunk_time = 0.0
+        self._recovery_attempts = 0
+        self._last_recovery_time = 0.0
+        self._active_sample_rate = 16000
+        self._active_channels = 1
+        self._active_device_id = None
         self._recording_thread = None
         
-        import queue
         self._audio_queue = queue.Queue()
 
         logger.info("Audio Manager initialized")
@@ -221,7 +229,7 @@ class AudioManager:
 
             # Use selected device or default
             input_device = self.input_device
-            if not input_device and device_id:
+            if not input_device and device_id is not None:
                 input_device = AudioDeviceInfo(
                     device_id=device_id,
                     name="specified_device",
@@ -231,6 +239,8 @@ class AudioManager:
                     sample_rate=sample_rate,
                     bits_per_sample=16,
                 )
+            if not input_device:
+                input_device = self.get_default_input_device()
 
             if not input_device:
                 logger.error("No input device selected")
@@ -249,6 +259,12 @@ class AudioManager:
             # Set up callback
             self._input_callback = callback
             self._is_recording = True
+            self._capture_enabled = True
+            self._last_chunk_time = time.time()
+            self._recovery_attempts = 0
+            self._active_sample_rate = sample_rate
+            self._active_channels = channels
+            self._active_device_id = input_device.device_id if input_device else device_id
 
             # Pre-flight physical device sample rate check
             # NOTE: On Windows (MME/WASAPI shared), the Windows Audio Engine handles software
@@ -355,7 +371,7 @@ class AudioManager:
 
             # Use selected device or default
             output_device = self.output_device
-            if not output_device and device_id:
+            if not output_device and device_id is not None:
                 output_device = AudioDeviceInfo(
                     device_id=device_id,
                     name="specified_device",
@@ -365,6 +381,8 @@ class AudioManager:
                     sample_rate=sample_rate,
                     bits_per_sample=16,
                 )
+            if not output_device:
+                output_device = self.get_default_output_device()
 
             if not output_device:
                 logger.error("No output device selected")
@@ -414,18 +432,36 @@ class AudioManager:
             logger.error(f"Error stopping playback: {e}")
             return False
 
-    def _stream_callback(self, indata, frames, time, status):
+    def _stream_callback(self, indata, frames, time_info, status):
         """Callback for audio input stream."""
         if status:
             logger.warning(f"Audio input status: {status}")
 
-        if self._is_recording:
+        self._last_chunk_time = time.time()
+        if self._is_recording and self._capture_enabled:
             try:
                 self._audio_queue.put_nowait(indata.tobytes())
             except Exception:
                 pass
 
-    def _playback_callback(self, outdata, frames, time, status):
+    def enable_capture(self) -> None:
+        """Enable audio chunk ingestion without touching physical hardware stream."""
+        self._capture_enabled = True
+        self._last_chunk_time = time.time()
+
+    def disable_capture(self) -> None:
+        """Software-mute audio chunk ingestion (e.g. during TTS playback)."""
+        self._capture_enabled = False
+        while not self._audio_queue.empty():
+            try:
+                self._audio_queue.get_nowait()
+            except Exception:
+                break
+
+    def is_capture_enabled(self) -> bool:
+        return self._capture_enabled and self._is_recording
+
+    def _playback_callback(self, outdata, frames, time_info, status):
         """Callback for audio output stream."""
         if status:
             logger.warning(f"Audio output status: {status}")
@@ -443,18 +479,73 @@ class AudioManager:
 
     def _monitor_stream(self):
         """Monitor recording stream status and process audio queue."""
-        import queue
-        import time
         while self._is_recording:
             try:
                 chunk = self._audio_queue.get(timeout=0.1)
-                if self._input_callback and self._is_recording:
+                if self._input_callback and self._is_recording and self._capture_enabled:
                     self._input_callback(chunk)
             except queue.Empty:
-                pass
+                now = time.time()
+                if self._is_recording and self._capture_enabled and self._last_chunk_time > 0:
+                    silent_duration = now - self._last_chunk_time
+                    if silent_duration > 1.5:
+                        backoff = min(5.0, 1.0 * (2 ** self._recovery_attempts))
+                        if (now - self._last_recovery_time) >= backoff:
+                            if self._recovery_attempts < 3:
+                                self._recovery_attempts += 1
+                                self._last_recovery_time = now
+                                logger.warning(
+                                    f"[AudioManager] InputStream silent for {silent_duration:.1f}s during active capture. "
+                                    f"Attempting stream recovery ({self._recovery_attempts}/3)..."
+                                )
+                                self._recover_input_stream()
+                            else:
+                                if (now - self._last_recovery_time) >= 15.0:
+                                    # Cooldown expired: reset attempts to allow re-recovery if device was replugged
+                                    logger.info("[AudioManager] Watchdog recovery cooldown elapsed. Resetting recovery attempts.")
+                                    self._recovery_attempts = 0
+                                    self._last_recovery_time = now
+                                else:
+                                    logger.error(
+                                        "[AudioManager] PortAudio InputStream recovery exhausted (3 attempts). "
+                                        "Audio device may be disconnected or locked."
+                                    )
+                                    self._last_recovery_time = now
             except Exception as e:
                 if self._is_recording:
                     logger.error(f"Stream monitoring error: {e}")
+
+    def _recover_input_stream(self) -> None:
+        """Recreate and restart physical InputStream safely from the monitor thread."""
+        try:
+            import sounddevice as sd
+            if self.input_stream:
+                try:
+                    self.input_stream.stop()
+                    self.input_stream.close()
+                except Exception:
+                    pass
+                self.input_stream = None
+
+            while not self._audio_queue.empty():
+                try:
+                    self._audio_queue.get_nowait()
+                except Exception:
+                    break
+
+            self.input_stream = sd.InputStream(
+                device=self._active_device_id,
+                channels=self._active_channels,
+                samplerate=self._active_sample_rate,
+                dtype='int16',
+                callback=self._stream_callback,
+            )
+            self.input_stream.start()
+            self._recovery_attempts = 0
+            self._last_chunk_time = time.time()
+            logger.info("[AudioManager] PortAudio InputStream recovered successfully.")
+        except Exception as err:
+            logger.error(f"[AudioManager] InputStream recovery failed: {err}")
 
     def save_recording(
         self, filepath: str, sample_rate: int = 16000, channels: int = 1

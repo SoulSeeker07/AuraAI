@@ -1357,15 +1357,58 @@ class ConversationEngine:
                         else:
                             app_signals.toggle_system_overlay.emit()
                         return "⚡ **System Monitor HUD Overlay closed.**"
+                elif overlay_type == "task_logs" or any(w in query for w in ("show logs", "show log", "system logs", "view logs", "open logs", "live logs", "aura logs", "close logs", "hide logs", "dismiss logs", "logs")):
+                    if action == "close" or any(w in query for w in ("close logs", "hide logs", "dismiss logs", "close log", "hide log")):
+                        try:
+                            if hasattr(app_signals, "toggle_log_viewer_overlay"):
+                                app_signals.toggle_log_viewer_overlay.emit()
+                        except Exception:
+                            pass
+                        return "📜 **Live System Logs Console closed.**"
                     else:
-                        app_signals.toggle_system_overlay.emit()
-                        return "⚡ **System Monitor HUD Overlay** toggled on your screen."
-                elif overlay_type == "task_status" or any(w in query for w in ("tasks", "agent tasks", "task status")):
+                        try:
+                            if hasattr(app_signals, "toggle_log_viewer_overlay"):
+                                app_signals.toggle_log_viewer_overlay.emit()
+                        except Exception:
+                            pass
+
+                        # Launch Dedicated Log Viewer Overlay on screen
+                        try:
+                            import subprocess
+                            from pathlib import Path
+                            root = Path(__file__).resolve().parents[2]
+                            py = root / ".venv" / "Scripts" / "python.exe"
+                            launcher = root / "run_log_viewer.py"
+                            if launcher.exists():
+                                DETACHED = 0x00000008 | 0x00000200 if sys.platform == "win32" else 0
+                                subprocess.Popen([str(py), str(launcher)], cwd=str(root), creationflags=DETACHED)
+                        except Exception:
+                            pass
+
+                        return "📜 **Live System Logs Console** opened on your screen."
+                elif overlay_type == "task_status" or any(w in query for w in ("tasks", "agent tasks", "task status", "action tasks", "action task", "task queue", "dag")):
                     if action == "close":
                         return "📋 **Agent Tasks HUD Overlay closed.**"
                     else:
-                        app_signals.toggle_agent_task_overlay.emit()
-                        return "📋 **Agent Tasks HUD Overlay** toggled on your screen."
+                        try:
+                            app_signals.toggle_agent_task_overlay.emit()
+                        except Exception:
+                            pass
+
+                        # Launch Agent Task Status HUD
+                        try:
+                            import subprocess
+                            from pathlib import Path
+                            root = Path(__file__).resolve().parents[2]
+                            py = root / ".venv" / "Scripts" / "python.exe"
+                            launcher = root / "run_task_status_hud.py"
+                            if launcher.exists():
+                                DETACHED = 0x00000008 | 0x00000200 if sys.platform == "win32" else 0
+                                subprocess.Popen([str(py), str(launcher)], cwd=str(root), creationflags=DETACHED)
+                        except Exception:
+                            pass
+
+                        return "📋 **Agent Tasks & Execution Queue HUD** opened on your screen."
                 elif overlay_type == "personal_os" or "personal os" in query or "dashboard" in query:
                     if action == "close":
                         if hasattr(app_signals, "hide_personal_os_overlay"):

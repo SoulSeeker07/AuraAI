@@ -82,7 +82,7 @@ class VoiceNeuralConsoleFilter(logging.Filter):
 _console_handler = logging.StreamHandler(sys.stdout)
 _console_handler.setLevel(logging.INFO)
 _console_handler.addFilter(VoiceNeuralConsoleFilter())
-_console_handler.setFormatter(logging.Formatter("  [VOICE OS] %(message)s"))
+_console_handler.setFormatter(logging.Formatter("  [Aura Notch] %(message)s"))
 
 _root_logger = logging.getLogger()
 _root_logger.setLevel(logging.INFO)
@@ -206,13 +206,13 @@ def main():
 
     # Start the real voice backend in background
     worker = VoiceBackendWorker()
-    worker.status_message.connect(lambda msg: _safe_print(f"  [VOICE OS] {msg}", flush=True))
-    worker.ready.connect(lambda: _safe_print("  [VOICE OS] 🟢 Standby: Listening for 'Aura'...\n", flush=True))
+    worker.status_message.connect(lambda msg: _safe_print(f"  [Aura Notch] {msg}", flush=True))
+    worker.ready.connect(lambda: _safe_print("  [Aura Notch] 🟢 Standby: Listening for 'Aura'...\n", flush=True))
     worker.error.connect(lambda err: _safe_print(f"  [ERROR] {err}", flush=True))
     worker.start()
 
     def _cleanup():
-        _safe_print("\n  [VOICE OS] Shutting down voice backend...", flush=True)
+        _safe_print("\n  [Aura Notch] Shutting down voice backend...", flush=True)
         worker.stop()
         worker.wait(2000)
 

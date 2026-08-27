@@ -377,28 +377,151 @@ class RealBackendBridge:
             "tasks": [],
         }
 
-        # Query recent real conversation & task history from ChatLog.json
+        # Query real conversation & task history from ChatLog.json
         if CHAT_LOG_PATH.exists():
             try:
                 with open(CHAT_LOG_PATH, "r", encoding="utf-8") as f:
                     chat_data = json.load(f)
                 if isinstance(chat_data, list):
-                    recent = [entry for entry in chat_data if entry.get("role") == "user"][-8:]
-                    for idx, entry in enumerate(reversed(recent)):
-                        content = entry.get("content", "")
+                    paired_tasks = []
+                    i = 0
+                    while i < len(chat_data):
+                        entry = chat_data[i]
+                        if entry.get("role") == "user":
+                            u_content = str(entry.get("content", "")).strip()
+                            u_time = entry.get("timestamp", "")
+                            u_topic = entry.get("topic", "General")
+                            a_content = ""
+                            if i + 1 < len(chat_data) and chat_data[i + 1].get("role") == "assistant":
+                                a_content = str(chat_data[i + 1].get("content", "")).strip()
+                                i += 1
+                            paired_tasks.append({
+                                "prompt": u_content,
+                                "response": a_content,
+                                "timestamp": u_time,
+                                "topic": u_topic,
+                            })
+                        i += 1
+
+                    recent = paired_tasks[-30:]
+                    for idx, pt in enumerate(reversed(recent)):
+                        prompt = pt["prompt"]
+                        response = pt["response"]
+                        ts = pt["timestamp"]
+                        topic = pt["topic"]
                         t_id = f"T-{1000 + idx}"
+
+                        is_error = False
+                        is_warning = False
+                        error_msg = ""
+                        resp_lower = response.lower()
+                        if any(err_kw in resp_lower for err_kw in ("result success=false", "error:", "exception:", "traceback", "tool_use_failed", "failed")):
+                            is_error = True
+                            error_msg = response
+                        elif any(warn_kw in resp_lower for warn_kw in ("security / captcha check", "login_auth_wall", "permission denied", "warning:")):
+                            is_warning = True
+                            error_msg = response
+
+                        if is_error:
+                            st_text = "● Error"
+                            st_color = "#f43f5e"
+                            prog = "Failed"
+                        elif is_warning:
+                            st_text = "● Warning"
+                            st_color = "#fbbf24"
+                            prog = "Action Req"
+                        elif not response:
+                            st_text = "● Pending"
+                            st_color = "#6496ff"
+                            prog = "In Queue"
+                        else:
+                            st_text = "● Completed"
+                            st_color = "#66ff99"
+                            prog = "100%"
+
+                        p_lower = prompt.lower()
+                        if any(k in p_lower for k in ("browser", "flipkart", "amazon", "youtube", "search", "google", "website", "instagram")):
+                            agent_name = "Browser & Web Agent"
+                        elif any(k in p_lower for k in ("notepad", "calculator", "open", "launch", "app", "window", "close")):
+                            agent_name = "Desktop Automation"
+                        elif any(k in p_lower for k in ("memory", "recall", "remember", "fact")):
+                            agent_name = "Memory Vault Agent"
+                        elif any(k in p_lower for k in ("screen", "ocr", "see", "vision")):
+                            agent_name = "Vision & Observer"
+                        else:
+                            agent_name = "Executive Brain"
+
+                        clean_time = ts
+                        try:
+                            if "T" in ts:
+                                clean_time = ts.split(".")[0].replace("T", " ")
+                        except Exception:
+                            pass
+
                         data["tasks"].append({
                             "id": t_id,
-                            "desc": content[:50] + ("..." if len(content) > 50 else ""),
-                            "agent": "Executive Brain",
-                            "status": "● Completed",
-                            "color": "#66ff99",
-                            "progress": "100%",
+                            "desc": prompt,
+                            "agent": agent_name,
+                            "status": st_text,
+                            "color": st_color,
+                            "progress": prog,
+                            "response": response if response else "Awaiting execution result...",
+                            "error": error_msg,
+                            "timestamp": clean_time,
+                            "topic": topic,
+                            "is_error": is_error or is_warning,
                         })
             except Exception as e:
                 logger.debug(f"[RealBackendBridge] ChatLog fetch notice: {e}")
 
+        # Prepend live in-memory executing tasks
+        if hasattr(self, "_live_tasks") and self._live_tasks:
+            for lt in self._live_tasks:
+                data["tasks"].insert(0, dict(lt))
+
         return data
+
+    def record_live_task_start(self, task_id: str, prompt: str, agent: str = "Executive Brain"):
+        """Record live starting task for immediate display in Task Queue."""
+        if not hasattr(self, "_live_tasks"):
+            self._live_tasks = []
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        clean_id = task_id if task_id.startswith("T-") else f"T-{task_id[-4:] if len(task_id) >= 4 else task_id}"
+        self._live_tasks.insert(0, {
+            "id": clean_id,
+            "desc": prompt,
+            "agent": agent,
+            "status": "● Executing",
+            "color": "#38bdf8",
+            "progress": "45%",
+            "response": "Currently executing in cognitive orchestrator...",
+            "error": "",
+            "timestamp": now_str,
+            "topic": "Live Execution",
+            "is_error": False,
+        })
+        self._live_tasks = self._live_tasks[:10]
+
+    def record_live_task_finish(self, task_id: str, response: str, is_success: bool = True):
+        """Update live task with final output and status."""
+        if not hasattr(self, "_live_tasks"):
+            return
+        clean_id = task_id if task_id.startswith("T-") else f"T-{task_id[-4:] if len(task_id) >= 4 else task_id}"
+        for t in self._live_tasks:
+            if t["id"] == clean_id or task_id in t["id"]:
+                t["response"] = response
+                if is_success and "error" not in response.lower() and "exception" not in response.lower():
+                    t["status"] = "● Completed"
+                    t["color"] = "#66ff99"
+                    t["progress"] = "100%"
+                    t["is_error"] = False
+                else:
+                    t["status"] = "● Error"
+                    t["color"] = "#f43f5e"
+                    t["progress"] = "Failed"
+                    t["error"] = response
+                    t["is_error"] = True
+                break
 
     # -------------------------------------------------------------------------
     # 4. HARDWARE & SYSTEM STATUS TELEMETRY
@@ -702,3 +825,33 @@ class RealBackendBridge:
             "browser_hook": "STANDBY // Ready for Web Automation",
             "vision_status": "ONLINE // Screen OCR & Frame Buffer Ready",
         }
+
+    def get_recent_raw_logs(self, max_lines: int = 300) -> List[str]:
+        """Fetch the latest system execution logs from logs/aura.log or logs/app.log."""
+        log_files = [
+            PROJECT_ROOT / "logs" / "aura.log",
+            PROJECT_ROOT / "logs" / "app.log",
+        ]
+        today_dir = PROJECT_ROOT / "logs" / datetime.now().strftime("%Y-%m-%d")
+        if today_dir.exists():
+            for f in today_dir.glob("*.log"):
+                log_files.insert(0, f)
+
+        lines: List[str] = []
+        for log_file in log_files:
+            if log_file.exists():
+                try:
+                    with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                        file_lines = f.readlines()
+                        if file_lines:
+                            lines.extend(file_lines[-max_lines:])
+                            break
+                except Exception as e:
+                    logger.debug(f"[RealBackendBridge] Log read notice: {e}")
+
+        if not lines:
+            lines = [
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] AuraAI Neural Core log stream active.\n",
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Multi-agent task execution and diagnostic monitor standing by.\n",
+            ]
+        return lines[-max_lines:]

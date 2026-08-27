@@ -2,6 +2,15 @@
 
 All notable changes to the Aura AI platform are documented in detail in [RELEASE.md](../RELEASE.md).
 
+## [v1.1.0] - 2026-08-28 — Milestone 31: VoiceOS Holographic Neural Notch HUD & Dedicated Live Log Console
+- Next-Gen VoiceOS Dynamic Island Notch HUD (`VoiceNotchOverlay`) anchored flush to the top taskbar with 120Hz smooth state morphing (IDLE -> LISTENING -> PROCESSING -> SUCCESS -> EXPANDED).
+- Hardware-linked multi-frequency rainbow waveform visualizer powered by real-time microphone level streaming.
+- Context-aware Dynamic Action & Source chips with instant execution and clean-slate resets.
+- Auto-collapsing 5-second expanded result card with hover recall and 30-second processing safety recovery.
+- Dedicated sub-millisecond Live System & Engine Logs Console (`LiveLogViewerOverlay`) with zero-lag binary tailing.
+- 6 dynamic filter categories (`ALL`, `CHAT`, `INFO`, `DEBUG`, `WARNING`, `ERROR`) with real-time entry count badges and conversation dialogue integration.
+- Strict functional separation between System Logs and Agent Task / DAG Queue overlays.
+
 ## [v1.0.0] - 2026-08-27 — Milestone 30: Holographic AI Core GUI & Cognitive Memory Pipeline
 - Holographic Command Center GUI with real-time HUD telemetry, reactive DAG visualizer, and token tracker.
 - Cognitive memory import pipeline supporting Claude and ChatGPT exports with fuzzy deduplication and schema normalization.

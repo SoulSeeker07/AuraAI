@@ -118,13 +118,19 @@ class RestartManager:
             return None
 
     @classmethod
-    def restart_aura(cls, delay_seconds: float = 1.0, extra_data: Optional[Dict[str, Any]] = None) -> str:
+    def restart_aura(
+        cls,
+        delay_seconds: float = 1.0,
+        extra_data: Optional[Dict[str, Any]] = None,
+        target_cmd: Optional[list[str]] = None,
+    ) -> str:
         """
-        Snapshots state and spawns a new detached Aura process, then terminates the current process.
+        Initiates a graceful restart by saving state and respawning AuraAI.
 
         Args:
             delay_seconds: Seconds to wait before exiting (allows chat UI to send confirmation).
             extra_data: Optional extra state metadata.
+            target_cmd: Optional explicit command list to launch.
 
         Returns:
             Confirmation message string.
@@ -140,19 +146,24 @@ class RestartManager:
                 CREATE_NEW_PROCESS_GROUP = 0x00000200
 
                 # Determine target command cleanly
-                argv_str = " ".join(sys.argv)
-                if "run_chat_window.py" in argv_str:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "run_chat_window.py")]
-                elif "run_gui.py" in argv_str:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "run_gui.py")]
-                elif "--gui" in sys.argv:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--gui"]
-                elif "--cli" in sys.argv and "restart" not in sys.argv:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--cli"]
-                elif "main.py" in argv_str:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "main.py")]
+                if target_cmd:
+                    cmd = target_cmd
                 else:
-                    cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--gui"]
+                    argv_str = " ".join(sys.argv)
+                    if "run_voice_notch.py" in argv_str or "--notch" in argv_str or "notch" in sys.argv:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "run_voice_notch.py")]
+                    elif "run_chat_window.py" in argv_str:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "run_chat_window.py")]
+                    elif "run_gui.py" in argv_str:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "run_gui.py")]
+                    elif "--gui" in sys.argv:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--gui"]
+                    elif "--cli" in sys.argv and "restart" not in sys.argv:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "main.py"), "--cli"]
+                    elif "main.py" in argv_str:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "main.py")]
+                    else:
+                        cmd = [sys.executable, str(PROJECT_ROOT / "run_voice_notch.py")]
 
                 logger.info(f"[RestartManager] Launching new instance: {' '.join(cmd)}")
                 subprocess.Popen(

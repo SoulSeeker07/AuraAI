@@ -110,7 +110,7 @@ class ContinuousVoiceLoop:
 
         # Ensure reasoning engine is immediately wired and ready
         self.conversation_engine = getattr(self._aura_core, "conversation_engine", None) if self._aura_core else None
-        if self.conversation_engine is None:
+        if self._aura_core is not None and self.conversation_engine is None:
             try:
                 import os
                 from pathlib import Path
@@ -649,7 +649,7 @@ class ContinuousVoiceLoop:
         if conversation_engine is None and aura_core is not None:
             conversation_engine = getattr(aura_core, "conversation_engine", None)
 
-        if conversation_engine is None:
+        if conversation_engine is None and aura_core is not None:
             try:
                 import os
                 from pathlib import Path
@@ -679,6 +679,7 @@ class ContinuousVoiceLoop:
             if self.coordinator is not None:
                 # Coordinator fallback for test harness
                 self.process_spoken_command(transcript, increment_turn=False)
+                self._set_state(VoiceState.SPEAKING)
                 self.voice_manager.speak("Done.")
                 return
 
@@ -698,9 +699,8 @@ class ContinuousVoiceLoop:
             self._return_to_listening_or_idle()
             return
 
-        self._set_state(VoiceState.SPEAKING)
         _safe_print("\n🤔 Aura is thinking...\n")
-        self.voice_manager._update_state(ConversationState.SPEAKING)
+        self.voice_manager._update_state(ConversationState.THINKING)
 
         from .prosody_chunker import ProsodyAwareChunker
         chunker = ProsodyAwareChunker()
@@ -770,8 +770,6 @@ class ContinuousVoiceLoop:
                         yield "I heard your request, but reasoning engine is unavailable."
                     token_gen = _plain_gen()
 
-                # Transition to SPEAKING state as soon as TTS stream begins
-                self._set_state(VoiceState.SPEAKING)
                 self._turn_telemetry["T7_tts_start"] = time.time()
 
                 # Stream prosody chunks to stdout
@@ -793,12 +791,21 @@ class ContinuousVoiceLoop:
                         app_signals.message_received.emit("Aura", complete_text, False)
                     except Exception:
                         pass
+                    self._set_state(VoiceState.SPEAKING)
                     self.voice_manager.speak(complete_text)
+                elif not self._running:
+                    # Session stopped mid-stream
+                    self._return_to_listening_or_idle()
+                else:
+                    # Empty response generated with no error: return to listening
+                    logger.warning("[ContinuousVoiceLoop] Reasoning completed with empty text response.")
+                    self._return_to_listening_or_idle()
 
             except Exception as e:
                 logger.error(f"[ContinuousVoiceLoop] Streaming turn failed: {e}", exc_info=True)
                 err_msg = f"Sorry, I ran into a problem: {e}"
                 full_response_parts.append(err_msg)
+                self._set_state(VoiceState.SPEAKING)
                 self.voice_manager.speak(err_msg)
 
         turn_record = {

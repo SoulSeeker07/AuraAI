@@ -144,6 +144,8 @@ class AppSignals(QObject):
     toggle_system_overlay = Signal()
     toggle_system_status_overlay = Signal()
     toggle_agent_task_overlay = Signal()
+    toggle_agent_task_logs = Signal()
+    toggle_log_viewer_overlay = Signal()
     toggle_personal_os_overlay = Signal()
     toggle_voice_notch = Signal()  # Show/hide the VoiceOS-style notch overlay
     show_notification = Signal(str, str)  # title, message

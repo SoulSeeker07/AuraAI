@@ -1,362 +1,362 @@
 [
   {
     "role": "user",
-    "content": "show my instagram profile",
-    "topic": "Show Instagram Profile",
-    "timestamp": "2026-08-27T11:56:08.179058"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:05:34.641211"
   },
   {
     "role": "assistant",
-    "content": "✓ Opened 'api-ms-win-core-profile-l1-1-0.dll'\n📍 Location: D:\\Sreekanta\\Rockstar Games\\api-ms-win-core-profile-l1-1-0.dll",
-    "topic": "Show Instagram Profile",
-    "timestamp": "2026-08-27T11:56:08.179058"
+    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:05:34.641211"
   },
   {
     "role": "user",
-    "content": "open instagram",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T11:56:49.765287"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:05:34.650244"
   },
   {
     "role": "assistant",
-    "content": "✓ Instagram is open.",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T11:56:49.765287"
+    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:05:34.650244"
   },
   {
     "role": "user",
-    "content": "open instagram",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T11:56:49.778370"
+    "content": "task logs",
+    "topic": "Task Logs",
+    "timestamp": "2026-08-28T02:05:39.092660"
   },
   {
     "role": "assistant",
-    "content": "✓ Instagram is open.",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T11:56:49.778370"
+    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Task Logs",
+    "timestamp": "2026-08-28T02:05:39.092660"
   },
   {
     "role": "user",
-    "content": "create a test folder on desktop",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T12:02:36.001104"
+    "content": "task logs",
+    "topic": "Task Logs",
+    "timestamp": "2026-08-28T02:05:39.108573"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. No backend available for capability 'unknown_action'",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T12:02:36.001104"
+    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Task Logs",
+    "timestamp": "2026-08-28T02:05:39.108573"
   },
   {
     "role": "user",
-    "content": "create a test folder on desktop",
-    "topic": "Create Test Folder",
-    "timestamp": "2026-08-27T12:06:37.543810"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:06:11.674999"
   },
   {
     "role": "assistant",
-    "content": "✅ **Folder Created Successfully!**\n\n📁 **Path:** `C:\\Users\\yrsre\\Desktop\\test`\n*(Verified on disk in Windows User Profile)*",
-    "topic": "Create Test Folder",
-    "timestamp": "2026-08-27T12:06:37.543810"
+    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:06:11.674999"
   },
   {
     "role": "user",
-    "content": "create a test folder on desktop",
-    "topic": "Create Test Folder",
-    "timestamp": "2026-08-27T12:06:37.572951"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:06:11.689678"
   },
   {
     "role": "assistant",
-    "content": "✅ **Folder Created Successfully!**\n\n📁 **Path:** `C:\\Users\\yrsre\\Desktop\\test`\n*(Verified on disk in Windows User Profile)*",
-    "topic": "Create Test Folder",
-    "timestamp": "2026-08-27T12:06:37.572951"
+    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:06:11.689678"
   },
   {
     "role": "user",
-    "content": "on flipkart add s24 ultra to cart",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-27T12:07:07.570524"
+    "content": "close logs",
+    "topic": "Close Logs",
+    "timestamp": "2026-08-28T02:09:21.228794"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://www.flipkart.com/search?q=add+s24+ultra+cart (Title: 'Add S24 Ultra Cart- Buy Products Online at Best Price in India - All Categories | Flipkart.com').; Verified browser authentication context.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-27T12:07:07.570524"
+    "content": "📜 **System & Task Execution Logs HUD closed.**",
+    "topic": "Close Logs",
+    "timestamp": "2026-08-28T02:09:21.228794"
   },
   {
     "role": "user",
-    "content": "in flipkart add samsung s24 ultra to cart",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-27T12:40:52.432561"
+    "content": "close logs",
+    "topic": "Close Logs",
+    "timestamp": "2026-08-28T02:09:21.243390"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Browser session initialized and ready.; ✓ Navigated to https://www.flipkart.com/search?q=add+samsung+s24+ultra+cart (Title: 'Add Samsung S24 Ultra Cart- Buy Products Online at Best Price in India - All Categories | Flipkart.com').; Verified browser authentication context.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-27T12:40:52.432561"
+    "content": "📜 **System & Task Execution Logs HUD closed.**",
+    "topic": "Close Logs",
+    "timestamp": "2026-08-28T02:09:21.243390"
   },
   {
     "role": "user",
-    "content": "open instagram",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:54:35.739604"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:09:25.952901"
   },
   {
     "role": "assistant",
-    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:54:35.739604"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:09:25.952901"
   },
   {
     "role": "user",
-    "content": "open instagram",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:54:35.751352"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:09:25.963834"
   },
   {
     "role": "assistant",
-    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:54:35.751352"
-  },
-  {
-    "role": "user",
-    "content": "open instagram",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:58:20.164135"
-  },
-  {
-    "role": "assistant",
-    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:58:20.164135"
-  },
-  {
-    "role": "user",
-    "content": "open instagram",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:58:20.175131"
-  },
-  {
-    "role": "assistant",
-    "content": "🔒 **Security / CAPTCHA Check:**\n\nSecurity/CAPTCHA challenge detected (LOGIN_AUTH_WALL). The browser window is open — please resolve it there, then say 'resume'.",
-    "topic": "Open Instagram",
-    "timestamp": "2026-08-27T12:58:20.175131"
-  },
-  {
-    "role": "user",
-    "content": "open chrome",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:23:03.889093"
-  },
-  {
-    "role": "assistant",
-    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:23:03.889093"
-  },
-  {
-    "role": "user",
-    "content": "open chrome",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:23:03.899129"
-  },
-  {
-    "role": "assistant",
-    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:23:03.899129"
-  },
-  {
-    "role": "user",
-    "content": "open chrome",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:27:30.907613"
-  },
-  {
-    "role": "assistant",
-    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **extract_text**: `{'description': ''}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:27:30.907613"
-  },
-  {
-    "role": "user",
-    "content": "open chrome",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:27:30.917162"
-  },
-  {
-    "role": "assistant",
-    "content": "🌐 **Aura Autonomous Browser Engine**\n\n**Goal:** `open chrome`\n**Result:** Opened Chrome browser and navigated to Google homepage.\n**Page:** https://www.google.com/\n\n### ⚡ Executed Browser Actions:\n- **navigate**: `{'url': 'https://www.google.com'}`\n- **extract_text**: `{'description': ''}`\n- **done**: `{'summary': 'Opened Chrome browser and navigated to Google homepage.'}`",
-    "topic": "Open Chrome",
-    "timestamp": "2026-08-27T17:27:30.917162"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T02:09:25.963834"
   },
   {
     "role": "user",
     "content": "hi",
     "topic": "General",
-    "timestamp": "2026-08-27T17:52:21.874955"
+    "timestamp": "2026-08-28T03:49:23.106903"
   },
   {
     "role": "assistant",
-    "content": "Hi! How can I help you today?",
+    "content": "Hi, Sreekanta. How can I assist you today?",
     "topic": "General",
-    "timestamp": "2026-08-27T17:52:21.874955"
+    "timestamp": "2026-08-28T03:49:23.106903"
   },
   {
     "role": "user",
     "content": "hi",
     "topic": "General",
-    "timestamp": "2026-08-27T17:52:21.882969"
+    "timestamp": "2026-08-28T03:49:23.116974"
   },
   {
     "role": "assistant",
-    "content": "Hi! How can I help you today?",
+    "content": "Hi, Sreekanta. How can I assist you today?",
     "topic": "General",
-    "timestamp": "2026-08-27T17:52:21.882969"
+    "timestamp": "2026-08-28T03:49:23.116974"
   },
   {
     "role": "user",
-    "content": "start lisitening",
-    "topic": "Start Lisitening",
-    "timestamp": "2026-08-27T17:54:12.811624"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:49:49.046799"
   },
   {
     "role": "assistant",
-    "content": "❌ Application 'lisitening' not found on system.",
-    "topic": "Start Lisitening",
-    "timestamp": "2026-08-27T17:54:12.811624"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 03:49:06,568 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 03:49:06,568 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 03:49:06,568 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 03:49:06,568 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 03:49:06,624 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 03:49:06,625 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 03:49:06,625 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 03:49:06,626 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 03:49:06,626 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 03:49:06,626 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:49:49.046799"
   },
   {
     "role": "user",
-    "content": "start lisitening",
-    "topic": "Start Lisitening",
-    "timestamp": "2026-08-27T17:54:12.819952"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:49:49.058903"
   },
   {
     "role": "assistant",
-    "content": "❌ Application 'lisitening' not found on system.",
-    "topic": "Start Lisitening",
-    "timestamp": "2026-08-27T17:54:12.819952"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 03:49:06,568 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 03:49:06,568 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 03:49:06,568 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 03:49:06,568 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 03:49:06,624 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 03:49:06,625 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 03:49:06,625 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 03:49:06,626 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 03:49:06,626 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 03:49:06,626 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:49:49.058903"
   },
   {
     "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T17:55:25.303816"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:54:20.059417"
   },
   {
     "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T17:55:25.303816"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 03:53:58,775 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 03:53:58,776 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 03:53:58,828 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 03:53:58,829 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:54:20.059417"
   },
   {
     "role": "user",
-    "content": "start listening",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T17:55:25.315902"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:54:20.071994"
   },
   {
     "role": "assistant",
-    "content": "🎙️ **Voice Listening Activated.** Aura is now listening for your wake word or voice commands. Say *'Aura'* or *'Stop listening'* to pause.",
-    "topic": "Start Listening",
-    "timestamp": "2026-08-27T17:55:25.315902"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 03:53:58,775 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 03:53:58,776 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 03:53:58,828 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 03:53:58,829 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:54:20.071994"
   },
   {
     "role": "user",
-    "content": "open Google Chrome",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T22:25:32.354802"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:56:10.346342"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T22:25:32.354802"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 03:53:58,775 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 03:53:58,776 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 03:53:58,828 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 03:53:58,829 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:56:10.346342"
   },
   {
     "role": "user",
-    "content": "open Google Chrome",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T22:27:48.053099"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:56:10.358316"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T22:27:48.053099"
+    "content": "📜 **Agent Task Queue & Live Execution Logs** (HUD Opened)\n\n```log\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 03:53:58,775 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 03:53:58,775 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 03:53:58,776 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 03:53:58,828 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 03:53:58,828 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 03:53:58,829 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 03:53:58,829 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:56:10.358316"
   },
   {
     "role": "user",
-    "content": "Open Google Chrome.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T22:57:15.594325"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:27.827416"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T22:57:15.594325"
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:27.827416"
   },
   {
     "role": "user",
-    "content": "Open up and open.",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-27T22:57:29.049527"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:27.838803"
   },
   {
     "role": "assistant",
-    "content": "Result success=False. ✓ Up is open.; No backend available for capability 'unknown_action'",
-    "topic": "cognitive_orchestrator",
-    "timestamp": "2026-08-27T22:57:29.049527"
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:27.838803"
   },
   {
     "role": "user",
-    "content": "open voice noutch",
-    "topic": "Open Voice Noutch",
-    "timestamp": "2026-08-27T23:07:12.645486"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:31.728923"
   },
   {
     "role": "assistant",
-    "content": "✓ Opened 'GST INVOICE (3).xlsx'\n📍 Location: C:\\Users\\yrsre\\Documents\\Spreadsheets\\GST INVOICE (3).xlsx",
-    "topic": "Open Voice Noutch",
-    "timestamp": "2026-08-27T23:07:12.645486"
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:31.728923"
   },
   {
     "role": "user",
-    "content": "open voice noutch",
-    "topic": "Open Voice Noutch",
-    "timestamp": "2026-08-27T23:07:12.658493"
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:31.740999"
   },
   {
     "role": "assistant",
-    "content": "✓ Opened 'GST INVOICE (3).xlsx'\n📍 Location: C:\\Users\\yrsre\\Documents\\Spreadsheets\\GST INVOICE (3).xlsx",
-    "topic": "Open Voice Noutch",
-    "timestamp": "2026-08-27T23:07:12.658493"
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T03:58:31.740999"
   },
   {
     "role": "user",
-    "content": "Open Google Chrome.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T23:37:52.329928"
+    "content": "task status",
+    "topic": "Task Status",
+    "timestamp": "2026-08-28T03:58:34.066951"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Google Chrome is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T23:37:52.329928"
+    "content": "**Task Queue & Status**\n| # | Task Description | Status |\n|---|-------------------|--------|\n| 1 | Initialize voice subsystem | Completed |\n| 2 | Listen for wake word | Active (waiting) |\n| 3 | Process user command “show logs” | Completed (displayed) |\n| 4 | Await next user request | Idle |",
+    "topic": "Task Status",
+    "timestamp": "2026-08-28T03:58:34.066951"
   },
   {
     "role": "user",
-    "content": "Open notepad",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T23:38:10.861719"
+    "content": "task status",
+    "topic": "Task Status",
+    "timestamp": "2026-08-28T03:58:34.080356"
   },
   {
     "role": "assistant",
-    "content": "Result success=True. ✓ Notepad is open.",
-    "topic": "desktop",
-    "timestamp": "2026-08-27T23:38:10.861719"
+    "content": "**Task Queue & Status**\n| # | Task Description | Status |\n|---|-------------------|--------|\n| 1 | Initialize voice subsystem | Completed |\n| 2 | Listen for wake word | Active (waiting) |\n| 3 | Process user command “show logs” | Completed (displayed) |\n| 4 | Await next user request | Idle |",
+    "topic": "Task Status",
+    "timestamp": "2026-08-28T03:58:34.080356"
+  },
+  {
+    "role": "user",
+    "content": "open logs",
+    "topic": "Open Logs",
+    "timestamp": "2026-08-28T03:59:25.789092"
+  },
+  {
+    "role": "assistant",
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Open Logs",
+    "timestamp": "2026-08-28T03:59:25.789092"
+  },
+  {
+    "role": "user",
+    "content": "open logs",
+    "topic": "Open Logs",
+    "timestamp": "2026-08-28T03:59:25.801142"
+  },
+  {
+    "role": "assistant",
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Open Logs",
+    "timestamp": "2026-08-28T03:59:25.801142"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-28T03:59:45.228362"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi, Sreekanta. How can I assist you today?",
+    "topic": "General",
+    "timestamp": "2026-08-28T03:59:45.228362"
+  },
+  {
+    "role": "user",
+    "content": "hi",
+    "topic": "General",
+    "timestamp": "2026-08-28T03:59:45.238962"
+  },
+  {
+    "role": "assistant",
+    "content": "Hi, Sreekanta. How can I assist you today?",
+    "topic": "General",
+    "timestamp": "2026-08-28T03:59:45.238962"
+  },
+  {
+    "role": "user",
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T04:05:12.089957"
+  },
+  {
+    "role": "assistant",
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T04:05:12.089957"
+  },
+  {
+    "role": "user",
+    "content": "show logs",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T04:05:12.105554"
+  },
+  {
+    "role": "assistant",
+    "content": "📜 **Live System Logs Console** opened on your screen.",
+    "topic": "Show Logs",
+    "timestamp": "2026-08-28T04:05:12.105554"
   }
 ]

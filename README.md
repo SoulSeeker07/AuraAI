@@ -25,7 +25,9 @@ Operational Subsystems (Live on Physical System)
 ├── Universal Capability Registry — OPERATIONAL (8 Domain Providers with 80+ Capabilities)
 ├── Dynamic CodeAct Engine (M28) — OPERATIONAL (Code-as-action, AST validation, sandbox execution, closed-loop repair)
 ├── Smart Home & IoT Engine (M29) — OPERATIONAL (Home Assistant WebSocket/REST + Tapo/Kasa KLAP AES-CBC-128 crypto)
-├── PySide6 Desktop HUD Overlays (M28/M29) — OPERATIONAL (Jarvis Rings, Chat Window, System Monitor, Weather, Agent Task Status, Personal OS Dashboard, Matrix, System Status)
+├── PySide6 Desktop HUD Overlays (M28/M29/M31) — OPERATIONAL (Voice Notch Dynamic Island, Dedicated Live Log Console, Jarvis Rings, Chat Window, System Monitor, Weather, Agent Task Status, Personal OS Dashboard, Matrix, System Status)
+├── VoiceOS Holographic Neural Notch HUD (M31) — OPERATIONAL (Always-on-top flush taskbar mount, hardware waveform, context action cards, 5s auto-collapse result lifecycle)
+├── Dedicated Live System Logs Console (M31) — OPERATIONAL (Zero-lag 64KB binary seek tailing, 6 real-time category filters with dynamic badge counters)
 ├── Holographic AI Core GUI & Command Center (M30) — OPERATIONAL (RealBackendBridge, Reactive DAG Visualizer, Tactical Telemetry, Token Tracker)
 ├── Cognitive Memory Importers (M30) — OPERATIONAL (Claude JSON + ChatGPT ZIP/JSON parsers, Fuzzy Deduplication, Retrieval Gate, Consolidation)
 ├── Cognitive Memory (M17) — COMPLETE (8 typed stores: Working, Episodic, Semantic, Procedural, Preference, Project + Decay + Consolidation)
@@ -46,14 +48,16 @@ Operational Subsystems (Live on Physical System)
 
 | Metric | Value |
 |:---|:---|
-| **Platform Version** | `v1.0.0-holographic-ai-core` |
+| **Platform Version** | `v1.1.0-voiceos-hud` |
 | **Native Desktop Managers** | 17 Win32 managers |
 | **Backend Adapters** | 24 registered adapters |
 | **Capability Providers** | 8 registered providers (80+ capabilities) |
-| **Desktop HUD Overlays** | 8 live PySide6 widgets |
+| **Desktop HUD Overlays** | 10 live PySide6 widgets |
+| **VoiceOS Notch HUD** | Always-on flush Dynamic Island with live hardware spectrum |
+| **Live Log Console** | High-speed binary seek tailing with 6 category filters |
 | **Holographic Core GUI** | Full Command Center with DAG Visualizer & Telemetry |
 | **Domain Experts** | 4 specialized experts (Cybersecurity, Network, Software, Finance) |
-| **Milestones Complete** | M01–M30 (30/30 baseline complete) |
+| **Milestones Complete** | M01–M31 (31/31 baseline complete) |
 | **Core Regression Suite** | 260+ passing (100% Green) |
 
 ---

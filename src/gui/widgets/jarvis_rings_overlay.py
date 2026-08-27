@@ -76,7 +76,6 @@ class JarvisRingsOverlay(QWidget):
         super().__init__(parent)
         self.setWindowFlags(
             Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
             | Qt.Tool
         )
         self.setAttribute(Qt.WA_TranslucentBackground)

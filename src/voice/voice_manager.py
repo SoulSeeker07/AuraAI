@@ -293,11 +293,16 @@ class VoiceManager:
         self.process_audio(chunk, 16000)
 
     def _ensure_input_recording(self) -> bool:
-        """Ensure the microphone stream is owned by VoiceManager."""
+        """Ensure the microphone stream is owned and capture is enabled."""
         if self.audio_manager.is_recording():
+            if hasattr(self.audio_manager, "enable_capture"):
+                self.audio_manager.enable_capture()
             return True
 
-        return self.audio_manager.start_recording(self._on_audio_chunk)
+        ok = self.audio_manager.start_recording(self._on_audio_chunk)
+        if ok and hasattr(self.audio_manager, "enable_capture"):
+            self.audio_manager.enable_capture()
+        return ok
 
     def process_audio(self, audio_data: bytes, sample_rate: int) -> None:
         """
@@ -458,8 +463,11 @@ class VoiceManager:
 
             logger.info("[STT] Transcription: PASS")
             self.stt_manager.reset()
-            if self.audio_manager and hasattr(self.audio_manager, "stop_recording"):
-                self.audio_manager.stop_recording()
+            if self.audio_manager:
+                if hasattr(self.audio_manager, "disable_capture"):
+                    self.audio_manager.disable_capture()
+                elif hasattr(self.audio_manager, "stop_recording"):
+                    self.audio_manager.stop_recording()
 
             if self.on_stt_result:
                 self.on_stt_result(context)
@@ -495,9 +503,12 @@ class VoiceManager:
             if self.session:
                 self.session.update_state(ConversationState.SPEAKING)
 
-            # Stop microphone recording during active speech to avoid acoustic feedback and false wake triggers
-            if self.audio_manager and hasattr(self.audio_manager, "is_recording") and self.audio_manager.is_recording():
-                self.audio_manager.stop_recording()
+            # Mute microphone audio ingestion during active speech to avoid acoustic feedback
+            if self.audio_manager:
+                if hasattr(self.audio_manager, "disable_capture"):
+                    self.audio_manager.disable_capture()
+                elif hasattr(self.audio_manager, "is_recording") and self.audio_manager.is_recording():
+                    self.audio_manager.stop_recording()
 
             logger.info(f"[TTS] Piper playback: PASS ({text})")
 
@@ -518,9 +529,13 @@ class VoiceManager:
             # Stop TTS
             self.tts_manager.stop()
 
-            # Stop recording if active listening
+            # Disable microphone capture during interrupt transition if active listening
             if self.state == ConversationState.ACTIVE_LISTENING:
-                self.audio_manager.stop_recording()
+                if self.audio_manager:
+                    if hasattr(self.audio_manager, "disable_capture"):
+                        self.audio_manager.disable_capture()
+                    elif hasattr(self.audio_manager, "stop_recording"):
+                        self.audio_manager.stop_recording()
                 self.stt_manager.reset()
 
             # Update state

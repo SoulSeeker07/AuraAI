@@ -637,8 +637,6 @@ class ChatWindowOverlay(QWidget):
 
     def _apply_window_flags(self):
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window
-        if self._always_on_top:
-            flags |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
     def toggle(self):

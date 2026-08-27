@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.0
 Window {
     id: root
     visible: controller.visible
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+    flags: Qt.FramelessWindowHint | Qt.Tool
     width: 620
     height: 420
     color: "transparent"

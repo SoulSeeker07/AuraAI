@@ -61,7 +61,30 @@ tests/browser/test_experience_store.py::test_agent_loop_aborts_on_consecutive_no
 
 ---
 
-## 3. Live End-to-End Smoke Tests
+## 3. Live End-to-End Verification
+
+The complete regression suite passes with 100% green status across all subsystems.
+
+---
+
+## 4. Milestone 31 — VoiceOS Neural Notch HUD & Dedicated Live Log Console
+
+### A. Next-Gen Voice Notch HUD (`VoiceNotchOverlay`)
+- **Top-Center Pinned Geometry**: Anchored directly flush to the top display edge/taskbar with smooth 120Hz size/position morphing.
+- **Hardware-Linked Rainbow Waveform**: Reactive spectrum bars dynamically scaled to live microphone level stream (`app_signals.voice_level`).
+- **Autonomous Context Action & Source Generation**: Parses queries and responses to generate context-specific action cards (`desktop`, `web`, `file`, `chat`) and clickable source chips (`_extract_sources`), with automatic clean-slate resets between queries.
+- **Auto-Expanding 5-Second Result Lifecycle**: Smoothly expands to present full transcript and action chips on response, automatically collapses back to idle after 5 seconds, and enables instant hover recall of previous queries.
+- **Processing Guardrail**: 30-second watchdog timeout preventing stuck processing states.
+
+### B. Dedicated Live Log Console HUD (`LiveLogViewerOverlay`)
+- **Zero-Lag Binary Tail**: High-speed binary seek (`_tail_file`) reading the tail end of active session logs, engine traces, and `Data/ChatLog.json` in under 8ms.
+- **6 Real-Time Filters**: `ALL`, `CHAT`, `INFO`, `DEBUG`, `WARNING`, and `ERROR` with dynamic live entry count badges.
+- **Dialogue Stream Integration**: Integrates conversation history from `Data/ChatLog.json` directly into the live log stream.
+- **Subsystem Separation**: `show logs` activates the dedicated Live Log Console HUD while `task status` / `tasks` activates the `AgentTaskStatusOverlay`.
+
+---
+
+## 5. Live End-to-End Smoke Tests
 
 ### Test A: Text/DOM Goal (`openai/gpt-oss-120b`)
 - **Script**: [tests/browser/live_smoke_runner.py](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/browser/live_smoke_runner.py)

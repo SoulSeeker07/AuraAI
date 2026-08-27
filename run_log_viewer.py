@@ -1,5 +1,5 @@
 """
-Launcher for Next-Gen AuraAI Agent Task Status HUD Overlay.
+Launcher for Dedicated AuraAI Live System Logs Overlay.
 """
 
 import sys
@@ -12,14 +12,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(SRC_DIR))
 
 from PySide6.QtWidgets import QApplication
-from gui.widgets.agent_task_status_overlay import AgentTaskStatusOverlay
+from gui.widgets.live_log_viewer_overlay import LiveLogViewerOverlay
 
 if __name__ == "__main__":
     app = QApplication.instance() or QApplication(sys.argv)
-    overlay = AgentTaskStatusOverlay()
-    if "--logs" in sys.argv or "--show-logs" in sys.argv:
-        overlay.toggle_logs_view(True)
-    overlay.show()
-    overlay.raise_()
-    overlay.activateWindow()
+    viewer = LiveLogViewerOverlay()
+    viewer.show()
+    viewer.raise_()
+    viewer.activateWindow()
     sys.exit(app.exec())

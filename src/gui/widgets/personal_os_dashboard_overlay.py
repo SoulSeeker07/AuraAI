@@ -70,10 +70,9 @@ class PersonalOSDashboardOverlay(QWidget):
         self.setObjectName("PersonalOSDashboardOverlay")
         self.setWindowTitle("AuraAI Personal OS Dashboard")
 
-        # Frameless HUD window attributes
+        # Frameless HUD window attributes (normal Z-order)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)

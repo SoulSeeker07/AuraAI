@@ -144,7 +144,6 @@ class MatrixOverlay(QWidget):
         self.setAttribute(Qt.WA_AlwaysStackOnTop, True)
         self.setWindowFlags(
             Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
             | Qt.Tool  # prevents task‑bar entry on Windows
         )
         self.setAutoFillBackground(False)

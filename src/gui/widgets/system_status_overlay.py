@@ -69,7 +69,6 @@ class SystemStatusOverlay(QWidget):
         # Frameless HUD window attributes
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
