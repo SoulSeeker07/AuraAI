@@ -627,6 +627,126 @@ class ContinuousVoiceLoop:
 
         # Fast-Path Direct Spoken GUI & Chat Triggers
         norm_t = transcript.lower().strip(" .!?,")
+
+        # 1. Fast-Path: Restart Aura Application
+        restart_aura_phrases = (
+            "restart", "restart aura", "aura restart", "restart yourself", "reboot aura",
+            "reload aura", "restart assistant", "restart voice notch", "restart notch"
+        )
+        if norm_t in restart_aura_phrases:
+            _safe_print("\nAura > 🔄 Restarting Aura now...\n")
+            self.voice_manager.speak("Restarting Aura now.")
+            self.history.append({
+                "turn": self.turn_count,
+                "transcript": transcript,
+                "success": True,
+                "spoken_summary": "Restarting Aura now.",
+            })
+
+            def _do_restart():
+                import time
+                import sys
+                import subprocess
+                import os
+                from pathlib import Path
+                time.sleep(1.2)  # Allow speech playback to reach audio output
+                root = Path(__file__).resolve().parents[2]
+                py = sys.executable or str(root / ".venv" / "Scripts" / "python.exe")
+                script = sys.argv[0] if sys.argv and sys.argv[0] else str(root / "run_voice_notch.py")
+                flags = 0
+                if sys.platform == "win32":
+                    flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+                subprocess.Popen(
+                    [str(py), str(script)] + sys.argv[1:],
+                    cwd=str(root),
+                    creationflags=flags,
+                    close_fds=True,
+                )
+                self.stop()
+                try:
+                    from PySide6.QtWidgets import QApplication
+                    app = QApplication.instance()
+                    if app:
+                        app.quit()
+                except Exception:
+                    pass
+                os._exit(0)
+
+            threading.Thread(target=_do_restart, daemon=True, name="AuraRestartThread").start()
+            return
+
+        # 2. Fast-Path: Quit / Full Exit Aura Application
+        quit_aura_phrases = (
+            "quit", "quit aura", "aura quit", "exit aura", "aura exit",
+            "close aura", "aura close", "shut down aura", "shutdown aura",
+            "aura shut down", "stop aura", "aura stop listening", "bye aura", "goodbye aura"
+        )
+        if norm_t in quit_aura_phrases:
+            _safe_print("\nAura > 👋 Shutting down Aura. Goodbye!\n")
+            self.voice_manager.speak("Shutting down Aura. Goodbye!")
+            self.history.append({
+                "turn": self.turn_count,
+                "transcript": transcript,
+                "success": True,
+                "spoken_summary": "Shutting down Aura. Goodbye!",
+            })
+
+            def _do_exit():
+                import time
+                import os
+                time.sleep(1.5)  # Allow farewell speech to finish
+                self.stop()
+                try:
+                    from PySide6.QtWidgets import QApplication
+                    app = QApplication.instance()
+                    if app:
+                        app.quit()
+                except Exception:
+                    pass
+                os._exit(0)
+
+            threading.Thread(target=_do_exit, daemon=True, name="AuraExitThread").start()
+            return
+
+        # 3. Fast-Path: Restart Computer / Laptop
+        restart_pc_phrases = (
+            "restart laptop", "restart pc", "restart computer", "reboot laptop",
+            "reboot pc", "reboot computer", "reboot system", "restart system", "restart machine"
+        )
+        if norm_t in restart_pc_phrases:
+            _safe_print("\nAura > 🔄 Restarting your computer...\n")
+            self.voice_manager.speak("Restarting the computer now.")
+            import subprocess
+            subprocess.Popen(["shutdown", "/r", "/t", "5"])
+            self.history.append({
+                "turn": self.turn_count,
+                "transcript": transcript,
+                "success": True,
+                "spoken_summary": "Restarting the computer in 5 seconds.",
+            })
+            self._return_to_listening_or_idle()
+            return
+
+        # 4. Fast-Path: Shut Down Computer / Laptop
+        shutdown_pc_phrases = (
+            "shutdown laptop", "shut down laptop", "shutdown pc", "shut down pc",
+            "shutdown computer", "shut down computer", "turn off laptop", "turn off computer", "turn off pc"
+        )
+        if norm_t in shutdown_pc_phrases:
+            _safe_print("\nAura > 🛑 Shutting down your computer...\n")
+            self.voice_manager.speak("Shutting down the computer now.")
+            import subprocess
+            subprocess.Popen(["shutdown", "/s", "/t", "5"])
+            self.history.append({
+                "turn": self.turn_count,
+                "transcript": transcript,
+                "success": True,
+                "spoken_summary": "Shutting down the computer in 5 seconds.",
+            })
+            self._return_to_listening_or_idle()
+            return
+
+        # 5. Fast-Path: GUI & Chat Windows
         if norm_t in ("open full gui", "open main gui", "open gui", "open main window", "open dashboard", "open aura gui", "launch gui", "show gui"):
             self.voice_manager.speak("Opening Aura full GUI dashboard.")
             import subprocess
