@@ -10,12 +10,14 @@ env/
 settings.json
 
 logs/
-database/*.db
-database/*.sqlite
-database/*.sqlite3
+*.log
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+*.npy
 Memory.db
-Memory.db-journal
-Memory.db-wal
 aura_memory_db/
 
 .pytest_cache/
@@ -44,3 +46,6 @@ models/
 # Generated test/runtime artifacts
 artifacts/
 .staging/
+*.wav
+*.mp3
+*.mp4
