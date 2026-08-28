@@ -31,6 +31,11 @@ if str(_SRC_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(1, str(_PROJECT_ROOT))
 
+# TD-002: Pre-empt dual package root split-brain
+if __name__ in sys.modules:
+    sys.modules.setdefault("core.aura_core", sys.modules[__name__])
+    sys.modules.setdefault("src.core.aura_core", sys.modules[__name__])
+
 # Import Memory module for brain integration
 try:
     from Memory import Memory
@@ -123,6 +128,11 @@ class AuraCore:
         """Get or create the singleton AuraCore instance."""
         if cls._instance is None:
             cls._instance = cls(config)
+            import sys
+            # Prevent TD-002 split-brain singleton bug across src.core vs core
+            sys.modules["core.aura_core"] = sys.modules.get(__name__, sys.modules.get("src.core.aura_core"))
+            sys.modules["src.core.aura_core"] = sys.modules.get(__name__, sys.modules.get("core.aura_core"))
+            logger.info(f"[AuraCore Singleton] Initialized unique kernel instance (ID: {id(cls._instance)})")
         return cls._instance
 
     @classmethod
@@ -565,6 +575,7 @@ class AuraCore:
             "- If the user requests an action or information that can be handled with an available tool, invoke the appropriate tool.\n"
             "- When the user requests multiple actions (e.g. 'Open Chrome, search for X, and create a summary note on my desktop'), execute ALL requested actions using available tools (desktop_launch_app, browser_open_url, desktop_create_note).\n"
             "- Answer questions accurately using the provided ambient context when relevant.\n"
+            "- Always communicate in clear, natural English unless the user explicitly requests another language.\n"
             "- Output clear natural language text."
         )
 
@@ -654,6 +665,27 @@ class AuraCore:
                 "or .env file and make sure the 'groq' package is installed."
             )
 
+        # 1. Deterministic Local Intent Fast-Path (0ms latency & 0 API tokens across all frontends)
+        # Skip fast-path for compound multi-action queries (e.g. connectors or comma-separated multi-actions)
+        msg_lower = user_message.lower().strip()
+        has_connector = any(w in msg_lower for w in (" and ", " then ", " also ", " after that ", " plus ", " & "))
+        has_multi_clause = ("," in msg_lower or ";" in msg_lower) and any(
+            verb in msg_lower for verb in ("open ", "launch ", "start ", "create ", "search ", "browse ", "set ", "turn ", "run ")
+        )
+        is_compound = has_connector or (has_multi_clause and len([c for c in msg_lower.replace(";", ",").split(",") if c.strip()]) > 1)
+
+        if not is_compound:
+            conv_engine = getattr(self, "conversation_engine", None)
+            if conv_engine is not None:
+                try:
+                    intent = conv_engine.intent_router.detect(user_message)
+                    local_answer = conv_engine._answer_local_intent(intent)
+                    if local_answer is not None:
+                        logger.debug(f"[AuraCore] Resolved via deterministic local fast-path: {intent}")
+                        return local_answer
+                except Exception as ce_err:
+                    logger.debug(f"[AuraCore] Local intent router exception: {ce_err}")
+
         try:
             import json
             from core.tools.aura_tool_registry import AuraToolRegistry
@@ -668,24 +700,24 @@ class AuraCore:
                 "temperature": 0.7,
                 "max_tokens": 1024,
             }
-            # Dynamically select optimal reasoning effort based on query complexity
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
             def _get_dynamic_reasoning_effort(msg: str) -> str:
                 m = msg.lower().strip()
-                # 1. High: Deep debugging, algorithms, architecture, math proofs
-                if any(w in m for w in ("debug", "traceback", "algorithm", "architecture", "solve math", "refactor code", "optimize complexity")):
+                # 1. HIGH: Deep debugging, tracebacks, complex algorithm design, math proofs
+                if any(w in m for w in ("debug", "traceback", "algorithm", "architecture", "solve math", "refactor code", "optimize complexity", "memory leak")):
                     return "high"
-                # 2. Medium: Detailed analysis, explanations, essays, comparative breakdowns
-                if any(w in m for w in ("explain in detail", "summarize", "compare", "pros and cons", "analysis of", "write an essay", "step by step")):
+                # 2. MEDIUM: Long-form analysis, essays, deep explanations
+                if any(w in m for w in ("explain in detail", "write an essay", "pros and cons", "comprehensive analysis", "step-by-step breakdown")):
                     return "medium"
-                # 3. Low: Fast desktop OS automation, actions, volume, apps, conversational chat
+                # 3. LOW: Fast desktop automation, volume, apps, web search, quick Q&A, greetings
                 return "low"
 
             dynamic_effort = _get_dynamic_reasoning_effort(user_message)
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = dynamic_effort
-                effort_icon = "⚡" if dynamic_effort == "low" else ("⚖️" if dynamic_effort == "medium" else "🧠")
-                print(f"\n{effort_icon} [AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: openai/gpt-oss-120b | Query: \"{user_message}\"\n", flush=True)
-                logger.info(f"[AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: openai/gpt-oss-120b | Query: '{user_message}'")
+                logger.info(f"[AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: openai/gpt-oss-120b | Query: '{user_message[:40]}'")
 
             from ai.key_pool import KeyPool
             from groq import Groq
@@ -875,12 +907,14 @@ class AuraCore:
     async def process_request(self, user_goal: str) -> str:
         """
         Unified OS Kernel request entry point.
-        Delegates local hardware/environmental/HUD intents to ConversationEngine,
-        and multi-agent cognitive workflows to MasterOrchestrator.
+        Executes all requests through the unified ReAct tool engine (get_ai_response).
         """
         try:
-            # ── 1. Fast-Path / Deterministic Local Hardware & Environmental Intents ──
-            # (Smart Home bulb control, Display brightness, Live Weather, Audio mute/volume, Battery, HUD overlays, Memory facts)
+            # 1. Direct Unified ReAct Tool & LLM Engine across CLI, GUI, and Voice
+            if self.llm_enabled and self.groq_client is not None:
+                return await self.get_ai_response(user_goal, enable_tools=True)
+
+            # 2. Local fallback if LLM is disabled
             conv_engine = getattr(self, "conversation_engine", None)
             if conv_engine is not None:
                 try:

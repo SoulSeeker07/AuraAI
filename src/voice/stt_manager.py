@@ -219,9 +219,7 @@ class LocalAgreementStabilizer:
             n += 1
         return n
 
-DESKTOP_VOCABULARY_PROMPT: str = (
-    "Hello Aura, open Google Chrome, search SpaceX launch, create a summary note on my desktop, VS Code, volume, brightness, YouTube, terminal, file, restart Aura, quit Aura."
-)
+DESKTOP_VOCABULARY_PROMPT: str = "Aura desktop assistant."
 
 
 class FasterWhisperSTTEngine(STTEngine):

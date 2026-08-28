@@ -81,18 +81,21 @@ class EarconPlayer:
     def play_wake_chime(cls) -> None:
         """
         Play the wake earcon asynchronously on a background thread.
-        Never blocks the caller and never raises on device errors.
+        Uses native Windows sound to prevent PortAudio/PyAudio driver lock contention.
         """
         def _play():
             try:
-                import sounddevice as sd
-
-                if cls._cached_chime is None:
-                    cls._cached_chime = cls.generate_chime(cls._sample_rate)
-
-                sd.play(cls._cached_chime, samplerate=cls._sample_rate, blocking=False)
+                import sys
+                if sys.platform == "win32":
+                    import winsound
+                    winsound.MessageBeep(winsound.MB_OK)
+                else:
+                    import sounddevice as sd
+                    if cls._cached_chime is None:
+                        cls._cached_chime = cls.generate_chime(cls._sample_rate)
+                    sd.play(cls._cached_chime, samplerate=cls._sample_rate, blocking=False)
             except Exception as e:
-                logger.debug(f"[EarconPlayer] Playback skipped or failed: {e}")
+                logger.debug(f"[EarconPlayer] Playback skipped: {e}")
 
         threading.Thread(target=_play, daemon=True, name="EarconPlayer").start()
 
@@ -100,17 +103,19 @@ class EarconPlayer:
     def play_followup_chime(cls) -> None:
         """
         Play the follow-up earcon asynchronously on a background thread.
-        Never blocks the caller and never raises on device errors.
         """
         def _play():
             try:
-                import sounddevice as sd
-
-                if cls._cached_followup_chime is None:
-                    cls._cached_followup_chime = cls.generate_followup_chime(cls._sample_rate)
-
-                sd.play(cls._cached_followup_chime, samplerate=cls._sample_rate, blocking=False)
+                import sys
+                if sys.platform == "win32":
+                    import winsound
+                    winsound.MessageBeep(winsound.MB_ICONASTERISK)
+                else:
+                    import sounddevice as sd
+                    if cls._cached_followup_chime is None:
+                        cls._cached_followup_chime = cls.generate_followup_chime(cls._sample_rate)
+                    sd.play(cls._cached_followup_chime, samplerate=cls._sample_rate, blocking=False)
             except Exception as e:
-                logger.debug(f"[EarconPlayer] Followup playback skipped or failed: {e}")
+                logger.debug(f"[EarconPlayer] Followup playback skipped: {e}")
 
         threading.Thread(target=_play, daemon=True, name="FollowupEarconPlayer").start()

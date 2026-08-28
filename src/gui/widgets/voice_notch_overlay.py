@@ -1209,21 +1209,14 @@ class VoiceNotchOverlay(QWidget):
         def _run_cmd():
             try:
                 import asyncio
-                from pathlib import Path as _Path
-                project_root = _Path(__file__).resolve().parents[3]
-
-                # 1. Use global / attached AuraCore
                 core = None
                 try:
-                    from voice.continuous_loop import ContinuousVoiceLoop
-                    core = ContinuousVoiceLoop._global_aura_core
+                    from core.aura_core import AuraCore
+                    core = AuraCore.get_instance()
                 except Exception:
-                    pass
-
-                if core is None:
                     try:
-                        from main import get_aura_core
-                        core = get_aura_core()
+                        from src.core.aura_core import AuraCore
+                        core = AuraCore.get_instance()
                     except Exception:
                         pass
 
@@ -1232,19 +1225,10 @@ class VoiceNotchOverlay(QWidget):
                 try:
                     if core is not None and hasattr(core, "get_ai_response"):
                         reply_text = loop.run_until_complete(core.get_ai_response(text, enable_tools=True))
+                    elif core is not None and hasattr(core, "process_request"):
+                        reply_text = loop.run_until_complete(core.process_request(text))
                     else:
-                        from brain.conversation_engine import ConversationEngine
-                        from ai.registry import build_provider_manager
-                        from Memory import Memory
-
-                        mem = Memory(
-                            db_path=str(project_root / "Memory.db"),
-                            chat_log_path=str(project_root / "Data" / "ChatLog.json"),
-                        )
-                        pm = build_provider_manager(dict(os.environ))
-                        engine = ConversationEngine(memory=mem, provider_manager=pm)
-                        res = loop.run_until_complete(engine.process(text))
-                        reply_text = res.text if hasattr(res, "text") else str(res)
+                        reply_text = "Backend is initializing. Please try again in a moment."
                 finally:
                     loop.close()
 

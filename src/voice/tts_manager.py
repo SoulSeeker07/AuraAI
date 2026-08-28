@@ -708,7 +708,7 @@ class EdgeTTSEngine(TTSEngine):
                 async def _speak():
                     try:
                         import io
-                        import sounddevice as sd
+                        import tempfile
                         import soundfile as sf
 
                         audio_buf = io.BytesIO()
@@ -721,8 +721,21 @@ class EdgeTTSEngine(TTSEngine):
                         if self._is_playing and audio_buf.tell() > 0:
                             audio_buf.seek(0)
                             data, samplerate = sf.read(audio_buf)
-                            sd.play(data, samplerate=samplerate)
-                            sd.wait()
+                            import sys
+                            if sys.platform == "win32":
+                                import winsound
+                                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+                                    temp_wav = tf.name
+                                    sf.write(temp_wav, data, samplerate)
+                                winsound.PlaySound(temp_wav, winsound.SND_FILENAME | winsound.SND_NODEFAULT)
+                                try:
+                                    os.unlink(temp_wav)
+                                except Exception:
+                                    pass
+                            else:
+                                import sounddevice as sd
+                                sd.play(data, samplerate=samplerate)
+                                sd.wait()
                             self._emit_complete()
                     except asyncio.CancelledError:
                         logger.info("Edge TTS speech interrupted")

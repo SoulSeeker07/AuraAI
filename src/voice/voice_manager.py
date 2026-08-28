@@ -312,19 +312,9 @@ class VoiceManager:
         """
         with self._lock:
             try:
-                # Process wake word detection during WAKE_LISTENING, THINKING, EXECUTING, or SPEAKING
-                if self.state in (
-                    ConversationState.WAKE_LISTENING,
-                    ConversationState.THINKING,
-                    ConversationState.EXECUTING,
-                    ConversationState.SPEAKING,
-                ):
-                    enable_barge_in = os.getenv("ENABLE_TTS_BARGE_IN", "true").lower() == "true"
-                    if self.state != ConversationState.SPEAKING or enable_barge_in:
-                        # Set is_speaking flag on wake word engine if available
-                        if hasattr(self.wake_word, "engine") and self.wake_word.engine:
-                            setattr(self.wake_word.engine, "is_speaking", self.state == ConversationState.SPEAKING)
-                        self.wake_word.process_audio(audio_data, sample_rate)
+                # Process wake word detection ONLY during WAKE_LISTENING state to prevent self-interruption
+                if self.state == ConversationState.WAKE_LISTENING:
+                    self.wake_word.process_audio(audio_data, sample_rate)
 
                 # Process VAD
                 vad_state, energy = self.vad.process_audio(audio_data, sample_rate)

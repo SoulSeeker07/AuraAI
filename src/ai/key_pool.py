@@ -69,9 +69,15 @@ class KeyPool:
         """Discover all API keys from environment variables."""
         try:
             from dotenv import load_dotenv
-            load_dotenv()
-        except Exception:
-            pass
+            from pathlib import Path
+            project_env = Path(__file__).resolve().parents[2] / ".env"
+            if project_env.exists():
+                load_dotenv(dotenv_path=project_env, override=False)
+                logger.debug(f"[KeyPool] Loaded .env from explicit project path: {project_env}")
+            else:
+                load_dotenv()
+        except Exception as e:
+            logger.debug(f"[KeyPool] load_dotenv notice: {e}")
 
         # 1. Discover Groq keys
         groq_keys: List[str] = []

@@ -172,12 +172,10 @@ class CommandWorker(QThread):
             response_text = ""
             is_error = False
 
-            if hasattr(core, "process_request"):
+            if hasattr(core, "get_ai_response"):
+                response_text = loop.run_until_complete(core.get_ai_response(self.command, enable_tools=True))
+            elif hasattr(core, "process_request"):
                 response_text = loop.run_until_complete(core.process_request(self.command))
-                if not response_text or str(response_text).startswith("❌"):
-                    response_text = loop.run_until_complete(core.get_ai_response(self.command))
-            else:
-                response_text = loop.run_until_complete(core.get_ai_response(self.command))
 
             resp_str = str(response_text).strip()
             if not resp_str or resp_str.startswith("❌") or resp_str.startswith("✗") or "Error processing message" in resp_str or "Error code:" in resp_str or "tool_use_failed" in resp_str:

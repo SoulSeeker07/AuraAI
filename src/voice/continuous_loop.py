@@ -283,7 +283,8 @@ class ContinuousVoiceLoop:
                     EarconPlayer.play_wake_chime()
                 except Exception:
                     pass
-                self.voice_manager._start_active_listening()
+                if getattr(self.voice_manager, "state", None) != ConversationState.ACTIVE_LISTENING:
+                    self.voice_manager._start_active_listening()
             logger.info("[VoiceManager] STT_ACTIVE")
 
     def trigger_listening(self):
@@ -380,6 +381,9 @@ class ContinuousVoiceLoop:
             "subtitles by",
             "translated by",
             "amara.org",
+            "spacex launch",
+            "summary note on my desktop",
+            "aura desktop assistant",
         )
         if (
             not transcript.strip()
@@ -415,6 +419,25 @@ class ContinuousVoiceLoop:
             )
             or not self._running
         ):
+            # 0. Check if user ONLY said the wake word (prompt for command and keep listening)
+            if clean_t_punct in ("aura", "hey aura", "hi aura", "hello aura", "ok aura", "okay aura"):
+                self._set_state(VoiceState.SPEAKING)
+                _safe_print(f"\r\033[K\nYou > {transcript}\n")
+                spoken_greet = "I'm listening. What can I do for you?"
+                try:
+                    from gui.signals import app_signals
+                    app_signals.message_received.emit("AuraAI", spoken_greet, False)
+                except Exception:
+                    pass
+                try:
+                    self.voice_manager.speak(spoken_greet)
+                except Exception:
+                    pass
+                self.trigger_listening()
+                if hasattr(self, "voice_manager") and self.voice_manager:
+                    self.voice_manager._start_active_listening()
+                return
+
             # 1. Check for voice pause / standby commands (mic stays open, returns to wake-word idle)
             if clean_t_punct in self.VOICE_PAUSE_PHRASES or any(
                 clean_t_punct.startswith(p)
@@ -853,6 +876,7 @@ class ContinuousVoiceLoop:
             return
 
         _safe_print("\n🤔 Aura is thinking...\n")
+        self._set_state(VoiceState.UNDERSTANDING)
         self.voice_manager._update_state(ConversationState.THINKING)
 
         from .prosody_chunker import ProsodyAwareChunker
@@ -950,6 +974,14 @@ class ContinuousVoiceLoop:
             try:
                 loop.run_until_complete(_stream_turn())
             finally:
+                try:
+                    pending = asyncio.all_tasks(loop)
+                    for task in pending:
+                        task.cancel()
+                    if pending:
+                        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                except Exception:
+                    pass
                 loop.close()
 
                 complete_resp = " ".join(full_response_parts)

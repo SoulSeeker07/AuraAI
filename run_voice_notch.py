@@ -84,6 +84,14 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
+def _global_excepthook(exc_type, exc_value, exc_tb):
+    import traceback
+    err = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    logging.error(f"[Uncaught Exception] {err}")
+    _safe_print(f"\n[Aura Exception Handled] {err}", flush=True)
+
+sys.excepthook = _global_excepthook
+
 from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
@@ -163,7 +171,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Aura Voice Notch")
     app.setOrganizationName("AuraAI")
-    app.setQuitOnLastWindowClosed(True)
+    app.setQuitOnLastWindowClosed(False)
 
     notch = VoiceNotchOverlay()
     notch.show()

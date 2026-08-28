@@ -472,13 +472,16 @@ class AuraToolRegistry:
     @staticmethod
     def _set_volume(level: int | None, mute: bool | None) -> dict[str, Any]:
         try:
+            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
             from ctypes import cast, POINTER
             from comtypes import CLSCTX_ALL
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
             devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            if hasattr(devices, "EndpointVolume"):
+                volume = devices.EndpointVolume
+            else:
+                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
 
             msg_parts = []
             if mute is not None:
@@ -492,7 +495,6 @@ class AuraToolRegistry:
 
             return {"status": "success", "message": "Audio " + ", ".join(msg_parts)}
         except Exception as e:
-            # Fallback to windows nircmd or powershell if pycaw fails
             return {"status": "error", "message": f"Volume adjustment failed: {e}"}
 
     @staticmethod
