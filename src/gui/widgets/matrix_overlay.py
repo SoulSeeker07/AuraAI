@@ -15,7 +15,7 @@ Features
 
 Usage
 -----
-    from src.gui.widgets.matrix_overlay import MatrixOverlay
+    from gui.widgets.matrix_overlay import MatrixOverlay
 
     overlay = MatrixOverlay(parent=some_window)
     overlay.show()

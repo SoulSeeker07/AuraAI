@@ -10,11 +10,11 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from src.core.orchestration.request_source import RequestSource
-from src.daemon.governance import AutonomyGovernanceEngine, AutonomyPolicy
-from src.personal_os.state_store import PersonalOSStateStore, PersonalOSTrigger
-from src.core.orchestration.execution_policy import ExecutionPolicy
-from src.core.orchestration.autonomy_mode import AutonomyLevel
+from core.orchestration.request_source import RequestSource
+from daemon.governance import AutonomyGovernanceEngine, AutonomyPolicy
+from personal_os.state_store import PersonalOSStateStore, PersonalOSTrigger
+from core.orchestration.execution_policy import ExecutionPolicy
+from core.orchestration.autonomy_mode import AutonomyLevel
 
 
 def test_request_source_enum():
@@ -108,7 +108,7 @@ def test_personal_os_state_store_crud():
 @pytest.mark.asyncio
 async def test_master_orchestrator_autonomy_floor_scope():
     """Verify MasterOrchestrator raises autonomy floor for TRIGGER_AUTONOMOUS and restores it."""
-    from src.core.orchestration.master_orchestrator import MasterOrchestrator
+    from core.orchestration.master_orchestrator import MasterOrchestrator
 
     policy = ExecutionPolicy.get_instance()
     policy.set_autonomy_level(AutonomyLevel.ASSISTED)
@@ -127,8 +127,8 @@ async def test_master_orchestrator_autonomy_floor_scope():
 
 def test_prohibited_capability_unconditional_hard_block_regardless_of_token():
     """Verify PROHIBITED tier capabilities are unconditionally hard-blocked even with a forged or valid HMAC token."""
-    from src.daemon.governance import AutonomyGovernanceEngine, AutonomyRiskTier
-    from src.daemon.models import JobDefinition, TriggerType
+    from daemon.governance import AutonomyGovernanceEngine, AutonomyRiskTier
+    from daemon.models import JobDefinition, TriggerType
 
     gov = AutonomyGovernanceEngine()
 
@@ -164,7 +164,7 @@ def test_prohibited_capability_unconditional_hard_block_regardless_of_token():
 
 def test_audit_ledger_chain_integrity_after_request_source_write():
     """Verify audit ledger hash chaining and Merkle integrity after writing trigger request_source events."""
-    from src.desktop.native.security.audit_logger import SecurityAuditLogger
+    from desktop.native.security.audit_logger import SecurityAuditLogger
 
     with tempfile.TemporaryDirectory() as tmpdir:
         audit_path = Path(tmpdir) / "audit_ledger.jsonl"

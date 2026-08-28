@@ -4,8 +4,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 import re
 from Memory import Memory, MemoryFact
-from src.brain.intent_router import IntentRouter
-from src.brain.conversation_engine import ConversationEngine
+from brain.intent_router import IntentRouter
+from brain.conversation_engine import ConversationEngine
 
 m = Memory()
 router = IntentRouter(m)

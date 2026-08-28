@@ -486,7 +486,7 @@ class TaskDecomposer:
             sites_list = SiteRegistry.list_sites()
         except Exception:
             try:
-                from src.browser.planner.site_registry import SiteRegistry
+                from browser.planner.site_registry import SiteRegistry
                 sites_list = SiteRegistry.list_sites()
             except Exception:
                 SiteRegistry = None
@@ -1893,7 +1893,7 @@ class TaskDecomposer:
             is_click = any(
                 k in goal_lower
                 for k in ["click", "press link", "follow link", "button"]
-            ) and not ("play" in goal_lower)
+            ) and "play" not in goal_lower
             is_type = any(
                 k in goal_lower for k in ["type ", "fill ", "enter "]
             )

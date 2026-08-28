@@ -10,11 +10,11 @@ import pytest
 from pathlib import Path
 import tempfile
 
-from src.personal_os.models import DailyContext, TaskItem, CalendarMeeting, DeadlineItem
-from src.personal_os.state_store import PersonalOSStateStore
-from src.personal_os.daily_context import DailyContextEngine
-from src.core.backends.adapters.personal_os_backend import PersonalOSBackendAdapter
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
+from personal_os.models import DailyContext, TaskItem, CalendarMeeting, DeadlineItem
+from personal_os.state_store import PersonalOSStateStore
+from personal_os.daily_context import DailyContextEngine
+from core.backends.adapters.personal_os_backend import PersonalOSBackendAdapter
+from core.orchestration.master_orchestrator import MasterOrchestrator
 
 
 def test_daily_context_model_formatting():
@@ -85,7 +85,7 @@ def test_daily_context_engine_synthesis():
         )
 
         # Add stored triggers (one weekday 1-5, one Friday-only 5)
-        from src.personal_os.state_store import PersonalOSTrigger
+        from personal_os.state_store import PersonalOSTrigger
         store.save_trigger(
             PersonalOSTrigger(
                 trigger_id="trig_weekday",

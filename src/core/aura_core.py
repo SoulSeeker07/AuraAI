@@ -367,9 +367,9 @@ class AuraCore:
                 from autonomy.trigger_scheduler import TriggerScheduler
                 from core.orchestration.execution_policy import ExecutionPolicy
             except (ImportError, ModuleNotFoundError):
-                from src.autonomy.trigger_registry import TriggerRegistry
-                from src.autonomy.trigger_scheduler import TriggerScheduler
-                from src.core.orchestration.execution_policy import ExecutionPolicy
+                from autonomy.trigger_registry import TriggerRegistry
+                from autonomy.trigger_scheduler import TriggerScheduler
+                from core.orchestration.execution_policy import ExecutionPolicy
 
             self.policy = ExecutionPolicy.get_instance()
             self.trigger_registry = TriggerRegistry(
@@ -387,7 +387,7 @@ class AuraCore:
                 from voice.continuous_loop import ContinuousVoiceLoop
             except (ImportError, ModuleNotFoundError):
                 try:
-                    from src.voice.continuous_loop import ContinuousVoiceLoop
+                    from voice.continuous_loop import ContinuousVoiceLoop
                 except Exception as e:
                     logger.debug(f"ContinuousVoiceLoop import skipped: {e}")
 

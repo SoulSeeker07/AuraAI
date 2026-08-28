@@ -118,13 +118,13 @@ class ContinuousVoiceLoop:
                 try:
                     from Memory import Memory
                 except Exception:
-                    from src.Memory import Memory
+                    from Memory import Memory
                 try:
                     from brain.conversation_engine import ConversationEngine
                     from ai.registry import build_provider_manager
                 except Exception:
-                    from src.brain.conversation_engine import ConversationEngine
-                    from src.ai.registry import build_provider_manager
+                    from brain.conversation_engine import ConversationEngine
+                    from ai.registry import build_provider_manager
 
                 mem = Memory(
                     db_path=str(project_root / "Memory.db"),
@@ -677,13 +677,13 @@ class ContinuousVoiceLoop:
                 try:
                     from Memory import Memory
                 except Exception:
-                    from src.Memory import Memory
+                    from Memory import Memory
                 try:
                     from brain.conversation_engine import ConversationEngine
                     from ai.registry import build_provider_manager
                 except Exception:
-                    from src.brain.conversation_engine import ConversationEngine
-                    from src.ai.registry import build_provider_manager
+                    from brain.conversation_engine import ConversationEngine
+                    from ai.registry import build_provider_manager
 
                 mem = Memory(
                     db_path=str(project_root / "Memory.db"),

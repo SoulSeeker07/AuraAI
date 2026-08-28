@@ -11,11 +11,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.core.backends.adapters.desktop_backend import DesktopEngineBackend
-from src.core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
-from src.brain.aca.engine_interface import EngineRegistry
-from src.core.orchestration.activity_trace_renderer import ActivityTraceRenderer
+from brain.execution_coordinator import ExecutionCoordinator
+from core.backends.adapters.desktop_backend import DesktopEngineBackend
+from core.backends.adapters.browser_backend import PlaywrightBrowserAdapter
+from brain.aca.engine_interface import EngineRegistry
+from core.orchestration.activity_trace_renderer import ActivityTraceRenderer
 
 
 async def run_activity_trace_demo():

@@ -9,8 +9,8 @@ import time
 import pytest
 from pathlib import Path
 
-from src.personal_os.workspace_search import WorkspaceSearchEngine
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
+from personal_os.workspace_search import WorkspaceSearchEngine
+from core.orchestration.master_orchestrator import MasterOrchestrator
 
 
 def test_workspace_search_engine_indexing_and_query():
@@ -124,7 +124,7 @@ def test_filesystem_watcher_live_subscription_to_workspace_search():
             WSE1.reset_instance()
         except ImportError:
             pass
-        from src.personal_os.workspace_search import WorkspaceSearchEngine as WSE2
+        from personal_os.workspace_search import WorkspaceSearchEngine as WSE2
         WSE2.reset_instance()
 
         # Initialize Personal OS subsystem

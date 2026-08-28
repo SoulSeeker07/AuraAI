@@ -18,8 +18,8 @@ import pytest
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
-from src.desktop.native.known_folders import resolve_known_folder
+from core.orchestration.master_orchestrator import MasterOrchestrator
+from desktop.native.known_folders import resolve_known_folder
 
 
 @pytest.mark.asyncio
@@ -115,8 +115,8 @@ async def test_t4_word_document_edit(tmp_path):
         req_file.unlink()
 
     try:
-        from src.codeact.executor import DynamicCodeActExecutor
-        from src.codeact.models import CodeActRequest
+        from codeact.executor import DynamicCodeActExecutor
+        from codeact.models import CodeActRequest
 
         executor = DynamicCodeActExecutor()
         req = CodeActRequest(
@@ -146,8 +146,8 @@ async def test_t5_format_conversion_pdf(tmp_path):
         pdf_out.unlink()
 
     try:
-        from src.codeact.executor import DynamicCodeActExecutor
-        from src.codeact.models import CodeActRequest
+        from codeact.executor import DynamicCodeActExecutor
+        from codeact.models import CodeActRequest
 
         executor = DynamicCodeActExecutor()
         req = CodeActRequest(

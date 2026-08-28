@@ -18,21 +18,21 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from src.core.orchestration.request_source import RequestSource
-from src.core.orchestration.execution_policy import ExecutionPolicy
-from src.core.orchestration.autonomy_mode import AutonomyLevel
-from src.engineering.safety_ceiling import (
+from core.orchestration.request_source import RequestSource
+from core.orchestration.execution_policy import ExecutionPolicy
+from core.orchestration.autonomy_mode import AutonomyLevel
+from engineering.safety_ceiling import (
     ProtectedCeilingViolation,
     RewardHackingViolation,
     is_path_protected,
     is_test_file,
     normalize_relative_path,
 )
-from src.engineering.workspace_policy import (
+from engineering.workspace_policy import (
     WorkspacePolicy,
     WorkspaceTraversalError,
 )
-from src.engineering.staging_workspace import (
+from engineering.staging_workspace import (
     StagingWorkspace,
     RepositoryLockError,
 )
@@ -181,7 +181,7 @@ async def test_agent_delegated_request_source_floor_inheritance():
     assert policy.get_autonomy_level() == AutonomyLevel.ASSISTED
     
     # Verify MasterOrchestrator evaluates AGENT_DELEGATED without forcing floor override
-    from src.core.orchestration.master_orchestrator import MasterOrchestrator
+    from core.orchestration.master_orchestrator import MasterOrchestrator
     orchestrator = MasterOrchestrator.__new__(MasterOrchestrator)
 
     observed_floor_human = None

@@ -24,7 +24,7 @@ try:
     from browser.world_model import BrowserContext, BrowserStateProbe
 except (ModuleNotFoundError, ImportError):
     try:
-        from src.browser.world_model import BrowserContext, BrowserStateProbe
+        from browser.world_model import BrowserContext, BrowserStateProbe
     except Exception:
         class BrowserContext:
             running_browsers = []
@@ -41,8 +41,8 @@ try:
     from workspace.running_apps import RunningAppsMonitor
 except (ModuleNotFoundError, ImportError):
     try:
-        from src.workspace.active_window import ActiveWindowMonitor
-        from src.workspace.running_apps import RunningAppsMonitor
+        from workspace.active_window import ActiveWindowMonitor
+        from workspace.running_apps import RunningAppsMonitor
     except Exception:
         class ActiveWindowMonitor:
             def get_active_window(self):

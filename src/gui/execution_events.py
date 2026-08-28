@@ -7,7 +7,7 @@ The core execution events contract is owned by core.orchestration to guarantee
 that core orchestration code never imports from the GUI subsystem.
 """
 
-from src.core.orchestration.execution_events import (
+from core.orchestration.execution_events import (
     NodeState,
     ExecutionEvent,
     SubTaskNodeInfo,

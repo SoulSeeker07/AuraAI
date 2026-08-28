@@ -80,7 +80,7 @@ class StagingSandbox:
 
         # Grant un-elevated Modify access to AuraSandboxUser on the ephemeral staging directory
         try:
-            from src.desktop.native.sandbox.account_provisioner import grant_staging_access
+            from desktop.native.sandbox.account_provisioner import grant_staging_access
             grant_staging_access(self.staging_dir)
         except Exception as exc:
             logger.warning(f"Failed to apply staging DACL grant: {exc}")
@@ -88,7 +88,7 @@ class StagingSandbox:
         # Initialize RestrictedUserSandbox (Fail-Closed on Windows)
         if os.name == "nt":
             try:
-                from src.desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
+                from desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
 
                 self._restricted_sandbox = RestrictedUserSandbox(
                     workspace_root=str(self.staging_dir)

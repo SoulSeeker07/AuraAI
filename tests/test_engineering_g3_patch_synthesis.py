@@ -15,13 +15,13 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from src.core.orchestration.request_source import RequestSource
-from src.engineering.safety_ceiling import (
+from core.orchestration.request_source import RequestSource
+from engineering.safety_ceiling import (
     ProtectedCeilingViolation,
     RewardHackingViolation,
 )
-from src.engineering.workspace_policy import WorkspaceTraversalError
-from src.engineering.patch_synthesizer import (
+from engineering.workspace_policy import WorkspaceTraversalError
+from engineering.patch_synthesizer import (
     CodePatch,
     PatchSynthesizer,
 )

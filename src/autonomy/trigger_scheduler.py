@@ -150,10 +150,10 @@ class TriggerScheduler:
                     from desktop.native.security.audit_logger import SecurityAuditLogger
                     from personal_os.state_store import PersonalOSStateStore
                 except (ImportError, ModuleNotFoundError):
-                    from src.core.orchestration.master_orchestrator import MasterOrchestrator
-                    from src.core.orchestration.request_source import RequestSource
-                    from src.desktop.native.security.audit_logger import SecurityAuditLogger
-                    from src.personal_os.state_store import PersonalOSStateStore
+                    from core.orchestration.master_orchestrator import MasterOrchestrator
+                    from core.orchestration.request_source import RequestSource
+                    from desktop.native.security.audit_logger import SecurityAuditLogger
+                    from personal_os.state_store import PersonalOSStateStore
 
                 # 1. Audit ledger logging for autonomous goal dispatch (FAIL-CLOSED)
                 try:

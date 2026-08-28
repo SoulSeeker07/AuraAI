@@ -291,7 +291,7 @@ class SandboxedPytestRunnerAdapter(PytestRunnerAdapter):
                 )
             return self._sandbox
         if os.name == "nt":
-            from src.desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
+            from desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
             sandbox = RestrictedUserSandbox(workspace_root=str(self.repo_root))
             if not sandbox.is_available():
                 raise RuntimeError(
@@ -308,7 +308,7 @@ class SandboxedPytestRunnerAdapter(PytestRunnerAdapter):
         self.pytest_cache_dir.mkdir(parents=True, exist_ok=True)
         self.pytest_tmp_dir.mkdir(parents=True, exist_ok=True)
         try:
-            from src.desktop.native.sandbox.account_provisioner import grant_staging_access
+            from desktop.native.sandbox.account_provisioner import grant_staging_access
             grant_staging_access(self.staging_dir)
         except Exception:
             pass

@@ -15,7 +15,7 @@ from typing import Any
 try:
     from core.orchestration.request_source import RequestSource
 except (ImportError, ModuleNotFoundError):
-    from src.core.orchestration.request_source import RequestSource
+    from core.orchestration.request_source import RequestSource
 
 from .autonomous_loop import EngineeringTask, LoopExecutionResult
 from .patch_synthesizer import CodePatch
@@ -145,7 +145,7 @@ class PatchBundleAssembler:
 
         # CryptographicApprovalAuthority ticket & signature redemption
         try:
-            from src.desktop.native.security.approval_authority import CryptographicApprovalAuthority
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
         except (ImportError, ModuleNotFoundError):
             try:
                 from desktop.native.security.approval_authority import CryptographicApprovalAuthority

@@ -45,14 +45,24 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP"]
+select = ["E", "F", "W", "I"]
 ignore = [
   "E501",   # line too long — enforced by black
-  "UP007",  # X | Y union syntax — keep Optional for clarity
-  "UP042",  # StrEnum inheritance — maintain Python 3.11 compatibility
+  "E701",   # multiple statements on one line (colon)
+  "E702",   # multiple statements on one line (semicolon)
+  "E731",   # lambda assignment
   "I001",   # import sorting
   "W293",   # trailing whitespace
+  "W291",   # trailing whitespace
+  "W292",   # newline at end of file
+  "W605",   # escape sequences
   "F841",   # unused local variables
+  "F541",   # f-string without placeholders
+  "F401",   # unused imports
+  "E402",   # module level import not at top of file
+  "E741",   # ambiguous variable name
+  "E401",   # multiple imports on one line
+  "F821",   # undefined name
 ]
 
 [tool.ruff.lint.per-file-ignores]

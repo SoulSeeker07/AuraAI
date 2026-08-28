@@ -13,9 +13,9 @@ sys.path.insert(0, str(repo_root))
 from dotenv import load_dotenv
 load_dotenv(repo_root / ".env")
 
-from src.codeact.drafters import GroqDrafter
-from src.codeact.executor import DynamicCodeActExecutor
-from src.codeact.models import CodeActRequest
+from codeact.drafters import GroqDrafter
+from codeact.executor import DynamicCodeActExecutor
+from codeact.models import CodeActRequest
 
 def run_task5_live():
     print("=== LIVE CODEACT TASK 5 VERIFICATION ===")

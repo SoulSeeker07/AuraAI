@@ -31,13 +31,13 @@ try:
     from desktop.native.managers.native_manager_registry import NativeManagerRegistry
 except (ImportError, ModuleNotFoundError):
     try:
-        from src.desktop.native.capability_registry import (
+        from desktop.native.capability_registry import (
             CapabilityDescriptor,
             CapabilityRegistry as NativeCapabilityRegistry,
             PermissionRequired,
             RiskLevel as NativeRiskLevel,
         )
-        from src.desktop.native.managers.native_manager_registry import NativeManagerRegistry
+        from desktop.native.managers.native_manager_registry import NativeManagerRegistry
     except Exception:
         class CapabilityDescriptor:
             pass

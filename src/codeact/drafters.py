@@ -82,20 +82,20 @@ class GroqDrafter:
 
     def _get_provider(self):
         if self._provider is None:
-            from src.ai.groq_provider import GroqProvider
+            from ai.groq_provider import GroqProvider
 
             self._provider = GroqProvider(api_key=self.api_key, default_model=self.model)
         return self._provider
 
     def draft(self, prompt: str) -> str:
-        from src.ai.models import ChatMessage, ChatRequest
+        from ai.models import ChatMessage, ChatRequest
 
         models_to_try = [self.model, "openai/gpt-oss-20b"]
         last_exc = None
 
         for model_name in models_to_try:
             try:
-                from src.ai.groq_provider import GroqProvider
+                from ai.groq_provider import GroqProvider
 
                 provider = GroqProvider(api_key=self.api_key, default_model=model_name)
                 req = ChatRequest(
@@ -146,7 +146,7 @@ class AgyDrafter:
 
     def _get_client(self):
         if self._client is None:
-            from src.core.backends.adapters.agy_subprocess_client import (
+            from core.backends.adapters.agy_subprocess_client import (
                 AgyConfig,
                 AgySubprocessClient,
             )

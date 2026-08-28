@@ -406,13 +406,12 @@ class SoftwareManager(BaseNativeManager):
                         events=["npm_installed_with_scripts"],
                     )
 
-            else:
-                return DesktopResult.create_failure(
-                    goal=goal,
-                    capability=capability,
-                    manager=self.name,
-                    error=f"Unsupported software capability: {capability}",
-                )
+            return DesktopResult.create_failure(
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error=f"Unsupported software capability: {capability}",
+            )
 
         except Exception as exc:
             logger.error(f"SoftwareManager.{cap} failed: {exc}")

@@ -12,15 +12,15 @@ Verifies:
 
 import pytest
 
-from src.core.orchestration.request_source import RequestSource
-from src.engineering.autonomous_loop import EngineeringTask, LoopExecutionResult
-from src.engineering.patch_synthesizer import CodePatch
-from src.engineering.pr_assembler import (
+from core.orchestration.request_source import RequestSource
+from engineering.autonomous_loop import EngineeringTask, LoopExecutionResult
+from engineering.patch_synthesizer import CodePatch
+from engineering.pr_assembler import (
     GitGovernanceError,
     PatchBundleAssembler,
     PRSummary,
 )
-from src.engineering.test_runner import TestRunResult
+from engineering.test_runner import TestRunResult
 
 
 def test_patch_bundle_assembler_generates_pr_summary():
@@ -128,7 +128,7 @@ def test_human_token_authorizes_pr_merge():
 
 def test_cryptographic_approval_authority_ticket_redemption():
     """G5-6: Verifies cryptographic ticket creation, human signing, and redemption for merge."""
-    from src.desktop.native.security.approval_authority import CryptographicApprovalAuthority
+    from desktop.native.security.approval_authority import CryptographicApprovalAuthority
     
     auth = CryptographicApprovalAuthority.get_instance()
     ticket_id = auth.create_ticket(

@@ -19,7 +19,7 @@ GET /status
 
 Usage
 -----
->>> from src.api.status_server import StatusServer
+>>> from api.status_server import StatusServer
 >>> server = StatusServer(host="127.0.0.1", port=8000)
 >>> server.start()
 >>> # ... later ...

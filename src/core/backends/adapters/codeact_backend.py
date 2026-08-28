@@ -14,11 +14,11 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from src.codeact.drafters import GroqDrafter
-from src.codeact.executor import DynamicCodeActExecutor
-from src.codeact.models import CodeActRequest
-from src.core.backends.base_backend import BaseBackendAdapter
-from src.core.planning.execution_result import ExecutionResult
+from codeact.drafters import GroqDrafter
+from codeact.executor import DynamicCodeActExecutor
+from codeact.models import CodeActRequest
+from core.backends.base_backend import BaseBackendAdapter
+from core.planning.execution_result import ExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class CodeActBackendAdapter(BaseBackendAdapter):
         if str(destination_dir).startswith("$known_folder:"):
             try:
                 import re
-                from src.desktop.native.known_folders import resolve_known_folder
+                from desktop.native.known_folders import resolve_known_folder
                 raw_kf = str(destination_dir).split(":", 1)[1]
                 parts = re.split(r"[\\/]", raw_kf, maxsplit=1)
                 folder_key = parts[0].lower()

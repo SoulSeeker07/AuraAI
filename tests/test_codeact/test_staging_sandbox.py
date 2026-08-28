@@ -5,8 +5,8 @@ Location: tests/test_codeact/test_staging_sandbox.py
 
 from pathlib import Path
 import pytest
-from src.codeact.models import CodeActRequest
-from src.codeact.staging_sandbox import StagingSandbox
+from codeact.models import CodeActRequest
+from codeact.staging_sandbox import StagingSandbox
 
 
 def test_staging_sandbox_lifecycle():

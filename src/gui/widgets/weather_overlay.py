@@ -11,7 +11,7 @@ AuraAI — Futuristic HUD weather overlay widget (PySide6)
   proportions inside the QWidget, not hardcoded pixel positions.
 
 Usage:
-    from src.gui.widgets.weather_overlay import WeatherOverlay
+    from gui.widgets.weather_overlay import WeatherOverlay
     app = QApplication(sys.argv)
     overlay = WeatherOverlay()
     overlay.update_data(

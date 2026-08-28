@@ -482,7 +482,7 @@ class ConversationEngine:
             try:
                 from ..tools.document_generator import DocumentGenerator
             except (ImportError, ValueError):
-                from src.tools.document_generator import DocumentGenerator
+                from tools.document_generator import DocumentGenerator
 
         doc_info = DocumentGenerator.create_document(
             title=title,

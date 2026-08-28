@@ -18,7 +18,7 @@ from typing import Any
 try:
     from core.orchestration.request_source import RequestSource
 except (ImportError, ModuleNotFoundError):
-    from src.core.orchestration.request_source import RequestSource
+    from core.orchestration.request_source import RequestSource
 
 from .safety_ceiling import (
     ProtectedCeilingViolation,

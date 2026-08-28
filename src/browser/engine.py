@@ -225,7 +225,7 @@ class BrowserEngine:
             try:
                 from desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
             except (ImportError, ModuleNotFoundError):
-                from src.desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
+                from desktop.native.security.network_policy import EgressDecision, NetworkPolicyEngine
 
             decision, reason, _ = NetworkPolicyEngine.get_instance().evaluate_destination(req_url)
             if decision == EgressDecision.HARD_BLOCKED:

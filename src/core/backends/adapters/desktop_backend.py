@@ -26,7 +26,7 @@ try:
     )
 except (ImportError, ModuleNotFoundError):
     try:
-        from src.desktop.native.desktop_execution_engine import (
+        from desktop.native.desktop_execution_engine import (
             DesktopExecutionEngine,
             get_desktop_execution_engine,
         )

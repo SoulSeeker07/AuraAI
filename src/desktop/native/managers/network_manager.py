@@ -321,13 +321,12 @@ class NetworkManager(BaseNativeManager):
                         goal=goal, capability=capability, arguments=arguments
                     )
 
-            else:
-                return DesktopResult.create_failure(
-                    goal=goal,
-                    capability=capability,
-                    manager=self.name,
-                    error=f"Capability '{capability}' not supported by NetworkManager",
-                )
+            return DesktopResult.create_failure(
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error=f"Capability '{capability}' not supported by NetworkManager",
+            )
 
         except Exception as e:
             logger.error(f"NetworkManager execution failed: {e}", exc_info=True)

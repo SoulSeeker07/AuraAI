@@ -207,7 +207,7 @@ def test_no_circular_imports_core_planning():
 
 def test_no_src_prefix_imports():
     """
-    No file in src/ should use 'from X import' or 'import X'.
+    No file in src/ should use 'from src.' or 'import src.'.
     This is a broken import pattern that fails when the package is
     installed and src/ is on sys.path directly.
     """

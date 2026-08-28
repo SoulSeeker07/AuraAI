@@ -300,13 +300,12 @@ class SettingsManager(BaseNativeManager):
                     goal=goal, capability=capability, manager=self.name, data={"capability": capability, "applied": True}
                 )
 
-            else:
-                return DesktopResult.create_failure(
-                    goal=goal,
-                    capability=capability,
-                    manager=self.name,
-                    error=f"Unsupported settings capability: {capability}",
-                )
+            return DesktopResult.create_failure(
+                goal=goal,
+                capability=capability,
+                manager=self.name,
+                error=f"Unsupported settings capability: {capability}",
+            )
 
         except Exception as exc:
             logger.error(f"SettingsManager.{cap} failed: {exc}")

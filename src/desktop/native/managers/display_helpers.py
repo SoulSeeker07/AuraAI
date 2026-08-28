@@ -117,7 +117,7 @@ def enumerate_monitors() -> list[dict[str, Any]]:
     return monitors
 
 
-def get_display_settings(device_name: str) -> dict[str, Any]:
+def get_display_settings(device_name: str = "\\\\.\\DISPLAY1") -> dict[str, Any]:
     """
     Get current display mode settings for a device name.
 
@@ -135,7 +135,9 @@ def get_display_settings(device_name: str) -> dict[str, Any]:
             "width": devmode.PelsWidth,
             "height": devmode.PelsHeight,
             "refresh_rate": devmode.DisplayFrequency,
+            "display_frequency": devmode.DisplayFrequency,
             "bits_per_pixel": devmode.BitsPerPel,
+            "bits_per_pel": devmode.BitsPerPel,
             "orientation": devmode.DisplayOrientation,
         }
     except Exception as e:
@@ -318,25 +320,6 @@ def set_display_brightness(level: int) -> dict[str, Any]:
         "level": target_level,
         "error": "Brightness control unsupported on hardware",
     }
-
-
-def get_display_settings(device_name: str = "\\\\.\\DISPLAY1") -> dict[str, Any] | None:
-    """Get current DEVMODE settings for a specific display device."""
-    try:
-        devmode = win32api.EnumDisplaySettings(
-            device_name, win32con.ENUM_CURRENT_SETTINGS
-        )
-        if devmode:
-            return {
-                "width": devmode.PelsWidth,
-                "height": devmode.PelsHeight,
-                "orientation": devmode.DisplayOrientation,
-                "bits_per_pel": devmode.BitsPerPel,
-                "display_frequency": devmode.DisplayFrequency,
-            }
-    except Exception as e:
-        logger.debug(f"EnumDisplaySettings failed for {device_name}: {e}")
-    return None
 
 
 def set_display_resolution(device_name: str, width: int, height: int) -> bool:

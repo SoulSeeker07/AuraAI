@@ -97,7 +97,7 @@ def test_personal_os_restart_persistence_lifecycle_ac4():
 def test_personal_os_state_store_schema_migration_version_bump():
     """Verify PersonalOSStateStore executes migrations cleanly when schema version bumps."""
     import sqlite3
-    from src.personal_os import state_store as ss_mod
+    from personal_os import state_store as ss_mod
 
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "migrated.db"

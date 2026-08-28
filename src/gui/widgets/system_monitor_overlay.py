@@ -10,7 +10,7 @@ AuraAI — Futuristic HUD System Performance Overlay Widget (PySide6)
 - Filterable: render all metrics at once or customize active components
 
 Usage:
-    from src.gui.widgets.system_monitor_overlay import SystemMonitorOverlay
+    from gui.widgets.system_monitor_overlay import SystemMonitorOverlay
     app = QApplication(sys.argv)
     overlay = SystemMonitorOverlay()
     # overlay.set_visible_metrics(["cpu", "gpu0", "memory", "network", "wifi"])

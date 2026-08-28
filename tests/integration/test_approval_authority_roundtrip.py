@@ -9,7 +9,7 @@ verifying tamper-resistance, anti-replay, TTL expiry, and substitution preventio
 
 import time
 import pytest
-from src.desktop.native.security.approval_authority import (
+from desktop.native.security.approval_authority import (
     CryptographicApprovalAuthority,
     ApprovalTicket,
 )

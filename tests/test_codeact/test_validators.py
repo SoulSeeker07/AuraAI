@@ -5,8 +5,8 @@ Location: tests/test_codeact/test_validators.py
 
 from pathlib import Path
 import pytest
-from src.codeact.models import CodeActRequest, ExecutionAttempt
-from src.codeact.validators import validate
+from codeact.models import CodeActRequest, ExecutionAttempt
+from codeact.validators import validate
 
 
 def test_validate_text_success(tmp_path):

@@ -26,22 +26,22 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-from src.brain.execution_coordinator import ExecutionCoordinator
-from src.brain.goal_verifier import GoalVerifier
-from src.core.orchestration.autonomy_mode import (
+from brain.execution_coordinator import ExecutionCoordinator
+from brain.goal_verifier import GoalVerifier
+from core.orchestration.autonomy_mode import (
     AutonomyLevel,
     ActionRisk,
     classify_action_risk,
     should_require_confirmation,
 )
-from src.core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
-from src.core.orchestration.runtime_checkpoint import (
+from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+from core.orchestration.runtime_checkpoint import (
     RuntimeCheckpointManager,
     ActionReversibility,
 )
-from src.core.orchestration.task_worker import TaskWorker, ResearchProfile, CodingProfile
-from src.core.capabilities.capability_registry import CapabilityRegistry
-from src.workspace.workspace_instruction_loader import WorkspaceInstructionLoader
+from core.orchestration.task_worker import TaskWorker, ResearchProfile, CodingProfile
+from core.capabilities.capability_registry import CapabilityRegistry
+from workspace.workspace_instruction_loader import WorkspaceInstructionLoader
 
 
 class M19LiveAcceptanceMatrix:
@@ -78,7 +78,7 @@ class M19LiveAcceptanceMatrix:
 
         # Simulate real physical state observation
         coord_result = ExecutionCoordinator()
-        from src.brain.execution_coordinator import CoordinationResult, StepResult
+        from brain.execution_coordinator import CoordinationResult, StepResult
 
         step = StepResult(
             step_index=0,
@@ -196,8 +196,8 @@ class M19LiveAcceptanceMatrix:
 
     # ── Test 7: Activity Trace Renderer UI ──────────────────────────────────
     def test_7_activity_trace_ui(self):
-        from src.core.orchestration.activity_trace_renderer import ActivityTraceRenderer
-        from src.brain.execution_coordinator import CoordinationResult, StepResult
+        from core.orchestration.activity_trace_renderer import ActivityTraceRenderer
+        from brain.execution_coordinator import CoordinationResult, StepResult
 
         step = StepResult(
             step_index=0,

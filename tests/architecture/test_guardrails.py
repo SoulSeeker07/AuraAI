@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 CORE_ALLOWED_ENGINE_FILES = {
     ROOT / "src" / "brain" / "execution_coordinator.py",
     ROOT / "src" / "brain" / "aca" / "aca_brain.py",
+    ROOT / "src" / "core" / "aura_core.py",
     ROOT / "core" / "aura_core.py",
 }
 
@@ -119,6 +120,23 @@ ENGINE_ALLOWLIST = {
     / "continuous_loop.py": {
         "reason": "M26 PersonalOSRuntime voice-loop wiring — ContinuousVoiceLoop legitimately constructs VoiceManager as part of the frozen voice stack",
         "owner": "Voice Team",
+        "milestone": "v0.20",
+    },
+    ROOT
+    / "src"
+    / "brain"
+    / "conversation_engine.py": {
+        "reason": "ConversationEngine dynamic vision tool hook",
+        "owner": "Brain Team",
+        "milestone": "v0.20",
+    },
+    ROOT
+    / "src"
+    / "core"
+    / "tools"
+    / "aura_tool_registry.py": {
+        "reason": "AuraToolRegistry direct vision tool instantiation",
+        "owner": "Tools Team",
         "milestone": "v0.20",
     },
 }
@@ -318,7 +336,10 @@ def test_guardrail_6_only_artifact_manager_creates_artifacts():
 
 def test_guardrail_7_single_entry_point():
     """AuraCore.process_request should delegate to ACA when enabled."""
-    aura_core = (ROOT / "core" / "aura_core.py").read_text(encoding="utf-8")
+    core_path = (ROOT / "src" / "core" / "aura_core.py")
+    if not core_path.exists():
+        core_path = (ROOT / "core" / "aura_core.py")
+    aura_core = core_path.read_text(encoding="utf-8")
     assert (
         "process_via_executive_brain" in aura_core
     ), "AuraCore missing ACA entry point"

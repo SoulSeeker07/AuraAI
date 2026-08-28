@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
 
-from src.codeact.static_checker import check_imports
-from src.codeact.staging_sandbox import StagingSandbox
-from src.codeact.models import CodeActRequest
-from src.desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
-from src.desktop.native.sandbox.account_provisioner import AccountProvisioner
+from codeact.static_checker import check_imports
+from codeact.staging_sandbox import StagingSandbox
+from codeact.models import CodeActRequest
+from desktop.native.sandbox.restricted_user_sandbox import RestrictedUserSandbox
+from desktop.native.sandbox.account_provisioner import AccountProvisioner
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows-specific RestrictedUserSandbox tests")
@@ -73,7 +73,7 @@ def test_g3_codeact_executor_runs_under_restricted_user():
     Gate G3: Real document synthesis through DynamicCodeActExecutor runs in RestrictedUserSandbox
     and generates an artifact verified by Document/Presentation validators.
     """
-    from src.codeact.executor import DynamicCodeActExecutor
+    from codeact.executor import DynamicCodeActExecutor
 
     output_file = Path("test_presentation_m29.pptx").resolve()
     if output_file.exists():

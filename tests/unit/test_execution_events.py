@@ -5,8 +5,8 @@ Location: tests/unit/test_execution_events.py
 
 from dataclasses import FrozenInstanceError
 import pytest
-from src.core.orchestration.task_decomposer import SubTask, PlannerRole
-from src.core.orchestration.execution_events import (
+from core.orchestration.task_decomposer import SubTask, PlannerRole
+from core.orchestration.execution_events import (
     NodeState,
     GraphInitializedEvent,
     NodeStateChangedEvent,

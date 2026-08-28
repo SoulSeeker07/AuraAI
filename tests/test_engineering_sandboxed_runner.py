@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
-from src.engineering.test_runner import SandboxedPytestRunnerAdapter, PytestRunnerAdapter
+from engineering.test_runner import SandboxedPytestRunnerAdapter, PytestRunnerAdapter
 
 
 @pytest.fixture

@@ -154,14 +154,6 @@ class SiteRegistry:
             auth_required=False,
             username_memory_key="reddit_username",
         ),
-        "wikipedia": SiteProfile(
-            name="wikipedia",
-            base_url="https://www.wikipedia.org",
-            profile_url_template="",
-            search_url_template="https://en.wikipedia.org/wiki/{query}",
-            auth_required=False,
-            username_memory_key="",
-        ),
     }
 
     @classmethod

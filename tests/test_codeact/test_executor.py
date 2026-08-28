@@ -5,9 +5,9 @@ Location: tests/test_codeact/test_executor.py
 
 from pathlib import Path
 import pytest
-from src.codeact.drafters import MockDrafter
-from src.codeact.executor import DynamicCodeActExecutor
-from src.codeact.models import CodeActRequest
+from codeact.drafters import MockDrafter
+from codeact.executor import DynamicCodeActExecutor
+from codeact.models import CodeActRequest
 
 
 def test_executor_single_shot_success(tmp_path):

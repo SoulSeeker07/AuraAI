@@ -14,12 +14,12 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from src.engineering.test_runner import (
+from engineering.test_runner import (
     PytestRunnerAdapter,
     StackFrame,
     TestFailureFrame,
 )
-from src.engineering.fault_localizer import (
+from engineering.fault_localizer import (
     FaultCandidate,
     FaultLocalizer,
 )

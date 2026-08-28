@@ -15,14 +15,14 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from src.engineering.autonomous_loop import (
+from engineering.autonomous_loop import (
     AutonomousEngineeringLoop,
     EngineeringTask,
     LoopExecutionResult,
 )
-from src.engineering.fault_localizer import FaultCandidate, FaultLocalizer
-from src.engineering.patch_synthesizer import PatchSynthesizer
-from src.engineering.test_runner import (
+from engineering.fault_localizer import FaultCandidate, FaultLocalizer
+from engineering.patch_synthesizer import PatchSynthesizer
+from engineering.test_runner import (
     PytestRunnerAdapter,
     StackFrame,
     TestFailureFrame,

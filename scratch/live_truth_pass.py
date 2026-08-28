@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
-from src.core.orchestration.master_orchestrator import MasterOrchestrator
+from core.orchestration.master_orchestrator import MasterOrchestrator
 from Memory import Memory
 
 def main():

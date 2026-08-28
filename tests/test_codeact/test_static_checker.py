@@ -4,7 +4,7 @@ Location: tests/test_codeact/test_static_checker.py
 """
 
 import pytest
-from src.codeact.static_checker import check_imports
+from codeact.static_checker import check_imports
 
 
 def test_allowed_standard_library_imports():
@@ -225,7 +225,7 @@ o.remove("file.txt")
 
 def test_extract_code_block_sibling_languages():
     """Verify that extract_code_block extracts the python block and ignores sibling bash blocks."""
-    from src.codeact.drafters import extract_code_block
+    from codeact.drafters import extract_code_block
     text = (
         "Setup instructions:\n"
         "```bash\n"
@@ -246,7 +246,7 @@ def test_extract_code_block_sibling_languages():
 
 def test_extract_code_block_nested_fences_in_python_script():
     """Verify that extract_code_block does not prematurely truncate scripts that output markdown codeblocks."""
-    from src.codeact.drafters import extract_code_block
+    from codeact.drafters import extract_code_block
     text = (
         "```python\n"
         "import json\n"
@@ -270,7 +270,7 @@ def test_extract_code_block_nested_fences_in_python_script():
 
 def test_extract_code_block_prose_envelope():
     """Verify conversational text before and after code fences is stripped cleanly."""
-    from src.codeact.drafters import extract_code_block
+    from codeact.drafters import extract_code_block
     text = (
         "Here is the complete script to generate the document:\n\n"
         "```python\n"
@@ -287,7 +287,7 @@ def test_extract_code_block_prose_envelope():
 
 def test_extract_code_block_sibling_with_trailing_prose():
     """Verify sibling bash + python blocks followed by trailing prose are extracted cleanly without leaking prose or bash code."""
-    from src.codeact.drafters import extract_code_block
+    from codeact.drafters import extract_code_block
     text = (
         "Step 1: Install prerequisites:\n"
         "```bash\n"

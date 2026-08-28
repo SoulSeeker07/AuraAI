@@ -25,7 +25,7 @@ try:
     from desktop.native.security.network_policy import SafeSession
 except (ModuleNotFoundError, ImportError):
     try:
-        from src.desktop.native.security.network_policy import SafeSession
+        from desktop.native.security.network_policy import SafeSession
     except Exception:
         SafeSession = requests.Session
 

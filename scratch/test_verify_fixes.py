@@ -5,7 +5,7 @@ sys.path.insert(0, str(root))
 sys.path.insert(0, str(root / "src"))
 
 from Memory import Memory
-from src.brain.conversation_engine import ConversationEngine
+from brain.conversation_engine import ConversationEngine
 
 m = Memory()
 class MockPM:
