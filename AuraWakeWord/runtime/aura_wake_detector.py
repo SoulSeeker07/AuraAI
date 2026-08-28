@@ -34,7 +34,7 @@ class AuraWakeDetector(WakeWordEngine):
         # 80Hz High-pass filter coefficients for anti-hum & DC removal
         from scipy import signal
         self.hp_b, self.hp_a = signal.butter(2, 80.0 / (self.sample_rate / 2), btype='high')
-        self.min_rms_energy = 0.0035  # Minimum energy required before evaluating wake word
+        self.min_rms_energy = 0.0075  # Minimum energy required before evaluating wake word
         
         # Mel Spectrogram parameters matching training
         self.mel_transform = torchaudio.transforms.MelSpectrogram(
@@ -122,9 +122,9 @@ class AuraWakeDetector(WakeWordEngine):
             probability = float(1.0 / (1.0 + np.exp(-logit)))
             self.last_probability = probability
 
-            # 6. Check against calibrated threshold (0.60 default with 2-frame persistence)
+            # 6. Check against calibrated threshold (0.80 default with 3-frame persistence)
             import os
-            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.60))
+            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.80))
 
             now = time.monotonic()
             if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
@@ -138,7 +138,7 @@ class AuraWakeDetector(WakeWordEngine):
 
             if probability >= threshold:
                 self.consecutive_hits += 1
-                if self.consecutive_hits >= 2:
+                if self.consecutive_hits >= 3:
                     try:
                         sys.stdout.write("\r" + " " * 45 + "\r")  # Clear the line
                         sys.stdout.flush()
