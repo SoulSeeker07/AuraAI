@@ -705,7 +705,7 @@ class VoiceNotchOverlay(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Window
+            | Qt.WindowType.Tool
             | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -740,6 +740,12 @@ class VoiceNotchOverlay(QWidget):
         self._proc_anim_timer = QTimer(self)
         self._proc_anim_timer.setInterval(24)
         self._proc_anim_timer.timeout.connect(self._tick_proc_progress)
+
+        # 8s Watchdog Timer for PROCESSING state to ensure HUD never stays stuck
+        self._proc_timeout = QTimer(self)
+        self._proc_timeout.setSingleShot(True)
+        self._proc_timeout.setInterval(8000)
+        self._proc_timeout.timeout.connect(lambda: self.set_state(NotchState.IDLE))
 
         self._setup_ui()
         self._position_at_top()
@@ -1074,8 +1080,10 @@ class VoiceNotchOverlay(QWidget):
     def _draw_progress_beam(self, painter: QPainter):
         if hasattr(self, "_proc_rail") and self._proc_rail.isVisible():
             r = self._proc_rail.geometry()
-            gx = self.mapFrom(self._proc_rail.parentWidget(), r.topLeft())
-            rail_rect = QRectF(gx.x(), gx.y(), r.width(), r.height())
+            # Use mapToGlobal → mapFromGlobal to safely traverse any widget nesting depth
+            global_top_left = self._proc_rail.mapToGlobal(r.topLeft() - r.topLeft())
+            local_top_left = self.mapFromGlobal(global_top_left)
+            rail_rect = QRectF(local_top_left.x(), local_top_left.y(), r.width(), r.height())
 
             beam_w = rail_rect.width() * 0.4
             beam_x = rail_rect.left() + (rail_rect.width() - beam_w) * self._progress_val
@@ -1105,6 +1113,7 @@ class VoiceNotchOverlay(QWidget):
             self._proc_anim_timer.stop()
 
         if state == NotchState.IDLE:
+            self._proc_timeout.stop()
             target_w, target_h = IDLE_W, IDLE_H
             self._band.setVisible(True)
             self._status_stack.setCurrentIndex(0)
@@ -1113,12 +1122,12 @@ class VoiceNotchOverlay(QWidget):
             self._result_collapse_timer.stop()
 
         elif state == NotchState.LISTENING:
+            self._proc_timeout.stop()
             target_w, target_h = LISTENING_W, LISTENING_H
             self._band.setVisible(True)
             self._status_stack.setCurrentIndex(1)
             self._rainbow_wave.set_active(True)
-            if text:
-                self._listen_text.setText(text)
+            self._listen_text.setText(text if text else "Listening...")
             self._expanded_panel.setVisible(False)
             self._result_collapse_timer.stop()
             self._has_last_result = False
@@ -1131,10 +1140,12 @@ class VoiceNotchOverlay(QWidget):
             self._status_stack.setCurrentIndex(2)
             self._rainbow_wave.set_active(False)
             self._proc_anim_timer.start()
+            self._proc_timeout.start()
             self._expanded_panel.setVisible(False)
             self._result_collapse_timer.stop()
 
         elif state == NotchState.SUCCESS:
+            self._proc_timeout.stop()
             target_w, target_h = SUCCESS_W, SUCCESS_H
             if text:
                 self._succ_query.setText(f'"{text[:30]}"')
@@ -1144,6 +1155,7 @@ class VoiceNotchOverlay(QWidget):
             self._expanded_panel.setVisible(False)
 
         elif state == NotchState.EXPANDED:
+            self._proc_timeout.stop()
             target_w, target_h = EXPANDED_W, EXPANDED_H
             self._band.setVisible(False)
             self._expanded_panel.setVisible(True)
@@ -1197,33 +1209,48 @@ class VoiceNotchOverlay(QWidget):
         def _run_cmd():
             try:
                 import asyncio
-                from brain.conversation_engine import ConversationEngine
-                from ai.registry import build_provider_manager
-                from Memory import Memory
                 from pathlib import Path as _Path
-
                 project_root = _Path(__file__).resolve().parents[3]
-                mem = Memory(
-                    db_path=str(project_root / "Memory.db"),
-                    chat_log_path=str(project_root / "Data" / "ChatLog.json"),
-                )
-                pm = build_provider_manager(dict(os.environ))
-                engine = ConversationEngine(memory=mem, provider_manager=pm)
 
-                # process() is async — run it in a new event loop
+                # 1. Use global / attached AuraCore
+                core = None
+                try:
+                    from voice.continuous_loop import ContinuousVoiceLoop
+                    core = ContinuousVoiceLoop._global_aura_core
+                except Exception:
+                    pass
+
+                if core is None:
+                    try:
+                        from main import get_aura_core
+                        core = get_aura_core()
+                    except Exception:
+                        pass
+
+                reply_text = ""
                 loop = asyncio.new_event_loop()
                 try:
-                    res = loop.run_until_complete(engine.process(text))
+                    if core is not None and hasattr(core, "get_ai_response"):
+                        reply_text = loop.run_until_complete(core.get_ai_response(text, enable_tools=True))
+                    else:
+                        from brain.conversation_engine import ConversationEngine
+                        from ai.registry import build_provider_manager
+                        from Memory import Memory
+
+                        mem = Memory(
+                            db_path=str(project_root / "Memory.db"),
+                            chat_log_path=str(project_root / "Data" / "ChatLog.json"),
+                        )
+                        pm = build_provider_manager(dict(os.environ))
+                        engine = ConversationEngine(memory=mem, provider_manager=pm)
+                        res = loop.run_until_complete(engine.process(text))
+                        reply_text = res.text if hasattr(res, "text") else str(res)
                 finally:
                     loop.close()
 
                 from gui.signals import app_signals
-                if res and hasattr(res, 'text') and res.text:
-                    app_signals.message_received.emit("AuraAI", res.text, False)
-                elif res and isinstance(res, str) and res:
-                    app_signals.message_received.emit("AuraAI", res, False)
-                else:
-                    app_signals.message_received.emit("AuraAI", "Done.", False)
+                final_content = reply_text if reply_text else "Done."
+                app_signals.message_received.emit("AuraAI", final_content, False)
             except Exception as e:
                 logger.error(f"[VoiceNotchOverlay] Error running command: {e}")
                 try:
@@ -1250,6 +1277,17 @@ class VoiceNotchOverlay(QWidget):
         if event.button() == Qt.MouseButton.RightButton:
             self._show_context_menu(event.globalPosition().toPoint())
             event.accept()
+        elif event.button() == Qt.MouseButton.LeftButton:
+            # Clicking the notch triggers active voice listening immediately
+            vl = getattr(self, "_voice_loop", None)
+            if vl and hasattr(vl, "trigger_wake_detected"):
+                vl.trigger_wake_detected()
+            elif getattr(self, "_voice_manager", None):
+                try:
+                    self._voice_manager._start_active_listening()
+                except Exception:
+                    pass
+            event.accept()
         else:
             super().mousePressEvent(event)
 
@@ -1257,8 +1295,6 @@ class VoiceNotchOverlay(QWidget):
         if event.key() == Qt.Key.Key_Escape:
             # Unconditional manual barge-in: stop TTS immediately if speaking
             try:
-                from voice.voice_manager import VoiceManager
-                from voice.audio_manager import AudioManager
                 vm = getattr(self, "_voice_manager", None)
                 if vm and hasattr(vm, "tts_manager"):
                     vm.tts_manager.stop()
@@ -1270,20 +1306,24 @@ class VoiceNotchOverlay(QWidget):
                 self.close()
             event.accept()
         elif event.key() == Qt.Key.Key_Space:
-            # Unconditional manual barge-in: stop TTS if speaking, and toggle listening
-            try:
-                from voice.voice_manager import VoiceManager
-                vm = getattr(self, "_voice_manager", None)
-                if vm and hasattr(vm, "tts_manager"):
-                    vm.tts_manager.stop()
-            except Exception:
-                pass
-            if self._state == NotchState.IDLE:
-                self.set_state(NotchState.LISTENING)
-            elif self._state == NotchState.LISTENING:
-                self.set_state(NotchState.IDLE)
-            elif self._state in (NotchState.PROCESSING, NotchState.EXPANDED):
-                self.set_state(NotchState.LISTENING)
+            if not event.isAutoRepeat():
+                # Unconditional manual barge-in: stop TTS if speaking, and trigger active listening
+                try:
+                    vm = getattr(self, "_voice_manager", None)
+                    if vm and hasattr(vm, "tts_manager"):
+                        vm.tts_manager.stop()
+                except Exception:
+                    pass
+                vl = getattr(self, "_voice_loop", None)
+                if vl and hasattr(vl, "trigger_wake_detected"):
+                    vl.trigger_wake_detected()
+                elif getattr(self, "_voice_manager", None):
+                    try:
+                        self._voice_manager._start_active_listening()
+                    except Exception:
+                        pass
+                else:
+                    self.set_state(NotchState.LISTENING)
             event.accept()
         else:
             super().keyPressEvent(event)
@@ -1445,10 +1485,10 @@ class VoiceNotchOverlay(QWidget):
 
     def _on_voice_state_name(self, name: str):
         name_upper = (name or "").upper()
-        if name_upper in ("WAKE_DETECTED", "COMMAND_LISTENING", "ACTIVE_LISTENING", "FOLLOW_UP_LISTENING"):
+        if name_upper in ("WAKE_DETECTED", "COMMAND_LISTENING", "ACTIVE_LISTENING", "FOLLOW_UP_LISTENING", "LISTENING"):
             self.set_state(NotchState.LISTENING)
-        elif name_upper == "TRANSCRIBING":
-            self.set_state(NotchState.PROCESSING, "Transcribing...")
+        elif name_upper in ("TRANSCRIBING", "STT_ACTIVE"):
+            self.set_state(NotchState.LISTENING)
         elif name_upper in ("UNDERSTANDING", "EXECUTING", "AI_RESPONSE", "PLANNING", "THINKING"):
             self.set_state(NotchState.PROCESSING, "Processing your request...")
         elif name_upper == "SPEAKING":
@@ -1458,8 +1498,8 @@ class VoiceNotchOverlay(QWidget):
             self._has_last_result = True
             self._mark_ready()
             self.set_state(NotchState.EXPANDED)
-        elif name_upper in ("IDLE", "LISTENING", "COOLDOWN", "WAITING_FOR_WAKE_WORD", "STANDBY"):
-            # All passive states → show AuraAI idle notch (never show "waiting for wake word")
+        elif name_upper in ("IDLE", "COOLDOWN", "WAITING_FOR_WAKE_WORD", "STANDBY"):
+            # Passive states → show AuraAI idle notch
             if self._state not in (NotchState.EXPANDED,):
                 self.set_state(NotchState.IDLE)
 

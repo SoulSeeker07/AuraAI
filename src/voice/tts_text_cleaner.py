@@ -67,6 +67,10 @@ def clean_for_tts(text: str | None) -> str:
 
     s = str(text)
 
+    # 0. Remove thinking blocks from reasoning models (<think>...</think>)
+    s = re.sub(r"<think>[\s\S]*?</think>", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"<think>[\s\S]*$", "", s, flags=re.IGNORECASE)
+
     # 1. Remove ANSI escape codes
     s = _ANSI_RE.sub("", s)
 

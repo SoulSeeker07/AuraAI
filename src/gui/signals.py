@@ -148,6 +148,7 @@ class AppSignals(QObject):
     toggle_log_viewer_overlay = Signal()
     toggle_personal_os_overlay = Signal()
     toggle_voice_notch = Signal()  # Show/hide the Dynamic Island notch overlay
+    trigger_voice_listening = Signal()  # Globally trigger listening on voice notch
     show_notification = Signal(str, str)  # title, message
 
 

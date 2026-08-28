@@ -242,6 +242,27 @@ class AuraToolRegistry:
             {
                 "type": "function",
                 "function": {
+                    "name": "desktop_create_note",
+                    "description": "Create a text note or file on the user's desktop with the specified filename and content.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {
+                                "type": "string",
+                                "description": "Filename (e.g. 'spacex_summary.txt' or 'SpaceX_Launch_Note.txt').",
+                            },
+                            "content": {
+                                "type": "string",
+                                "description": "The text content or summary to save to the desktop file.",
+                            },
+                        },
+                        "required": ["filename", "content"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "personal_os_add_task",
                     "description": "Add a new task or todo item to Personal OS.",
                     "parameters": {
@@ -321,6 +342,11 @@ class AuraToolRegistry:
                 url = arguments.get("url", "")
                 return await asyncio.to_thread(cls._open_url, url)
 
+            elif name == "desktop_create_note":
+                filename = arguments.get("filename", "note.txt").strip()
+                content = arguments.get("content", "")
+                return await asyncio.to_thread(cls._create_desktop_note, filename, content)
+
             elif name == "personal_os_get_daily_agenda":
                 target_date = arguments.get("date")
                 return await asyncio.to_thread(cls._get_daily_agenda, target_date, aura_core)
@@ -341,6 +367,32 @@ class AuraToolRegistry:
     # ── Tool Implementations ──────────────────────────────────────────────
 
     @staticmethod
+    def _create_desktop_note(filename: str, content: str) -> dict[str, Any]:
+        """Create a note on the user's Desktop directory."""
+        from pathlib import Path
+        try:
+            desktop_dir = Path.home() / "Desktop"
+            if not desktop_dir.exists():
+                onedrive_desktop = Path.home() / "OneDrive" / "Desktop"
+                if onedrive_desktop.exists():
+                    desktop_dir = onedrive_desktop
+
+            if not filename.endswith((".txt", ".md")):
+                filename += ".txt"
+
+            file_path = desktop_dir / filename
+            file_path.write_text(content, encoding="utf-8")
+            logger.info(f"[AuraToolRegistry] Created note on desktop: {file_path}")
+            return {
+                "status": "success",
+                "message": f"Successfully created summary note '{filename}' on your Desktop.",
+                "path": str(file_path),
+            }
+        except Exception as e:
+            logger.error(f"[AuraToolRegistry] Failed to create desktop note: {e}")
+            return {"status": "error", "error": f"Failed to save note on Desktop: {e}"}
+
+    @staticmethod
     def _launch_app(application: str) -> dict[str, Any]:
         app_clean = application.lower().strip()
         common_apps = {
@@ -353,9 +405,10 @@ class AuraToolRegistry:
             "vscode": "code",
             "vs code": "code",
             "visual studio code": "code",
-            "chrome": "chrome",
-            "edge": "msedge",
-            "msedge": "msedge",
+            "chrome": "start chrome",
+            "google chrome": "start chrome",
+            "edge": "start msedge",
+            "msedge": "start msedge",
             "file explorer": "explorer",
             "explorer": "explorer",
             "task manager": "taskmgr",

@@ -250,7 +250,7 @@ class ContinuousVoiceLoop:
             if self._command_timeout is not None:
                 self._command_timeout.cancel()
                 self._command_timeout = None
-            self._command_timeout = threading.Timer(5.0, self._on_command_timeout)
+            self._command_timeout = threading.Timer(12.0, self._on_command_timeout)
             self._command_timeout.daemon = True
             self._command_timeout.start()
         self._turn_telemetry = {"T0_wake": time.time(), "T1_earcon": time.time()}
@@ -277,6 +277,13 @@ class ContinuousVoiceLoop:
             self._set_state(VoiceState.WAKE_DETECTED)
             _safe_print("\n🎧 Aura is listening for your command...\n")
             self.trigger_listening()
+            if hasattr(self, "voice_manager") and self.voice_manager:
+                try:
+                    from .earcon_player import EarconPlayer
+                    EarconPlayer.play_wake_chime()
+                except Exception:
+                    pass
+                self.voice_manager._start_active_listening()
             logger.info("[VoiceManager] STT_ACTIVE")
 
     def trigger_listening(self):
@@ -476,13 +483,7 @@ class ContinuousVoiceLoop:
             self._return_to_listening_or_idle()
             return
 
-        if self.state in (
-            VoiceState.SPEAKING,
-            VoiceState.EXECUTING,
-            VoiceState.UNDERSTANDING,
-            VoiceState.IDLE,
-        ):
-            self._handle_cooldown()
+        self._return_to_listening_or_idle()
 
     # ------------------------------------------------------------------------
     # Hardware Callbacks
@@ -628,6 +629,18 @@ class ContinuousVoiceLoop:
         # Fast-Path Direct Spoken GUI & Chat Triggers
         norm_t = transcript.lower().strip(" .!?,")
 
+        # 0. Guard: Suppress empty, noise-only, or Whisper silence phantom hallucinations
+        WHISPER_SILENCE_HALLUCINATIONS = (
+            "", "indian english", "spoken", "thank you", "thanks for watching",
+            "subtitles by", "subtitles", "you", "the", "a",
+            "thank you for watching", "see you next time", "like and subscribe",
+            "amara.org", "english", "listening"
+        )
+        if norm_t in WHISPER_SILENCE_HALLUCINATIONS or len(norm_t) < 2:
+            logger.debug(f"[ContinuousVoiceLoop] Suppressed silence phantom transcript: '{transcript}'")
+            self._return_to_listening_or_idle()
+            return
+
         # 1. Fast-Path: Restart Aura Application
         restart_aura_phrases = (
             "restart", "restart aura", "aura restart", "restart yourself", "reboot aura",
@@ -652,12 +665,12 @@ class ContinuousVoiceLoop:
                 time.sleep(1.2)  # Allow speech playback to reach audio output
                 root = Path(__file__).resolve().parents[2]
                 py = sys.executable or str(root / ".venv" / "Scripts" / "python.exe")
-                script = sys.argv[0] if sys.argv and sys.argv[0] else str(root / "run_voice_notch.py")
+                script = str(root / "run_voice_notch.py")
                 flags = 0
                 if sys.platform == "win32":
                     flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
                 subprocess.Popen(
-                    [str(py), str(script)] + sys.argv[1:],
+                    [str(py), script],
                     cwd=str(root),
                     creationflags=flags,
                     close_fds=True,
@@ -860,44 +873,26 @@ class ContinuousVoiceLoop:
                     pass
                 _safe_print("Aura > ")
 
-                # Async token generator from ConversationEngine or AuraCore
-                from unittest.mock import Mock, MagicMock, AsyncMock
-                if isinstance(aura_core, (Mock, MagicMock, AsyncMock)):
-                    if hasattr(aura_core, "process_request_stream") and not isinstance(aura_core.process_request_stream, (Mock, MagicMock, AsyncMock)):
+                # Async token generator from AuraCore or ConversationEngine
+                if aura_core is not None:
+                    if hasattr(aura_core, "get_ai_response"):
+                        async def _core_ai_gen():
+                            resp = await aura_core.get_ai_response(transcript, enable_tools=True)
+                            yield resp
+                        token_gen = _core_ai_gen()
+                    elif hasattr(aura_core, "process_request_stream"):
                         token_gen = aura_core.process_request_stream(transcript)
-                    elif hasattr(aura_core, "process_request"):
-                        async def _fallback_mock_gen():
+                    else:
+                        async def _fallback_core_gen():
                             resp = await aura_core.process_request(transcript)
                             yield resp
-                        token_gen = _fallback_mock_gen()
-                    else:
-                        async def _plain_mock_gen():
-                            yield "Mock response"
-                        token_gen = _plain_mock_gen()
-                elif hasattr(aura_core, "process_request_stream") and callable(getattr(aura_core, "process_request_stream")):
-                    token_gen = aura_core.process_request_stream(transcript)
-                elif hasattr(aura_core, "process_request"):
-                    async def _fallback_gen():
-                        resp = await aura_core.process_request(transcript)
-                        yield resp
-                    token_gen = _fallback_gen()
+                        token_gen = _fallback_core_gen()
                 elif conversation_engine is not None:
-                    if hasattr(conversation_engine, "stream"):
-                        async def _stream_engine_gen():
-                            for token in conversation_engine.stream(transcript):
-                                yield token
-                                await asyncio.sleep(0.001)
-                        token_gen = _stream_engine_gen()
-                    else:
-                        async def _engine_gen():
-                            res = await conversation_engine.process(transcript)
-                            yield res.text
-                        token_gen = _engine_gen()
-                elif hasattr(aura_core, "process_via_executive_brain"):
-                    async def _exec_gen():
-                        resp = await aura_core.process_via_executive_brain(transcript)
-                        yield resp
-                    token_gen = _exec_gen()
+                    async def _engine_gen():
+                        res = await conversation_engine.process(transcript)
+                        text_val = res.text if hasattr(res, "text") else str(res)
+                        yield text_val
+                    token_gen = _engine_gen()
                 else:
                     async def _plain_gen():
                         yield "I heard your request, but reasoning engine is unavailable."

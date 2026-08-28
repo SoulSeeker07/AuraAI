@@ -563,6 +563,7 @@ class AuraCore:
             f"{ambient_info}\n\n"
             "### Instructions:\n"
             "- If the user requests an action or information that can be handled with an available tool, invoke the appropriate tool.\n"
+            "- When the user requests multiple actions (e.g. 'Open Chrome, search for X, and create a summary note on my desktop'), execute ALL requested actions using available tools (desktop_launch_app, browser_open_url, desktop_create_note).\n"
             "- Answer questions accurately using the provided ambient context when relevant.\n"
             "- Output clear natural language text."
         )
@@ -667,81 +668,100 @@ class AuraCore:
                 "temperature": 0.7,
                 "max_tokens": 1024,
             }
-            if tools:
-                kwargs["tools"] = tools
-                kwargs["tool_choice"] = "auto"
+            # Dynamically select optimal reasoning effort based on query complexity
+            def _get_dynamic_reasoning_effort(msg: str) -> str:
+                m = msg.lower().strip()
+                # 1. High: Deep debugging, algorithms, architecture, math proofs
+                if any(w in m for w in ("debug", "traceback", "algorithm", "architecture", "solve math", "refactor code", "optimize complexity")):
+                    return "high"
+                # 2. Medium: Detailed analysis, explanations, essays, comparative breakdowns
+                if any(w in m for w in ("explain in detail", "summarize", "compare", "pros and cons", "analysis of", "write an essay", "step by step")):
+                    return "medium"
+                # 3. Low: Fast desktop OS automation, actions, volume, apps, conversational chat
+                return "low"
+
+            dynamic_effort = _get_dynamic_reasoning_effort(user_message)
             if "gpt-oss-120b" in target_model:
-                kwargs["reasoning_effort"] = "medium"
+                kwargs["reasoning_effort"] = dynamic_effort
+                effort_icon = "⚡" if dynamic_effort == "low" else ("⚖️" if dynamic_effort == "medium" else "🧠")
+                print(f"\n{effort_icon} [AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: openai/gpt-oss-120b | Query: \"{user_message}\"\n", flush=True)
+                logger.info(f"[AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: openai/gpt-oss-120b | Query: '{user_message}'")
+
+            from ai.key_pool import KeyPool
+            from groq import Groq
+            key_pool = KeyPool.get_instance()
 
             def _call_groq(call_kwargs: dict[str, Any], model_name: str):
                 kw = dict(call_kwargs)
                 kw["model"] = model_name
                 if "gpt-oss-120b" not in model_name:
                     kw.pop("reasoning_effort", None)
-                return self.groq_client.chat.completions.create(**kw)
 
-            # Initial inference turn
-            try:
-                res = await asyncio.to_thread(_call_groq, kwargs, target_model)
-            except Exception as call_err:
-                err_str = str(call_err)
-                if "tool_use_failed" in err_str or "Tool choice" in err_str or "400" in err_str:
-                    logger.warning(f"Groq primary model tool error, failing over to qwen/qwen3.6-27b: {call_err}")
+                def _do_chat(api_key: str):
+                    client = Groq(api_key=api_key)
+                    return client.chat.completions.create(**kw)
+
+                try:
+                    return key_pool.execute_with_failover(_do_chat, service="groq")
+                except Exception as ex:
+                    # If all keys exhausted for gpt-oss-120b, failover to qwen/qwen3.6-27b
+                    if "qwen3.6-27b" not in model_name:
+                        logger.warning(f"[AuraCore] Groq model '{model_name}' exhausted/error ({ex}), falling back to qwen/qwen3.6-27b across key pool.")
+                        kw["model"] = "qwen/qwen3.6-27b"
+                        kw.pop("reasoning_effort", None)
+                        return key_pool.execute_with_failover(_do_chat, service="groq")
+                    raise ex
+
+            # Iterative ReAct Autonomous Tool Calling Loop (up to 5 turns)
+            final_text = ""
+            for iteration in range(5):
+                try:
+                    res = await asyncio.to_thread(_call_groq, kwargs, target_model)
+                except Exception as call_err:
+                    err_str = str(call_err)
+                    logger.warning(f"Groq tool error, failing over to qwen/qwen3.6-27b: {call_err}")
                     res = await asyncio.to_thread(_call_groq, kwargs, "qwen/qwen3.6-27b")
+
+                if not res or not res.choices or not res.choices[0].message:
+                    final_text = "I was unable to generate a response."
+                    break
+
+                response_msg = res.choices[0].message
+
+                # Check if model requested tool execution
+                if hasattr(response_msg, "tool_calls") and response_msg.tool_calls:
+                    logger.info(f"[AuraCore] ReAct turn {iteration + 1}: Executing {len(response_msg.tool_calls)} tool call(s).")
+                    messages.append(response_msg)
+
+                    for tool_call in response_msg.tool_calls:
+                        fn_name = tool_call.function.name
+                        try:
+                            fn_args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
+                        except Exception:
+                            fn_args = {}
+
+                        # Execute the tool natively
+                        tool_result = await AuraToolRegistry.execute_tool(fn_name, fn_args, aura_core=self)
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "name": fn_name,
+                            "content": json.dumps(tool_result, default=str),
+                        })
+
+                    # Prepare kwargs for next turn in loop
+                    kwargs["messages"] = messages
                 else:
-                    raise call_err
+                    final_text = response_msg.content or "Action completed."
+                    break
 
-            if not res or not res.choices or not res.choices[0].message:
-                return "I was unable to generate a response."
-
-            response_msg = res.choices[0].message
-
-            # Check if model requested tool execution (Autonomous ReAct Turn)
-            if hasattr(response_msg, "tool_calls") and response_msg.tool_calls:
-                logger.info(f"[AuraCore] Model requested {len(response_msg.tool_calls)} tool call(s).")
-                
-                # Append assistant tool invocation message to conversation flow
-                messages.append(response_msg)
-
-                for tool_call in response_msg.tool_calls:
-                    fn_name = tool_call.function.name
-                    try:
-                        fn_args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
-                    except Exception:
-                        fn_args = {}
-
-                    # Execute the tool natively
-                    tool_result = await AuraToolRegistry.execute_tool(fn_name, fn_args, aura_core=self)
-
-                    # Append tool execution result
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "name": fn_name,
-                        "content": json.dumps(tool_result, default=str),
-                    })
-
-                # Follow-up completion turn to reason over tool results and formulate final response
-                followup_kwargs = {
-                    "model": target_model,
-                    "messages": messages,
-                    "temperature": 0.7,
-                    "max_tokens": 1024,
-                }
-                if "gpt-oss-120b" in target_model:
-                    followup_kwargs["reasoning_effort"] = "medium"
-
-                followup_res = await asyncio.to_thread(_call_groq, followup_kwargs, target_model)
-                final_text = (
-                    followup_res.choices[0].message.content or "Action completed."
-                    if followup_res and followup_res.choices and followup_res.choices[0].message
-                    else "Action completed."
-                )
-            else:
-                final_text = response_msg.content or ""
+            # Strip any internal chain-of-thought blocks (<think>...</think>)
+            import re
+            final_text = re.sub(r"<think>[\s\S]*?</think>", "", final_text, flags=re.IGNORECASE)
+            final_text = re.sub(r"<think>[\s\S]*$", "", final_text, flags=re.IGNORECASE).strip()
 
             # Update conversation history
-            final_text = final_text.strip()
             self.add_to_conversation("user", user_message)
             self.add_to_conversation("assistant", final_text)
 
@@ -794,17 +814,11 @@ class AuraCore:
                     yield token
                 return
 
-            # Tool / Orchestration Execution (Mutating actions, Multi-step DAGs)
-            # Yield contextual acoustic filler immediately to eliminate dead air during tool resolution
-            if yield_filler:
-                if intent_type in ["browser", "research", "web"]:
-                    yield "Looking that up now... "
-                elif intent_type in ["window_control", "desktop"]:
-                    yield "Working on that now... "
-                elif intent_type in ["security", "network"]:
-                    yield "Checking system settings... "
-                else:
-                    yield "Working on your request... "
+            # Fast Tool Execution via Autonomous ReAct LLM Engine (Groq openai/gpt-oss-120b)
+            if self.llm_enabled and self.groq_client is not None:
+                ai_resp = await self.get_ai_response(user_goal, enable_tools=True)
+                yield ai_resp
+                return
 
             result = await orchestrator.process_request_async(user_goal)
 

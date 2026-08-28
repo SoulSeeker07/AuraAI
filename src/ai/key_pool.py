@@ -169,15 +169,36 @@ class KeyPool:
             )
             return soonest_key
 
+    @staticmethod
+    def get_seconds_until_next_5am_ist() -> float:
+        """Calculate seconds until 05:00 AM IST (Indian Standard Time)."""
+        import datetime
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        ist_offset = datetime.timedelta(hours=5, minutes=30)
+        now_ist = now_utc + ist_offset
+
+        # Target next 05:00 AM IST
+        target_ist = now_ist.replace(hour=5, minute=0, second=0, microsecond=0)
+        if target_ist <= now_ist:
+            target_ist += datetime.timedelta(days=1)
+
+        diff = (target_ist - now_ist).total_seconds()
+        return max(60.0, diff)
+
     def mark_rate_limited(
         self,
         key: str,
-        cooldown_seconds: float = 180.0,
+        cooldown_seconds: Optional[float] = None,
         service: str = "groq",
+        is_daily_quota: bool = False,
     ) -> None:
         """
         Mark a key as rate-limited and advance rotation to the next key.
+        If is_daily_quota is True, skips the key until next day 5:00 AM IST.
         """
+        if is_daily_quota or cooldown_seconds is None:
+            cooldown_seconds = self.get_seconds_until_next_5am_ist()
+
         with self._mu:
             cooldowns = self._cooldowns.setdefault(service, {})
             cooldowns[key] = time.time() + cooldown_seconds
@@ -185,13 +206,13 @@ class KeyPool:
             keys = self._keys.get(service, [])
             if keys:
                 current_idx = self._key_indices.get(service, 0)
-                # Advance to next key
                 self._key_indices[service] = (current_idx + 1) % len(keys)
 
             masked = f"{key[:8]}...{key[-4:]}" if len(key) > 12 else "key"
+            hours_left = cooldown_seconds / 3600.0
             logger.warning(
-                f"[KeyPool] Key '{masked}' marked rate-limited ({cooldown_seconds:.0f}s cooldown). "
-                f"Active pool size: {len(keys) - len(cooldowns)}/{len(keys)}"
+                f"[KeyPool] Key '{masked}' hit rate limit. Auto-skipped until next day 05:00 AM IST "
+                f"({hours_left:.1f}h cooldown). Active pool: {len(keys) - len(cooldowns)}/{len(keys)}"
             )
 
     def rotate(self, service: str = "groq") -> str:
@@ -239,22 +260,36 @@ class KeyPool:
                     or "rate limit" in err_str
                     or "tokens per day" in err_str
                     or "tokens per minute" in err_str
+                    or "limit reached for model" in err_str
                     or "tpd" in err_str
                     or "tpm" in err_str
+                    or "rpd" in err_str
+                    or "quota" in err_str
                 )
 
                 if is_rate_limit:
                     last_exception = exc
-                    # Extract retry-after if mentioned, else default to 3 minutes
-                    cooldown = 180.0
-                    match = re.search(r"try again in (\d+(?:\.\d+)?)\s*s", err_str)
-                    if match:
-                        try:
-                            cooldown = float(match.group(1)) + 5.0
-                        except ValueError:
-                            pass
+                    is_daily = (
+                        "day" in err_str
+                        or "daily" in err_str
+                        or "tpd" in err_str
+                        or "rpd" in err_str
+                        or "limit reached for model" in err_str
+                        or "quota" in err_str
+                    )
 
-                    self.mark_rate_limited(key, cooldown_seconds=cooldown, service=service)
+                    if is_daily:
+                        cooldown = self.get_seconds_until_next_5am_ist()
+                    else:
+                        cooldown = 180.0
+                        match = re.search(r"try again in (\d+(?:\.\d+)?)\s*s", err_str)
+                        if match:
+                            try:
+                                cooldown = float(match.group(1)) + 5.0
+                            except ValueError:
+                                pass
+
+                    self.mark_rate_limited(key, cooldown_seconds=cooldown, service=service, is_daily_quota=is_daily)
                     logger.warning(
                         f"[KeyPool] 429 Rate Limit on attempt {attempt+1}/{attempts}. "
                         f"Failing over to next available {service} key."

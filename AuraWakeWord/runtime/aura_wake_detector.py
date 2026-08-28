@@ -6,7 +6,10 @@ import onnxruntime as ort
 import torch
 import torchaudio
 
-from src.voice.wake_word import WakeWordEngine
+try:
+    from voice.wake_word import WakeWordEngine
+except ImportError:
+    from src.voice.wake_word import WakeWordEngine
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +37,7 @@ class AuraWakeDetector(WakeWordEngine):
         # 80Hz High-pass filter coefficients for anti-hum & DC removal
         from scipy import signal
         self.hp_b, self.hp_a = signal.butter(2, 80.0 / (self.sample_rate / 2), btype='high')
-        self.min_rms_energy = 0.0075  # Minimum energy required before evaluating wake word
+        self.min_rms_energy = 0.0060  # Sensitive vocal energy threshold
         
         # Mel Spectrogram parameters matching training
         self.mel_transform = torchaudio.transforms.MelSpectrogram(
@@ -129,17 +132,20 @@ class AuraWakeDetector(WakeWordEngine):
             is_speaking = getattr(self, "is_speaking", False)
             has_voiceprint = False
             try:
-                from src.voice.speaker_verification import SpeakerVerificationEngine
+                try:
+                    from voice.speaker_verification import SpeakerVerificationEngine
+                except ImportError:
+                    from src.voice.speaker_verification import SpeakerVerificationEngine
                 has_voiceprint = SpeakerVerificationEngine.get_instance().is_enrolled()
             except Exception:
                 pass
 
             if is_speaking and not has_voiceprint:
-                threshold = float(os.environ.get("AURA_TTS_WAKE_THRESHOLD", 0.88))
-                required_hits = 4
-            else:
-                threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.80))
+                threshold = float(os.environ.get("AURA_TTS_WAKE_THRESHOLD", 0.85))
                 required_hits = 3
+            else:
+                threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.75))
+                required_hits = 2
 
             now = time.monotonic()
             if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
@@ -163,7 +169,10 @@ class AuraWakeDetector(WakeWordEngine):
 
                     # 7. Speaker Voiceprint Gate (if enrolled)
                     try:
-                        from src.voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
+                        try:
+                            from voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
+                        except ImportError:
+                            from src.voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
                         speaker_engine = SpeakerVerificationEngine.get_instance()
                         match_res, sim_score = speaker_engine.verify(clean_buf)
                         if match_res == SpeakerMatchResult.REJECT:

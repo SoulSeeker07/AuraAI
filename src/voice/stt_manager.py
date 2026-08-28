@@ -220,7 +220,7 @@ class LocalAgreementStabilizer:
         return n
 
 DESKTOP_VOCABULARY_PROMPT: str = (
-    "Spoken conversational commands and desktop assistant requests in Indian English."
+    "Hello Aura, open Google Chrome, search SpaceX launch, create a summary note on my desktop, VS Code, volume, brightness, YouTube, terminal, file, restart Aura, quit Aura."
 )
 
 
@@ -400,9 +400,11 @@ class FasterWhisperSTTEngine(STTEngine):
             ]
             text = " ".join(valid_segments).strip()
             # Sanitize prompt echo hallucination on low energy silence
+            norm_clean = text.lower().rstrip(".,!?").strip()
             if (
-                text.lower().rstrip(".,!?") == DESKTOP_VOCABULARY_PROMPT.lower().rstrip(".,!?")
-                or "spoken conversational commands" in text.lower()
+                norm_clean == DESKTOP_VOCABULARY_PROMPT.lower().rstrip(".,!?").strip()
+                or "spoken conversational commands" in norm_clean
+                or norm_clean in ("indian english", "spoken", "thank you", "thanks for watching")
             ):
                 text = ""
 
@@ -977,6 +979,15 @@ class GroqSTTEngine(STTEngine):
                 text = pool.execute_with_failover(_transcribe_with_key, service="groq")
             elif os.getenv("GROQ_API_KEY"):
                 text = _transcribe_with_key(os.getenv("GROQ_API_KEY"))
+
+            if text:
+                norm_clean = text.lower().rstrip(".,!?").strip()
+                if (
+                    norm_clean == DESKTOP_VOCABULARY_PROMPT.lower().rstrip(".,!?").strip()
+                    or "spoken conversational commands" in norm_clean
+                    or norm_clean in ("indian english", "spoken", "thank you", "thanks for watching")
+                ):
+                    text = ""
 
             if text:
                 logger.info(f"[Groq STT ({self.model_name})] Transcribed in ~190ms: '{text}'")

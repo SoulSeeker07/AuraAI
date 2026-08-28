@@ -38,15 +38,15 @@ kernel32 = ctypes.windll.kernel32
 
 
 class GlobalHotkeyService:
-    """System-wide Win32 hotkey listener for AuraAI."""
+    """System-wide global hotkey and key-hold listener for AuraAI."""
 
     _instance: Optional["GlobalHotkeyService"] = None
 
     def __init__(self, on_toggle_chat: Optional[Callable[[], None]] = None):
         self.on_toggle_chat = on_toggle_chat
-        self._thread: Optional[threading.Thread] = None
-        self._thread_id: Optional[int] = None
         self._running: bool = False
+        self._hold_start: dict[str, float] = {}
+        self._hold_triggered: set[str] = set()
 
     @classmethod
     def get_instance(cls, on_toggle_chat: Optional[Callable[[], None]] = None) -> "GlobalHotkeyService":
@@ -57,24 +57,74 @@ class GlobalHotkeyService:
         return cls._instance
 
     def start(self) -> None:
-        """Starts the Win32 message loop thread."""
+        """Starts global keyboard hooks using low-level Windows hook."""
         if self._running:
             return
 
         self._running = True
-        self._thread = threading.Thread(target=self._msg_loop, daemon=True, name="AuraGlobalHotkeys")
-        self._thread.start()
-        logger.info("[GlobalHotkeyService] Started Win32 global hotkey thread.")
+        try:
+            import keyboard
+            import time
+
+            def _on_key_event(event):
+                if not self._running:
+                    return
+
+                key_name = (event.name or "").lower()
+                is_target_key = key_name in (
+                    "right ctrl", "right control", "ctrl", "control",
+                    "right alt", "alt gr", "f8", "pause"
+                )
+
+                if is_target_key:
+                    if event.event_type == "down":
+                        now = time.time()
+                        if key_name not in self._hold_start:
+                            self._hold_start[key_name] = now
+                        elif (now - self._hold_start[key_name] >= 1.0) and (key_name not in self._hold_triggered):
+                            self._hold_triggered.add(key_name)
+                            logger.info(f"[GlobalHotkeyService] Key '{key_name}' held for 1s -> Triggering Voice Listening!")
+                            try:
+                                from gui.signals import app_signals
+                                app_signals.trigger_voice_listening.emit()
+                            except Exception as e:
+                                logger.debug(f"[GlobalHotkeyService] Signal error: {e}")
+                    elif event.event_type == "up":
+                        self._hold_start.pop(key_name, None)
+                        self._hold_triggered.discard(key_name)
+
+            keyboard.hook(_on_key_event)
+
+            # Register Instant Hotkeys
+            keyboard.add_hotkey("alt+v", self._on_trigger_listening, suppress=False)
+            keyboard.add_hotkey("alt+n", self._on_alt_n, suppress=False)
+            keyboard.add_hotkey("alt+space", self._on_alt_space, suppress=False)
+
+            logger.info("[GlobalHotkeyService] Global keyboard hooks registered successfully.")
+        except Exception as exc:
+            logger.error(f"[GlobalHotkeyService] Failed to initialize keyboard hooks: {exc}")
 
     def stop(self) -> None:
-        """Stops the Win32 message loop thread."""
+        """Stops global keyboard hooks."""
         if not self._running:
             return
 
         self._running = False
-        if self._thread_id:
-            user32.PostThreadMessageW(self._thread_id, WM_QUIT, 0, 0)
+        try:
+            import keyboard
+            keyboard.unhook_all()
+        except Exception:
+            pass
         logger.info("[GlobalHotkeyService] Stopped global hotkey service.")
+
+    def _on_trigger_listening(self) -> None:
+        """Triggered on Alt+V globally."""
+        logger.info("[GlobalHotkeyService] Alt+V pressed -> Triggering Voice Listening.")
+        try:
+            from gui.signals import app_signals
+            app_signals.trigger_voice_listening.emit()
+        except Exception as e:
+            logger.debug(f"[GlobalHotkeyService] Signal error: {e}")
 
     def _msg_loop(self) -> None:
         self._thread_id = kernel32.GetCurrentThreadId()

@@ -127,8 +127,8 @@ class VoiceManager:
 
         defaults = {
             "vad_mode": VADMode.BOTH.value,
-            "silence_threshold": 1.4,
-            "silence_duration": 1.4,
+            "silence_threshold": 0.9,
+            "silence_duration": 0.9,
             "energy_threshold": 0.005,
             "wake_word_provider": WakeWordProvider.AURA.value,
             "wake_word_sensitivity": 0.5,
@@ -346,12 +346,12 @@ class VoiceManager:
                 if self.state == ConversationState.ACTIVE_LISTENING:
                     self.stt_manager.process_audio(audio_data)
 
-                    # Timeout check: if user didn't start speaking for 5.0 seconds after wake word
+                    # Timeout check: if user didn't start speaking for 8.0 seconds after wake word
                     if (
                         not self._speech_started_in_turn
-                        and (time.time() - self._active_listening_start_time > 5.0)
+                        and (time.time() - self._active_listening_start_time > 8.0)
                     ):
-                        logger.info("[VoiceManager] Active listening timed out waiting for speech (5.0s)")
+                        logger.info("[VoiceManager] Active listening timed out waiting for speech (8.0s)")
                         self._finalize_stt()
 
                 # Optional direct VAD-onset barge-in (opt-in via .env for headphones / AEC hardware)

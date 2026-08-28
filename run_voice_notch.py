@@ -199,17 +199,27 @@ def main():
 
     # Start the real voice backend in background
     worker = VoiceBackendWorker()
-    notch._voice_manager = getattr(worker._voice_loop, "voice_manager", None)
+
+    def _on_worker_ready():
+        notch._voice_loop = worker._voice_loop
+        notch._voice_manager = getattr(worker._voice_loop, "voice_manager", None)
+        _safe_print("  [Aura Notch] 🟢 Standby: Listening for 'Aura'...\n", flush=True)
+
     worker.status_message.connect(lambda msg: _safe_print(f"  [Aura Notch] {msg}", flush=True))
-    worker.ready.connect(lambda: _safe_print("  [Aura Notch] 🟢 Standby: Listening for 'Aura'...\n", flush=True))
+    worker.ready.connect(_on_worker_ready)
     worker.error.connect(lambda err: _safe_print(f"  [ERROR] {err}", flush=True))
-    # Start Global Hotkey Service (Alt+N)
+    # Start Global Hotkey Service (Alt+N / Hold for 3s / Alt+V)
     hotkey_svc = None
     try:
         from tools.hotkey_service import GlobalHotkeyService
         hotkey_svc = GlobalHotkeyService()
         hotkey_svc.start()
         app_signals.toggle_voice_notch.connect(notch.toggle)
+        app_signals.trigger_voice_listening.connect(
+            lambda: notch._voice_loop.trigger_wake_detected()
+            if getattr(notch, "_voice_loop", None)
+            else None
+        )
     except Exception as e:
         pass
 
