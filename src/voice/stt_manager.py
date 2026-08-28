@@ -983,9 +983,16 @@ class GroqSTTEngine(STTEngine):
                 return text
 
         except Exception as e:
-            logger.warning(f"[Groq STT] Request notice ({e}), switching to local GPU fallback...")
+            logger.warning(f"[Groq STT] Network / LPU notice ({e}), switching to local GPU fallback...")
 
         # 2. Local GPU Faster-Whisper fallback
+        if not self._fallback_engine:
+            try:
+                self._fallback_engine = FasterWhisperSTTEngine(self.settings)
+                self._fallback_engine.initialize()
+            except Exception as fe:
+                logger.error(f"[Groq STT] Failed to initialize local GPU fallback: {fe}")
+
         if self._fallback_engine and self._fallback_engine.is_active:
             self._fallback_engine.load_buffer(self._audio_buffer, duration)
             fallback_text = self._fallback_engine.finalize()
