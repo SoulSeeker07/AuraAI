@@ -742,13 +742,6 @@ class ContinuousVoiceLoop:
                         yield resp
                     token_gen = _fallback_gen()
                 elif conversation_engine is not None:
-                    # Check fast action intent (e.g. open chrome, close notepad) for instant 50ms voice feedback
-                    t_lower = transcript.lower().strip()
-                    if t_lower.startswith(("open ", "launch ", "start ", "run ")):
-                        app_name = t_lower.split(" ", 1)[1].strip()
-                        # Speak early acknowledgement immediately
-                        self.voice_manager.speak(f"Opening {app_name.title()}.")
-
                     if hasattr(conversation_engine, "stream"):
                         async def _stream_engine_gen():
                             for token in conversation_engine.stream(transcript):
@@ -788,7 +781,7 @@ class ContinuousVoiceLoop:
                 if self._running and complete_text:
                     try:
                         from gui.signals import app_signals
-                        app_signals.message_received.emit("Aura", complete_text, False)
+                        app_signals.message_received.emit("AuraAI", complete_text, False)
                     except Exception:
                         pass
                     self._set_state(VoiceState.SPEAKING)

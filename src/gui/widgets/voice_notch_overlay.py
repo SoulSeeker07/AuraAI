@@ -1367,11 +1367,12 @@ class VoiceNotchOverlay(QWidget):
         elif name_upper in ("UNDERSTANDING", "EXECUTING", "AI_RESPONSE", "PLANNING", "THINKING"):
             self.set_state(NotchState.PROCESSING, "Processing your request...")
         elif name_upper == "SPEAKING":
-            # AI is speaking the result — auto-expand to show it
-            if self._current_response:
-                self._has_last_result = True
-                self._mark_ready()
-                self.set_state(NotchState.EXPANDED)
+            # AI is speaking the reply — immediately auto-expand to show result card
+            if hasattr(self, "_proc_timeout") and self._proc_timeout.isActive():
+                self._proc_timeout.stop()
+            self._has_last_result = True
+            self._mark_ready()
+            self.set_state(NotchState.EXPANDED)
         elif name_upper in ("IDLE", "LISTENING", "COOLDOWN", "WAITING_FOR_WAKE_WORD", "STANDBY"):
             # All passive states → show AuraAI idle notch (never show "waiting for wake word")
             if self._state not in (NotchState.EXPANDED,):
