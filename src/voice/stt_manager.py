@@ -220,7 +220,7 @@ class LocalAgreementStabilizer:
         return n
 
 DESKTOP_VOCABULARY_PROMPT: str = (
-    "Spoken conversational commands and desktop assistant requests in English."
+    "Spoken conversational commands and desktop assistant requests in Indian English."
 )
 
 
