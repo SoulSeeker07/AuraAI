@@ -544,11 +544,51 @@ class AuraCore:
             # Fallback to standard pipeline
             return await self.process_request(user_goal)
 
+    def _build_chat_messages(
+        self, user_message: str, max_turns: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Construct multi-turn conversation messages enriched with live ambient system context.
+        """
+        from core.context.ambient_context_builder import AmbientContextBuilder
+
+        ambient_info = AmbientContextBuilder.build_ambient_context(self, query=user_message)
+
+        sys_prompt = (
+            "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant running on Windows.\n"
+            "You are direct, concise, factual, and helpful. You have native tool capabilities to control the desktop "
+            "(launch applications, control windows, adjust audio volume, adjust screen brightness, clipboard), "
+            "inspect the visual screen (OCR), access hardware telemetry, browse the web, and store/query persistent memory facts.\n\n"
+            "### Live Ambient Environment & Context:\n"
+            f"{ambient_info}\n\n"
+            "### Instructions:\n"
+            "- If the user requests an action or information that can be handled with an available tool, invoke the appropriate tool.\n"
+            "- Answer questions accurately using the provided ambient context when relevant.\n"
+            "- Output clear natural language text."
+        )
+
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": sys_prompt}
+        ]
+
+        # Append previous conversation history window
+        history_window = self.conversation_history[-max_turns:] if self.conversation_history else []
+        for entry in history_window:
+            role = entry.get("role", "user")
+            content = entry.get("content", "")
+            if role in ["user", "assistant"] and content:
+                messages.append({"role": role, "content": content})
+
+        # Append current user message
+        messages.append({"role": "user", "content": user_message})
+        return messages
+
     async def get_ai_response_stream(
         self, user_message: str, model: str | None = None
     ) -> AsyncGenerator[str, None]:
         """
-        Streaming variant of get_ai_response: yields token chunks directly from Groq/provider.
+        Streaming variant of get_ai_response: yields token chunks directly from Groq/provider
+        with full multi-turn memory and ambient environment context.
         """
         if not self.llm_enabled or self.groq_client is None:
             yield (
@@ -558,21 +598,7 @@ class AuraCore:
             return
 
         try:
-            # Use Groq streaming API directly
-            sys_prompt = (
-                "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant. "
-                "You are NOT base GPT-4 or OpenAI; you are AuraAI running on Windows with local tools, "
-                "PySide6 HUD, multi-agent planners, Playwright browsing, and real-time hardware telemetry. "
-                "Always be direct, concise, factual, and helpful. Never hallucinate outdated knowledge cutoff dates."
-            )
-            messages = [
-                {
-                    "role": "system",
-                    "content": sys_prompt,
-                },
-                {"role": "user", "content": user_message},
-            ]
-
+            messages = self._build_chat_messages(user_message)
             target_model = model or getattr(self, "voice_llm_model", "openai/gpt-oss-20b")
             kwargs: dict[str, Any] = {
                 "model": target_model,
@@ -584,6 +610,7 @@ class AuraCore:
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = "medium"
 
+            full_response_chunks = []
             completion = self.groq_client.chat.completions.create(**kwargs)
             for chunk in completion:
                 if (
@@ -591,22 +618,34 @@ class AuraCore:
                     and chunk.choices[0].delta
                     and chunk.choices[0].delta.content
                 ):
-                    yield chunk.choices[0].delta.content
+                    token = chunk.choices[0].delta.content
+                    full_response_chunks.append(token)
+                    yield token
+
+            # Record turn in conversation history
+            full_text = "".join(full_response_chunks).strip()
+            if full_text:
+                self.add_to_conversation("user", user_message)
+                self.add_to_conversation("assistant", full_text)
+
         except Exception as e:
             logger.error(f"get_ai_response_stream error: {e}", exc_info=True)
-            # Fallback to non-streaming response
             resp = await self.get_ai_response(user_message)
             yield resp
 
-    async def get_ai_response(self, user_message: str) -> str:
+    async def get_ai_response(
+        self, user_message: str, enable_tools: bool = True
+    ) -> str:
         """
-        Send the user's message through the Groq LLM reasoning engine.
+        Send the user's message through the Groq LLM reasoning engine with
+        multi-turn context, ambient environment grounding, and native autonomous tool calling.
 
         Args:
             user_message: The latest message from the user
+            enable_tools: Whether to provide native function calling tools to the model
 
         Returns:
-            The AI's text response (or an error message string)
+            The AI's text response
         """
         if not self.llm_enabled or self.groq_client is None:
             return (
@@ -615,52 +654,98 @@ class AuraCore:
             )
 
         try:
-            import asyncio
+            import json
+            from core.tools.aura_tool_registry import AuraToolRegistry
 
             target_model = getattr(self, "reasoning_llm_model", "openai/gpt-oss-120b")
-            sys_prompt = (
-                "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant. "
-                "You are NOT base GPT-4 or OpenAI; you are AuraAI running on Windows with local tools, "
-                "PySide6 HUD, multi-agent planners, Playwright browsing, and real-time hardware telemetry. "
-                "Always be direct, concise, factual, and helpful. Output clear natural language text responses."
-            )
-            messages = [
-                {
-                    "role": "system",
-                    "content": sys_prompt,
-                },
-                {"role": "user", "content": user_message},
-            ]
+            messages = self._build_chat_messages(user_message)
+            tools = AuraToolRegistry.get_tool_definitions() if enable_tools else None
+
             kwargs: dict[str, Any] = {
                 "model": target_model,
                 "messages": messages,
                 "temperature": 0.7,
                 "max_tokens": 1024,
             }
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = "medium"
 
-            def _call_groq(model_name: str):
-                call_kw = dict(kwargs)
-                call_kw["model"] = model_name
+            def _call_groq(call_kwargs: dict[str, Any], model_name: str):
+                kw = dict(call_kwargs)
+                kw["model"] = model_name
                 if "gpt-oss-120b" not in model_name:
-                    call_kw.pop("reasoning_effort", None)
-                res = self.groq_client.chat.completions.create(**call_kw)
-                if res and res.choices and res.choices[0].message:
-                    return res.choices[0].message.content or ""
-                return ""
+                    kw.pop("reasoning_effort", None)
+                return self.groq_client.chat.completions.create(**kw)
 
+            # Initial inference turn
             try:
-                response_text = await asyncio.to_thread(_call_groq, target_model)
+                res = await asyncio.to_thread(_call_groq, kwargs, target_model)
             except Exception as call_err:
                 err_str = str(call_err)
-                if "tool_use_failed" in err_str or "Tool choice is none" in err_str or "400" in err_str:
-                    logger.warning(f"Groq primary model returned tool constraint error, failing over to qwen/qwen3.6-27b: {call_err}")
-                    response_text = await asyncio.to_thread(_call_groq, "qwen/qwen3.6-27b")
+                if "tool_use_failed" in err_str or "Tool choice" in err_str or "400" in err_str:
+                    logger.warning(f"Groq primary model tool error, failing over to qwen/qwen3.6-27b: {call_err}")
+                    res = await asyncio.to_thread(_call_groq, kwargs, "qwen/qwen3.6-27b")
                 else:
                     raise call_err
 
-            return response_text.strip()
+            if not res or not res.choices or not res.choices[0].message:
+                return "I was unable to generate a response."
+
+            response_msg = res.choices[0].message
+
+            # Check if model requested tool execution (Autonomous ReAct Turn)
+            if hasattr(response_msg, "tool_calls") and response_msg.tool_calls:
+                logger.info(f"[AuraCore] Model requested {len(response_msg.tool_calls)} tool call(s).")
+                
+                # Append assistant tool invocation message to conversation flow
+                messages.append(response_msg)
+
+                for tool_call in response_msg.tool_calls:
+                    fn_name = tool_call.function.name
+                    try:
+                        fn_args = json.loads(tool_call.function.arguments) if tool_call.function.arguments else {}
+                    except Exception:
+                        fn_args = {}
+
+                    # Execute the tool natively
+                    tool_result = await AuraToolRegistry.execute_tool(fn_name, fn_args, aura_core=self)
+
+                    # Append tool execution result
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": fn_name,
+                        "content": json.dumps(tool_result, default=str),
+                    })
+
+                # Follow-up completion turn to reason over tool results and formulate final response
+                followup_kwargs = {
+                    "model": target_model,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": 1024,
+                }
+                if "gpt-oss-120b" in target_model:
+                    followup_kwargs["reasoning_effort"] = "medium"
+
+                followup_res = await asyncio.to_thread(_call_groq, followup_kwargs, target_model)
+                final_text = (
+                    followup_res.choices[0].message.content or "Action completed."
+                    if followup_res and followup_res.choices and followup_res.choices[0].message
+                    else "Action completed."
+                )
+            else:
+                final_text = response_msg.content or ""
+
+            # Update conversation history
+            final_text = final_text.strip()
+            self.add_to_conversation("user", user_message)
+            self.add_to_conversation("assistant", final_text)
+
+            return final_text
 
         except Exception as e:
             logger.error(f"get_ai_response failed: {e}", exc_info=True)
@@ -1243,7 +1328,10 @@ class AuraCore:
             )
             self.provider_manager.set_default("groq")
 
-            self.memory_manager = MemoryManager(provider_manager=self.provider_manager)
+            self.memory_manager = MemoryManager(
+                provider_manager=self.provider_manager,
+                memory=self.memory,
+            )
 
             # Create ConversationEngine
             self.conversation_engine = ConversationEngine(

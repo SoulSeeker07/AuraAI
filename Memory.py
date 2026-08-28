@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import re
 import sqlite3
 from collections.abc import Iterator
@@ -9,6 +10,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_ROOT / "Data"
@@ -95,6 +98,13 @@ class Memory:
             logger.warning(f"[Memory] CognitiveMemoryEngine init warning: {e}")
             self.cognitive = None
 
+        try:
+            from memory.vector_memory import VectorMemoryEngine
+            self.vector_memory = VectorMemoryEngine.get_instance(db_path=self.db_path)
+        except Exception as e:
+            logger.warning(f"[Memory] VectorMemoryEngine init warning: {e}")
+            self.vector_memory = None
+
         self.recover_profile_from_chat_log()
 
     # ------------------------------------------------------------------
@@ -122,6 +132,16 @@ class Memory:
     def forget(self, text: str) -> int:
         text_like = f"%{text.strip().lower()}%"
         with self._connect() as conn:
+            matching = conn.execute(
+                """
+                SELECT category, key FROM facts
+                WHERE lower(category) LIKE ?
+                   OR lower(key) LIKE ?
+                   OR lower(value) LIKE ?
+                """,
+                (text_like, text_like, text_like),
+            ).fetchall()
+
             cursor = conn.execute(
                 """
                 DELETE FROM facts
@@ -131,7 +151,24 @@ class Memory:
                 """,
                 (text_like, text_like, text_like),
             )
-            return cursor.rowcount
+            deleted_count = cursor.rowcount
+
+        # Purge vector embeddings for forgotten facts
+        if getattr(self, "vector_memory", None) is not None:
+            try:
+                for cat, k in matching:
+                    self.vector_memory.delete_fact_embedding(cat, k)
+            except Exception as e:
+                logger.debug(f"[Memory] Vector deletion error in forget: {e}")
+
+        # Purge from cognitive_memories store
+        if getattr(self, "cognitive", None) is not None:
+            try:
+                self.cognitive.delete_by_text(text)
+            except Exception as e:
+                logger.debug(f"[Memory] Cognitive memory purge error in forget: {e}")
+
+        return deleted_count
 
     def summarize(self) -> str:
         profile = self.get_context()
@@ -251,6 +288,116 @@ class Memory:
 
         return context
 
+    def _compute_lexical_fuzzy_score(self, query: str, target: str) -> float:
+        """
+        Compute lightweight lexical fuzzy similarity score between query and target string
+        using subword n-gram overlap, token stem overlap, and substring matching.
+        (Honest fallback when dense neural embedding engine is inactive).
+        """
+        q_clean = query.lower().strip()
+        t_clean = target.lower().strip()
+
+        if not q_clean or not t_clean:
+            return 0.0
+
+        if q_clean == t_clean:
+            return 1.0
+
+        if q_clean in t_clean or t_clean in q_clean:
+            return 0.85
+
+        q_words = re.findall(r"[a-z0-9]+", q_clean)
+        t_words = re.findall(r"[a-z0-9]+", t_clean)
+
+        if not q_words or not t_words:
+            return 0.0
+
+        # Token & stem overlap
+        matches = 0
+        for qw in q_words:
+            qw_stem = qw[:4] if len(qw) > 4 else qw
+            for tw in t_words:
+                tw_stem = tw[:4] if len(tw) > 4 else tw
+                if qw == tw or (len(qw_stem) >= 3 and (qw_stem in tw or tw_stem in qw)):
+                    matches += 1
+                    break
+
+        overlap_score = matches / max(1, len(q_words))
+
+        # Subword 3-gram character Dice coefficient
+        def _get_ngrams(s: str, n: int = 3) -> set[str]:
+            return {s[i : i + n] for i in range(len(s) - n + 1)} if len(s) >= n else {s}
+
+        q_ngrams = _get_ngrams(q_clean)
+        t_ngrams = _get_ngrams(t_clean)
+        ngram_overlap = len(q_ngrams & t_ngrams)
+        ngram_total = len(q_ngrams) + len(t_ngrams)
+        ngram_sim = (2.0 * ngram_overlap) / ngram_total if ngram_total else 0.0
+
+        return 0.6 * overlap_score + 0.4 * ngram_sim
+
+    def search_semantic(
+        self, query: str, limit: int = 5, min_score: float = 0.25
+    ) -> list[MemoryFact]:
+        """
+        Search memory facts using real dense neural embeddings (all-MiniLM-L6-v2 on CPU)
+        with cosine similarity, falling back to lexical fuzzy matching if vector engine is unavailable.
+
+        Args:
+            query: The natural language query or question (e.g., 'I work in AI')
+            limit: Max results to return
+            min_score: Minimum cosine similarity threshold (0.0 to 1.0)
+
+        Returns:
+            List of MemoryFact items ranked by semantic vector similarity
+        """
+        all_facts = self.facts()
+        if not query.strip() or not all_facts:
+            return all_facts[:limit]
+
+        # 1. Real Dense Neural Embedding Search
+        if getattr(self, "vector_memory", None) is not None:
+            try:
+                vector_results = self.vector_memory.search(
+                    query=query, facts=all_facts, top_k=limit, min_similarity=min_score
+                )
+                if vector_results:
+                    return [fact for _, fact in vector_results]
+            except Exception as e:
+                logger.debug(f"[Memory] Dense vector search error, falling back to lexical fuzzy matcher: {e}")
+
+        # 2. Honest Lexical Fuzzy Fallback
+        scored: list[tuple[float, MemoryFact]] = []
+        for fact in all_facts:
+            target_str = f"{fact.category} {fact.key} {fact.value}"
+            score = self._compute_lexical_fuzzy_score(query, target_str)
+            if score >= min_score:
+                scored.append((score, fact))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in scored[:limit]]
+
+    def get_relevant_facts(self, query: str, limit: int = 8) -> list[MemoryFact]:
+        """
+        Hybrid fact retrieval combining exact keyword matches and dense vector similarity.
+        """
+        if not query.strip():
+            return self.facts()[:limit]
+
+        exact_matches = self.search(query)
+        semantic_matches = self.search_semantic(query, limit=limit)
+
+        combined: list[MemoryFact] = []
+        seen = set()
+
+        for fact in exact_matches + semantic_matches:
+            fact_id = (fact.category, fact.key, fact.value)
+            if fact_id not in seen:
+                seen.add(fact_id)
+                combined.append(fact)
+
+        return combined[:limit]
+
     def search(self, text: str = "") -> list[MemoryFact]:
         if not text.strip():
             return self.facts()
@@ -269,6 +416,7 @@ class Memory:
                 (pattern, pattern, pattern),
             ).fetchall()
         return [MemoryFact(*row) for row in rows]
+
 
     def record_turn(self, query: str, answer: str, topic: str) -> None:
         messages = self.load_chat_log()
@@ -300,7 +448,7 @@ class Memory:
         # Store topic summary in the topics table
         self.upsert_topic(topic, summary)
 
-    def recent_messages(self, limit: int) -> list[dict[str, str]]:
+    def recent_messages(self, limit: int = 10) -> list[dict[str, Any]]:
         return [
             {
                 "role": item["role"],
@@ -599,11 +747,69 @@ class Memory:
             except Exception as e:
                 logger.warning(f"[Memory] Cognitive memory sync error: {e}")
 
+        # Index dense vector embedding
+        if getattr(self, "vector_memory", None) is not None:
+            try:
+                self.vector_memory.index_fact(category, key, value)
+            except Exception as e:
+                logger.debug(f"[Memory] Vector indexing error: {e}")
+
         # Log memory count after insertion
         new_count = self.count_memories()
         logger.info(
             f"[Memory] Memory count after insertion: {new_count} (inserted 1 fact)"
         )
+
+    def delete_fact(self, category: str, key: str) -> bool:
+        """Delete a fact from SQLite, purge its vector embedding, and remove from cognitive_memories."""
+        deleted = False
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM facts WHERE category = ? AND key = ?",
+                (category, key),
+            )
+            deleted = cursor.rowcount > 0
+
+        # Purge dense vector embedding
+        if getattr(self, "vector_memory", None) is not None:
+            try:
+                self.vector_memory.delete_fact_embedding(category, key)
+            except Exception as e:
+                logger.debug(f"[Memory] Vector deletion error: {e}")
+
+        # Purge from cognitive_memories store
+        if getattr(self, "cognitive", None) is not None:
+            try:
+                self.cognitive.delete_by_category_key(category, key)
+            except Exception as e:
+                logger.debug(f"[Memory] Cognitive memory deletion error: {e}")
+
+        logger.info(f"[Memory] Deleted fact [{category}] {key}: {deleted}")
+        return deleted
+
+    def delete_category(self, category: str) -> int:
+        """Delete all facts in a category, purge vector embeddings, and remove from cognitive_memories."""
+        deleted_count = 0
+        with self._connect() as conn:
+            cursor = conn.execute("DELETE FROM facts WHERE category = ?", (category,))
+            deleted_count = cursor.rowcount
+
+        # Purge dense vector embeddings
+        if getattr(self, "vector_memory", None) is not None:
+            try:
+                self.vector_memory.delete_category_embeddings(category)
+            except Exception as e:
+                logger.debug(f"[Memory] Category vector deletion error: {e}")
+
+        # Purge from cognitive_memories store
+        if getattr(self, "cognitive", None) is not None:
+            try:
+                self.cognitive.delete_by_category(category)
+            except Exception as e:
+                logger.debug(f"[Memory] Cognitive memory category deletion error: {e}")
+
+        logger.info(f"[Memory] Deleted {deleted_count} facts from category [{category}]")
+        return deleted_count
 
     def upsert_topic(self, topic: str, summary: str) -> None:
         now = dt.datetime.now().isoformat(timespec="seconds")
@@ -787,21 +993,6 @@ class Memory:
             ).fetchall()
             return [(row[0], row[1]) for row in rows]
 
-    def recent_messages(self, limit: int = 10) -> list[dict[str, Any]]:
-        """Retrieve the most recent messages from the chat log."""
-        if not self.chat_log_path.exists():
-            return []
-        try:
-            content = self.chat_log_path.read_text(encoding="utf-8").strip()
-            if not content:
-                return []
-            messages = json.loads(content)
-            if isinstance(messages, list):
-                return messages[-limit:]
-            return []
-        except Exception:
-            return []
-
     def add_message(self, role: str, content: str) -> None:
         """Append a message turn to the chat log file."""
         messages = self.recent_messages(limit=1000)
@@ -816,10 +1007,6 @@ class Memory:
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"[Memory] Failed to write chat log: {e}")
-
-    def recover_profile_from_chat_log(self) -> None:
-        """Scan chat log on init to ensure profile facts are synchronized."""
-        pass
 
     def _format_answer(self, text: str) -> str:
         return "\n".join(line.strip() for line in text.splitlines() if line.strip())

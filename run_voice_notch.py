@@ -67,26 +67,15 @@ import logging
 _logs_dir = _PROJECT_ROOT / "logs"
 _logs_dir.mkdir(exist_ok=True)
 _file_handler = logging.FileHandler(str(_logs_dir / "aura.log"), encoding="utf-8")
+_file_handler.setLevel(logging.DEBUG)
 _file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
 
-class VoiceNeuralConsoleFilter(logging.Filter):
-    """Filter that only permits Voice Model and Neural events on the console."""
-    def filter(self, record: logging.LogRecord) -> bool:
-        name_lower = record.name.lower()
-        msg_lower = record.getMessage().lower()
-        if any(k in name_lower for k in ("voice", "stt", "tts", "continuous_loop", "neural", "auracore", "wakeword", "groq")):
-            return True
-        if any(k in msg_lower for k in ("wake word", "stt", "tts", "piper", "groq", "listening", "transcribed", "neural", "turn #")):
-            return True
-        return False
-
 _console_handler = logging.StreamHandler(sys.stdout)
-_console_handler.setLevel(logging.INFO)
-_console_handler.addFilter(VoiceNeuralConsoleFilter())
+_console_handler.setLevel(logging.WARNING)
 _console_handler.setFormatter(logging.Formatter("  [Aura Notch] %(message)s"))
 
 _root_logger = logging.getLogger()
-_root_logger.setLevel(logging.INFO)
+_root_logger.setLevel(logging.DEBUG)
 _root_logger.handlers = [_file_handler, _console_handler]
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -136,13 +125,15 @@ class VoiceBackendWorker(QThread):
                 self.error.emit("Failed to activate microphone / wake-word detector.")
                 return
 
-            # 2. Parallel Background Init: Load AuraCore neural agents concurrently
+            # 2. Parallel Background Init: Load full AuraCore neural backend concurrently
             def _load_core_in_background():
                 try:
-                    from core.aura_core import AuraCore, get_default_instance
-                    core = get_default_instance() or AuraCore()
+                    from main import get_aura_core
+                    core = get_aura_core()
                     self._core = core
-                    self._voice_loop._aura_core = core
+                    if self._voice_loop:
+                        self._voice_loop._aura_core = core
+                        self._voice_loop.conversation_engine = getattr(core, "conversation_engine", None)
                     ContinuousVoiceLoop.set_global_aura_core(core)
                     self.status_message.emit("⚡ Neural Engines & Autonomous Agents Attached")
                 except Exception as e:
@@ -172,6 +163,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Aura Voice Notch")
     app.setOrganizationName("AuraAI")
+    app.setQuitOnLastWindowClosed(True)
 
     notch = VoiceNotchOverlay()
     notch.show()
@@ -202,23 +194,68 @@ def main():
     _safe_print("║  • Wake Word:             Say 'Aura' or 'Hey Aura'       ║", flush=True)
     _safe_print("║  • Direct Talk:           Press Space when focused       ║", flush=True)
     _safe_print("║  • Global Hotkey:         Alt + N to toggle              ║", flush=True)
-    _safe_print("║  • Exit:                  Right-click notch → Hide Notch ║", flush=True)
+    _safe_print("║  • Exit:                  Right-click → Close Notch / Ctrl+C / Esc ║", flush=True)
     _safe_print("╚══════════════════════════════════════════════════════════╝\n", flush=True)
 
     # Start the real voice backend in background
     worker = VoiceBackendWorker()
+    notch._voice_manager = getattr(worker._voice_loop, "voice_manager", None)
     worker.status_message.connect(lambda msg: _safe_print(f"  [Aura Notch] {msg}", flush=True))
     worker.ready.connect(lambda: _safe_print("  [Aura Notch] 🟢 Standby: Listening for 'Aura'...\n", flush=True))
     worker.error.connect(lambda err: _safe_print(f"  [ERROR] {err}", flush=True))
+    # Start Global Hotkey Service (Alt+N)
+    hotkey_svc = None
+    try:
+        from tools.hotkey_service import GlobalHotkeyService
+        hotkey_svc = GlobalHotkeyService()
+        hotkey_svc.start()
+        app_signals.toggle_voice_notch.connect(notch.toggle)
+    except Exception as e:
+        pass
+
     worker.start()
 
-    def _cleanup():
-        _safe_print("\n  [Aura Notch] Shutting down voice backend...", flush=True)
-        worker.stop()
-        worker.wait(2000)
+    _is_cleaning_up = False
 
+    def _cleanup():
+        nonlocal _is_cleaning_up
+        if _is_cleaning_up:
+            return
+        _is_cleaning_up = True
+        _safe_print("\n  [Aura Notch] Shutting down voice backend and releasing microphone...", flush=True)
+        if hotkey_svc:
+            try:
+                hotkey_svc.stop()
+            except Exception:
+                pass
+        worker.stop()
+        worker.wait(1500)
+
+    # Enable Ctrl+C in terminal to cleanly exit Qt application
+    import signal
+
+    def _sigint_handler(*_):
+        _safe_print("\n  [Aura Notch] Ctrl+C received — exiting...", flush=True)
+        _cleanup()
+        app.quit()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, _sigint_handler)
+
+    # Periodic timer to allow Python runtime to process SIGINT on Windows
+    sig_timer = QTimer()
+    sig_timer.timeout.connect(lambda: None)
+    sig_timer.start(200)
+
+    notch.destroyed.connect(app.quit)
     app.aboutToQuit.connect(_cleanup)
-    sys.exit(app.exec())
+    try:
+        ret = app.exec()
+    except KeyboardInterrupt:
+        _cleanup()
+        ret = 0
+    _cleanup()
+    sys.exit(ret)
 
 
 if __name__ == "__main__":

@@ -705,7 +705,8 @@ class VoiceNotchOverlay(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
+            | Qt.WindowType.Window
+            | Qt.WindowType.NoDropShadowWindowHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
@@ -932,7 +933,7 @@ class VoiceNotchOverlay(QWidget):
         w = IDLE_W if self._state == NotchState.IDLE else self.width()
         h = IDLE_H if self._state == NotchState.IDLE else self.height()
         x = sg.left() + (sg.width() - w) // 2
-        y = sg.top()  # Flush directly against the taskbar/top edge
+        y = max(6, sg.top() + 4)  # Ensure clearly visible below top taskbar
         self.setGeometry(x, y, w, h)
 
     def enterEvent(self, event):
@@ -1254,19 +1255,86 @@ class VoiceNotchOverlay(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
+            # Unconditional manual barge-in: stop TTS immediately if speaking
+            try:
+                from voice.voice_manager import VoiceManager
+                from voice.audio_manager import AudioManager
+                vm = getattr(self, "_voice_manager", None)
+                if vm and hasattr(vm, "tts_manager"):
+                    vm.tts_manager.stop()
+            except Exception:
+                pass
             if self._state == NotchState.EXPANDED:
                 self.set_state(NotchState.IDLE)
             else:
-                self.hide()
+                self.close()
             event.accept()
         elif event.key() == Qt.Key.Key_Space:
+            # Unconditional manual barge-in: stop TTS if speaking, and toggle listening
+            try:
+                from voice.voice_manager import VoiceManager
+                vm = getattr(self, "_voice_manager", None)
+                if vm and hasattr(vm, "tts_manager"):
+                    vm.tts_manager.stop()
+            except Exception:
+                pass
             if self._state == NotchState.IDLE:
                 self.set_state(NotchState.LISTENING)
             elif self._state == NotchState.LISTENING:
                 self.set_state(NotchState.IDLE)
+            elif self._state in (NotchState.PROCESSING, NotchState.EXPANDED):
+                self.set_state(NotchState.LISTENING)
             event.accept()
         else:
             super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        """Cleanly stop all timers, release audio streams, and terminate application process."""
+        logger.info("[VoiceNotchOverlay] closeEvent received — shutting down completely.")
+        # 1. Stop all notch internal timers
+        for timer_name in ("_hover_timer", "_collapse_timer", "_result_collapse_timer", "_proc_anim_timer", "_proc_timeout"):
+            t = getattr(self, timer_name, None)
+            if t is not None and hasattr(t, "stop"):
+                try:
+                    t.stop()
+                except Exception:
+                    pass
+
+        # 2. Stop animated sub-widget timers
+        for orb_name in ("_idle_orb", "_listen_orb", "_proc_orb", "_succ_orb"):
+            orb = getattr(self, orb_name, None)
+            if orb and hasattr(orb, "_timer") and hasattr(orb._timer, "stop"):
+                try:
+                    orb._timer.stop()
+                except Exception:
+                    pass
+        for wave_name in ("_rainbow_wave", "_idle_spectrum"):
+            wv = getattr(self, wave_name, None)
+            if wv and hasattr(wv, "_timer") and hasattr(wv._timer, "stop"):
+                try:
+                    wv._timer.stop()
+                except Exception:
+                    pass
+
+        # 3. Emit voice status changed False
+        try:
+            from gui.signals import app_signals
+            if hasattr(app_signals, "voice_status_changed"):
+                app_signals.voice_status_changed.emit(False)
+        except Exception:
+            pass
+
+        # 4. If running as standalone Notch or primary top-level, exit QApplication completely
+        try:
+            app = QApplication.instance()
+            if app and not getattr(self, "_is_test_env", False):
+                top_levels = [w for w in app.topLevelWidgets() if w.isVisible() and w is not self]
+                if not top_levels or app.applicationName() == "Aura Voice Notch":
+                    app.quit()
+        except Exception:
+            pass
+
+        super().closeEvent(event)
 
     def _show_context_menu(self, pos: QPoint):
         menu = QMenu(self)
@@ -1460,8 +1528,9 @@ class VoiceNotchOverlay(QWidget):
             self.hide()
         else:
             self.show()
-            self.raise_()
             self._position_at_top()
+            self.raise_()
+            self.activateWindow()
 
     @property
     def current_state(self) -> NotchState:

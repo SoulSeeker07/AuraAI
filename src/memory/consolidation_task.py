@@ -100,26 +100,18 @@ class MemoryConsolidationTask:
 
     def _get_embedder(self) -> Any:
         """
-        Lazy-load the SentenceTransformer embedder from LongTermMemory.
-        Reuses the same model instance — does NOT load a second model.
+        Lazy-load the SentenceTransformer embedder from VectorMemoryEngine.
+        Reuses the process-wide singleton — does NOT load a duplicate model.
         Falls back to None if unavailable.
         """
         if not self._embedder_loaded:
             self._embedder_loaded = True
             try:
-                from memory.manager.long_term_memory import LongTermMemory
-                # Try to get the embedder without a full LongTermMemory init
-                # (which requires ProviderManager). Just load the model directly.
-                from sentence_transformers import SentenceTransformer
-                import torch
-
-                dev = "cuda" if torch.cuda.is_available() else "cpu"
-                self._embedder = SentenceTransformer(
-                    "all-MiniLM-L6-v2", device=dev, local_files_only=True
-                )
-                logger.info(
-                    f"[ConsolidationTask] Loaded embedding model on {dev.upper()} for dedup"
-                )
+                from memory.vector_memory import VectorMemoryEngine
+                engine = VectorMemoryEngine.get_instance()
+                self._embedder = engine.get_model()
+                if self._embedder is not None:
+                    logger.info("[ConsolidationTask] Reusing VectorMemoryEngine embedding model for dedup")
             except Exception as exc:
                 logger.warning(
                     f"[ConsolidationTask] Embedding model unavailable, "

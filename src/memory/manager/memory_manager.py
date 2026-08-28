@@ -1,36 +1,45 @@
 """
-MemoryManager - the "Aura" layer.
+MemoryManager - the "Aura" Context Coordinator layer.
 
-Ties short-term (this session) and long-term (across all sessions) memory
-together. It acts as the Context Coordinator for Aura's PersonalOSRuntime.
-
-M2 changes:
-- Per-turn LLM extraction removed from add_assistant_turn().
-  Extraction is now session-level only, triggered at session close.
-- _consolidate(transcript) added: formats transcript, calls
-  LongTermMemory.extract_candidates(), gates each candidate through
-  memory_policy.apply_policy(), calls long_term.store() only on approved facts.
-- close_session() added: explicit consolidation trigger (called by
-  PersonalOSRuntime on voice loop stop). Idempotent: will not re-extract
-  an already-consolidated session.
-- add_user_turn() updated to handle new (expired, transcript) tuple from
-  ShortTermMemory and trigger automatic consolidation on timeout.
+Ties short-term working memory (this session) and unified persistent long-term
+memory (SQLite VectorMemoryEngine + CognitiveMemoryEngine) together.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 from ai.models import ChatMessage, ChatRequest
 from ai.provider_manager import ProviderManager
 from core.config import ENABLE_LONG_TERM_MEMORY
-from memory.manager.long_term_memory import LongTermMemory
 from memory.manager.memory_policy import apply_policy
 from memory.manager.short_term_memory import ShortTermMemory, Turn
 
 logger = logging.getLogger(__name__)
+
+EXTRACTION_PROMPT = """\
+Analyze this conversation transcript and extract any enduring facts about the user,
+their preferences, their projects, or persistent instructions they gave.
+
+Rules:
+- Output ONLY valid JSON — a list of objects. No preamble, no markdown fences.
+- Format: [{"fact": "...", "topic": "...", "importance": 1-5}]
+- Importance scale:
+    5 = Critical identity / core workflow preference
+    4 = Important project detail / strong preference
+    3 = Useful context / tool preference
+    2 = Minor detail
+    1 = Ephemeral
+- If no enduring facts are present, return an empty list: []
+- NEVER extract transient questions, one-off commands, or conversational filler.
+
+Transcript:
+{transcript_text}
+"""
 
 
 class MemoryManager:
@@ -40,21 +49,24 @@ class MemoryManager:
         summarizer_model: str = "openai/gpt-oss-120b",  # fast JSON summarization
         persist_dir: str = "./aura_memory_db",
         short_term_kwargs: Optional[dict] = None,
+        memory: Optional[Any] = None,
     ):
         self.provider_manager = provider_manager
         self.summarizer_model = summarizer_model
         self._persist_dir = persist_dir
         self.short_term = ShortTermMemory(**(short_term_kwargs or {}))
+        self.memory = memory
         self._long_term = None
         self._long_term_initialized = False
 
     @property
     def long_term(self):
-        """Lazy-load LongTermMemory on first semantic retrieval/consolidation."""
+        """Legacy ChromaDB accessor — kept only for backwards compatibility when explicitly enabled."""
         if not self._long_term_initialized:
             self._long_term_initialized = True
             if ENABLE_LONG_TERM_MEMORY:
                 try:
+                    from memory.manager.long_term_memory import LongTermMemory
                     self._long_term = LongTermMemory(
                         provider_manager=self.provider_manager,
                         persist_dir=self._persist_dir,
@@ -89,27 +101,25 @@ class MemoryManager:
             model=self.summarizer_model,
             temperature=0.0,
         )
-        resp = self.provider_manager.chat(req)
-        new_piece = resp.text.strip()
-        return f"{self.short_term.rolling_summary} {new_piece}".strip()
+        try:
+            resp = self.provider_manager.chat(req)
+            return resp.text.strip()
+        except Exception as e:
+            logger.warning("[MemoryManager] Overflow summarization failed: %s", e)
+            return self.short_term.rolling_summary
 
     # -------------------------------------------------------------- main API
 
     def add_user_turn(self, user_text: str) -> None:
         """
         Log a user's utterance.
-
-        Handles two side effects:
-        1. Overflow summarization (unchanged from M1).
-        2. M2: If the session expired (timeout), trigger background consolidation
-           of the expired session's transcript before the buffer was cleared.
         """
         new_session, expired_transcript = self.short_term.add_user_turn(user_text)
         overflow = self.short_term.pop_pending_summary_input()
         if overflow:
             self.short_term.set_rolling_summary(self._summarize_overflow(overflow))
 
-        # M2: consolidate the session that just expired (timeout path)
+        # Consolidate session on timeout
         if new_session and expired_transcript:
             threading.Thread(
                 target=self._consolidate,
@@ -121,20 +131,12 @@ class MemoryManager:
     def add_assistant_turn(self, assistant_text: str, user_text: str | None = None) -> None:
         """
         Log the assistant's reply.
-
-        M2: Per-turn LTM extraction removed. Consolidation is session-level only
-        (triggered by timeout or explicit close_session()).
-        `user_text` kept in signature for backwards compatibility.
         """
         self.short_term.add_assistant_turn(assistant_text)
 
     def close_session(self, wait_for_consolidation: bool = False) -> None:
         """
-        M2: Explicit session-close trigger (called by PersonalOSRuntime on
-        voice loop stop or application shutdown).
-
-        Idempotent: if this session has already been consolidated (e.g. by a
-        preceding timeout), this is a no-op to prevent double-extraction.
+        Explicit session-close trigger on shutdown or voice loop stop.
         """
         if self.short_term.session_consolidated:
             logger.info(
@@ -161,91 +163,126 @@ class MemoryManager:
                 name="aura-memory-consolidate-explicit",
             ).start()
 
+    # --------------------------------------------------------- candidate extraction
+
+    def _extract_candidates(self, transcript_text: str) -> list[dict]:
+        """Extract memory-worthy candidates from session transcript using LLM."""
+        prompt = EXTRACTION_PROMPT.format(transcript_text=transcript_text)
+        models = [self.summarizer_model, "llama-3.3-70b-versatile"]
+
+        for model in models:
+            try:
+                req = ChatRequest(
+                    messages=[ChatMessage(role="user", content=prompt)],
+                    model=model,
+                    temperature=0.0,
+                )
+                resp = self.provider_manager.chat(req)
+                raw = resp.text.strip()
+                if raw.startswith("```json"):
+                    raw = raw[7:]
+                if raw.startswith("```"):
+                    raw = raw[3:]
+                if raw.endswith("```"):
+                    raw = raw[:-3]
+                data = json.loads(raw.strip())
+                if isinstance(data, list):
+                    logger.info(f"[MemoryManager] Extracted {len(data)} candidate(s) using {model}")
+                    return data
+            except Exception as exc:
+                logger.warning(f"[MemoryManager] Candidate extraction note ({model}): {exc}")
+
+        return []
 
     # --------------------------------------------------------- consolidation
 
     def _consolidate(self, transcript: list[Turn]) -> None:
         """
-        M2: Session-close consolidation pipeline.
-
+        Session-close consolidation pipeline:
         1. Format transcript.
-        2. Extract candidates via LongTermMemory (with model fallback chain).
-        3. Gate each candidate through memory_policy.apply_policy().
-        4. Call long_term.store() only on approved candidates.
-
-        Entirely wrapped in try/except — any failure here is logged and dropped.
-        Memory consolidation MUST NEVER break or delay the conversation.
+        2. Extract candidates via LLM.
+        3. Gate each candidate through policy.
+        4. Upsert approved candidates directly into Memory.db (facts + embeddings + cognitive).
         """
-        if not ENABLE_LONG_TERM_MEMORY or not self.long_term:
-            return
-
         if not transcript:
             return
 
         try:
-            transcript_text = "\n".join(
-                f"{t.role}: {t.content}" for t in transcript
-            )
+            transcript_text = "\n".join(f"{t.role}: {t.content}" for t in transcript)
             logger.info(
-                f"[MemoryManager] Consolidating session "
-                f"({len(transcript)} turns, {len(transcript_text)} chars)"
+                f"[MemoryManager] Consolidating session ({len(transcript)} turns, {len(transcript_text)} chars)"
             )
 
-            candidates = self.long_term.extract_candidates(transcript_text)
+            candidates = self._extract_candidates(transcript_text)
             stored_count = 0
             rejected_count = 0
 
             for item in candidates:
+                if not isinstance(item, dict) or not item.get("fact"):
+                    continue
                 verdict = apply_policy(item)
                 if verdict.store:
-                    self.long_term.store(
-                        fact=item["fact"],
-                        topic=item.get("topic", "general"),
-                        importance=int(item.get("importance", 3)),
-                    )
-                    stored_count += 1
+                    fact_text = item["fact"]
+                    topic = item.get("topic", "profile")
+                    
+                    if self.memory:
+                        clean_key = re.sub(r'[^a-zA-Z0-9_]', '_', fact_text[:30]).strip('_').lower()
+                        self.memory.upsert_fact(category=topic, key=clean_key or "fact", value=fact_text)
+                        stored_count += 1
+                    elif ENABLE_LONG_TERM_MEMORY and self.long_term:
+                        self.long_term.store(
+                            fact=fact_text,
+                            topic=topic,
+                            importance=int(item.get("importance", 3)),
+                        )
+                        stored_count += 1
                 else:
                     logger.debug(
-                        f"[MemoryManager] Policy rejected: {item.get('fact', '')!r} "
-                        f"— {verdict.reason}"
+                        f"[MemoryManager] Policy rejected: {item.get('fact', '')!r} — {verdict.reason}"
                     )
                     rejected_count += 1
 
             logger.info(
-                f"[MemoryManager] Consolidation complete: "
-                f"{stored_count} stored, {rejected_count} rejected by policy"
+                f"[MemoryManager] Consolidation complete: {stored_count} stored, {rejected_count} rejected by policy"
             )
 
         except Exception as exc:
-            logger.error(
-                f"[MemoryManager] Consolidation failed — session not persisted: {exc}",
-                exc_info=True,
-            )
-            # Do NOT re-raise. Consolidation failure must never propagate.
+            logger.error(f"[MemoryManager] Consolidation failed: {exc}", exc_info=True)
 
     # ----------------------------------------------------------- context API
 
     def get_raw_turns(self) -> list[Turn]:
-        """Get the raw turns, primarily for ReferenceResolver to resolve pronouns."""
+        """Get raw turns for reference resolution."""
         return self.short_term.get_raw_turns()
 
     def get_context_messages(self, query: str | None = None) -> list[dict]:
         """
-        Build the context messages for LLM execution.
-        Note: The caller is responsible for prepending the Aura System Persona.
+        Build context messages:
+        1. Query unified SQLite VectorMemoryEngine via self.memory.
+        2. Append short-term conversational sliding window.
         """
         messages = []
 
-        # Inject long-term semantic memory if enabled and a query is provided
-        if ENABLE_LONG_TERM_MEMORY and self.long_term and query:
+        # Unified Vector Semantic Recall
+        if self.memory and query:
+            try:
+                rel_facts = self.memory.get_relevant_facts(query, limit=5)
+                if rel_facts:
+                    memory_block = "Relevant memories:\n" + "\n".join(
+                        f"- {f.value if hasattr(f, 'value') else f}" for f in rel_facts
+                    )
+                    messages.append({"role": "system", "content": memory_block})
+            except Exception as e:
+                logger.debug(f"[MemoryManager] Semantic recall note: {e}")
+
+        # Legacy ChromaDB fallback if enabled
+        elif ENABLE_LONG_TERM_MEMORY and self.long_term and query:
             memories = self.long_term.retrieve(query, k=5)
             if memories:
-                memory_block = "Relevant memories:\n" + "\n".join(
-                    f"- {m}" for m in memories
-                )
+                memory_block = "Relevant memories:\n" + "\n".join(f"- {m}" for m in memories)
                 messages.append({"role": "system", "content": memory_block})
 
-        # Append the short-term context (rolling summary + recent turns)
+        # Append short-term context (rolling summary + recent turns)
         messages.extend(self.short_term.get_context_messages())
 
         return messages

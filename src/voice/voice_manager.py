@@ -312,13 +312,19 @@ class VoiceManager:
         """
         with self._lock:
             try:
-                # Process wake word detection during WAKE_LISTENING, THINKING, or EXECUTING
+                # Process wake word detection during WAKE_LISTENING, THINKING, EXECUTING, or SPEAKING
                 if self.state in (
                     ConversationState.WAKE_LISTENING,
                     ConversationState.THINKING,
                     ConversationState.EXECUTING,
+                    ConversationState.SPEAKING,
                 ):
-                    self.wake_word.process_audio(audio_data, sample_rate)
+                    enable_barge_in = os.getenv("ENABLE_TTS_BARGE_IN", "true").lower() == "true"
+                    if self.state != ConversationState.SPEAKING or enable_barge_in:
+                        # Set is_speaking flag on wake word engine if available
+                        if hasattr(self.wake_word, "engine") and self.wake_word.engine:
+                            setattr(self.wake_word.engine, "is_speaking", self.state == ConversationState.SPEAKING)
+                        self.wake_word.process_audio(audio_data, sample_rate)
 
                 # Process VAD
                 vad_state, energy = self.vad.process_audio(audio_data, sample_rate)
@@ -348,9 +354,10 @@ class VoiceManager:
                         logger.info("[VoiceManager] Active listening timed out waiting for speech (5.0s)")
                         self._finalize_stt()
 
-                # Check for user interruption
-                if self.barge_in_handler.check_for_interrupt():
-                    logger.info("User interrupt detected")
+                # Optional direct VAD-onset barge-in (opt-in via .env for headphones / AEC hardware)
+                enable_vad_barge = os.getenv("ENABLE_VAD_BARGE_IN", "false").lower() == "true"
+                if enable_vad_barge and self.barge_in_handler.check_for_interrupt():
+                    logger.info("[VoiceManager] User VAD speech-onset interrupt detected")
                     self.interruption_manager.start_interrupt(
                         InterruptionReason.USER_INTERRUPT
                     )
@@ -365,10 +372,11 @@ class VoiceManager:
         """Handle wake word detection."""
         logger.info(f"[WAKE] Wake detected: PASS ({wake_word})")
 
-        # Barge-in / Interruption: if currently speaking or thinking, halt immediately
+        # Barge-in / Interruption: if currently speaking, thinking, or executing, halt immediately
         if self.state in (ConversationState.SPEAKING, ConversationState.THINKING, ConversationState.EXECUTING):
             logger.info(f"[VoiceManager] Interruption triggered during {self.state.name}! Halting current action.")
             self.tts_manager.stop()
+            self._current_speaking_text = ""
 
         # Play immediate non-blocking audio earcon chime feedback
         try:
@@ -426,10 +434,16 @@ class VoiceManager:
         logger.debug("Speech start detected")
         if self.state == ConversationState.ACTIVE_LISTENING:
             self._speech_started_in_turn = True
+        if self.state == ConversationState.SPEAKING:
+            enable_vad_barge = os.getenv("ENABLE_VAD_BARGE_IN", "false").lower() == "true"
+            if enable_vad_barge and self.barge_in_handler:
+                self.barge_in_handler.on_vad_speech_start()
 
     def _on_speech_end(self) -> None:
         """Called when speech ends (from VAD)."""
         logger.debug("Speech end detected")
+        if self.barge_in_handler:
+            self.barge_in_handler.on_vad_speech_end()
         if self.state == ConversationState.ACTIVE_LISTENING:
             # If user hasn't started speaking their command yet and less than 1.0s has passed since wake trigger, ignore wake-word tail
             if not self._speech_started_in_turn and (time.time() - self._active_listening_start_time < 1.0):
@@ -462,11 +476,6 @@ class VoiceManager:
 
             logger.info("[STT] Transcription: PASS")
             self.stt_manager.reset()
-            if self.audio_manager:
-                if hasattr(self.audio_manager, "disable_capture"):
-                    self.audio_manager.disable_capture()
-                elif hasattr(self.audio_manager, "stop_recording"):
-                    self.audio_manager.stop_recording()
 
             if self.on_stt_result:
                 self.on_stt_result(context)
@@ -487,6 +496,9 @@ class VoiceManager:
             True if successful
         """
         try:
+            # Track currently spoken text for self-trigger guarding
+            self._current_speaking_text = text or ""
+
             # Add text to TTS (lazy initialization happens inside add_text if needed)
             if not self.tts_manager.add_text(text):
                 logger.error("Failed to add text to TTS")
@@ -502,12 +514,12 @@ class VoiceManager:
             if self.session:
                 self.session.update_state(ConversationState.SPEAKING)
 
-            # Mute microphone audio ingestion during active speech to avoid acoustic feedback
+            # Ensure microphone capture remains active so wake-word / barge-in can listen
             if self.audio_manager:
-                if hasattr(self.audio_manager, "disable_capture"):
-                    self.audio_manager.disable_capture()
-                elif hasattr(self.audio_manager, "is_recording") and self.audio_manager.is_recording():
-                    self.audio_manager.stop_recording()
+                if not self.audio_manager.is_recording():
+                    self._ensure_input_recording()
+                elif hasattr(self.audio_manager, "enable_capture"):
+                    self.audio_manager.enable_capture()
 
             logger.info(f"[TTS] Piper playback: PASS ({text})")
 
@@ -525,21 +537,18 @@ class VoiceManager:
     def interrupt(self) -> None:
         """Interrupt current speech or conversation."""
         try:
-            # Stop TTS
+            # Stop TTS immediately
             self.tts_manager.stop()
+            self._current_speaking_text = ""
 
-            # Disable microphone capture during interrupt transition if active listening
-            if self.state == ConversationState.ACTIVE_LISTENING:
-                if self.audio_manager:
-                    if hasattr(self.audio_manager, "disable_capture"):
-                        self.audio_manager.disable_capture()
-                    elif hasattr(self.audio_manager, "stop_recording"):
-                        self.audio_manager.stop_recording()
-                self.stt_manager.reset()
+            # Re-enable microphone capture if needed
+            if self.audio_manager and hasattr(self.audio_manager, "enable_capture"):
+                self.audio_manager.enable_capture()
 
             # Update state
             self._update_state(ConversationState.INTERRUPTED)
-            self.session.update_state(ConversationState.INTERRUPTED)
+            if self.session:
+                self.session.update_state(ConversationState.INTERRUPTED)
 
             # Record interruption
             self.interruption_manager.start_interrupt(InterruptionReason.USER_INTERRUPT)
@@ -554,8 +563,9 @@ class VoiceManager:
     def _handle_interrupt(self) -> None:
         """Handle interruption event."""
         try:
-            # Stop current activity
+            # Stop current activity and start listening
             self.interrupt()
+            self._start_active_listening()
 
         except Exception as e:
             logger.error(f"Error handling interruption: {e}")
@@ -573,6 +583,8 @@ class VoiceManager:
         """Called when user interrupts Aura."""
         logger.info(f"User interrupt detected: {reason}")
         self.interruption_manager.start_interrupt(InterruptionReason.USER_INTERRUPT)
+        self.interrupt()
+        self._start_active_listening()
 
     def _on_resume(self) -> None:
         """Called when user speech ends."""
@@ -597,6 +609,7 @@ class VoiceManager:
     def _on_tts_complete(self) -> None:
         """Called when TTS completes."""
         logger.info("[MIC] Buffer flushed: PASS")
+        self._current_speaking_text = ""
 
         # Transition to next state
         self._update_state(ConversationState.IDLE)

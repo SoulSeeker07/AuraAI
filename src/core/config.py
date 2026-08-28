@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-ENABLE_LONG_TERM_MEMORY = True  # M2 complete — all gates verified
+ENABLE_LONG_TERM_MEMORY = False  # Disabled in favor of unified SQLite VectorMemoryEngine + Memory.db
 
 # M2: Extraction model fallback chain for session-close consolidation.
 # Primary is GPT-OSS 120B (131K ctx, JSON mode, ~500 tok/s on Groq).

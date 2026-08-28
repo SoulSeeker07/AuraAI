@@ -1,7 +1,7 @@
 {
-  "timestamp": 1787870763.6604238,
-  "iso_time": "2026-08-28 04:16:03",
-  "pid": 21748,
+  "timestamp": 1787902371.7311964,
+  "iso_time": "2026-08-28 13:02:51",
+  "pid": 5876,
   "argv": [
     "D:\\Sreekanta\\VS Code Project\\Desktop AI\\AuraAI\\run_voice_notch.py"
   ],
@@ -16,5 +16,21 @@
     }
   ],
   "extra": {},
-  "recent_history": []
+  "recent_history": [
+    {
+      "role": "user",
+      "content": "Hello.",
+      "timestamp": null
+    },
+    {
+      "role": "user",
+      "content": "Hello.",
+      "timestamp": null
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I assist you today?",
+      "timestamp": null
+    }
+  ]
 }

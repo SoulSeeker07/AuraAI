@@ -519,6 +519,19 @@ class ContinuousVoiceLoop:
     def _on_state_change(self, new_state: Any) -> None:
         """Callback when underlying VoiceManager state changes."""
         logger.debug(f"[ContinuousVoiceLoop] VoiceManager state changed to: {new_state}")
+        try:
+            from .models import ConversationState
+            if new_state == ConversationState.ACTIVE_LISTENING and self.state in (
+                VoiceState.SPEAKING,
+                VoiceState.IDLE,
+                VoiceState.WAKE_DETECTED,
+                VoiceState.COOLDOWN,
+                VoiceState.UNDERSTANDING,
+                VoiceState.AI_RESPONSE,
+            ):
+                self._set_state(VoiceState.LISTENING)
+        except Exception:
+            pass
 
     def _on_tts_complete(self) -> None:
         """Callback when TTS finishes speaking response."""
@@ -649,7 +662,14 @@ class ContinuousVoiceLoop:
         if conversation_engine is None and aura_core is not None:
             conversation_engine = getattr(aura_core, "conversation_engine", None)
 
-        if conversation_engine is None and aura_core is not None:
+        if conversation_engine is None:
+            # Check if global aura core has been set
+            aura_core = getattr(self, "_aura_core", None) or self._global_aura_core
+            if aura_core is not None:
+                conversation_engine = getattr(aura_core, "conversation_engine", None)
+
+        # On-demand initialization: instantiate ConversationEngine immediately so user commands never fail
+        if conversation_engine is None:
             try:
                 import os
                 from pathlib import Path
@@ -673,7 +693,7 @@ class ContinuousVoiceLoop:
                 conversation_engine = ConversationEngine(memory=mem, provider_manager=pm, aura_core=aura_core)
                 self.conversation_engine = conversation_engine
             except Exception as e:
-                logger.debug(f"[ContinuousVoiceLoop] ConversationEngine auto-wire notice: {e}")
+                logger.debug(f"[ContinuousVoiceLoop] ConversationEngine on-demand init notice: {e}")
 
         if aura_core is None and conversation_engine is None:
             if self.coordinator is not None:

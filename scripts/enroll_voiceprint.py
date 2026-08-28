@@ -22,6 +22,8 @@ root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "src"))
 sys.path.insert(1, str(root))
 
+from voice.speaker_verification import SpeakerVerificationEngine
+
 ENROLLMENT_PHRASES = [
     "Hey Aura, this is my voice.",
     "Hey Aura, open my workspace.",

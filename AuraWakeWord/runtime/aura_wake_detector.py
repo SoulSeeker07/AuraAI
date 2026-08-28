@@ -122,29 +122,39 @@ class AuraWakeDetector(WakeWordEngine):
             probability = float(1.0 / (1.0 + np.exp(-logit)))
             self.last_probability = probability
 
-            # 6. Check against calibrated threshold (0.80 default with 3-frame persistence)
+            # 6. Check against calibrated threshold
+            # If enrolled, speaker verification filters TTS voice, allowing natural 0.80 threshold.
+            # If not enrolled, elevate to 0.88 (4-frame persistence) as acoustic fallback guard.
             import os
-            threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.80))
+            is_speaking = getattr(self, "is_speaking", False)
+            has_voiceprint = False
+            try:
+                from src.voice.speaker_verification import SpeakerVerificationEngine
+                has_voiceprint = SpeakerVerificationEngine.get_instance().is_enrolled()
+            except Exception:
+                pass
+
+            if is_speaking and not has_voiceprint:
+                threshold = float(os.environ.get("AURA_TTS_WAKE_THRESHOLD", 0.88))
+                required_hits = 4
+            else:
+                threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.80))
+                required_hits = 3
 
             now = time.monotonic()
             if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
                 self.last_print_time = now
-                logger.debug(f"[AuraWakeDetector] Debug Score: {probability:.4f} (RMS: {rms_energy:.4f})")
-                try:
-                    sys.stdout.write(f"\r🎤 Live Score: {probability:.4f} (RMS: {rms_energy:.4f})    ")
-                    sys.stdout.flush()
-                except Exception:
-                    pass
+                logger.debug(f"[AuraWakeDetector] Debug Score: {probability:.4f} (RMS: {rms_energy:.4f}, speaking={is_speaking})")
 
             if probability >= threshold:
                 self.consecutive_hits += 1
-                if self.consecutive_hits >= 3:
+                if self.consecutive_hits >= required_hits:
                     try:
                         sys.stdout.write("\r" + " " * 45 + "\r")  # Clear the line
                         sys.stdout.flush()
                     except Exception:
                         pass
-                    logger.info(f"[AuraWakeDetector] Wake word detected! (Prob: {probability:.3f} | Threshold: {threshold})")
+                    logger.info(f"[AuraWakeDetector] Wake word detected! (Prob: {probability:.3f} | Threshold: {threshold} | Speaking: {is_speaking})")
 
                     # Prevent double-triggering and reset buffer for next cycle
                     self.cooldown_frames = int(self.sample_rate / chunk_len * 2.0)

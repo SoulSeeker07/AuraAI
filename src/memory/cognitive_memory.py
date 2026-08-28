@@ -310,6 +310,84 @@ class CognitiveMemoryEngine:
         logger.info(f"[CognitiveMemoryEngine] Rolled back batch '{batch_id}': deleted {deleted_count} memories.")
         return deleted_count
 
+    def delete_memory(self, memory_id: str) -> bool:
+        """Delete a single memory item by memory_id."""
+        with self._connect() as conn:
+            cursor = conn.execute("DELETE FROM cognitive_memories WHERE memory_id = ?", (memory_id,))
+            deleted = cursor.rowcount > 0
+        logger.info(f"[CognitiveMemoryEngine] Deleted memory '{memory_id}': {deleted}")
+        return deleted
+
+    def delete_by_category_key(self, category: str, key: str) -> int:
+        """Delete memories matching a category and key stored in metadata or topic."""
+        with self._connect() as conn:
+            cursor = conn.execute("SELECT memory_id, content, metadata, topic FROM cognitive_memories")
+            to_delete = []
+            prefix = f"{category}: {key} ="
+            alt_prefix = f"{key} ="
+            for row in cursor.fetchall():
+                mem_id, content, meta_json, topic = row[0], row[1], row[2], row[3]
+                if meta_json:
+                    try:
+                        meta = json.loads(meta_json)
+                        if meta.get("category") == category and meta.get("key") == key:
+                            to_delete.append(mem_id)
+                            continue
+                    except Exception:
+                        pass
+                if topic == category and (content.startswith(prefix) or content.startswith(alt_prefix)):
+                    to_delete.append(mem_id)
+
+            for mem_id in to_delete:
+                conn.execute("DELETE FROM cognitive_memories WHERE memory_id = ?", (mem_id,))
+            deleted_count = len(to_delete)
+
+        logger.info(f"[CognitiveMemoryEngine] Deleted {deleted_count} memories for [{category}] {key}")
+        return deleted_count
+
+    def delete_by_category(self, category: str) -> int:
+        """Delete all memories belonging to a category/topic."""
+        with self._connect() as conn:
+            cursor = conn.execute("SELECT memory_id, metadata, topic FROM cognitive_memories")
+            to_delete = []
+            for row in cursor.fetchall():
+                mem_id, meta_json, topic = row[0], row[1], row[2]
+                if topic == category:
+                    to_delete.append(mem_id)
+                    continue
+                if meta_json:
+                    try:
+                        meta = json.loads(meta_json)
+                        if meta.get("category") == category:
+                            to_delete.append(mem_id)
+                    except Exception:
+                        pass
+
+            for mem_id in to_delete:
+                conn.execute("DELETE FROM cognitive_memories WHERE memory_id = ?", (mem_id,))
+            deleted_count = len(to_delete)
+
+        logger.info(f"[CognitiveMemoryEngine] Deleted {deleted_count} memories for category [{category}]")
+        return deleted_count
+
+    def delete_by_text(self, text: str) -> int:
+        """Delete memories containing search text (for forget() operations)."""
+        text_like = f"%{text.strip().lower()}%"
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                DELETE FROM cognitive_memories
+                WHERE lower(content) LIKE ?
+                   OR lower(topic) LIKE ?
+                   OR lower(metadata) LIKE ?
+                """,
+                (text_like, text_like, text_like),
+            )
+            deleted_count = cursor.rowcount
+
+        logger.info(f"[CognitiveMemoryEngine] Deleted {deleted_count} memories matching text '{text}'")
+        return deleted_count
+
     def run_consolidation(self, dry_run: bool = False) -> Any:
         """
         Run the Auto-Dream consolidation pipeline (dedup, prune, promote).

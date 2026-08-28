@@ -1,90 +1,6 @@
 [
   {
     "role": "user",
-    "content": "show logs",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:05:34.641211"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:05:34.641211"
-  },
-  {
-    "role": "user",
-    "content": "show logs",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:05:34.650244"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:05:34.650244"
-  },
-  {
-    "role": "user",
-    "content": "task logs",
-    "topic": "Task Logs",
-    "timestamp": "2026-08-28T02:05:39.092660"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
-    "topic": "Task Logs",
-    "timestamp": "2026-08-28T02:05:39.092660"
-  },
-  {
-    "role": "user",
-    "content": "task logs",
-    "topic": "Task Logs",
-    "timestamp": "2026-08-28T02:05:39.108573"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
-    "topic": "Task Logs",
-    "timestamp": "2026-08-28T02:05:39.108573"
-  },
-  {
-    "role": "user",
-    "content": "show logs",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:06:11.674999"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:06:11.674999"
-  },
-  {
-    "role": "user",
-    "content": "show logs",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:06:11.689678"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **Agent Task Queue & Live Execution Logs**\n\n```log\n2026-08-28 02:01:23,301 [INFO] voice.audio_manager: Selected output device: Microsoft Sound Mapper - Output\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: Voice system started\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: State changed: idle -> idle\n2026-08-28 02:01:23,302 [INFO] voice.voice_manager: [VoiceManager] ACTIVATING\n2026-08-28 02:01:23,302 [INFO] voice.wake_word: [WakeWordManager] STARTING\n2026-08-28 02:01:23,302 [INFO] voice.audio_manager: [AudioManager] Microphone physical default rate is 44100Hz; PortAudio driver will resample to 16000Hz.\n2026-08-28 02:01:23,354 [INFO] voice.audio_manager: Started recording on device 0\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [MIC] Stream opened: PASS\n2026-08-28 02:01:23,354 [INFO] voice.voice_manager: [WAKE] Listener active: PASS\n2026-08-28 02:01:23,355 [INFO] voice.voice_manager: State changed: idle -> wake_listening\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: [ContinuousVoiceLoop] WAITING_FOR_WAKE\n2026-08-28 02:01:23,355 [INFO] voice.continuous_loop: ContinuousVoiceLoop started and listening\n```",
-    "topic": "Show Logs",
-    "timestamp": "2026-08-28T02:06:11.689678"
-  },
-  {
-    "role": "user",
-    "content": "close logs",
-    "topic": "Close Logs",
-    "timestamp": "2026-08-28T02:09:21.228794"
-  },
-  {
-    "role": "assistant",
-    "content": "📜 **System & Task Execution Logs HUD closed.**",
-    "topic": "Close Logs",
-    "timestamp": "2026-08-28T02:09:21.228794"
-  },
-  {
-    "role": "user",
     "content": "close logs",
     "topic": "Close Logs",
     "timestamp": "2026-08-28T02:09:21.243390"
@@ -358,5 +274,89 @@
     "content": "📜 **Live System Logs Console** opened on your screen.",
     "topic": "Show Logs",
     "timestamp": "2026-08-28T04:05:12.105554"
+  },
+  {
+    "role": "user",
+    "content": "Open Google Chrome.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:01.695732"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Google Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:01.695732"
+  },
+  {
+    "role": "user",
+    "content": "Open Google Chrome.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:02.709449"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Google Chrome is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:02.709449"
+  },
+  {
+    "role": "user",
+    "content": "Open notepad.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:13.781011"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Notepad is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:13.781011"
+  },
+  {
+    "role": "user",
+    "content": "notepad.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:14.562410"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=True. ✓ Notepad is open.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T10:58:14.562410"
+  },
+  {
+    "role": "user",
+    "content": "quit",
+    "topic": "Quit",
+    "timestamp": "2026-08-28T13:09:38.688223"
+  },
+  {
+    "role": "assistant",
+    "content": "Session terminated. Goodbye.",
+    "topic": "Quit",
+    "timestamp": "2026-08-28T13:09:38.688223"
+  },
+  {
+    "role": "user",
+    "content": "quit",
+    "topic": "Quit",
+    "timestamp": "2026-08-28T13:09:38.698238"
+  },
+  {
+    "role": "assistant",
+    "content": "Session terminated. Goodbye.",
+    "topic": "Quit",
+    "timestamp": "2026-08-28T13:09:38.698238"
+  },
+  {
+    "role": "user",
+    "content": "Open my workspace.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T13:54:17.707366"
+  },
+  {
+    "role": "assistant",
+    "content": "Result success=False. ❌ Execution failed for 'Launch application: My Workspace (Open my workspace.)': Application 'workspace' not found on system.",
+    "topic": "desktop",
+    "timestamp": "2026-08-28T13:54:17.707366"
   }
 ]

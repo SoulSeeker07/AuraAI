@@ -240,6 +240,9 @@ class ExecutionCoordinator:
                     if v_report and getattr(v_report, "errors", None):
                         err_str += " " + " ".join(v_report.errors).lower()
 
+                    MAX_RECOVERY_ATTEMPTS = 1
+                    recovery_attempts = params.get("_recovery_attempts", 0)
+
                     # 1. Classify Barrier Failures (CAPTCHA, Auth, Permission) -> Immediate Honest BLOCKED
                     is_barrier = any(w in err_str for w in ["captcha", "auth_required", "permission_denied", "sign in", "log in", "access denied"])
                     if is_barrier:
@@ -247,10 +250,17 @@ class ExecutionCoordinator:
                         res = {"success": False, "status": "BLOCKED", "barrier_type": "SECURITY_BARRIER"}
                         is_failed = True
 
-                    # 2. Alternative Target Recovery
+                    elif recovery_attempts >= MAX_RECOVERY_ATTEMPTS:
+                        logger.warning(f"[ExecutionCoordinator] Step {index + 1} reached MAX_RECOVERY_ATTEMPTS ({MAX_RECOVERY_ATTEMPTS}). No further retries allowed.")
+                        recovery_trace = {
+                            "primary_target": params.get("url") or params.get("primary_selector") or params.get("selector"),
+                            "primary_failure": "MAX_RECOVERY_ATTEMPTS_EXCEEDED",
+                            "recovery_status": "RETRY_LIMIT_EXCEEDED",
+                        }
+
                     elif alt_target:
-                        logger.info(f"[ExecutionCoordinator] Step {index + 1} execution/verification failed. Recovering via alt_target='{alt_target}'")
-                        recovery_params = {**params, "recovered": True}
+                        logger.info(f"[ExecutionCoordinator] Step {index + 1} execution/verification failed. Recovering via alt_target='{alt_target}' (attempt {recovery_attempts + 1}/{MAX_RECOVERY_ATTEMPTS})")
+                        recovery_params = {**params, "recovered": True, "_recovery_attempts": recovery_attempts + 1}
                         if alt_target.startswith("http"):
                             recovery_params["url"] = alt_target
                         else:
@@ -258,35 +268,57 @@ class ExecutionCoordinator:
                             recovery_params["primary_selector"] = None
 
                         res_alt = reg_engine.execute(action, recovery_params)
+                        res_alt_success = getattr(res_alt, "success", True) if not isinstance(res_alt, dict) else res_alt.get("success", True)
+                        
+                        obs_alt = None
+                        v_report_alt = None
                         if hasattr(reg_engine, "observe"):
-                            obs_alt = reg_engine.observe(action, recovery_params)
-                            if hasattr(reg_engine, "verify"):
+                            try:
+                                obs_alt = reg_engine.observe(action, recovery_params)
+                            except Exception:
+                                obs_alt = None
+
+                        if hasattr(reg_engine, "verify") and obs_alt is not None:
+                            try:
                                 rec_expected_state = ExpectedState(
                                     process=recovery_params.get("application") or recovery_params.get("app_name"),
                                     url=recovery_params.get("url"),
                                     element=recovery_params.get("selector"),
                                 )
                                 v_report_alt = reg_engine.verify(rec_expected_state, obs_alt)
-                                if v_report_alt.passed:
-                                    res = res_alt
-                                    obs = obs_alt
-                                    v_report = v_report_alt
-                                    recovery_trace = {
-                                        "primary_target": params.get("url") or params.get("primary_selector") or params.get("selector"),
-                                        "alternative_target": alt_target,
-                                        "primary_failure": FailureType.VERIFICATION_FAILURE.value,
-                                        "recovery_status": "RECOVERED_SUCCESS",
-                                    }
+                            except Exception:
+                                v_report_alt = None
+
+                        if (v_report_alt is not None and v_report_alt.passed and res_alt_success) or (v_report_alt is None and res_alt_success):
+                            res = res_alt
+                            obs = obs_alt
+                            v_report = v_report_alt
+                            recovery_trace = {
+                                "primary_target": params.get("url") or params.get("primary_selector") or params.get("selector"),
+                                "alternative_target": alt_target,
+                                "primary_failure": FailureType.VERIFICATION_FAILURE.value,
+                                "recovery_status": "RECOVERED_SUCCESS",
+                            }
+                        else:
+                            logger.warning(f"[ExecutionCoordinator] Recovery via alt_target='{alt_target}' also failed.")
+                            recovery_trace = {
+                                "primary_target": params.get("url") or params.get("primary_selector") or params.get("selector"),
+                                "alternative_target": alt_target,
+                                "primary_failure": FailureType.VERIFICATION_FAILURE.value,
+                                "recovery_status": "RECOVERY_FAILED",
+                                "error": getattr(v_report_alt, "errors", None) or "Alternative target execution failed",
+                            }
 
                     # 3. Transient Self-Healing (Stale DOM, Focus Loss, Slow Load)
                     else:
                         is_transient = any(w in err_str for w in ["stale", "focus", "timeout", "unavailable", "loading", "not active", "dom", "hwnd", "exception", "failure"])
                         if is_transient:
-                            logger.info(f"[ExecutionCoordinator] Step {index + 1} transient physical failure detected. Initiating re-observation and self-healing retry.")
+                            logger.info(f"[ExecutionCoordinator] Step {index + 1} transient physical failure detected. Initiating re-observation and self-healing retry (attempt {recovery_attempts + 1}/{MAX_RECOVERY_ATTEMPTS}).")
                             time.sleep(0.3)
+                            retry_params = {**params, "_recovery_attempts": recovery_attempts + 1}
                             # Re-observe live environment
                             if hasattr(reg_engine, "observe"):
-                                obs_retry = reg_engine.observe(action, params)
+                                obs_retry = reg_engine.observe(action, retry_params)
                             # Re-focus desktop HWND if lost focus
                             if engine == "desktop" and params.get("app_name"):
                                 try:
@@ -295,9 +327,9 @@ class ExecutionCoordinator:
                                     pass
 
                             # Retry execution
-                            res_retry = reg_engine.execute(action, params)
+                            res_retry = reg_engine.execute(action, retry_params)
                             if hasattr(reg_engine, "observe"):
-                                obs_retry = reg_engine.observe(action, params)
+                                obs_retry = reg_engine.observe(action, retry_params)
                                 if hasattr(reg_engine, "verify"):
                                     v_report_retry = reg_engine.verify(expected_state, obs_retry)
                                     if v_report_retry.passed:
@@ -308,6 +340,14 @@ class ExecutionCoordinator:
                                             "primary_target": params.get("selector") or params.get("url") or action,
                                             "primary_failure": "TRANSIENT_PHYSICAL_FAILURE",
                                             "recovery_status": "RECOVERED_SUCCESS",
+                                        }
+                                    else:
+                                        logger.warning(f"[ExecutionCoordinator] Self-healing retry for Step {index + 1} failed.")
+                                        recovery_trace = {
+                                            "primary_target": params.get("selector") or params.get("url") or action,
+                                            "primary_failure": "TRANSIENT_PHYSICAL_FAILURE",
+                                            "recovery_status": "RETRY_FAILED",
+                                            "error": v_report_retry.errors if hasattr(v_report_retry, "errors") else "Retry verification failed",
                                         }
 
                 if hasattr(res, "observations"):
