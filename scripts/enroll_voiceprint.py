@@ -22,12 +22,16 @@ root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "src"))
 sys.path.insert(1, str(root))
 
-from voice.speaker_verification import SpeakerVerificationEngine
+ENROLLMENT_PHRASES = [
+    "Hey Aura, this is my voice.",
+    "Hey Aura, open my workspace.",
+    "Hey Aura, check system status.",
+]
 
 
-def record_sample(p: pyaudio.PyAudio, sample_idx: int, duration_s: float = 3.0) -> bytes:
+def record_sample(p: pyaudio.PyAudio, sample_idx: int, phrase: str, duration_s: float = 3.0) -> bytes:
     while True:
-        print(f"\n[Sample {sample_idx}/3] Phrase to speak: 'Hey Aura, this is my voice.'")
+        print(f"\n[Sample {sample_idx}/3] Phrase to speak: \"{phrase}\"")
         input(f"👉 Press [Enter] when you are ready to speak... ")
         print("  🎤 RECORDING NOW... (Speak clearly!)", flush=True)
 
@@ -71,8 +75,8 @@ def main():
     p = pyaudio.PyAudio()
     samples = []
     try:
-        for idx in range(1, 4):
-            raw = record_sample(p, idx, duration_s=2.5)
+        for idx, phrase in enumerate(ENROLLMENT_PHRASES, start=1):
+            raw = record_sample(p, idx, phrase, duration_s=2.8)
             samples.append(raw)
 
         print("\n[Processing] Computing 192-dimensional neural speaker embedding...")
