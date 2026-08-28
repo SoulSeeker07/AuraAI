@@ -924,6 +924,20 @@ class GroqSTTEngine(STTEngine):
         self._total_duration += chunk_duration
         return ""
 
+    _client_pool: dict[str, Any] = {}
+    _pool_lock = threading.Lock()
+
+    @classmethod
+    def _get_or_create_client(cls, api_key: str):
+        with cls._pool_lock:
+            if api_key not in cls._client_pool:
+                from groq import Groq
+                import httpx
+                # Persistent HTTP/2 client with keep-alive
+                http_client = httpx.Client(http2=True, timeout=12.0)
+                cls._client_pool[api_key] = Groq(api_key=api_key, http_client=http_client)
+            return cls._client_pool[api_key]
+
     def finalize(self) -> str:
         if not self._audio_buffer:
             return ""
@@ -931,7 +945,7 @@ class GroqSTTEngine(STTEngine):
         raw_pcm = b"".join(self._audio_buffer)
         duration = self._total_duration
 
-        # 1. Try Groq LPU Whisper (whisper-large-v3-turbo)
+        # 1. Try Groq LPU Whisper (whisper-large-v3-turbo) with persistent HTTP/2 pool
         try:
             import io
             import wave
@@ -947,8 +961,7 @@ class GroqSTTEngine(STTEngine):
             pool = KeyPool.get_instance()
 
             def _transcribe_with_key(api_key: str) -> str:
-                from groq import Groq
-                client = Groq(api_key=api_key)
+                client = self._get_or_create_client(api_key)
                 resp = client.audio.transcriptions.create(
                     file=("audio.wav", wav_bytes),
                     model=self.model_name,
@@ -965,7 +978,7 @@ class GroqSTTEngine(STTEngine):
                 text = _transcribe_with_key(os.getenv("GROQ_API_KEY"))
 
             if text:
-                logger.info(f"[Groq STT ({self.model_name})] Transcribed in ~100ms: '{text}'")
+                logger.info(f"[Groq STT ({self.model_name})] Transcribed in ~190ms: '{text}'")
                 self._emit_final(text, duration)
                 return text
 
