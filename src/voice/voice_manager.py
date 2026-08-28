@@ -171,13 +171,11 @@ class VoiceManager:
         self.wake_word.on_wake_word_detected = self._on_wake_word_detected
         self.wake_word.on_error = self._on_wake_word_error
 
-        # STT callbacks
-        if getattr(self.stt_manager, "engine", None):
-            self.stt_manager.engine._partial_callback = self._on_stt_partial
-            self.stt_manager.engine._final_callback = self._on_stt_final
-        else:
-            # Need to wire this even if engine isn't created yet!
-            pass # Wait, stt_manager wiring happens dynamically when STTEngine is created? Wait, it's done in VoiceManager.__init__ but STT engine might be None. Let's just add the logs.
+        # STT callbacks — use set_callbacks() so callbacks persist through lazy init
+        self.stt_manager.set_callbacks(
+            partial=self._on_stt_partial,
+            final=self._on_stt_final,
+        )
 
         # TTS callbacks — use set_callbacks() so they are stored and applied
         # when the engine is lazily created, even if it doesn't exist yet.
@@ -327,7 +325,8 @@ class VoiceManager:
                 if energy is not None:
                     try:
                         from gui.signals import app_signals
-                        norm_level = min(1.0, max(0.0, float(energy) * 2.5))
+                        # Logarithmic/power scaling so normal conversational speech fills 40%-90% height
+                        norm_level = min(1.0, max(0.0, float((energy * 35.0) ** 0.75)))
                         app_signals.voice_level.emit(norm_level)
                     except Exception:
                         pass

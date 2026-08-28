@@ -1007,6 +1007,24 @@ class STTManager:
         self.settings = settings
         self.engine: STTEngine | None = None
         self._stream_buffer = bytearray()
+        self._partial_callback: Callable[[str, str], None] | None = None
+        self._final_callback: Callable[[str, float], None] | None = None
+        self._error_callback: Callable[[str], None] | None = None
+
+    def set_callbacks(
+        self,
+        partial: Callable[[str, str], None] | None = None,
+        final: Callable[[str, float], None] | None = None,
+        error: Callable[[str], None] | None = None,
+    ) -> None:
+        """Store and forward callbacks to the underlying STTEngine."""
+        self._partial_callback = partial
+        self._final_callback = final
+        self._error_callback = error
+        if self.engine:
+            self.engine._partial_callback = partial
+            self.engine._final_callback = final
+            self.engine._error_callback = error
 
     def initialize(self) -> bool:
         """Initialize STT engine."""
@@ -1030,6 +1048,11 @@ class STTManager:
             else:
                 logger.error(f"Unsupported STT provider: {p}")
                 return False
+
+            if self.engine:
+                self.engine._partial_callback = self._partial_callback
+                self.engine._final_callback = self._final_callback
+                self.engine._error_callback = self._error_callback
 
             return self.engine.initialize()
 

@@ -280,30 +280,46 @@ class _RainbowWaveform(QWidget):
         self._active = active
         if not active:
             self._target_levels = [0.2] * self._count
+        else:
+            self._last_voice_tick = time.time()
 
     def set_level(self, level: float):
-        perceived = math.sqrt(max(0.0, min(1.0, level)))
+        self._last_voice_tick = time.time()
+        # Responsive square-root perceptual scaling
+        perceived = min(1.0, max(0.20, math.sqrt(max(0.0, min(1.0, level)))))
         if self._active:
-            self._phase += 0.35 * (60.0 / self._hz)
+            self._phase += 0.45 * (60.0 / self._hz)
             for i in range(self._count):
                 center_dist = 1.0 - abs((i - self._count / 2.0) / (self._count / 2.0))
-                base = perceived * (0.30 + 0.70 * center_dist * abs(math.sin(i * 0.45 + self._phase)))
-                noise = random.uniform(-0.04, 0.04)
-                self._target_levels[i] = max(0.12, min(1.0, base + noise))
+                base = perceived * (0.35 + 0.65 * center_dist * abs(math.sin(i * 0.50 + self._phase)))
+                noise = random.uniform(-0.03, 0.03)
+                self._target_levels[i] = max(0.15, min(1.0, base + noise))
 
     def _animate(self):
         changed = False
-        rate = 0.40 * (60.0 / self._hz)
+        rate = 0.45 * (60.0 / self._hz)
+        now = time.time()
+
+        # If active and microphone level is quiescent, generate an organic dynamic wave
+        if self._active and (now - getattr(self, "_last_voice_tick", 0) > 0.12):
+            self._phase += 0.22 * (60.0 / self._hz)
+            for i in range(self._count):
+                center_dist = 1.0 - abs((i - self._count / 2.0) / (self._count / 2.0))
+                synth = 0.25 + 0.50 * center_dist * abs(math.sin(i * 0.42 + self._phase))
+                self._target_levels[i] = max(0.15, min(1.0, synth))
+
         for i in range(self._count):
             diff = self._target_levels[i] - self._levels[i]
             if abs(diff) > 0.002:
                 self._levels[i] += diff * rate
                 changed = True
+
         if not self._active:
-            self._phase += 0.04 * (60.0 / self._hz)
+            self._phase += 0.05 * (60.0 / self._hz)
             for i in range(self._count):
                 self._levels[i] = 0.15 + 0.10 * math.sin(i * 0.35 + self._phase)
             changed = True
+
         if changed:
             self.update()
 
@@ -1395,11 +1411,16 @@ class VoiceNotchOverlay(QWidget):
     def _on_live_speech_transcribed(self, text: str, is_final: bool):
         if not text:
             return
-        self._current_query = text
+        clean_text = text.strip()
+        self._current_query = clean_text
         if self._state in (NotchState.LISTENING, NotchState.IDLE):
             if self._state != NotchState.LISTENING:
                 self.set_state(NotchState.LISTENING)
-            self._listen_text.setText(text[:25])
+            # Display clean rolling speech transcript in notch
+            display_text = clean_text if len(clean_text) <= 32 else f"...{clean_text[-28:]}"
+            self._listen_text.setText(display_text)
+            self._rainbow_wave.set_level(0.75)
+            self.update()
 
     def _on_message_received(self, sender: str, content: str, is_user: bool):
         logger.info(f"[CHAT] {sender}: {content}")
