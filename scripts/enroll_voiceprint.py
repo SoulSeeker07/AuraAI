@@ -27,10 +27,8 @@ from voice.speaker_verification import SpeakerVerificationEngine
 
 def record_sample(p: pyaudio.PyAudio, sample_idx: int, duration_s: float = 3.0) -> bytes:
     while True:
-        print(f"\n[Sample {sample_idx}/3] Speak into your mic: 'Hey Aura, this is my voice.'")
-        for i in range(3, 0, -1):
-            print(f"  Starting in {i}...", end="\r", flush=True)
-            time.sleep(1.0)
+        print(f"\n[Sample {sample_idx}/3] Phrase to speak: 'Hey Aura, this is my voice.'")
+        input(f"👉 Press [Enter] when you are ready to speak... ")
         print("  🎤 RECORDING NOW... (Speak clearly!)", flush=True)
 
         stream = p.open(
