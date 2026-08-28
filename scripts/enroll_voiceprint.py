@@ -26,30 +26,41 @@ from voice.speaker_verification import SpeakerVerificationEngine
 
 
 def record_sample(p: pyaudio.PyAudio, sample_idx: int, duration_s: float = 3.0) -> bytes:
-    print(f"\n[Sample {sample_idx}/3] Speak into your mic: 'Hey Aura, this is my voice.'")
-    for i in range(3, 0, -1):
-        print(f"  Starting in {i}...", end="\r", flush=True)
-        time.sleep(1.0)
-    print("  🎤 RECORDING NOW... (Speak clearly)", flush=True)
+    while True:
+        print(f"\n[Sample {sample_idx}/3] Speak into your mic: 'Hey Aura, this is my voice.'")
+        for i in range(3, 0, -1):
+            print(f"  Starting in {i}...", end="\r", flush=True)
+            time.sleep(1.0)
+        print("  🎤 RECORDING NOW... (Speak clearly!)", flush=True)
 
-    stream = p.open(
-        format=pyaudio.paInt16,
-        channels=1,
-        rate=16000,
-        input=True,
-        frames_per_buffer=1024,
-    )
+        stream = p.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=16000,
+            input=True,
+            frames_per_buffer=1024,
+        )
 
-    frames = []
-    num_frames = int(16000 / 1024 * duration_s)
-    for _ in range(num_frames):
-        data = stream.read(1024, exception_on_overflow=False)
-        frames.append(data)
+        frames = []
+        num_frames = int(16000 / 1024 * duration_s)
+        for _ in range(num_frames):
+            data = stream.read(1024, exception_on_overflow=False)
+            frames.append(data)
 
-    stream.stop_stream()
-    stream.close()
-    print("  ✓ Captured sample.", flush=True)
-    return b"".join(frames)
+        stream.stop_stream()
+        stream.close()
+
+        raw_pcm = b"".join(frames)
+        audio_np = np.frombuffer(raw_pcm, dtype=np.int16).astype(np.float32) / 32768.0
+        rms = float(np.sqrt(np.mean(audio_np**2)))
+
+        if rms < 0.008:
+            print(f"  [!] No speech detected (RMS: {rms:.4f} too quiet). Let's retry sample {sample_idx}...", flush=True)
+            time.sleep(1.0)
+            continue
+
+        print(f"  ✓ Captured sample (Vocal RMS: {rms:.4f}).", flush=True)
+        return raw_pcm
 
 
 def main():
