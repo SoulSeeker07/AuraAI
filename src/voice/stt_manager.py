@@ -933,8 +933,9 @@ class GroqSTTEngine(STTEngine):
             if api_key not in cls._client_pool:
                 from groq import Groq
                 import httpx
-                # Persistent HTTP/2 client with keep-alive
-                http_client = httpx.Client(http2=True, timeout=12.0)
+                # Fast failover timeout (2.5s max read) so degraded network triggers local GPU fallback immediately
+                timeout_config = httpx.Timeout(connect=1.5, read=2.5, write=1.5, pool=1.5)
+                http_client = httpx.Client(http2=True, timeout=timeout_config)
                 cls._client_pool[api_key] = Groq(api_key=api_key, http_client=http_client)
             return cls._client_pool[api_key]
 
