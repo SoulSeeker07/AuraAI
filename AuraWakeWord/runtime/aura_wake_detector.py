@@ -151,6 +151,20 @@ class AuraWakeDetector(WakeWordEngine):
                     self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
                     self.consecutive_hits = 0
 
+                    # 7. Speaker Voiceprint Gate (if enrolled)
+                    try:
+                        from src.voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
+                        speaker_engine = SpeakerVerificationEngine.get_instance()
+                        match_res, sim_score = speaker_engine.verify(clean_buf)
+                        if match_res == SpeakerMatchResult.REJECT:
+                            logger.info(f"[SpeakerVerification] Wake word rejected (sim={sim_score:.2f} < {speaker_engine.threshold_low}) — ignoring background / non-owner voice.")
+                            self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
+                            self.consecutive_hits = 0
+                            self.cooldown_frames = int(self.sample_rate / chunk_len * 1.5)
+                            return False
+                    except Exception as ve:
+                        logger.debug(f"[SpeakerVerification] Verification check note: {ve}")
+
                     # Trigger callback
                     if self.on_wake_word_detected:
                         self.on_wake_word_detected("Hey Aura")
