@@ -693,7 +693,7 @@ class EdgeTTSEngine(TTSEngine):
                     return False
 
                 indic_voice = _detect_indic_voice(text_to_speak)
-                voice_name = indic_voice or self.settings.voice or os.getenv("EDGE_TTS_VOICE", "en-IN-NeerjaNeural")
+                voice_name = indic_voice or self.settings.voice or os.getenv("EDGE_TTS_VOICE", "en-US-AriaNeural")
 
                 communicate = edge_tts.Communicate(
                     text_to_speak,

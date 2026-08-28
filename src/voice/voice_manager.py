@@ -146,7 +146,7 @@ class VoiceManager:
             "tts_settings": {
                 "speaker": os.getenv("TTS_SPEAKER", TTSSpeaker.EDGE_TTS.value),
                 "fallback_speaker": TTSSpeaker.PIPER.value,
-                "voice": os.getenv("EDGE_TTS_VOICE", "en-IN-NeerjaNeural"),
+                "voice": os.getenv("EDGE_TTS_VOICE", "en-US-AriaNeural"),
                 "rate": float(os.getenv("TTS_RATE", "1.0")),
                 "pitch": 1.0,
                 "volume": 1.0,
