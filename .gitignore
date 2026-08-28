@@ -13,6 +13,10 @@ logs/
 database/*.db
 database/*.sqlite
 database/*.sqlite3
+Memory.db
+Memory.db-journal
+Memory.db-wal
+aura_memory_db/
 
 .pytest_cache/
 .mypy_cache/
@@ -21,8 +25,10 @@ database/*.sqlite3
 .DS_Store
 Thumbs.db
 
-# Runtime data
+# Runtime data & speaker profiles
 data/
+Data/
+storage/
 
 # Generated code
 generated_code/
