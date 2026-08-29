@@ -137,17 +137,21 @@ class ASTManager:
         self.language = language
         self._cache: dict[Path, ASTFile] = {}
 
-    def parse_file(self, file_path: str) -> ASTFile:
+    def parse_file(self, file_path: str | Path) -> ASTFile:
         """
         Parse a file and generate an AST.
 
         Args:
-            file_path: Path to the file (relative to repository root)
+            file_path: Path to the file (relative to repository root or absolute)
 
         Returns:
             ASTFile object
         """
-        full_path = self.repository_path / file_path
+        p = Path(file_path)
+        if p.is_absolute():
+            full_path = p.resolve()
+        else:
+            full_path = (self.repository_path / p).resolve()
 
         if not full_path.exists():
             raise FileNotFoundError(f"File not found: {full_path}")
@@ -251,12 +255,18 @@ class ASTManager:
                 for alias in node.names:
                     imports.append(f"{module}.{alias.name}")
             elif isinstance(node, ast.ClassDef):
-                classes.append(root.find_by_name(node.name))
+                found_c = root.find_by_name(node.name)
+                if found_c:
+                    classes.append(found_c)
             elif isinstance(node, ast.FunctionDef):
-                functions.append(root.find_by_name(node.name))
+                found_f = root.find_by_name(node.name)
+                if found_f:
+                    functions.append(found_f)
             elif isinstance(node, ast.Assign) and len(node.targets) == 1:
                 if isinstance(node.targets[0], ast.Name):
-                    constants.append(root.find_by_name(node.targets[0].id))
+                    found_const = root.find_by_name(node.targets[0].id)
+                    if found_const:
+                        constants.append(found_const)
 
         return ASTFile(
             path=file_path,

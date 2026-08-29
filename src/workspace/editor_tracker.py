@@ -45,6 +45,7 @@ EDITOR_BRAND_IDENTIFIERS = frozenset({
     "visual studio code",
     "visual studio",
     "code",
+    "vs code",
     "cursor",
     "pycharm",
     "sublime text",

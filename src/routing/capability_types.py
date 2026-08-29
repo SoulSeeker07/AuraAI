@@ -62,6 +62,9 @@ class CapabilityType(str, Enum):
     PLUGIN = "plugin"
     PLUGIN_SEARCH = "plugin_search"
 
+    # Focus & task management (M32)
+    FOCUS = "focus"
+
 
 class CapabilityPriority(str, Enum):
     """

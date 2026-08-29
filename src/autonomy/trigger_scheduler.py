@@ -322,3 +322,105 @@ class TriggerScheduler:
             except Exception as e:
                 logger.error(f"[TriggerScheduler] Error in scheduler loop: {e}")
                 await asyncio.sleep(self.poll_interval_seconds)
+
+    # ── M32: Severity classification & interrupt routing ──────────────────────
+
+    def _classify_interrupt_severity(self, trigger: Trigger) -> str:
+        """
+        Map a trigger to a RiskLevel string using the existing routing.risk_levels
+        taxonomy so interrupt routing reuses the same vocabulary already used by
+        CapabilityDescriptor and ExecutionPolicy.
+
+        Heuristics (in priority order):
+          1. Explicit `risk_level` key in execution_map
+          2. Trigger type: CONDITION → HIGH, SYSTEM_EVENT → MEDIUM, SCHEDULED → LOW
+          3. Keyword scan of action_goal for critical terms
+        """
+        from routing.risk_levels import RiskLevel
+
+        # 1. Explicit override in execution_map
+        explicit = (trigger.execution_map or {}).get("risk_level", "")
+        if explicit in (r.value for r in RiskLevel):
+            return explicit
+
+        # 2. Keyword scan of action_goal for critical/high-risk terms
+        goal_lower = (trigger.action_goal or "").lower()
+        critical_terms = ("shutdown", "reboot", "format", "delete_system", "critical", "security breach", "data loss")
+        high_terms = ("delete", "remove", "kill", "terminate", "error", "failure", "crash", "alert")
+        medium_terms = ("warning", "slow", "degraded", "threshold", "limit")
+
+        if any(t in goal_lower for t in critical_terms):
+            return RiskLevel.CRITICAL.value
+        if any(t in goal_lower for t in high_terms):
+            return RiskLevel.HIGH.value
+        if any(t in goal_lower for t in medium_terms):
+            return RiskLevel.MEDIUM.value
+
+        # 3. Trigger type fallback
+        trigger_type_map = {
+            TriggerType.CONDITION: RiskLevel.HIGH.value,
+            TriggerType.SYSTEM_EVENT: RiskLevel.MEDIUM.value,
+            TriggerType.SCHEDULED: RiskLevel.LOW.value,
+        }
+        return trigger_type_map.get(trigger.trigger_type, RiskLevel.LOW.value)
+
+    async def fire_background_interrupt(
+        self,
+        trigger: Trigger,
+        new_task_id: str,
+        message: str,
+        aura_core: Any | None = None,
+    ) -> None:
+        """
+        Route a background-agent interrupt through the severity gate:
+
+          HIGH/CRITICAL → immediately switch focus thread + push real-time notification
+          LOW/MEDIUM    → enqueue in pending_notifications only (surface at next turn boundary)
+
+        aura_core is the AuraCore singleton — passed in so that focus_manager and
+        _push_interrupt_notification live in one place (no duplicate logic).
+        """
+        severity = self._classify_interrupt_severity(trigger)
+
+        # Resolve AuraCore if not explicitly provided
+        if aura_core is None:
+            try:
+                from core.aura_core import AuraCore
+                aura_core = AuraCore.get_instance()
+            except Exception as e:
+                logger.warning(f"[TriggerScheduler] Could not resolve AuraCore for interrupt: {e}")
+
+        focus_manager = getattr(aura_core, "focus_manager", None) if aura_core else None
+
+        if severity in ("high", "critical"):
+            # Immediate focus switch
+            if focus_manager is not None:
+                try:
+                    focus_manager.switch_to(new_task_id)
+                    logger.info(
+                        f"[TriggerScheduler] Focus switched → '{new_task_id}' "
+                        f"(severity={severity}, trigger={trigger.trigger_id})"
+                    )
+                except Exception as e:
+                    logger.warning(f"[TriggerScheduler] Focus switch failed: {e}")
+
+            # Push real-time notification through all live channels
+            if aura_core is not None and hasattr(aura_core, "_push_interrupt_notification"):
+                try:
+                    aura_core._push_interrupt_notification(message, task_id=new_task_id, severity=severity)
+                except Exception as e:
+                    logger.warning(f"[TriggerScheduler] Interrupt notification push failed: {e}")
+        else:
+            # LOW / MEDIUM → queue only, do NOT touch current_focus
+            if focus_manager is not None:
+                try:
+                    focus_manager.enqueue_notification(
+                        task_id=new_task_id, message=message, severity=severity
+                    )
+                    logger.debug(
+                        f"[TriggerScheduler] Notification queued for task '{new_task_id}' "
+                        f"(severity={severity}, trigger={trigger.trigger_id})"
+                    )
+                except Exception as e:
+                    logger.warning(f"[TriggerScheduler] Notification enqueue failed: {e}")
+

@@ -214,6 +214,8 @@ class AuraCore:
         self._initialize_components()
         self._init_executive_brain()
         self._init_personal_os()
+        self._init_focus_manager()
+        self._init_vision_dictation()
         self._prewarm_voice_and_models_async()
 
     def _init_personal_os(self):
@@ -275,6 +277,387 @@ class AuraCore:
                 exc_info=True,
             )
 
+    def _init_focus_manager(self) -> None:
+        """Initialize FocusManager singleton and register the hourly stale-archival cron."""
+        try:
+            from core.focus_manager import FocusManager
+
+            db_path = self.project_root / "storage" / "focus_threads.db"
+            self.focus_manager = FocusManager.get_instance(db_path=db_path)
+
+            # Register hourly archival trigger via TriggerScheduler
+            max_age_hours = float(self.config.get("focus_stale_hours", 24))
+            if hasattr(self, "trigger_scheduler") and self.trigger_scheduler:
+                try:
+                    from autonomy.models import Trigger, TriggerType, TriggerState
+
+                    archival_trigger = Trigger(
+                        trigger_id="focus_archival_cron",
+                        trigger_type=TriggerType.SCHEDULED,
+                        action_goal=f"Archive stale focus threads older than {max_age_hours}h",
+                        execution_map={"action": "focus_archive_stale", "max_age_hours": max_age_hours},
+                        cron_schedule="0 * * * *",  # every hour
+                        state=TriggerState.ARMED,
+                        dedup_key="focus_archival_cron",
+                    )
+                    if hasattr(self, "trigger_registry") and self.trigger_registry:
+                        self.trigger_registry.register_trigger(archival_trigger)
+                    logger.info("[AuraCore] Focus archival cron registered (hourly).")
+                except Exception as cron_err:
+                    logger.debug(f"[AuraCore] Focus archival cron registration skipped: {cron_err}")
+
+            self.components["focus_manager"] = ComponentStatus(
+                name="FocusManager",
+                status=AuraCoreStatus.READY,
+                message=f"FocusManager active ({len(self.focus_manager.list_active())} thread(s))",
+            )
+            logger.info("[AuraCore] FocusManager initialized.")
+        except Exception as e:
+            self.focus_manager = None
+            self.components["focus_manager"] = ComponentStatus(
+                name="FocusManager",
+                status=AuraCoreStatus.ERROR,
+                message=f"FocusManager initialization failed: {e}",
+                loaded=False,
+            )
+            logger.error(f"[AuraCore] FocusManager initialization failed: {e}", exc_info=True)
+
+    # ── Focus helpers (M32) ────────────────────────────────────────────────────
+
+    def _focus_preamble(self, user_goal: str) -> None:
+        """
+        Resolve the focus thread for this turn before dispatching to the LLM.
+        Zero-latency — deterministic keyword fast-path first, LLM slug extraction
+        only for ambiguous cases.
+
+        Mutates self.focus_manager's current_focus in-place so that the context
+        snippet injected by _build_chat_messages() is immediately up-to-date.
+        """
+        if self.focus_manager is None:
+            return
+        try:
+            intent = self._resolve_focus_intent(user_goal)
+            action = intent.get("action")
+            task_id = intent.get("task_id", "")
+
+            if action == "switch" and task_id:
+                self.focus_manager.switch_to(task_id)
+            elif action == "resume" and task_id:
+                self.focus_manager.resume(task_id)
+            elif action == "create" and task_id:
+                self.focus_manager.create(task_id, {}, severity_origin="user")
+            # "list" and "query" don't change focus — just surface info in response
+        except Exception as e:
+            logger.debug(f"[AuraCore] Focus preamble skipped: {e}")
+
+    def _focus_postamble(self, user_message: str, response_text: str) -> str:
+        """
+        After a response is generated:
+          1. Update the current focus thread's working context.
+          2. Drain buffered pending notifications (cap 3, dedupe by state_hash).
+          3. Append drained notifications as a suffix to the response.
+
+        Returns the (possibly annotated) response text.
+        """
+        if self.focus_manager is None:
+            return response_text
+        try:
+            current = self.focus_manager.get_current()
+            if current:
+                self.focus_manager.update_state(
+                    current.task_id,
+                    {"last_summary": response_text[:500], "last_user_msg": user_message[:200]},
+                )
+
+            notifications = self.focus_manager.drain_pending_notifications()
+            if notifications:
+                suffix_lines = ["\n\n---"]
+                for notif in notifications:
+                    prefix = "⚠️" if notif.severity in ("high", "critical") else "ℹ️"
+                    suffix_lines.append(f"{prefix} **[{notif.severity.upper()}]** {notif.message}")
+                response_text = response_text + "\n".join(suffix_lines)
+        except Exception as e:
+            logger.debug(f"[AuraCore] Focus postamble skipped: {e}")
+        return response_text
+
+    def _resolve_focus_intent(self, user_goal: str) -> dict:
+        """
+        Determine the focus management action (if any) implied by user_goal.
+
+        Priority:
+          1. Deterministic keyword patterns (zero-latency)
+          2. LLM slug extraction for ambiguous natural-language phrasing
+              (only if LLM is available and no keyword match found)
+
+        Returns a dict with keys: action ∈ {switch, resume, create, list, query, none},
+        task_id (str, may be empty for list/query/none).
+        """
+        msg = user_goal.lower().strip()
+
+        # 1. Deterministic patterns
+        resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ")
+        create_prefixes = ("start new task ", "new task ", "begin task ", "start task ")
+        list_phrases = ("what was i doing", "list tasks", "list my tasks", "show tasks",
+                        "show active tasks", "what are my tasks", "active threads", "my tasks")
+        query_phrases = ("what am i working on", "current task", "current focus")
+
+        for phrase in list_phrases:
+            if phrase in msg:
+                return {"action": "list", "task_id": ""}
+
+        for phrase in query_phrases:
+            if phrase in msg:
+                return {"action": "query", "task_id": ""}
+
+        for prefix in resume_prefixes:
+            if msg.startswith(prefix):
+                slug = msg[len(prefix):].strip().replace(" ", "_")
+                return {"action": "resume", "task_id": slug}
+            if prefix.strip() in msg:
+                # Pattern anywhere in the message
+                idx = msg.index(prefix.strip())
+                slug = msg[idx + len(prefix.strip()):].strip().split()[0].replace(" ", "_")
+                if slug:
+                    return {"action": "resume", "task_id": slug}
+
+        for prefix in create_prefixes:
+            if msg.startswith(prefix):
+                slug = msg[len(prefix):].strip().replace(" ", "_")
+                return {"action": "create", "task_id": slug}
+
+        # 2. LLM slug extraction for ambiguous phrasing
+        if self.llm_enabled and self.groq_client is not None:
+            try:
+                extract_prompt = (
+                    f"You are a focus-thread router. Classify this message into one of:\n"
+                    f"  - switch:<slug>  (e.g. 'back to api_refactor')\n"
+                    f"  - create:<slug>  (starting a named new task)\n"
+                    f"  - list            (wants to see active tasks)\n"
+                    f"  - none            (normal conversation, no focus management)\n\n"
+                    f"Message: \"{user_goal}\"\n"
+                    f"Reply with ONLY the classification. slug must be snake_case."
+                )
+                import asyncio
+
+                def _sync_extract():
+                    res = self.groq_client.chat.completions.create(
+                        model="openai/gpt-oss-20b",
+                        messages=[{"role": "user", "content": extract_prompt}],
+                        max_tokens=20,
+                        temperature=0.0,
+                    )
+                    return (res.choices[0].message.content or "").strip().lower()
+
+                # Run synchronously (this helper is called from async context via process_request,
+                # but we want zero-overhead here — we'll cap timeout at 1s)
+                raw = _sync_extract()
+                if raw.startswith("switch:"):
+                    return {"action": "switch", "task_id": raw[7:].strip()}
+                if raw.startswith("create:"):
+                    return {"action": "create", "task_id": raw[7:].strip()}
+                if raw == "list":
+                    return {"action": "list", "task_id": ""}
+            except Exception as e:
+                logger.debug(f"[AuraCore] LLM focus intent extraction skipped: {e}")
+
+        return {"action": "none", "task_id": ""}
+
+    def _push_interrupt_notification(self, message: str, task_id: str = "", severity: str = "high") -> None:
+        """
+        Route a HIGH/CRITICAL interrupt notification through whichever channel is live:
+          - GUI: emits app_signals.interrupt_notification (Qt signal, no-op if GUI not running)
+          - Voice: enqueues TTS phrase
+          - CLI: writes a banner to stdout at next prompt opportunity
+
+        LOW/MEDIUM interrupts should NOT call this — use focus_manager.enqueue_notification() instead.
+        """
+        # GUI signal
+        try:
+            from gui.app_signals import app_signals
+            if hasattr(app_signals, "interrupt_notification"):
+                app_signals.interrupt_notification.emit(message)
+        except Exception:
+            pass
+
+        # Voice TTS
+        try:
+            if hasattr(self, "voice_loop") and self.voice_loop is not None:
+                from voice.tts_manager import TTSManager
+                tts = TTSManager()
+                tts.speak_async(f"Interrupt: {message}")
+        except Exception:
+            pass
+
+        # CLI banner (written to stderr so it doesn't pollute stdout piped output)
+        import sys
+        banner = f"\n{'='*60}\n⚡ INTERRUPT [{severity.upper()}]: {message}\n{'='*60}\n"
+        try:
+            sys.stderr.write(banner)
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+        logger.warning(f"[AuraCore] Interrupt notification dispatched: [{severity.upper()}] {message}")
+
+    # ── Vision Dictation & Contextual Action Routing (M33) ──────────────────────
+
+    def _init_vision_dictation(self) -> None:
+        """Initialize GroundingEngine, VisualWorkingMemory, and AppContextRouter."""
+        try:
+            from vision.grounding_engine import GroundingEngine
+            from core.visual_memory import VisualWorkingMemory
+            from routing.app_context_router import AppContextRouter
+
+            self.grounding_engine = GroundingEngine.get_instance()
+            self.visual_memory = VisualWorkingMemory.get_instance()
+            self.app_context_router = AppContextRouter.get_instance()
+
+            # Initialize M34 Cognitive Extensions (MacroCompiler, SpeculativeIndexer, ProactiveWatcher)
+            from execution.macro_compiler import MacroCompiler
+            from workspace.speculative_indexer import SpeculativeIndexer
+            from autonomy.proactive_diagnostics_watcher import ProactiveDiagnosticsWatcher
+
+            repo_root = self.config.get("project_root") or getattr(self, "project_root", None)
+            self.macro_compiler = MacroCompiler.get_instance()
+            self.speculative_indexer = SpeculativeIndexer.get_instance(repo_root=repo_root)
+            self.proactive_watcher = ProactiveDiagnosticsWatcher.get_instance(repo_root=repo_root)
+
+            self.components["vision_dictation"] = ComponentStatus(
+                name="VisionDictation",
+                status=AuraCoreStatus.READY,
+                message="Vision Dictation, Macro Compiler & Grounding Engine active",
+            )
+            logger.info("[AuraCore] Vision Dictation, Macro Compiler & Grounding Engine initialized.")
+        except Exception as e:
+            self.grounding_engine = None
+            self.visual_memory = None
+            self.app_context_router = None
+            self.macro_compiler = None
+            self.speculative_indexer = None
+            self.proactive_watcher = None
+            self.components["vision_dictation"] = ComponentStatus(
+                name="VisionDictation",
+                status=AuraCoreStatus.ERROR,
+                message=f"Vision Dictation initialization failed: {e}",
+                loaded=False,
+            )
+            logger.error(f"[AuraCore] Vision Dictation initialization failed: {e}", exc_info=True)
+
+    def _vision_dictation_preamble(self, user_goal: str) -> str:
+        """
+        Process referential phrases, apply pure-navigation fast-path, execute verified macros,
+        and resolve cross-app visual context before LLM dispatch.
+        """
+        if getattr(self, "app_context_router", None) is None or getattr(self, "visual_memory", None) is None:
+            return user_goal
+
+        try:
+            # 1. Detect foreground application context & resolve focus thread
+            app_context = self.app_context_router.detect_current_app()
+            current_app = app_context.app_name.lower().strip()
+            task_id = "default"
+            if getattr(self, "focus_manager", None) is not None:
+                current_focus = self.focus_manager.get_current()
+                if current_focus:
+                    task_id = current_focus.task_id
+
+            # Trigger non-blocking speculative context pre-warm
+            if getattr(self, "speculative_indexer", None) is not None:
+                self.speculative_indexer.trigger_speculative_prewarm(window_title=app_context.window_title)
+
+            # Automatic app-switch decay when foreground window changes
+            prev_app = self.visual_memory._active_apps.get(task_id, "")
+            if prev_app and current_app and prev_app != current_app:
+                logger.info(
+                    f"[AuraCore] Automatic app switch detected: '{prev_app}' -> '{current_app}' for task '{task_id}' — applying memory decay."
+                )
+                self.visual_memory.decay_on_app_switch(previous_app=prev_app, new_app=current_app, task_id=task_id)
+
+            # 2. Pure-navigation fast-path (0 vision tokens, 0ms latency)
+            first_word = user_goal.strip().split()[0].lower() if user_goal.strip() else ""
+            two_words = "_".join(user_goal.strip().split()[:2]).lower() if len(user_goal.strip().split()) >= 2 else first_word
+            if self.app_context_router.is_targetless_verb(first_word) or self.app_context_router.is_targetless_verb(two_words):
+                logger.info(
+                    f"[AuraCore] Pure-navigation fast-path for '{user_goal}' in '{app_context.app_name}' — bypassing grounding."
+                )
+                self._narrate_grounding_event(f"Navigation in {app_context.app_name}: {user_goal}", confidence=1.0)
+                return user_goal
+
+            # 3. Pre-flight Verified Macro Fast-Path (0 LLM tokens, 0ms latency)
+            if getattr(self, "macro_compiler", None) is not None:
+                repo_root = self.config.get("project_root") or getattr(self, "project_root", None)
+                macro = self.macro_compiler.resolve_macro(
+                    intent=user_goal,
+                    app_name=current_app,
+                    workspace_scope=repo_root or task_id,
+                )
+                if macro is not None:
+                    try:
+                        self.macro_compiler.execute_macro(macro, app_context=app_context)
+                        self._narrate_grounding_event(
+                            f"Executed verified macro '{macro.macro_id}' for '{user_goal}' (0 tokens)",
+                            confidence=macro.confidence,
+                        )
+                        return f"[Executed verified macro '{macro.macro_id}' (0 tokens)]: {user_goal}"
+                    except Exception as drift_err:
+                        logger.warning(f"[AuraCore] Macro drift caught, falling back to 3-tier grounding: {drift_err}")
+
+            # 4. Referential resolution ("that", "it", "no, the other one", "that file")
+            is_ref = self.visual_memory.is_referential(user_goal)
+            if is_ref:
+                target, match_type = self.visual_memory.resolve_reference(
+                    user_goal, task_id=task_id, current_app=app_context.app_name
+                )
+                if target is not None:
+                    self._narrate_grounding_event(
+                        f"Resolved '{target.label}' (confidence: {target.confidence:.2f}, tier: {target.source_tier}) in {app_context.app_name}",
+                        confidence=target.confidence,
+                    )
+                    augmented_goal = f"{user_goal} [Target: '{target.label}' at coordinates {target.center}, source: {target.source_tier}]"
+                    logger.info(f"[AuraCore] Augmented referential goal -> '{augmented_goal}'")
+                    return augmented_goal
+
+            # 5. Fresh grounding attempt for non-pronoun targeted actions ("open X", "click X")
+            # If user_goal is a pure pronoun ("that", "no, the other one"), do NOT ground it literally
+            if not is_ref and getattr(self, "grounding_engine", None) is not None and any(
+                w in user_goal.lower() for w in ("open", "click", "select", "press", "launch", "choose")
+            ):
+                words = user_goal.split()
+                ref_candidate = " ".join(words[1:]) if len(words) > 1 else user_goal
+                grounded = self.grounding_engine.resolve(ref_candidate, app_context=app_context)
+                if grounded is not None:
+                    self.visual_memory.remember([grounded], task_id=task_id, app_name=app_context.app_name)
+                    self._narrate_grounding_event(
+                        f"Grounded '{grounded.label}' (confidence: {grounded.confidence:.2f}, tier: {grounded.source_tier}) in {app_context.app_name}",
+                        confidence=grounded.confidence,
+                    )
+                    augmented_goal = f"{user_goal} [Target: '{grounded.label}' at coordinates {grounded.center}, source: {grounded.source_tier}]"
+                    return augmented_goal
+        except Exception as e:
+            logger.debug(f"[AuraCore] Vision dictation preamble note: {e}")
+
+        return user_goal
+
+    def _narrate_grounding_event(self, message: str, confidence: float = 1.0) -> None:
+        """Broadcast live grounding narration to GUI overlays via app_signals."""
+        try:
+            from gui.signals import app_signals, ExecutionStep, StepStatus
+            if hasattr(app_signals, "step_updated"):
+                step = ExecutionStep(
+                    index=0,
+                    title="Vision Grounding",
+                    description=message,
+                    status=StepStatus.COMPLETED if confidence >= 0.75 else StepStatus.FAILED,
+                    engine="vision_grounding",
+                    payload=message,
+                    metadata={"confidence": confidence},
+                )
+                app_signals.step_updated.emit(step)
+            if hasattr(app_signals, "show_notification") and confidence < 0.75:
+                app_signals.show_notification.emit("Vision Grounding Notice", message)
+        except Exception:
+            pass
+
     def _prewarm_voice_and_models_async(self):
         """Asynchronously pre-warm Voice ML models in background without blocking startup."""
         import threading
@@ -296,6 +679,8 @@ class AuraCore:
                 logger.debug(f"[AuraCore] Background ML pre-warm info: {e}")
 
         threading.Thread(target=_warm, daemon=True, name="AuraModelPrewarmer").start()
+
+
 
     def _init_llm(self):
         """Initialize the Groq LLM client."""
@@ -797,6 +1182,10 @@ class AuraCore:
             self.add_to_conversation("user", user_message)
             self.add_to_conversation("assistant", final_text)
 
+            # ── M32: Focus thread postamble ─────────────────────────────────────
+            # Update working context and drain buffered notifications.
+            final_text = self._focus_postamble(user_message, final_text)
+
             return final_text
 
         except Exception as e:
@@ -910,6 +1299,15 @@ class AuraCore:
         Executes all requests through the unified ReAct tool engine (get_ai_response).
         """
         try:
+            # ── M32: Focus thread preamble ──────────────────────────────────────
+            # Resolve which focus thread this turn belongs to (zero-latency,
+            # deterministic) before dispatching to the LLM engine.
+            self._focus_preamble(user_goal)
+
+            # ── M33: Vision dictation & Contextual action preamble ──────────────
+            # Pure-navigation fast-path and referential pronoun resolution
+            user_goal = self._vision_dictation_preamble(user_goal)
+
             # 1. Direct Unified ReAct Tool & LLM Engine across CLI, GUI, and Voice
             if self.llm_enabled and self.groq_client is not None:
                 return await self.get_ai_response(user_goal, enable_tools=True)
@@ -1147,6 +1545,10 @@ class AuraCore:
         self._init_agent_runtime()
         self._init_workflow()
         self._init_vision()
+
+        # FocusManager is initialised separately after _init_executive_brain so
+        # that TriggerScheduler is available for the archival cron registration.
+        self.focus_manager = None
 
         logger.info("Aura Core initialized successfully")
 

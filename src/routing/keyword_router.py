@@ -538,6 +538,51 @@ class KeywordRouter:
             ],
         }
 
+        # M32 — Focus thread management (deterministic zero-latency patterns)
+        rules[CapabilityType.FOCUS] = [
+            {
+                "keywords": [
+                    "back to ",
+                    "resume ",
+                    "go back to ",
+                    "switch to ",
+                    "switch back to ",
+                ],
+                "confidence": 0.97,
+                "priority": CapabilityPriority.HIGHEST,
+                "requires_permission": False,
+            },
+            {
+                "keywords": [
+                    "start new task ",
+                    "new task ",
+                    "begin task ",
+                    "start task ",
+                ],
+                "confidence": 0.95,
+                "priority": CapabilityPriority.HIGHEST,
+                "requires_permission": False,
+            },
+            {
+                "keywords": [
+                    "what was i doing",
+                    "list tasks",
+                    "list my tasks",
+                    "show tasks",
+                    "show active tasks",
+                    "what are my tasks",
+                    "active threads",
+                    "my tasks",
+                    "what am i working on",
+                    "current task",
+                    "current focus",
+                ],
+                "confidence": 0.95,
+                "priority": CapabilityPriority.HIGHEST,
+                "requires_permission": False,
+            },
+        ]
+
         return rules
 
     def route(self, text: str) -> RoutingResult | None:
@@ -636,4 +681,5 @@ class KeywordRouter:
             CapabilityType.MEMORY,
             CapabilityType.KNOWLEDGE,
             CapabilityType.PROVIDER,
+            CapabilityType.FOCUS,
         ]

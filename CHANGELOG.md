@@ -5,6 +5,34 @@ All notable changes to Aura AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0-cognitive-macros-and-speculative-prewarm] - 2026-08-29
+
+### Added
+- **M34 — Verified UI Macro Compilation, Speculative Pre-Fetching & Proactive Diagnostics Watcher**:
+  - **Pre-flight Verified Macro Compilation (`src/execution/macro_compiler.py`)**: Automatically compiles repeatedly verified action DAG traces ($\ge 3$ consecutive runs with identical step signatures at $\ge 0.90$ confidence) into zero-token deterministic Python actions. Scoped by `(intent, app_name, workspace_scope)` to prevent cross-project coordinate leakage. Enforces fail-closed `MacroDriftError` on UI signature mismatch to fallback gracefully to the 3-tier Grounding Engine.
+  - **Speculative Workspace Context Pre-Fetching (`src/workspace/speculative_indexer.py`)**: Asynchronously pre-warms AST symbols, definitions, and Git diff summaries in background worker threads upon foreground editor focus or file-save events. Provides $<1\text{ms}$ memory retrieval for instant prompt context injection with zero synchronous disk I/O.
+  - **Proactive Diagnostics Watcher Daemon (`src/autonomy/proactive_diagnostics_watcher.py`)**: Low-overhead background watcher running test/build health checks strictly inside `.aura_staging/` (via `StagingWorkspace`). Features state-change cost-gating (0 LLM tokens on unchanged workspace), non-interrupting notification routing into `FocusManager.enqueue_notification(severity="LOW")` without stealing active focus, and 24-hour staging retention cleanup ($\le 10$ directories).
+
+---
+
+## [1.1.0-focus-and-vision-dictation] - 2026-08-29
+
+### Added
+- **M31 — Next-Gen Agent Task Status & DAG Execution HUD Overlay (`src/gui/widgets/agent_task_status_overlay.py`)**: Real-time live HUD overlay with task searching, filtering, step durations, expandable DAG sub-steps, real-time log viewers, and signal synchronization via `app_signals`.
+- **M32 — Multi-Task FocusManager: Context Switching & Interrupt Handling (`src/core/focus_manager.py`)**:
+  - Thread-safe SQLite backing with WAL mode (`PRAGMA journal_mode=WAL`) for reliable multi-process CLI/GUI concurrency.
+  - Length-weighted fuzzy task-ID deduplication (`<8`: 0.90, `8-15`: 0.82, `>=16`: 0.75) with fail-closed embedding cosine gating to prevent silent context overwrites.
+  - Hash-based notification queue deduplication (`state_hash = sha256(message)[:16]`) with 3-cap drain.
+  - Automatic stale thread archival to `CognitiveMemoryEngine` via background hourly cron.
+  - 3-tier severity classification in `TriggerScheduler` routing HIGH/CRITICAL interrupts to immediate focus switching and LOW/MEDIUM to notification queues.
+- **M33 — Cross-App Vision Dictation & Contextual Action Routing**:
+  - **Shared Grounding Engine (`src/vision/grounding_engine.py`)**: 3-Tier resolution (Tier 1 UIA/DOM, Tier 2 OCR/Vision `qwen/qwen3.6-27b`, Tier 3 Fail-Closed at `<0.75` confidence) with composite confidence ranking `(1.0 / (1.0 + distance)) * confidence`.
+  - **Visual Working Memory (`src/core/visual_memory.py`)**: Ring buffer (capacity 5, TTL 3 turns) keyed to `FocusManager.task_id`. Parses deictic phrases ("that", "it", "that file"), retains a 1-turn `_last_alternative` slot for verbal corrections ("no, the other one", "the second one"), and automatically decays stale targets on application transitions.
+  - **App-Context Capability Router (`src/routing/app_context_router.py`)**: Maps verbs to subsystems based on active foreground application (`explorer.exe`, `chrome.exe`, `code.exe`). Short-circuits targetless navigation commands (`scroll`, `back`, `forward`, `navigate_up`, `new_tab`) for 0 vision token cost.
+  - **Security Gating Integration**: Gated high-risk verbs (`run`, `fix`, `delete`) behind HMAC-SHA256 `CryptographicApprovalAuthority` verification.
+
+---
+
 ## [1.0.0-holographic-ai-core] - 2026-08-27
 
 ### Added

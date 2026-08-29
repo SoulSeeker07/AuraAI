@@ -98,7 +98,17 @@ graph TD
 
 1. **Single Entry Point**: All user requests enter through `AuraCore.process_request()`.
 2. **Guardrail 1 Decoupling**: No domain backend (`src/desktop`, `src/browser`, `src/research`, `src/engineering`, `src/vision`) may import from `src.brain.aca`.
-3. **Single Coordinator**: Only `ExecutionCoordinator` invokes execution engines via `EngineRegistry` & `EngineAdapters`.
-4. **Shared Blackboard**: All stages read from and write to `Blackboard` (`CognitiveState`).
+3. **M32 Focus Invariant**: Multi-task state is managed by `FocusManager` using SQLite WAL mode. Named threads isolate working contexts and prevent silent overwrites. Fuzzy match resolves near-duplicates with length-weighted thresholds and fails closed to preserve task context.
+4. **M33 Vision Dictation & Referential Memory**:
+   - `GroundingEngine`: 3-Tier resolution (Tier 1 A11y/UIA/DOM -> Tier 2 OCR/Vision -> Tier 3 Fail-Closed on $< 0.75$).
+   - `VisualWorkingMemory`: In-memory ring buffer (5 items, 3-turn TTL) keyed to `FocusManager.task_id`. Decays automatically on foreground application switch and provides 1-turn alternative correction (`_last_alternative`).
+   - `AppContextRouter`: Detects foreground windows and maps verbs to domain engines. Targetless navigation commands (`scroll`, `back`, `forward`) short-circuit with 0 vision token cost.
+   - `CryptographicApprovalAuthority`: High-risk verbs (`run`, `fix`, `delete`) require HMAC-SHA256 human approval ticket redemption before execution.
+5. **M34 Cognitive Macro Compilation, Speculative Pre-Fetching & Proactive Watcher**:
+   - `MacroCompiler`: Compiles repeated verified action traces ($\ge 3$ consecutive runs with identical step signatures, confidence $\ge 0.90$) into zero-token deterministic macros. Scoped by `(intent, app_name, workspace_scope)` to prevent cross-project coordinate leakage. Enforces fail-closed `MacroDriftError` on UI signature mismatch.
+   - `SpeculativeIndexer`: Asynchronously pre-warms AST symbols, active editor document structures, and git diff summaries in background threads on foreground window/editor change events, providing $<1\text{ms}$ instant context retrieval.
+   - `ProactiveDiagnosticsWatcher`: Low-overhead background daemon that monitors workspace health strictly inside `.aura_staging/` (via `StagingWorkspace`). Enforces state-change cost gating (0 tokens on unchanged workspace), routes non-interrupting notices via `FocusManager.enqueue_notification(severity="LOW")` without stealing focus threads, and enforces 24h staging directory retention ($\le 10$ directories).
+6. **Single Coordinator**: Only `ExecutionCoordinator` invokes execution engines via `EngineRegistry` & `EngineAdapters`.
+7. **Shared Blackboard**: All stages read from and write to `Blackboard` (`CognitiveState`).
 
 *Generated automatically on 2026-08-08 03:06:53 by `generate_architecture.py`.*

@@ -61,7 +61,7 @@ class GitRepository:
     """Represents a git repository"""
 
     path: str
-    branch: str
+    branch: str = "main"
     remote_url: str | None = None
     commit_hash: str | None = None
     modified_files: list[str] = field(default_factory=list)
