@@ -408,13 +408,12 @@ class _ExpandedPanel(QWidget):
         header.addWidget(self._close_btn)
         root.addLayout(header)
 
-        # ── Vertical Stacking Center Cards ──
-        # 1. Live Transcript Card (Full 100% Width on Top)
+        # ── 1. Live Transcript Card (Full Width & Maximum Vertical Height) ──
         col1 = QFrame()
         col1.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(59,130,246,0.25); border-radius:8px;}")
         c1_lay = QVBoxLayout(col1)
-        c1_lay.setContentsMargins(8, 6, 8, 6)
-        c1_lay.setSpacing(4)
+        c1_lay.setContentsMargins(6, 4, 6, 4)
+        c1_lay.setSpacing(2)
 
         c1_head = QLabel("∿  Transcript")
         c1_head.setStyleSheet(f"color:#60a5fa; font-family:{FONT_SANS}; font-size:9px; font-weight:800; text-transform:uppercase;")
@@ -426,7 +425,7 @@ class _ExpandedPanel(QWidget):
         self._transcript_content = QWidget()
         self._transcript_layout = QVBoxLayout(self._transcript_content)
         self._transcript_layout.setContentsMargins(0, 0, 0, 0)
-        self._transcript_layout.setSpacing(4)
+        self._transcript_layout.setSpacing(2)
 
         self._placeholder_lbl = QLabel("Say a command or hold Space...")
         self._placeholder_lbl.setStyleSheet("color:#64748b; font-size:9px; font-family:'Segoe UI';")
@@ -436,59 +435,31 @@ class _ExpandedPanel(QWidget):
         c1_lay.addWidget(self._transcript_scroll, 1)
         root.addWidget(col1, 1)
 
-        # 2. Bottom Deck: Actions & Sources (Placed Vertically Below Transcript)
-        self._deck_container = QWidget()
-        deck_lay = QHBoxLayout(self._deck_container)
-        deck_lay.setContentsMargins(0, 0, 0, 0)
-        deck_lay.setSpacing(8)
+        # ── 2. Compact Sources Bar (Placed Directly Below Transcript, Hidden by Default) ──
+        self._sources_bar = QFrame()
+        self._sources_bar.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(0,240,255,0.25); border-radius:6px;}")
+        s_bar_lay = QHBoxLayout(self._sources_bar)
+        s_bar_lay.setContentsMargins(6, 2, 6, 2)
+        s_bar_lay.setSpacing(6)
 
-        # Neural Actions Card
-        self._col2 = QFrame()
-        self._col2.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(168,85,247,0.25); border-radius:8px;}")
-        self._c2_lay = QVBoxLayout(self._col2)
-        self._c2_lay.setContentsMargins(8, 6, 8, 6)
-        self._c2_lay.setSpacing(4)
-
-        c2_head = QLabel("✦  Actions")
-        c2_head.setStyleSheet(f"color:#a855f7; font-family:{FONT_SANS}; font-size:9px; font-weight:800; text-transform:uppercase;")
-        self._c2_lay.addWidget(c2_head)
-
-        self._actions_box = QVBoxLayout()
-        self._actions_box.setSpacing(4)
-        self._c2_lay.addLayout(self._actions_box)
-        self._c2_lay.addStretch()
-
-        self._col2.setVisible(False)
-        deck_lay.addWidget(self._col2, 1)
-
-        # Sources Card
-        self._col3 = QFrame()
-        self._col3.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(0,240,255,0.25); border-radius:8px;}")
-        self._c3_lay = QVBoxLayout(self._col3)
-        self._c3_lay.setContentsMargins(8, 6, 8, 6)
-        self._c3_lay.setSpacing(4)
-
-        c3_head = QLabel("⬡  Sources")
+        c3_head = QLabel("⬡ Sources:")
         c3_head.setStyleSheet(f"color:#00f0ff; font-family:{FONT_SANS}; font-size:9px; font-weight:800; text-transform:uppercase;")
-        self._c3_lay.addWidget(c3_head)
+        s_bar_lay.addWidget(c3_head)
 
-        self._sources_box = QVBoxLayout()
+        self._sources_box = QHBoxLayout()
         self._sources_box.setSpacing(4)
-        self._c3_lay.addLayout(self._sources_box)
-        self._c3_lay.addStretch()
+        s_bar_lay.addLayout(self._sources_box, 1)
+        s_bar_lay.addStretch()
 
-        self._col3.setVisible(False)
-        deck_lay.addWidget(self._col3, 1)
+        self._sources_bar.setVisible(False)
+        root.addWidget(self._sources_bar)
 
-        self._deck_container.setVisible(False)
-        root.addWidget(self._deck_container)
-
-        # ── Bottom Command Bar with Rainbow Waveform ──
+        # ── 3. Bottom Command Bar with Focus Badge & Rainbow Waveform Audio Visualizer ──
         bottom_bar = QFrame()
         bottom_bar.setStyleSheet("QFrame{background:rgba(6,10,20,0.9); border:1px solid rgba(0,240,255,0.3); border-radius:8px;}")
         b_lay = QHBoxLayout(bottom_bar)
         b_lay.setContentsMargins(8, 2, 8, 2)
-        b_lay.setSpacing(8)
+        b_lay.setSpacing(6)
 
         mic_lbl = QLabel("🎙")
         mic_lbl.setStyleSheet("font-size:12px; color:#00f0ff;")
@@ -518,75 +489,23 @@ class _ExpandedPanel(QWidget):
 
     def clear_panel(self):
         """Reset the panel to a clean slate for a new query."""
-        self._clear_box(self._actions_box)
         self._clear_box(self._sources_box)
-        self._col2.setVisible(False)
-        self._col3.setVisible(False)
-        if hasattr(self, "_deck_container"):
-            self._deck_container.setVisible(False)
-        self._has_actions = False
+        self._sources_bar.setVisible(False)
         self._has_sources = False
 
     def populate_result(self, query: str, response: str):
-        """
-        Populate the expanded panel with context-aware actions and sources
-        based on what the AI actually did.
-        """
-        action_type = _detect_action_type(query, response)
+        """Populate the expanded panel with clickable source links if real sources exist."""
         sources = _extract_sources(response)
-
-        # ── Actions Column (only if action_type != 'chat') ──
-        if action_type == "desktop":
-            self._clear_box(self._actions_box)
-            act1 = self._make_action_card("💻", "Open App", "#3b82f6", None)
-            act2 = self._make_action_card("📋", "Copy Command", "#a855f7",
-                                          lambda: QGuiApplication.clipboard().setText(query))
-            self._actions_box.addWidget(act1)
-            self._actions_box.addWidget(act2)
-            self._col2.setVisible(True)
-            self._has_actions = True
-
-        elif action_type == "web":
-            self._clear_box(self._actions_box)
-            if sources:
-                badge, title, _, url = sources[0]
-                act1 = self._make_action_card("🌐", f"Open {title[:10]}", "#3b82f6",
-                                              lambda: QDesktopServices.openUrl(QUrl(url)))
-                act2 = self._make_action_card("📋", "Copy Link", "#a855f7",
-                                              lambda: QGuiApplication.clipboard().setText(url))
-            else:
-                act1 = self._make_action_card("🌐", "Search Web", "#3b82f6",
-                                              lambda: QDesktopServices.openUrl(QUrl("https://www.google.com/search?q=" + query)))
-                act2 = self._make_action_card("📋", "Copy Text", "#a855f7",
-                                              lambda: QGuiApplication.clipboard().setText(response))
-            self._actions_box.addWidget(act1)
-            self._actions_box.addWidget(act2)
-            self._col2.setVisible(True)
-            self._has_actions = True
-
-        elif action_type == "file":
-            self._clear_box(self._actions_box)
-            act1 = self._make_action_card("📁", "Open Folder", "#f59e0b", None)
-            act2 = self._make_action_card("📋", "Copy Path", "#a855f7",
-                                          lambda: QGuiApplication.clipboard().setText(response))
-            self._actions_box.addWidget(act1)
-            self._actions_box.addWidget(act2)
-            self._col2.setVisible(True)
-            self._has_actions = True
-
-        # else: chat → no actions column, keep hidden
-
-        # ── Sources Column (only if real source links exist) ──
         if sources:
             self._clear_box(self._sources_box)
-            for badge, title, _, url in sources[:3]:
+            for badge, title, _, url in sources[:4]:
                 btn = self._make_source_card(badge, title, url)
                 self._sources_box.addWidget(btn)
-            self._col3.setVisible(True)
+            self._sources_bar.setVisible(True)
             self._has_sources = True
-
-        if hasattr(self, "_deck_container"):
-            self._deck_container.setVisible(self._has_actions or self._has_sources)
+        else:
+            self._sources_bar.setVisible(False)
+            self._has_sources = False
 
     def _tick_step(self, rate_factor: float = 1.0):
         if not self.isVisible():
