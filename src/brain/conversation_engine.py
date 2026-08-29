@@ -896,6 +896,13 @@ class ConversationEngine:
 
         grounded = self.aura_core.grounding_engine.resolve_foreground_only(target, app_context)
         if grounded is not None:
+            if getattr(grounded, "is_ambiguous", False) is True and getattr(grounded, "candidate_options", None):
+                opts_labels = [f"'{c.label}'" for c in grounded.candidate_options[:3]]
+                opts_str = " or ".join(opts_labels)
+                return ForegroundMatch(
+                    f"I found multiple matching items open ({opts_str}). Which one should I select (e.g. 1st or 2nd)?",
+                    "ambiguous_clarification",
+                )
             action_ok = True
             if grounded.source_tier == "tier1_dom" and grounded.element_handle is not None:
                 try:
@@ -948,6 +955,14 @@ class ConversationEngine:
         grounded = self.aura_core.grounding_engine.resolve(target, app_context=app_context)
         if grounded is None:
             return None
+
+        if getattr(grounded, "is_ambiguous", False) is True and getattr(grounded, "candidate_options", None):
+            opts_labels = [f"'{c.label}'" for c in grounded.candidate_options[:3]]
+            opts_str = " or ".join(opts_labels)
+            return ForegroundMatch(
+                f"I found multiple matching media items on screen ({opts_str}). Which one should I play (e.g. 1st or 2nd)?",
+                "ambiguous_clarification",
+            )
 
         action_ok = True
         if grounded.source_tier == "tier1_dom" and grounded.element_handle is not None:

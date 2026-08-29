@@ -40,6 +40,9 @@ class GroundedTarget:
     app_name: str = ""
     timestamp: float = field(default_factory=time.time)
     metadata: dict[str, Any] = field(default_factory=dict)
+    is_ambiguous: bool = False
+    confidence_gap: float = 1.0
+    candidate_options: list["GroundedTarget"] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -51,6 +54,9 @@ class GroundedTarget:
             "app_name": self.app_name,
             "timestamp": self.timestamp,
             "metadata": self.metadata,
+            "is_ambiguous": self.is_ambiguous,
+            "confidence_gap": self.confidence_gap,
+            "candidate_options": [c.to_dict() for c in self.candidate_options] if self.candidate_options else [],
         }
 
 
@@ -171,28 +177,48 @@ class GroundingEngine:
                     # Query accessibility tree elements
                     elements = adapter.find_elements(name=reference)
                     if not elements:
-                        # Fuzzy match across element names in active window
                         tree = adapter.get_tree(max_depth=3)
                         if tree:
-                            best_elem = None
-                            best_ratio = 0.0
+                            matches: list[tuple[float, Any]] = []
                             ref_lower = reference.lower()
 
                             def _scan_node(node):
-                                nonlocal best_elem, best_ratio
                                 if node.name:
                                     ratio = difflib.SequenceMatcher(None, ref_lower, node.name.lower()).ratio()
-                                    if ratio > best_ratio:
-                                        best_ratio = ratio
-                                        best_elem = node
-                                for child in node.children:
+                                    if ratio >= 0.70:
+                                        matches.append((ratio, node))
+                                for child in getattr(node, "children", []):
                                     _scan_node(child)
 
                             _scan_node(tree)
-                            if best_ratio >= 0.80 and best_elem and best_elem.bounding_box:
+                        matches.sort(key=lambda x: x[0], reverse=True)
+
+                        if matches and matches[0][0] >= 0.80:
+                            best_ratio, best_elem = matches[0]
+                            if best_elem.bounding_box:
                                 bb = best_elem.bounding_box
                                 cx = int(bb.left + bb.width / 2)
                                 cy = int(bb.top + bb.height / 2)
+
+                                candidate_targets = []
+                                for r_score, elem_node in matches[:3]:
+                                    if elem_node.bounding_box:
+                                        eb = elem_node.bounding_box
+                                        candidate_targets.append(
+                                            GroundedTarget(
+                                                label=elem_node.name or reference,
+                                                center=(int(eb.left + eb.width / 2), int(eb.top + eb.height / 2)),
+                                                bbox=(eb.left, eb.top, eb.right, eb.bottom),
+                                                element_handle=elem_node,
+                                                confidence=float(r_score),
+                                                source_tier="tier1_a11y",
+                                                app_name=getattr(app_context, "app_name", ""),
+                                            )
+                                        )
+
+                                ratio_gap = (matches[0][0] - matches[1][0]) if len(matches) > 1 else 1.0
+                                is_ambiguous = (len(candidate_targets) > 1 and ratio_gap < 0.05)
+
                                 return GroundedTarget(
                                     label=best_elem.name or reference,
                                     center=(cx, cy),
@@ -201,6 +227,9 @@ class GroundingEngine:
                                     confidence=float(best_ratio),
                                     source_tier="tier1_a11y",
                                     app_name=getattr(app_context, "app_name", ""),
+                                    is_ambiguous=is_ambiguous,
+                                    confidence_gap=float(ratio_gap),
+                                    candidate_options=candidate_targets,
                                 )
 
                     elif elements and elements[0].bounding_box:

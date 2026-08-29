@@ -626,12 +626,17 @@ This sequence establishes the scheduled implementation order for ongoing reliabi
    - *Symptom*: When multiple tabs or window panes contain matching DOM selectors or accessibility labels (e.g., two open browser tabs showing different YouTube videos), `GroundingEngine._resolve_tier1_a11y_or_dom` currently returns `.first` or highest single ratio without checking active tab visibility.
    - *Impact*: In multi-tab browser windows, grounding might resolve and click a background DOM element if active tab scoping is absent.
    - *Mitigation*: Restrict DOM text search to `:visible` elements in the active Playwright tab/page context when CDP attached.
+28. **Tab Matching Ambiguity Handling**
+   - *Severity*: ✅ **100% RESOLVED**
+   - *Location*: [`src/vision/grounding_engine.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/vision/grounding_engine.py), [`src/brain/conversation_engine.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/conversation_engine.py)
+   - *Resolutions*: Implemented multi-candidate delta score tracking in `GroundingEngine` and conversational clarification in `_try_resolve_in_foreground` when multiple open tabs match near-identical ratios (`ratio_gap < 0.05`).
+   - *Verification*: `tests/unit/test_grounding_disambiguation.py` — 4/4 passed (100%).
 
-29. **Media Grounding Single-Best-Guess & Candidate Disambiguation Risk**
-   - *Severity*: 🚨 **CRITICAL / HIGH SEVERITY** (Higher priority than Item 28: high probability of false-positive selection on video platforms due to near-duplicate title search results)
-   - *Symptom*: Platform search pages (e.g. YouTube result lists) display near-duplicate title candidates (e.g., "GTA 6 Trailer" vs "GTA 6 Trailer Reaction"). `GroundingEngine.resolve()` returns the single best fuzzy match without computing a runner-up confidence-gap.
-   - *Impact*: Low confidence-gap scenarios could click a false-positive video title and report false success to the user.
-   - *Mitigation*: Incorporate composite trace ranking or runner-up delta check in `GroundingEngine` when multiple candidates match above threshold.
+29. **Single-Best-Guess Candidates / Disambiguation**
+   - *Severity*: ✅ **100% RESOLVED**
+   - *Location*: [`src/vision/grounding_engine.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/vision/grounding_engine.py), [`src/brain/conversation_engine.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/conversation_engine.py)
+   - *Resolutions*: Multi-candidate score tracking computes `confidence_gap = top_score - second_score`. When `ratio_gap < 0.05`, `GroundedTarget` marks `is_ambiguous = True` and prompts the user directly for candidate selection (*"Which one should I play/select? 1st or 2nd?"*).
+   - *Verification*: `tests/unit/test_grounding_disambiguation.py` — 4/4 passed (100%).
 
 30. **`AutonomousBrowserEngine` Integration Test Divergence & Memory Fixture Error**
    - *Severity*: ✅ **100% RESOLVED**
