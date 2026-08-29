@@ -30,8 +30,11 @@ _VOCABULARY = {
     "version", "hardware", "weather", "temperature", "diagnostics",
     "capabilities", "limitations", "planners", "backends", "memory",
     "workspace", "tokens", "button", "hallucination", "mistake", "grammar",
-    "thought", "update", "system", "command", "desktop", "browser",
-    "conversion", "exchange", "currency", "rate", "dollar", "dollars", "rupee", "rupees"
+    "thought", "update", "system", "command", "desktop", "browser", "browse",
+    "conversion", "exchange", "currency", "rate", "dollar", "dollars", "rupee", "rupees",
+    "research", "synthesize", "analyze", "navigate", "extract", "document", "summarize",
+    "terminal", "code", "refactor", "benchmark", "execution", "orchestration", "reasoning",
+    "findings", "advancements", "neuromorphic", "computing"
 }
 
 # Common shorthand, STT noise, and typos mapped to clean English

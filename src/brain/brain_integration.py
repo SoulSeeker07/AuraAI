@@ -6,10 +6,16 @@ It provides a unified interface for executing tools with consistent
 lifecycle, error handling, and progress reporting.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from workspace.workspace_manager import WorkspaceManager
+    from router.tool_router import ToolRouter
 
 # Add parent directory to path to allow importing core modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))

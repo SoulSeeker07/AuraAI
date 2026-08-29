@@ -1271,11 +1271,7 @@ class VoiceNotchOverlay(QWidget):
                     from core.aura_core import AuraCore
                     core = AuraCore.get_instance()
                 except Exception:
-                    try:
-                        from src.core.aura_core import AuraCore
-                        core = AuraCore.get_instance()
-                    except Exception:
-                        pass
+                    pass
 
                 reply_text = ""
                 loop = asyncio.new_event_loop()

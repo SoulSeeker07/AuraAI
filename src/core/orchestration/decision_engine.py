@@ -448,7 +448,6 @@ class DecisionEngine:
                     "unit test",
                     "fix bug",
                     "ast",
-                    "git",
                     "repository",
                     "script",
                     "code.analyze",
@@ -469,6 +468,10 @@ class DecisionEngine:
                     "scan repository",
                     "inspect repository",
                 ]
+            )
+            or (
+                bool(re.search(r"\bgit\b", clean_goal_for_coding))
+                and not any(k in clean_goal_for_coding for k in ["github", "gitlab", "gitpod", "gitter"])
             )
             or (
                 "code" in clean_goal_for_coding
@@ -493,7 +496,6 @@ class DecisionEngine:
                         "debug",
                         "explain",
                         "review",
-                        "in",
                     ]
                 )
             )
@@ -530,26 +532,45 @@ class DecisionEngine:
         )
 
         is_research = (
-            any(
-                w in goal_lower
-                for w in [
-                    "research",
-                    "search web",
-                    "search for",
-                    "search the",
-                    "look up",
-                    "find papers",
-                    "find articles",
-                    "find sources",
-                    "oauth2",
-                    "release",
-                    "conversion rate",
-                    "exchange rate",
-                    "currency",
-                    "usd",
-                    "inr",
-                    " rate",
-                ]
+            (
+                goal_lower.startswith("search ")
+                or goal_lower.startswith("research ")
+                or any(
+                    w in goal_lower
+                    for w in [
+                        "research",
+                        "search web",
+                        "search for",
+                        "search the",
+                        "look up",
+                        "find papers",
+                        "find articles",
+                        "find sources",
+                        "oauth2",
+                        "release",
+                        "conversion rate",
+                        "exchange rate",
+                        "currency",
+                        "usd",
+                        "inr",
+                        " rate",
+                    ]
+                )
+            )
+            and not (
+                any(
+                    w in goal_lower
+                    for w in [
+                        "find the file",
+                        "find file",
+                        "search workspace",
+                        "search file",
+                        "search for file",
+                        "locate file",
+                        "where is the file",
+                    ]
+                )
+                or bool(re.search(r"\bsearch\s+(?:for\s+)?[\w\-\.\/]+\.(?:txt|py|json|csv|pdf|md|doc|png|jpg|cpp|h|html|js|ts|rs|go|c)\b", goal_lower))
             )
             and not is_system_query
             and not is_definition
@@ -688,6 +709,7 @@ class DecisionEngine:
                     "find file",
                     "search workspace",
                     "search file",
+                    "search for file",
                     "find where",
                     "locate file",
                     "where is the file",
@@ -695,11 +717,42 @@ class DecisionEngine:
                     "personal_os.search",
                 ]
             )
-            and not is_research
+            or bool(re.search(r"\bsearch\s+(?:for\s+)?[\w\-\.\/]+\.(?:txt|py|json|csv|pdf|md|doc|png|jpg|cpp|h|html|js|ts|rs|go|c)\b", goal_lower))
         )
 
         intent_capability = ""
-        if is_workspace_search:
+        is_dotted_capability = bool(re.match(r"^[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\-]+$", goal_lower.strip()))
+        resolved_domain = None
+        if is_dotted_capability:
+            cap_name = goal_lower.strip()
+            try:
+                from core.capabilities.capability_registry import CapabilityRegistry
+                resolved_domain = CapabilityRegistry.get_instance().resolve_domain(cap_name)
+            except Exception:
+                resolved_domain = None
+
+        if is_dotted_capability and resolved_domain is not None:
+            cap_name = goal_lower.strip()
+            intent_capability = cap_name
+            domain_intent_map = {
+                "coding": IntentType.CODING,
+                "browser": IntentType.BROWSER,
+                "research": IntentType.RESEARCH,
+                "memory": IntentType.MEMORY,
+                "vision": IntentType.VISION,
+                "voice": IntentType.VOICE,
+                "daemon": IntentType.DAEMON,
+                "scheduler": IntentType.SCHEDULER,
+                "desktop": IntentType.DESKTOP_ACTION,
+                "desktop_action": IntentType.DESKTOP_ACTION,
+                "personal_os": IntentType.DESKTOP_ACTION,
+                "workflow": IntentType.WORKFLOW,
+                "session": IntentType.SESSION,
+                "learning": IntentType.LEARNING,
+                "system": IntentType.SYSTEM_QUERY,
+            }
+            intent = domain_intent_map.get(resolved_domain, IntentType.DESKTOP_ACTION)
+        elif is_workspace_search:
             intent = IntentType.DESKTOP_ACTION
             intent_capability = "personal_os.search"
         elif is_personal_os:

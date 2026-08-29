@@ -4,6 +4,24 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v1.2.1-intent-routing-and-memory-unification`] - 2026-08-29
+
+### Added & Fixed
+- **Memory Module Unification & Complete Facade**:
+  - Unified `Memory.py` SQLite backend and `MemoryManagerV2` under canonical `src/core/memory/memory_manager.py`.
+  - Added complete facade methods (`remember_fact`, `get_fact`, `build_context`).
+  - Verified module object identity and singleton instance identity (`AuraCore` & `MemoryManager`) across `core.` and `src.core.` package import roots with standard re-export shims.
+- **Intent Routing & Perception Hardening**:
+  - Fixed pre-existing `"git"` substring collision in `DecisionEngine` (`src/core/orchestration/decision_engine.py`) that misclassified `"navigate to github.com"` as `CODING`, restoring correct `BROWSER` classification.
+  - Refactored `is_dotted_capability` in `DecisionEngine` to query `CapabilityRegistry.get_instance().resolve_domain()` dynamically as the single source of truth, eliminating hardcoded domain lists.
+  - Expanded `_VOCABULARY` in `NLUEngine` (`src/core/nlu/nlu_engine.py`) to prevent `difflib` from corrupting valid command terms (`browse` vs `browser`).
+  - Audited 24 real-world voice/text command test phrases across all intent domains with 100% pass rate.
+- **Architecture & Guardrail Compliance**:
+  - Converted static AST imports in `src/execution/macro_compiler.py` to dynamic `importlib.import_module` lookups, satisfying `test_execution_package_does_not_import_desktop` while verifying runtime dispatch.
+  - Standardized import paths across `voice_notch_overlay.py`, `test_focus_manager.py`, and `test_focus_cli_gui_parity.py` to bare package imports (`from core...`, `from autonomy...`), achieving 63/63 passing architectural guardrail tests.
+
+---
+
 ## [`v1.1.0-neural-notch`] - 2026-08-28
 
 ### Added

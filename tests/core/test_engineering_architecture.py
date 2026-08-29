@@ -71,6 +71,7 @@ def test_worker_manager_registration_and_status():
     assert cancelled is True
 
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_software_engineering_supervisor_execution(tmp_path):
     supervisor = SoftwareEngineeringSupervisor(workspace=tmp_path)

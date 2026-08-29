@@ -22,7 +22,7 @@ import pytest
 @pytest.fixture
 def fm(tmp_path):
     """Return a fresh FocusManager backed by a temp DB for each test."""
-    from src.core.focus_manager import FocusManager
+    from core.focus_manager import FocusManager
 
     db = tmp_path / "focus_test.db"
     FocusManager.reset_instance()

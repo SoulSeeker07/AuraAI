@@ -8,4 +8,5 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pytest
 
-sys.exit(pytest.main([__file__, "-v", "--tb=short"]))
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__, "-v", "--tb=short"]))

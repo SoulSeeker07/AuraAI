@@ -248,7 +248,9 @@ class MacroCompiler:
 
         # 2. Check Tier 1 UIA if native adapter is available
         try:
-            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            import importlib
+            reg_mod = importlib.import_module("desktop.native.managers.native_manager_registry")
+            NativeManagerRegistry = getattr(reg_mod, "NativeManagerRegistry")
             uia_mgr = NativeManagerRegistry.get_instance().get_manager("uia")
             if uia_mgr and hasattr(uia_mgr, "adapter") and uia_mgr.adapter.is_available():
                 elements = uia_mgr.adapter.find_elements(name=expected_label)
@@ -303,7 +305,9 @@ class MacroCompiler:
 
         # Native Desktop dispatch
         try:
-            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            import importlib
+            reg_mod = importlib.import_module("desktop.native.managers.native_manager_registry")
+            NativeManagerRegistry = getattr(reg_mod, "NativeManagerRegistry")
             reg = NativeManagerRegistry.get_instance()
             input_mgr = reg.get_manager("input")
             if input_mgr:

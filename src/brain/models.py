@@ -75,6 +75,9 @@ class WebSearchResultSimple:
     score: float = 0.0
 
 
+WebSearchResult = WebSearchResultSimple
+
+
 @dataclass(frozen=True)
 class ResearchFinding:
     """A finding from deep research."""

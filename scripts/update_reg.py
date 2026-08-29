@@ -1,4 +1,4 @@
-﻿f = "src/desktop/native/capability_registry.py"
+f = "src/desktop/native/capability_registry.py"
 with open(f, encoding="utf-8") as fh:
     lines = fh.readlines()
 

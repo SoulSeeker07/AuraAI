@@ -1,26 +1,18 @@
 """
-Memory System
-
-Provides intelligent memory management for Aura with:
-- 5 memory layers (Working, Session, Long-Term, Knowledge, Workspace)
-- Importance scoring
-- Category classification
-- Smart retrieval with ranking
-- Forgetting engine
-- Conflict resolution
-- Sensitive data handling
+Re-export shim for core.memory -> src.core.memory.
+Canonical implementation lives in src/core/memory/.
 """
 
-from .memory_analyzer import MemoryAnalyzer
-from .memory_manager_v2 import MemoryManagerV2
-from .memory_types import (
+from src.core.memory import (
     CategoryType,
     ConflictResult,
     ForgettingResult,
     ImportanceLevel,
     MemoryAnalysisResult,
+    MemoryAnalyzer,
     MemoryFact,
     MemoryLayer,
+    MemoryManagerV2,
     MemoryRetrievalResult,
     MemoryStore,
     MemorySummary,
@@ -28,7 +20,6 @@ from .memory_types import (
 )
 
 __all__ = [
-    # Types
     "MemoryFact",
     "MemoryLayer",
     "CategoryType",
@@ -40,7 +31,6 @@ __all__ = [
     "ConflictResult",
     "MemorySummary",
     "MemoryStore",
-    # Components
     "MemoryAnalyzer",
     "MemoryManagerV2",
 ]

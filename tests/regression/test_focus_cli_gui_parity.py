@@ -18,7 +18,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+def _run(coro):
+    """Run an async coroutine safely across multiple tests and event loop lifecycles."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
+
 
 def _make_mock_groq_response(text: str):
     """Build a minimal Groq response mock that passes AuraCore's response parsing."""
@@ -42,8 +53,8 @@ def isolated_aura(tmp_path):
     - Temp SQLite DB for FocusManager
     - Singleton reset before/after each test to guarantee isolation
     """
-    from src.core.aura_core import AuraCore
-    from src.core.focus_manager import FocusManager
+    from core.aura_core import AuraCore
+    from core.focus_manager import FocusManager
 
     # Reset singletons
     AuraCore.reset_instance()
@@ -90,18 +101,14 @@ class TestCLIGUIParity:
         core, fm = isolated_aura
 
         # Simulate CLI entrypoint call
-        asyncio.get_event_loop().run_until_complete(
-            core.process_request("start new task api_refactor")
-        )
+        _run(core.process_request("start new task api_refactor"))
         cli_focus = fm.get_current()
 
         # Reset current focus pointer but keep DB state
         fm._current_focus = None
 
         # Simulate GUI entrypoint call with the same message
-        asyncio.get_event_loop().run_until_complete(
-            core.process_request("start new task api_refactor")
-        )
+        _run(core.process_request("start new task api_refactor"))
         gui_focus = fm.get_current()
 
         # Both must resolve to the same thread (fuzzy dedup prevents duplicate creation)
@@ -118,15 +125,11 @@ class TestCLIGUIParity:
         fm.create("task_b", {})
 
         # CLI: switch back to task_a
-        asyncio.get_event_loop().run_until_complete(
-            core.process_request("back to task_a")
-        )
+        _run(core.process_request("back to task_a"))
         cli_focus = fm.get_current()
 
         # GUI: same switch — focus must already be task_a (idempotent)
-        asyncio.get_event_loop().run_until_complete(
-            core.process_request("back to task_a")
-        )
+        _run(core.process_request("back to task_a"))
         gui_focus = fm.get_current()
 
         assert cli_focus.task_id == "task_a"
@@ -142,9 +145,7 @@ class TestCLIGUIParity:
         fm.create("shared_task", {"step": 0})
 
         # CLI turn updates state
-        asyncio.get_event_loop().run_until_complete(
-            core.process_request("continue working on shared_task")
-        )
+        _run(core.process_request("continue working on shared_task"))
 
         # State must be updated in DB — readable from any path
         loaded = fm._load_thread("shared_task")
@@ -160,8 +161,8 @@ class TestInterruptSeverityRouting:
         core, fm = isolated_aura
         fm.create("current_work", {})
 
-        from src.autonomy.trigger_scheduler import TriggerScheduler
-        from src.autonomy.models import Trigger, TriggerType, TriggerState
+        from autonomy.trigger_scheduler import TriggerScheduler
+        from autonomy.models import Trigger, TriggerType, TriggerState
 
         scheduler = TriggerScheduler()
 
@@ -173,7 +174,7 @@ class TestInterruptSeverityRouting:
             state=TriggerState.ARMED,
         )
 
-        asyncio.get_event_loop().run_until_complete(
+        _run(
             scheduler.fire_background_interrupt(
                 trigger=trigger,
                 new_task_id="security_incident",
@@ -190,20 +191,20 @@ class TestInterruptSeverityRouting:
         core, fm = isolated_aura
         fm.create("current_work", {})
 
-        from src.autonomy.trigger_scheduler import TriggerScheduler
-        from src.autonomy.models import Trigger, TriggerType, TriggerState
+        from autonomy.trigger_scheduler import TriggerScheduler
+        from autonomy.models import Trigger, TriggerType, TriggerState
 
         scheduler = TriggerScheduler()
 
         trigger = Trigger(
             trigger_id="test_low",
-            trigger_type=TriggerType.SCHEDULED,
+            trigger_type=TriggerState.SCHEDULED if hasattr(TriggerState, 'SCHEDULED') else TriggerType.SCHEDULED,
             action_goal="Weekly backup reminder",
             execution_map={"risk_level": "low"},
             state=TriggerState.ARMED,
         )
 
-        asyncio.get_event_loop().run_until_complete(
+        _run(
             scheduler.fire_background_interrupt(
                 trigger=trigger,
                 new_task_id="backup_task",
@@ -224,8 +225,8 @@ class TestInterruptSeverityRouting:
     def test_severity_classification_uses_risk_level_enum(self, isolated_aura):
         _, fm = isolated_aura
 
-        from src.autonomy.trigger_scheduler import TriggerScheduler
-        from src.autonomy.models import Trigger, TriggerType, TriggerState
+        from autonomy.trigger_scheduler import TriggerScheduler
+        from autonomy.models import Trigger, TriggerType, TriggerState
 
         scheduler = TriggerScheduler()
 

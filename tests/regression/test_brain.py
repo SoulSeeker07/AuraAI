@@ -54,6 +54,7 @@ class TestBrainRegression:
 
         # Note: Singleton issue may prevent proper initialization
         core = AuraCore()
+        core.clear_conversation_history()
 
         # Add to conversation
         core.add_to_conversation("user", "Hello world")

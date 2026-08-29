@@ -22,7 +22,7 @@ from core.orchestration import (
     ResultMerger,
 )
 from core.planning.execution_result import ExecutionResult
-from desktop.native.capability_registry import CapabilityRegistry
+from desktop.native.capability_registry import CapabilityRegistry as NativeCapabilityRegistry
 from desktop.native.desktop_execution_engine import (
     DesktopExecutionEngine,
     ExecutionConfig,
@@ -34,6 +34,8 @@ from desktop.planner import DesktopPlanner
 
 @pytest.fixture
 def clean_registries():
+    from core.capabilities.capability_registry import CapabilityRegistry as UniversalCapabilityRegistry
+    UniversalCapabilityRegistry.reset_instance()
     PlannerRegistry.reset_instance()
     BackendRegistry.reset_instance()
     reset_desktop_execution_engine()
@@ -45,7 +47,7 @@ def clean_registries():
     # Discover native desktop managers
     m_reg = NativeManagerRegistry.get_instance()
     m_reg.discover("desktop.native.managers")
-    c_reg = CapabilityRegistry()
+    c_reg = NativeCapabilityRegistry()
     engine = DesktopExecutionEngine(
         manager_registry=m_reg,
         registry=c_reg,
@@ -66,6 +68,7 @@ def clean_registries():
     reset_desktop_execution_engine()
     PlannerRegistry.reset_instance()
     BackendRegistry.reset_instance()
+    UniversalCapabilityRegistry.reset_instance()
 
 
 def test_planner_registry(clean_registries):
@@ -144,7 +147,10 @@ def test_master_orchestrator_direct_backend_dispatch(clean_registries):
     orchestrator = MasterOrchestrator(planner_registry=p_reg, backend_registry=b_reg)
 
     # In M20, code.analyze with target_files performs real AST inspection and succeeds
-    res = orchestrator.process_request("code.analyze", parameters={"target_files": ["tests/conftest.py"]})
+    res = orchestrator.process_request(
+        "code.analyze",
+        parameters={"target_files": ["tests/conftest.py"]},
+    )
     assert res.planner in ("coding", "cognitive_orchestrator")
     assert res.success is True
 

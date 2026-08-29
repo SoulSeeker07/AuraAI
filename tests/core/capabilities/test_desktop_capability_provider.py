@@ -88,3 +88,4 @@ def test_desktop_provider_respects_runtime_manager_exclusion(monkeypatch):
 
     finally:
         NativeManagerRegistry.reset_instance()
+        NativeManagerRegistry.get_instance().discover("desktop.native.managers")

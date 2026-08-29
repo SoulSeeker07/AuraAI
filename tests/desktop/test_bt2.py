@@ -1,6 +1,9 @@
 import subprocess
+import sys
 
-ps = """
+
+def main():
+    ps = """
 Add-Type -TypeDefinition @"
 using System;
 using System.Threading.Tasks;
@@ -34,12 +37,16 @@ public class BTTester {
 [BTTester]::Test().GetAwaiter().GetResult()
 """
 
-r = subprocess.run(
-    ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-    capture_output=True,
-    text=True,
-    timeout=20,
-)
-print(r.stdout.strip())
-if r.stderr:
-    print("ERR:", r.stderr.strip())
+    r = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    print(r.stdout.strip())
+    if r.stderr:
+        print("ERR:", r.stderr.strip())
+
+
+if __name__ == "__main__":
+    main()

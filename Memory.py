@@ -72,6 +72,8 @@ class Memory:
         self,
         db_path: Path | str = MEMORY_DB,
         chat_log_path: Path | str = CHAT_LOG_FILE,
+        init_schema: bool = True,
+        **kwargs,
     ):
         import logging
 

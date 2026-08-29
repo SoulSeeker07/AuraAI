@@ -39,115 +39,128 @@ GOAL = (
 START = "https://en.wikipedia.org/wiki/Main_Page"
 MAX_STEPS = 10
 
-print(f"\n{SEP}")
-print("  HARD TEST: multi-step search -> click -> read")
-print(SEP)
-print(f"Goal  : {GOAL[:120]}...")
-print(f"Start : {START}")
-print(f"Models: {GROQ_VISION_FALLBACK_MODELS[:2]} + {len(GROQ_VISION_FALLBACK_MODELS)-2} more fallbacks")
-print()
 
-try:
-    loop = GroqVisionLoop()
-    print(f"Active model: {loop.model}\n")
-except Tier3Unavailable as e:
-    print(f"SKIP: {e}"); sys.exit(1)
+def main():
+    print(f"\n{SEP}")
+    print("  HARD TEST: multi-step search -> click -> read")
+    print(SEP)
+    print(f"Goal  : {GOAL[:120]}...")
+    print(f"Start : {START}")
+    print(f"Models: {GROQ_VISION_FALLBACK_MODELS[:2]} + {len(GROQ_VISION_FALLBACK_MODELS)-2} more fallbacks")
+    print()
 
-history = []
-budget  = 3
-t_total = time.time()
+    try:
+        loop = GroqVisionLoop()
+        print(f"Active model: {loop.model}\n")
+    except Tier3Unavailable as e:
+        print(f"SKIP: {e}")
+        return 1
 
-with sync_playwright() as pw:
-    browser = pw.chromium.launch(
-        headless=True,
-        args=["--disable-blink-features=AutomationControlled", "--no-sandbox",
-              "--disable-infobars", "--disable-extensions"],
-    )
-    ctx = browser.new_context(
-        viewport={"width": 1280, "height": 800},
-        user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-        ),
-    )
-    page = ctx.new_page()
+    history = []
+    budget = 3
+    t_total = time.time()
 
-    print(f"[browser] loading {START}...")
-    page.goto(START, wait_until="domcontentloaded", timeout=15000)
-    print(f"[browser] ready: {page.title()} | {page.url}\n")
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox",
+                  "--disable-infobars", "--disable-extensions"],
+        )
+        ctx = browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+        )
+        page = ctx.new_page()
 
-    result = {"status": "PARTIAL_SUCCESS", "url": START, "summary": ""}
+        print(f"[browser] loading {START}...")
+        page.goto(START, wait_until="domcontentloaded", timeout=15000)
+        print(f"[browser] ready: {page.title()} | {page.url}\n")
 
-    for step in range(MAX_STEPS):
-        url_challenge = loop._url_looks_challenged(page.url)
-        if url_challenge:
-            print(f"  WARNING  : Bot wall detected ({url_challenge}) -> switching to Google")
-            page.goto("https://www.google.com/search?q=Groq+LLM+speed+tokens+per+second+2024", wait_until="domcontentloaded")
-            time.sleep(1)
+        result = {"status": "PARTIAL_SUCCESS", "url": START, "summary": ""}
 
-        t0 = time.time()
-        print(f"[step {step:02d}] querying {loop.model}...")
-        action  = loop._ask_model(GOAL, page, history)
-        rtt     = time.time() - t0
+        for step in range(MAX_STEPS):
+            url_challenge = loop._url_looks_challenged(page.url)
+            if url_challenge:
+                print(f"  WARNING  : Bot wall detected ({url_challenge}) -> switching to Google")
+                page.goto("https://www.google.com/search?q=Groq+LLM+speed+tokens+per+second+2024", wait_until="domcontentloaded")
+                time.sleep(1)
 
-        kind   = action.get("action","?")
-        reason = action.get("reasoning","")
-        print(f"  action   : {kind}")
-        print(f"  reasoning: {reason}")
-        if kind == "click":   print(f"  coords   : ({action.get('x')}, {action.get('y')})")
-        if kind == "type":    print(f"  text     : {action.get('text','')!r}")
-        if kind == "navigate":print(f"  url      : {action.get('url')}")
-        if kind == "key":     print(f"  key      : {action.get('key')}")
-        print(f"  rtt      : {rtt:.2f}s | url: {page.url[:80]}")
+            t0 = time.time()
+            print(f"[step {step:02d}] querying {loop.model}...")
+            action = loop._ask_model(GOAL, page, history)
+            rtt = time.time() - t0
 
-        if loop._is_high_risk(reason, set()):
-            action["action"] = "ask_user"
-            print("  WARNING  : high-risk keyword flagged")
+            kind = action.get("action", "?")
+            reason = action.get("reasoning", "")
+            print(f"  action   : {kind}")
+            print(f"  reasoning: {reason}")
+            if kind == "click":
+                print(f"  coords   : ({action.get('x')}, {action.get('y')})")
+            if kind == "type":
+                print(f"  text     : {action.get('text', '')!r}")
+            if kind == "navigate":
+                print(f"  url      : {action.get('url')}")
+            if kind == "key":
+                print(f"  key      : {action.get('key')}")
+            print(f"  rtt      : {rtt:.2f}s | url: {page.url[:80]}")
 
-        if action.get("action") == "done":
-            history.append(action)
-            result = {"status":"SUCCESS","url":page.url,"title":page.title(),"summary":reason}
-            print(f"\n{'='*68}\nDONE in {step+1} step(s) ({time.time()-t_total:.1f}s)\n")
-            print(f"Final URL  : {page.url}")
-            print(f"Page title : {page.title()}")
-            print(f"Summary    :\n{reason}")
-            break
+            if loop._is_high_risk(reason, set()):
+                action["action"] = "ask_user"
+                print("  WARNING  : high-risk keyword flagged")
 
-        if action.get("action") == "ask_user":
-            history.append(action)
-            result = {"status":"ASK_USER","url":page.url,"summary":reason}
-            print(f"\nASK_USER: {reason}")
-            break
-
-        executed = loop._execute_with_correction(page, action)
-        history.append(executed)
-
-        effect = executed.get("effect","")
-        err    = executed.get("error","")
-        if effect: print(f"  effect   : {effect}")
-        if err:    print(f"  error    : {err}")
-
-        if effect.startswith("no visible change"):
-            budget -= 1
-            print(f"  WARNING  : no change (budget={budget})")
-            if budget <= 0:
-                result = {"status":"STUCK","url":page.url,"summary":"coord misses exhausted budget"}
-                print("\nSTUCK - coordinate accuracy limit hit.")
+            if action.get("action") == "done":
+                history.append(action)
+                result = {"status": "SUCCESS", "url": page.url, "title": page.title(), "summary": reason}
+                print(f"\n{'=' * 68}\nDONE in {step + 1} step(s) ({time.time() - t_total:.1f}s)\n")
+                print(f"Final URL  : {page.url}")
+                print(f"Page title : {page.title()}")
+                print(f"Summary    :\n{reason}")
                 break
+
+            if action.get("action") == "ask_user":
+                history.append(action)
+                result = {"status": "ASK_USER", "url": page.url, "summary": reason}
+                print(f"\nASK_USER: {reason}")
+                break
+
+            executed = loop._execute_with_correction(page, action)
+            history.append(executed)
+
+            effect = executed.get("effect", "")
+            err = executed.get("error", "")
+            if effect:
+                print(f"  effect   : {effect}")
+            if err:
+                print(f"  error    : {err}")
+
+            if effect.startswith("no visible change"):
+                budget -= 1
+                print(f"  WARNING  : no change (budget={budget})")
+                if budget <= 0:
+                    result = {"status": "STUCK", "url": page.url, "summary": "coord misses exhausted budget"}
+                    print("\nSTUCK - coordinate accuracy limit hit.")
+                    break
+            else:
+                budget = 3
+
         else:
-            budget = 3
+            result = {"status": "MAX_STEPS", "url": page.url, "summary": "ran out of steps"}
+            print(f"\nMAX_STEPS ({MAX_STEPS}) reached.")
 
-    else:
-        result = {"status":"MAX_STEPS","url":page.url,"summary":"ran out of steps"}
-        print(f"\nMAX_STEPS ({MAX_STEPS}) reached.")
+        browser.close()
 
-    browser.close()
+    elapsed = time.time() - t_total
+    print(f"\n{SEP}")
+    print(f"status  : {result['status']}")
+    print(f"elapsed : {elapsed:.1f}s   steps: {len(history)}")
+    print(f"model   : {loop.model}")
+    print(SEP)
+    return 0 if result["status"] in ("SUCCESS", "ASK_USER") else 1
 
-elapsed = time.time() - t_total
-print(f"\n{SEP}")
-print(f"status  : {result['status']}")
-print(f"elapsed : {elapsed:.1f}s   steps: {len(history)}")
-print(f"model   : {loop.model}")
-print(SEP)
-sys.exit(0 if result["status"] in ("SUCCESS","ASK_USER") else 1)
+
+if __name__ == "__main__":
+    sys.exit(main())
 

@@ -1,6 +1,9 @@
 import subprocess
+import sys
 
-ps = """
+
+def main():
+    ps = """
 Add-Type -AssemblyName System.Runtime.WindowsRuntime; 
 [Windows.Devices.Radios.Radio,Windows.System.Devices,ContentType=WindowsRuntime]|Out-Null; 
 [Windows.Devices.Radios.RadioAccessStatus,Windows.System.Devices,ContentType=WindowsRuntime]|Out-Null; 
@@ -22,11 +25,15 @@ Start-Sleep -Milliseconds 1000;
 Write-Output ('StateAfterOn:'+$bt.State.ToString());
 """
 
-r = subprocess.run(
-    ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
-    capture_output=True,
-    text=True,
-)
-print(r.stdout.strip())
-if r.stderr:
-    print("ERR:", r.stderr.strip())
+    r = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+        capture_output=True,
+        text=True,
+    )
+    print(r.stdout.strip())
+    if r.stderr:
+        print("ERR:", r.stderr.strip())
+
+
+if __name__ == "__main__":
+    main()

@@ -1,4 +1,4 @@
-﻿f = "src/desktop/native/desktop_execution_engine.py"
+f = "src/desktop/native/desktop_execution_engine.py"
 c = open(f, encoding="utf-8").read()
 
 old = '            "read_clipboard": ["read clipboard", "get clipboard", "paste clipboard"],\n            "write_clipboard": ["write clipboard", "set clipboard", "copy to clipboard"],\n            "clear_clipboard": ["clear clipboard", "empty clipboard"],'

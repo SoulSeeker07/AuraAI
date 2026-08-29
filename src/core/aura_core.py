@@ -28,13 +28,11 @@ _SRC_DIR = _PROJECT_ROOT / "src"
 
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(1, str(_PROJECT_ROOT))
-
-# TD-002: Pre-empt dual package root split-brain
+# TD-002: Pre-empt dual package root split-brain (core.aura_core vs src.core.aura_core)
 if __name__ in sys.modules:
     sys.modules.setdefault("core.aura_core", sys.modules[__name__])
     sys.modules.setdefault("src.core.aura_core", sys.modules[__name__])
+
 
 # Import Memory module for brain integration
 try:
@@ -128,10 +126,7 @@ class AuraCore:
         """Get or create the singleton AuraCore instance."""
         if cls._instance is None:
             cls._instance = cls(config)
-            import sys
-            # Prevent TD-002 split-brain singleton bug across src.core vs core
-            sys.modules["core.aura_core"] = sys.modules.get(__name__, sys.modules.get("src.core.aura_core"))
-            sys.modules["src.core.aura_core"] = sys.modules.get(__name__, sys.modules.get("core.aura_core"))
+
             logger.info(f"[AuraCore Singleton] Initialized unique kernel instance (ID: {id(cls._instance)})")
         return cls._instance
 

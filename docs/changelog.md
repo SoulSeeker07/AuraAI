@@ -2,6 +2,16 @@
 
 All notable changes to the Aura AI platform are documented in detail in [RELEASE.md](../RELEASE.md).
 
+## [v1.2.1] - 2026-08-29 — Intent Routing Hardening, Memory Facade Unification & Layer Compliance
+- Unified memory modules under canonical `MemoryManager` facade (`remember_fact`, `get_fact`, `build_context`).
+- Fixed pre-existing `"git"` substring collision in `DecisionEngine` (`"navigate to github.com"` -> `BROWSER`).
+- Converted `is_dotted_capability` to dynamic `CapabilityRegistry.get_instance().resolve_domain()` lookup.
+- Verified `AuraCore` and `MemoryManager` object & singleton identity across dual package import roots (`core.` vs `src.core.`).
+- Expanded NLU & DecisionEngine intent routing audit across 24 real-world phrases with 100% pass rate.
+- Converted static AST imports in `macro_compiler.py` to dynamic `importlib` lookups and standardized import paths to achieve 63/63 passing architectural guardrail tests.
+
+---
+
 ## [v1.1.0] - 2026-08-28 — Milestone 31: Aura Holographic Neural Notch HUD & Dedicated Live Log Console
 - Next-Gen Aura Dynamic Island Notch HUD (`VoiceNotchOverlay`) anchored flush to the top taskbar with 120Hz smooth state morphing (IDLE -> LISTENING -> PROCESSING -> SUCCESS -> EXPANDED).
 - Hardware-linked multi-frequency rainbow waveform visualizer powered by real-time microphone level streaming.
