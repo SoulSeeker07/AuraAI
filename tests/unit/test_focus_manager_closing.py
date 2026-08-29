@@ -52,3 +52,7 @@ def test_aura_core_focus_intent_closing():
 
     intent3 = AuraCore._resolve_focus_intent(core, "close all focus threads")
     assert intent3["action"] == "close_all"
+
+    intent4 = AuraCore._resolve_focus_intent(core, "open task project_alpha")
+    assert intent4["action"] == "resume"
+    assert intent4["task_id"] == "project_alpha"

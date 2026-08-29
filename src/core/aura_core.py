@@ -409,7 +409,7 @@ class AuraCore:
         close_current_phrases = ("close current task", "end current task", "archive current task",
                                  "finish current task", "close active task")
         close_prefixes = ("close task ", "archive task ", "end task ", "complete task ", "finish task ")
-        resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ")
+        resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ", "open task ", "open thread ", "open focus thread ")
         create_prefixes = ("start new task ", "new task ", "begin task ", "start task ")
         list_phrases = ("what was i doing", "list tasks", "list my tasks", "show tasks",
                         "show active tasks", "what are my tasks", "active threads", "my tasks")
