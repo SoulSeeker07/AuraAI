@@ -15,6 +15,7 @@ import os
 import random
 import re
 import sys
+import threading
 import time
 from enum import Enum, auto
 from pathlib import Path
@@ -1232,7 +1233,6 @@ class VoiceNotchOverlay(QWidget):
             self._proc_timeout.setInterval(60000)  # Extended to 60s for autonomous goals
             self._proc_timeout.start()
 
-        import threading
         def _run_cmd():
             try:
                 import asyncio
