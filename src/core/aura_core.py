@@ -325,39 +325,74 @@ class AuraCore:
 
     # ── Focus helpers (M32) ────────────────────────────────────────────────────
 
-    def _focus_preamble(self, user_goal: str) -> None:
+    def _focus_preamble(self, user_goal: str) -> Optional[str]:
         """
         Resolve the focus thread for this turn before dispatching to the LLM.
-        Zero-latency — deterministic keyword fast-path first, LLM slug extraction
-        only for ambiguous cases.
-
-        Mutates self.focus_manager's current_focus in-place so that the context
-        snippet injected by _build_chat_messages() is immediately up-to-date.
+        Zero-latency — deterministic keyword fast-path first.
+        Returns a formatted string response if the action is fully handled locally,
+        or None if control should pass to general LLM reasoning.
         """
         if self.focus_manager is None:
-            return
+            return None
         try:
             intent = self._resolve_focus_intent(user_goal)
             action = intent.get("action")
             task_id = intent.get("task_id", "")
 
-            if action == "switch" and task_id:
-                self.focus_manager.switch_to(task_id)
-            elif action == "resume" and task_id:
-                self.focus_manager.resume(task_id)
-            elif action == "create" and task_id:
-                self.focus_manager.create(task_id, {}, severity_origin="user")
-            elif action == "close_all":
-                self.focus_manager.close_all_threads()
-            elif action == "close" and task_id:
-                self.focus_manager.close_thread(task_id)
-            elif action == "close_current":
+            if action == "list":
+                threads = self.focus_manager.list_active()
+                if not threads:
+                    return "📋 **Focus Threads**: No active focus threads currently open."
+                curr = self.focus_manager.get_current()
+                curr_id = curr.task_id if curr else None
+                lines = ["📋 **Active Focus Threads**:"]
+                for t in threads:
+                    active_marker = " 👈 (Active)" if t.task_id == curr_id else ""
+                    lines.append(f"- **{t.task_id}** (Status: {t.status}){active_marker}")
+                return "\n".join(lines)
+
+            elif action == "query":
                 curr = self.focus_manager.get_current()
                 if curr:
-                    self.focus_manager.close_thread(curr.task_id)
-            # "list" and "query" don't change focus — just surface info in response
+                    return f"🎯 **Current Focus Task**: '{curr.task_id}' (Severity: {curr.severity})"
+                return "🎯 **Current Focus Task**: Neutral (No active focus thread)."
+
+            elif action == "close_all":
+                count = self.focus_manager.close_all_threads()
+                return f"🗑️ **Focus Manager**: Closed and archived {count} focus thread(s) to long-term memory."
+
+            elif action == "close" and task_id:
+                if self.focus_manager.close_thread(task_id):
+                    return f"🗑️ **Focus Manager**: Closed and archived task '{task_id}' to long-term memory."
+                return f"⚠️ **Focus Manager**: Could not find active task '{task_id}'."
+
+            elif action == "close_current":
+                curr = self.focus_manager.get_current()
+                if curr and self.focus_manager.close_thread(curr.task_id):
+                    return f"🗑️ **Focus Manager**: Closed current task '{curr.task_id}'."
+                return "⚠️ **Focus Manager**: No active focus thread to close."
+
+            elif action == "switch" and task_id:
+                res = self.focus_manager.switch_to(task_id)
+                if res:
+                    return f"📌 **Focus Manager**: Switched active focus context to thread '{task_id}'."
+                self.focus_manager.create(task_id, {}, severity_origin="user")
+                return f"📌 **Focus Manager**: Created and switched to thread '{task_id}'."
+
+            elif action == "resume" and task_id:
+                res = self.focus_manager.resume(task_id) or self.focus_manager.switch_to(task_id)
+                if res:
+                    return f"📌 **Focus Manager**: Resumed focus thread '{task_id}'."
+                self.focus_manager.create(task_id, {}, severity_origin="user")
+                return f"📌 **Focus Manager**: Started new focus thread '{task_id}'."
+
+            elif action == "create" and task_id:
+                self.focus_manager.create(task_id, {}, severity_origin="user")
+                return f"📌 **Focus Manager**: Started new focus thread '{task_id}'."
+
         except Exception as e:
             logger.debug(f"[AuraCore] Focus preamble skipped: {e}")
+        return None
 
     def _focus_postamble(self, user_message: str, response_text: str) -> str:
         """
@@ -1096,6 +1131,11 @@ class AuraCore:
         is_compound = has_connector or (has_multi_clause and len([c for c in msg_lower.replace(";", ",").split(",") if c.strip()]) > 1)
 
         if not is_compound:
+            focus_ans = self._focus_preamble(user_message)
+            if focus_ans is not None:
+                logger.debug(f"[AuraCore] Resolved via Focus Preamble fast-path: {user_message}")
+                return focus_ans
+
             conv_engine = getattr(self, "conversation_engine", None)
             if conv_engine is not None:
                 try:
@@ -1338,7 +1378,9 @@ class AuraCore:
             # ── M32: Focus thread preamble ──────────────────────────────────────
             # Resolve which focus thread this turn belongs to (zero-latency,
             # deterministic) before dispatching to the LLM engine.
-            self._focus_preamble(user_goal)
+            focus_ans = self._focus_preamble(user_goal)
+            if focus_ans is not None:
+                return focus_ans
 
             # ── M33: Vision dictation & Contextual action preamble ──────────────
             # Pure-navigation fast-path and referential pronoun resolution

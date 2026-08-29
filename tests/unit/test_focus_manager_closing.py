@@ -62,3 +62,17 @@ def test_aura_core_focus_intent_closing():
 
     intent6 = AuraCore._resolve_focus_intent(core, "List are a focus thread.")
     assert intent6["action"] == "list"
+
+
+def test_aura_core_focus_preamble_fast_path(tmp_path):
+    fm = FocusManager(db_path=tmp_path / "focus.db")
+    fm.create("backend_refactor", {}, severity_origin="user")
+
+    core = MagicMock(spec=AuraCore)
+    core.focus_manager = fm
+    core._resolve_focus_intent = lambda msg: AuraCore._resolve_focus_intent(core, msg)
+
+    res = AuraCore._focus_preamble(core, "List focus thread.")
+    assert res is not None
+    assert "Active Focus Threads" in res
+    assert "backend_refactor" in res
