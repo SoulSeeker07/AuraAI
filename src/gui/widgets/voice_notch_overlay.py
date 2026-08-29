@@ -78,7 +78,7 @@ IDLE_W, IDLE_H = 260, 36
 LISTENING_W, LISTENING_H = 420, 42
 PROCESSING_W, PROCESSING_H = 440, 76
 SUCCESS_W, SUCCESS_H = 440, 76
-EXPANDED_W, EXPANDED_H = 500, 240
+EXPANDED_W, EXPANDED_H = 540, 320
 
 # 120 FPS High-Refresh Animation Duration
 MORPH_DURATION_MS = 220
@@ -408,11 +408,8 @@ class _ExpandedPanel(QWidget):
         header.addWidget(self._close_btn)
         root.addLayout(header)
 
-        # ── 3 Column Center Cards ──
-        body = QHBoxLayout()
-        body.setSpacing(8)
-
-        # Column 1: Live Transcript Card
+        # ── Vertical Stacking Center Cards ──
+        # 1. Live Transcript Card (Full 100% Width on Top)
         col1 = QFrame()
         col1.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(59,130,246,0.25); border-radius:8px;}")
         c1_lay = QVBoxLayout(col1)
@@ -437,9 +434,15 @@ class _ExpandedPanel(QWidget):
 
         self._transcript_scroll.setWidget(self._transcript_content)
         c1_lay.addWidget(self._transcript_scroll, 1)
-        body.addWidget(col1, 4)
+        root.addWidget(col1, 1)
 
-        # Column 2: Neural Actions Card (starts hidden — only shown when real actions exist)
+        # 2. Bottom Deck: Actions & Sources (Placed Vertically Below Transcript)
+        self._deck_container = QWidget()
+        deck_lay = QHBoxLayout(self._deck_container)
+        deck_lay.setContentsMargins(0, 0, 0, 0)
+        deck_lay.setSpacing(8)
+
+        # Neural Actions Card
         self._col2 = QFrame()
         self._col2.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(168,85,247,0.25); border-radius:8px;}")
         self._c2_lay = QVBoxLayout(self._col2)
@@ -456,9 +459,9 @@ class _ExpandedPanel(QWidget):
         self._c2_lay.addStretch()
 
         self._col2.setVisible(False)
-        body.addWidget(self._col2, 3)
+        deck_lay.addWidget(self._col2, 1)
 
-        # Column 3: Sources Card (starts hidden — only shown when real sources exist)
+        # Sources Card
         self._col3 = QFrame()
         self._col3.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(0,240,255,0.25); border-radius:8px;}")
         self._c3_lay = QVBoxLayout(self._col3)
@@ -475,9 +478,10 @@ class _ExpandedPanel(QWidget):
         self._c3_lay.addStretch()
 
         self._col3.setVisible(False)
-        body.addWidget(self._col3, 3)
+        deck_lay.addWidget(self._col3, 1)
 
-        root.addLayout(body, 1)
+        self._deck_container.setVisible(False)
+        root.addWidget(self._deck_container)
 
         # ── Bottom Command Bar with Rainbow Waveform ──
         bottom_bar = QFrame()
@@ -518,6 +522,8 @@ class _ExpandedPanel(QWidget):
         self._clear_box(self._sources_box)
         self._col2.setVisible(False)
         self._col3.setVisible(False)
+        if hasattr(self, "_deck_container"):
+            self._deck_container.setVisible(False)
         self._has_actions = False
         self._has_sources = False
 
@@ -578,6 +584,9 @@ class _ExpandedPanel(QWidget):
                 self._sources_box.addWidget(btn)
             self._col3.setVisible(True)
             self._has_sources = True
+
+        if hasattr(self, "_deck_container"):
+            self._deck_container.setVisible(self._has_actions or self._has_sources)
 
     def _tick_step(self, rate_factor: float = 1.0):
         if not self.isVisible():
