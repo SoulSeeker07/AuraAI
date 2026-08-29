@@ -1256,10 +1256,17 @@ class VoiceNotchOverlay(QWidget):
         self.set_state(NotchState.PROCESSING, "Processing your request...")
         logger.info(f"[CHAT] You: {text}")
 
+        # Cancel any previous in-flight task output
+        if hasattr(self, "_active_cmd_cancel_event") and self._active_cmd_cancel_event is not None:
+            self._active_cmd_cancel_event.set()
+
+        cancel_event = threading.Event()
+        self._active_cmd_cancel_event = cancel_event
+
         # Reuse existing single watchdog timer instance (never re-instantiate QTimer)
         if hasattr(self, "_proc_timeout") and self._proc_timeout is not None:
             self._proc_timeout.stop()
-            self._proc_timeout.setInterval(30000)
+            self._proc_timeout.setInterval(60000)  # Extended to 60s for autonomous goals
             self._proc_timeout.start()
 
         import threading
@@ -1285,22 +1292,29 @@ class VoiceNotchOverlay(QWidget):
                 finally:
                     loop.close()
 
+                if cancel_event.is_set():
+                    logger.info("[VoiceNotchOverlay] Suppressing late response for canceled in-flight command.")
+                    return
+
                 from gui.signals import app_signals
                 final_content = reply_text if reply_text else "Done."
                 app_signals.message_received.emit("AuraAI", final_content, False)
             except Exception as e:
                 logger.error(f"[VoiceNotchOverlay] Error running command: {e}")
-                try:
-                    from gui.signals import app_signals
-                    app_signals.message_received.emit("AuraAI", f"Error: {e}", False)
-                except Exception:
-                    pass
+                if not cancel_event.is_set():
+                    try:
+                        from gui.signals import app_signals
+                        app_signals.message_received.emit("AuraAI", f"Error: {e}", False)
+                    except Exception:
+                        pass
         threading.Thread(target=_run_cmd, daemon=True).start()
 
     def _on_proc_timeout(self):
         """Safety net: recover from stuck PROCESSING state."""
         if self._state == NotchState.PROCESSING:
-            logger.warning("[VoiceNotchOverlay] Processing timed out, recovering.")
+            logger.warning("[VoiceNotchOverlay] Processing timed out, canceling in-flight UI output.")
+            if hasattr(self, "_active_cmd_cancel_event") and self._active_cmd_cancel_event is not None:
+                self._active_cmd_cancel_event.set()
             self._expanded_panel.add_transcript_msg("AuraAI:", "Request timed out.", False)
             self._has_last_result = True
             self._mark_ready()
