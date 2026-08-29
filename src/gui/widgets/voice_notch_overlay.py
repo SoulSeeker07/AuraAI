@@ -178,6 +178,25 @@ def _detect_action_type(query: str, response: str) -> str:
     return "chat"
 
 
+def _force_always_on_top(widget: QWidget):
+    """Force window to remain at absolute topmost Z-order on Windows DWM."""
+    try:
+        widget.raise_()
+        if sys.platform == "win32":
+            import ctypes
+            hwnd = int(widget.winId())
+            HWND_TOPMOST = -1
+            SWP_NOMOVE = 0x0002
+            SWP_NOSIZE = 0x0001
+            SWP_NOACTIVATE = 0x0010
+            ctypes.windll.user32.SetWindowPos(
+                hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
+            )
+    except Exception as e:
+        logger.debug(f"Failed to enforce HWND_TOPMOST: {e}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Glowing Holographic Orb Widget
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1178,6 +1197,7 @@ class VoiceNotchOverlay(QWidget):
         self._morph_anim.start()
 
         self.update()
+        _force_always_on_top(self)
 
     def _execute_command(self, text: str):
         self._current_query = text
@@ -1541,14 +1561,17 @@ class VoiceNotchOverlay(QWidget):
     # Public API
     # ─────────────────────────────────────────────────────────────────────────
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        _force_always_on_top(self)
+
     def toggle(self):
         if self.isVisible():
             self.hide()
         else:
             self.show()
             self._position_at_top()
-            self.raise_()
-            self.activateWindow()
+            _force_always_on_top(self)
 
     @property
     def current_state(self) -> NotchState:
