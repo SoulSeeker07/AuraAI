@@ -116,8 +116,16 @@ class Memory:
     def _connect(self) -> Iterator[sqlite3.Connection]:
         """
         Context manager that yields a sqlite3 connection, commits on
-        successful exit, and always closes the connection afterward.
+        successful exit, and always closes the connection afterward (unless in-memory).
         """
+        db_str = str(self.db_path)
+        if db_str == ":memory:" or "mode=memory" in db_str:
+            if not hasattr(self, "_in_memory_conn") or self._in_memory_conn is None:
+                self._in_memory_conn = sqlite3.connect(":memory:", check_same_thread=False)
+            yield self._in_memory_conn
+            self._in_memory_conn.commit()
+            return
+
         conn = sqlite3.connect(self.db_path)
         try:
             yield conn
