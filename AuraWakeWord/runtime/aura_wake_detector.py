@@ -141,11 +141,11 @@ class AuraWakeDetector(WakeWordEngine):
                 pass
 
             if is_speaking and not has_voiceprint:
-                threshold = float(os.environ.get("AURA_TTS_WAKE_THRESHOLD", 0.85))
+                threshold = float(os.environ.get("AURA_TTS_WAKE_THRESHOLD", 0.88))
                 required_hits = 3
             else:
-                threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.75))
-                required_hits = 2
+                threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.82))
+                required_hits = 3
 
             now = time.monotonic()
             if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
@@ -183,6 +183,10 @@ class AuraWakeDetector(WakeWordEngine):
                             return False
                     except Exception as ve:
                         logger.debug(f"[SpeakerVerification] Verification check note: {ve}")
+
+                    # Auto-save triggered positive sample into existing dataset folder (AuraWakeWord/dataset/raw/positive)
+                    if os.environ.get("SAVE_WAKE_WORD_SAMPLES", "true").lower() == "true":
+                        self._save_positive_sample(clean_buf)
 
                     # Trigger callback
                     if self.on_wake_word_detected:
@@ -224,5 +228,36 @@ class AuraWakeDetector(WakeWordEngine):
             "provider": "aura",
             "is_initialized": self.ort_session is not None,
             "enabled": self.enabled,
+            "last_probability": self.last_probability,
+            "phrase_count": len(self.phrase_list),
             "is_active": self.is_active(),
         }
+
+    def _save_positive_sample(self, audio_buf: np.ndarray) -> None:
+        """Auto-save triggered positive wake word audio into the existing dataset folder."""
+        try:
+            import wave
+            from datetime import datetime
+            from pathlib import Path
+
+            # Exact existing project folder: AuraWakeWord/dataset/raw/positive
+            output_dir = Path(__file__).resolve().parents[1] / "dataset" / "raw" / "positive"
+            if not output_dir.exists():
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            filename = f"positive_{timestamp}.wav"
+            filepath = output_dir / filename
+
+            # Convert float32 clean buffer (-1.0 to 1.0) back to 16-bit PCM WAV
+            int16_pcm = (audio_buf * 32767.0).clip(-32768.0, 32767.0).astype(np.int16)
+
+            with wave.open(str(filepath), "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)  # 16-bit = 2 bytes
+                wf.setframerate(self.sample_rate)
+                wf.writeframes(int16_pcm.tobytes())
+
+            logger.info(f"[AuraWakeDetector] Auto-saved positive sample to '{filename}' for future model training.")
+        except Exception as se:
+            logger.debug(f"[AuraWakeDetector] Sample auto-save note: {se}")
