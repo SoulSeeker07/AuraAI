@@ -347,6 +347,14 @@ class AuraCore:
                 self.focus_manager.resume(task_id)
             elif action == "create" and task_id:
                 self.focus_manager.create(task_id, {}, severity_origin="user")
+            elif action == "close_all":
+                self.focus_manager.close_all_threads()
+            elif action == "close" and task_id:
+                self.focus_manager.close_thread(task_id)
+            elif action == "close_current":
+                curr = self.focus_manager.get_current()
+                if curr:
+                    self.focus_manager.close_thread(curr.task_id)
             # "list" and "query" don't change focus — just surface info in response
         except Exception as e:
             logger.debug(f"[AuraCore] Focus preamble skipped: {e}")
@@ -390,17 +398,35 @@ class AuraCore:
           2. LLM slug extraction for ambiguous natural-language phrasing
               (only if LLM is available and no keyword match found)
 
-        Returns a dict with keys: action ∈ {switch, resume, create, list, query, none},
-        task_id (str, may be empty for list/query/none).
+        Returns a dict with keys: action ∈ {switch, resume, create, close, close_all, close_current, list, query, none},
+        task_id (str, may be empty for list/query/none/close_all/close_current).
         """
         msg = user_goal.lower().strip()
 
         # 1. Deterministic patterns
+        close_all_phrases = ("close all tasks", "close all focus threads", "archive all tasks",
+                             "clear all tasks", "clear focus threads", "close all threads")
+        close_current_phrases = ("close current task", "end current task", "archive current task",
+                                 "finish current task", "close active task")
+        close_prefixes = ("close task ", "archive task ", "end task ", "complete task ", "finish task ")
         resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ")
         create_prefixes = ("start new task ", "new task ", "begin task ", "start task ")
         list_phrases = ("what was i doing", "list tasks", "list my tasks", "show tasks",
                         "show active tasks", "what are my tasks", "active threads", "my tasks")
         query_phrases = ("what am i working on", "current task", "current focus")
+
+        for phrase in close_all_phrases:
+            if phrase in msg:
+                return {"action": "close_all", "task_id": ""}
+
+        for phrase in close_current_phrases:
+            if msg == phrase or msg.startswith(phrase + " "):
+                return {"action": "close_current", "task_id": ""}
+
+        for prefix in close_prefixes:
+            if msg.startswith(prefix):
+                slug = msg[len(prefix):].strip().replace(" ", "_")
+                return {"action": "close", "task_id": slug}
 
         for phrase in list_phrases:
             if phrase in msg:
@@ -433,8 +459,10 @@ class AuraCore:
                     f"You are a focus-thread router. Classify this message into one of:\n"
                     f"  - switch:<slug>  (e.g. 'back to api_refactor')\n"
                     f"  - create:<slug>  (starting a named new task)\n"
-                    f"  - list            (wants to see active tasks)\n"
-                    f"  - none            (normal conversation, no focus management)\n\n"
+                    f"  - close:<slug>   (closing/archiving a named task)\n"
+                    f"  - close_all      (closing/archiving all open tasks)\n"
+                    f"  - list           (wants to see active tasks)\n"
+                    f"  - none           (normal conversation, no focus management)\n\n"
                     f"Message: \"{user_goal}\"\n"
                     f"Reply with ONLY the classification. slug must be snake_case."
                 )

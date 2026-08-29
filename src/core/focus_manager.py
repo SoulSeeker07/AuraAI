@@ -611,6 +611,36 @@ class FocusManager:
 
         return archived
 
+    def close_thread(self, task_id: str) -> bool:
+        """Close/archive a single specific focus thread and persist it to long-term memory."""
+        thread = self._load_thread(task_id)
+        if thread is None:
+            thread = self.find_best_match(task_id)
+        if thread:
+            self._persist_to_long_term_memory(thread)
+            with self._db_lock, self._get_connection() as conn:
+                conn.execute("DELETE FROM focus_threads WHERE task_id=?;", (thread.task_id,))
+                conn.commit()
+            if self._current_focus == thread.task_id:
+                self._current_focus = None
+            logger.info(f"[FocusManager] Closed thread '{thread.task_id}'")
+            return True
+        return False
+
+    def close_all_threads(self) -> int:
+        """Close/archive ALL active focus threads and persist them to long-term memory."""
+        active = self.list_active()
+        count = 0
+        for thread in active:
+            self._persist_to_long_term_memory(thread)
+            with self._db_lock, self._get_connection() as conn:
+                conn.execute("DELETE FROM focus_threads WHERE task_id=?;", (thread.task_id,))
+                conn.commit()
+            count += 1
+        self._current_focus = None
+        logger.info(f"[FocusManager] Closed all {count} focus threads")
+        return count
+
     def _persist_to_long_term_memory(self, thread: FocusThread) -> None:
         """Write a thread summary into CognitiveMemoryEngine as a SEMANTIC memory item."""
         try:
