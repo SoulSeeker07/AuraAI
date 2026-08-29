@@ -333,7 +333,12 @@ class AuraCore:
         or None if control should pass to general LLM reasoning.
         """
         if self.focus_manager is None:
-            return None
+            try:
+                from core.focus_manager import FocusManager
+                self.focus_manager = FocusManager()
+            except Exception as fe:
+                logger.debug(f"[AuraCore] FocusManager lazy-init skipped: {fe}")
+                return None
         try:
             intent = self._resolve_focus_intent(user_goal)
             action = intent.get("action")
@@ -391,6 +396,8 @@ class AuraCore:
                 return f"📌 **Focus Manager**: Started new focus thread '{task_id}'."
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             logger.debug(f"[AuraCore] Focus preamble skipped: {e}")
         return None
 
@@ -1153,6 +1160,13 @@ class AuraCore:
                 return focus_ans
 
             conv_engine = getattr(self, "conversation_engine", None)
+            if conv_engine is None:
+                try:
+                    self._init_brain()
+                    conv_engine = getattr(self, "conversation_engine", None)
+                except Exception as be:
+                    logger.warning(f"[AuraCore] Lazy init_brain failed: {be}")
+
             if conv_engine is not None:
                 try:
                     intent = conv_engine.intent_router.detect(user_message)
@@ -1161,7 +1175,9 @@ class AuraCore:
                         logger.debug(f"[AuraCore] Resolved via deterministic local fast-path: {intent}")
                         return local_answer
                 except Exception as ce_err:
-                    logger.debug(f"[AuraCore] Local intent router exception: {ce_err}")
+                    import traceback
+                    traceback.print_exc()
+                    logger.error(f"[AuraCore] Local intent router exception: {ce_err}")
 
         try:
             import json

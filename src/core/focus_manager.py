@@ -615,7 +615,7 @@ class FocusManager:
         """Close/archive a single specific focus thread and persist it to long-term memory."""
         thread = self._load_thread(task_id)
         if thread is None:
-            thread = self.find_best_match(task_id)
+            thread = self._fuzzy_match(task_id)
         if thread:
             self._persist_to_long_term_memory(thread)
             with self._db_lock, self._get_connection() as conn:
