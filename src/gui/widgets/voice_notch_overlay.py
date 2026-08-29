@@ -183,7 +183,7 @@ def _detect_action_type(query: str, response: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _GlowingOrb(QWidget):
-    """Glowing circular Diamond Orb with pulsing aura."""
+    """Glowing circular Diamond Orb with pulsing aura (driven by master clock)."""
 
     def __init__(self, size: int = 18, parent=None):
         super().__init__(parent)
@@ -192,18 +192,14 @@ class _GlowingOrb(QWidget):
         self._theme_color = NEON_CYAN
         self._phase = 0.0
 
-        self._hz = get_display_refresh_rate()
-        self._timer = QTimer(self)
-        self._timer.setInterval(max(8, int(1000.0 / self._hz)))
-        self._timer.timeout.connect(self._tick)
-        self._timer.start()
-
     def set_theme(self, color: QColor):
         self._theme_color = color
         self.update()
 
-    def _tick(self):
-        self._phase = (self._phase + 0.05 * (60.0 / self._hz)) % (math.pi * 2)
+    def _tick_step(self, rate_factor: float = 1.0):
+        if not self.isVisible():
+            return
+        self._phase = (self._phase + 0.05 * rate_factor) % (math.pi * 2)
         self.update()
 
     def paintEvent(self, event):
@@ -255,7 +251,7 @@ class _GlowingOrb(QWidget):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _RainbowWaveform(QWidget):
-    """Full-Spectrum Rainbow Waveform matching the Holographic UI."""
+    """Full-Spectrum Rainbow Waveform matching the Holographic UI (driven by master clock)."""
 
     def __init__(self, bar_count: int = 22, bar_w: float = 2.2, gap: float = 1.8, h: int = 20, parent=None):
         super().__init__(parent)
@@ -271,12 +267,6 @@ class _RainbowWaveform(QWidget):
         self.setFixedSize(total_w, h)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        self._hz = get_display_refresh_rate()
-        self._timer = QTimer(self)
-        self._timer.setInterval(max(8, int(1000.0 / self._hz)))
-        self._timer.timeout.connect(self._animate)
-        self._timer.start()
-
     def set_active(self, active: bool):
         self._active = active
         if not active:
@@ -289,21 +279,24 @@ class _RainbowWaveform(QWidget):
         # Responsive square-root perceptual scaling
         perceived = min(1.0, max(0.20, math.sqrt(max(0.0, min(1.0, level)))))
         if self._active:
-            self._phase += 0.45 * (60.0 / self._hz)
+            self._phase += 0.45
             for i in range(self._count):
                 center_dist = 1.0 - abs((i - self._count / 2.0) / (self._count / 2.0))
                 base = perceived * (0.35 + 0.65 * center_dist * abs(math.sin(i * 0.50 + self._phase)))
                 noise = random.uniform(-0.03, 0.03)
                 self._target_levels[i] = max(0.15, min(1.0, base + noise))
 
-    def _animate(self):
+    def _tick_step(self, rate_factor: float = 1.0):
+        if not self.isVisible():
+            return
+
         changed = False
-        rate = 0.45 * (60.0 / self._hz)
+        rate = 0.45 * rate_factor
         now = time.time()
 
         # If active and microphone level is quiescent, generate an organic dynamic wave
         if self._active and (now - getattr(self, "_last_voice_tick", 0) > 0.12):
-            self._phase += 0.22 * (60.0 / self._hz)
+            self._phase += 0.22 * rate_factor
             for i in range(self._count):
                 center_dist = 1.0 - abs((i - self._count / 2.0) / (self._count / 2.0))
                 synth = 0.25 + 0.50 * center_dist * abs(math.sin(i * 0.42 + self._phase))
@@ -316,7 +309,7 @@ class _RainbowWaveform(QWidget):
                 changed = True
 
         if not self._active:
-            self._phase += 0.05 * (60.0 / self._hz)
+            self._phase += 0.05 * rate_factor
             for i in range(self._count):
                 self._levels[i] = 0.15 + 0.10 * math.sin(i * 0.35 + self._phase)
             changed = True
@@ -582,6 +575,14 @@ class _ExpandedPanel(QWidget):
             self._col3.setVisible(True)
             self._has_sources = True
 
+    def _tick_step(self, rate_factor: float = 1.0):
+        if not self.isVisible():
+            return
+        if hasattr(self, "_orb") and self._orb:
+            self._orb._tick_step(rate_factor)
+        if hasattr(self, "_bottom_wave") and self._bottom_wave:
+            self._bottom_wave._tick_step(rate_factor)
+
     def _make_action_card(self, icon: str, label: str, accent: str, handler) -> QPushButton:
         btn = QPushButton(f"{icon}  {label}")
         btn.setFixedHeight(24)
@@ -633,8 +634,15 @@ class _ExpandedPanel(QWidget):
         if url:
             if url.startswith("http://") or url.startswith("https://"):
                 btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
-            elif os.path.exists(url):
-                btn.clicked.connect(lambda: os.startfile(url))
+            else:
+                # Non-blocking file launch on click (no synchronous disk check in UI build path)
+                def _open_file_target():
+                    try:
+                        if os.path.exists(url):
+                            os.startfile(url)
+                    except Exception as e:
+                        logger.debug(f"Source file open failed: {e}")
+                btn.clicked.connect(_open_file_target)
         return btn
 
     def add_transcript_msg(self, sender: str, msg: str, is_user: bool):
@@ -719,33 +727,35 @@ class VoiceNotchOverlay(QWidget):
         self._has_interacted_voice = False
         self._has_last_result = False  # True = hover can re-show last result
 
-        # 120Hz Responsive Hover Timers
+        # Debounced Hover Timers (180ms hover debounce, 250ms collapse)
         self._hover_timer = QTimer(self)
         self._hover_timer.setSingleShot(True)
-        self._hover_timer.setInterval(35)
+        self._hover_timer.setInterval(180)
         self._hover_timer.timeout.connect(self._expand_from_hover)
 
         self._collapse_timer = QTimer(self)
         self._collapse_timer.setSingleShot(True)
-        self._collapse_timer.setInterval(200)
+        self._collapse_timer.setInterval(250)
         self._collapse_timer.timeout.connect(self._collapse_from_hover)
 
-        # Result Auto-Collapse Timer (5s after showing result)
+        # Result Auto-Collapse Timer (6s after showing result)
         self._result_collapse_timer = QTimer(self)
         self._result_collapse_timer.setSingleShot(True)
-        self._result_collapse_timer.setInterval(5000)
+        self._result_collapse_timer.setInterval(6000)
         self._result_collapse_timer.timeout.connect(self._collapse_result)
 
-        # Progress Animation Timer for PROCESSING
-        self._proc_anim_timer = QTimer(self)
-        self._proc_anim_timer.setInterval(24)
-        self._proc_anim_timer.timeout.connect(self._tick_proc_progress)
-
-        # 8s Watchdog Timer for PROCESSING state to ensure HUD never stays stuck
+        # Single Reusable 30s Watchdog Timer for PROCESSING state
         self._proc_timeout = QTimer(self)
         self._proc_timeout.setSingleShot(True)
-        self._proc_timeout.setInterval(8000)
-        self._proc_timeout.timeout.connect(lambda: self.set_state(NotchState.IDLE))
+        self._proc_timeout.setInterval(30000)
+        self._proc_timeout.timeout.connect(self._on_proc_timeout)
+
+        # Single Master 60 FPS Animation Clock (~16ms) driving all active widgets
+        self._hz = get_display_refresh_rate()
+        self._master_anim_timer = QTimer(self)
+        self._master_anim_timer.setInterval(max(16, int(1000.0 / min(60.0, self._hz))))
+        self._master_anim_timer.timeout.connect(self._on_master_anim_tick)
+        self._master_anim_timer.start()
 
         self._setup_ui()
         self._position_at_top()
@@ -942,18 +952,70 @@ class VoiceNotchOverlay(QWidget):
         y = max(6, sg.top() + 4)  # Ensure clearly visible below top taskbar
         self.setGeometry(x, y, w, h)
 
+    def _on_master_anim_tick(self):
+        if not self.isVisible():
+            return
+        try:
+            # Tick ONLY active widgets based on current state (sleeps hidden state pages)
+            if self._state == NotchState.IDLE:
+                if hasattr(self, "_idle_orb") and self._idle_orb.isVisible():
+                    try:
+                        self._idle_orb._tick_step()
+                    except Exception:
+                        pass
+                if hasattr(self, "_idle_spectrum") and self._idle_spectrum.isVisible():
+                    try:
+                        self._idle_spectrum._tick_step()
+                    except Exception:
+                        pass
+            elif self._state == NotchState.LISTENING:
+                if hasattr(self, "_listen_orb") and self._listen_orb.isVisible():
+                    try:
+                        self._listen_orb._tick_step()
+                    except Exception:
+                        pass
+                if hasattr(self, "_rainbow_wave") and self._rainbow_wave.isVisible():
+                    try:
+                        self._rainbow_wave._tick_step()
+                    except Exception:
+                        pass
+            elif self._state == NotchState.PROCESSING:
+                if hasattr(self, "_proc_orb") and self._proc_orb.isVisible():
+                    try:
+                        self._proc_orb._tick_step()
+                    except Exception:
+                        pass
+                try:
+                    self._tick_proc_progress()
+                except Exception:
+                    pass
+            elif self._state == NotchState.SUCCESS:
+                if hasattr(self, "_succ_orb") and self._succ_orb.isVisible():
+                    try:
+                        self._succ_orb._tick_step()
+                    except Exception:
+                        pass
+            elif self._state == NotchState.EXPANDED:
+                if hasattr(self, "_expanded_panel") and self._expanded_panel.isVisible():
+                    try:
+                        self._expanded_panel._tick_step()
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.debug(f"[VoiceNotchOverlay] Master animation clock tick error: {e}")
+
     def enterEvent(self, event):
         self._is_hovered = True
         self._collapse_timer.stop()
         if self._state == NotchState.IDLE:
-            self._hover_timer.start()
+            self._hover_timer.start(180)
         self.update()
 
     def leaveEvent(self, event):
         self._is_hovered = False
         self._hover_timer.stop()
         if self._state == NotchState.EXPANDED:
-            self._collapse_timer.start()
+            self._collapse_timer.start(250)
         self.update()
 
     def _expand_from_hover(self):
@@ -969,7 +1031,7 @@ class VoiceNotchOverlay(QWidget):
         self.update()
 
     def _collapse_result(self):
-        """Auto-collapse expanded result after 5s. Hover can re-open it."""
+        """Auto-collapse expanded result after 6s. Hover can re-open it."""
         if self._state == NotchState.EXPANDED and not self._is_hovered:
             self._has_last_result = True
             self._mark_ready()
@@ -1109,9 +1171,6 @@ class VoiceNotchOverlay(QWidget):
         old_state = self._state
         self._state = state
 
-        if state != NotchState.PROCESSING:
-            self._proc_anim_timer.stop()
-
         if state == NotchState.IDLE:
             self._proc_timeout.stop()
             target_w, target_h = IDLE_W, IDLE_H
@@ -1139,7 +1198,6 @@ class VoiceNotchOverlay(QWidget):
             self._band.setVisible(True)
             self._status_stack.setCurrentIndex(2)
             self._rainbow_wave.set_active(False)
-            self._proc_anim_timer.start()
             self._proc_timeout.start()
             self._expanded_panel.setVisible(False)
             self._result_collapse_timer.stop()
@@ -1198,12 +1256,11 @@ class VoiceNotchOverlay(QWidget):
         self.set_state(NotchState.PROCESSING, "Processing your request...")
         logger.info(f"[CHAT] You: {text}")
 
-        # Safety timeout: if processing takes >30s, auto-recover
-        self._proc_timeout = QTimer(self)
-        self._proc_timeout.setSingleShot(True)
-        self._proc_timeout.setInterval(30000)
-        self._proc_timeout.timeout.connect(self._on_proc_timeout)
-        self._proc_timeout.start()
+        # Reuse existing single watchdog timer instance (never re-instantiate QTimer)
+        if hasattr(self, "_proc_timeout") and self._proc_timeout is not None:
+            self._proc_timeout.stop()
+            self._proc_timeout.setInterval(30000)
+            self._proc_timeout.start()
 
         import threading
         def _run_cmd():
@@ -1284,10 +1341,10 @@ class VoiceNotchOverlay(QWidget):
                     vm.tts_manager.stop()
             except Exception:
                 pass
-            if self._state == NotchState.EXPANDED:
+            # Dismiss listening / processing / expanded -> go back to IDLE
+            if self._state in (NotchState.EXPANDED, NotchState.LISTENING, NotchState.PROCESSING, NotchState.SUCCESS):
                 self.set_state(NotchState.IDLE)
-            else:
-                self.close()
+            # NEVER call self.close() on Escape!
             event.accept()
         elif event.key() == Qt.Key.Key_Space:
             if not event.isAutoRepeat():
@@ -1316,7 +1373,7 @@ class VoiceNotchOverlay(QWidget):
         """Cleanly stop all timers, release audio streams, and terminate application process."""
         logger.info("[VoiceNotchOverlay] closeEvent received — shutting down completely.")
         # 1. Stop all notch internal timers
-        for timer_name in ("_hover_timer", "_collapse_timer", "_result_collapse_timer", "_proc_anim_timer", "_proc_timeout"):
+        for timer_name in ("_master_anim_timer", "_hover_timer", "_collapse_timer", "_result_collapse_timer", "_proc_timeout"):
             t = getattr(self, timer_name, None)
             if t is not None and hasattr(t, "stop"):
                 try:
@@ -1324,23 +1381,7 @@ class VoiceNotchOverlay(QWidget):
                 except Exception:
                     pass
 
-        # 2. Stop animated sub-widget timers
-        for orb_name in ("_idle_orb", "_listen_orb", "_proc_orb", "_succ_orb"):
-            orb = getattr(self, orb_name, None)
-            if orb and hasattr(orb, "_timer") and hasattr(orb._timer, "stop"):
-                try:
-                    orb._timer.stop()
-                except Exception:
-                    pass
-        for wave_name in ("_rainbow_wave", "_idle_spectrum"):
-            wv = getattr(self, wave_name, None)
-            if wv and hasattr(wv, "_timer") and hasattr(wv._timer, "stop"):
-                try:
-                    wv._timer.stop()
-                except Exception:
-                    pass
-
-        # 3. Emit voice status changed False
+        # 2. Emit voice status changed False
         try:
             from gui.signals import app_signals
             if hasattr(app_signals, "voice_status_changed"):
@@ -1348,7 +1389,7 @@ class VoiceNotchOverlay(QWidget):
         except Exception:
             pass
 
-        # 4. If running as standalone Notch or primary top-level, exit QApplication completely
+        # 3. If running as standalone Notch or primary top-level, exit QApplication completely
         try:
             app = QApplication.instance()
             if app and not getattr(self, "_is_test_env", False):
