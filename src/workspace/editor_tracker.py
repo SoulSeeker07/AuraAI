@@ -70,7 +70,7 @@ class EditorTracker:
 
     def parse_window_title(
         self,
-        title: str,
+        title: str | None = None,
         expected_workspace: str | None = None,
         repo_path: Path | None = None,
     ) -> dict[str, Any] | None:
@@ -81,6 +81,10 @@ class EditorTracker:
             dict with keys {"filename", "relative_path", "workspace", "is_dirty"} if valid,
             or None if the title is malformed, from a different project, or not a real file.
         """
+        if isinstance(self, str) and title is None:
+            title = self
+            self = EditorTracker()
+
         if not title or not isinstance(title, str):
             return None
 

@@ -422,4 +422,227 @@ This sequence establishes the scheduled implementation order for ongoing reliabi
   1. Hot-patchable config: `config/browser_challenge_selectors.yaml` containing CSS selectors and XPath queries for Cloudflare Turnstile, Google reCAPTCHA, hCaptcha, and Amazon bot checks.
   2. Visual OCR Heuristic Fallback: Secondary scanner looking for on-screen text phrases (*"Verify you are human"*, *"Enter the characters you see"*) when DOM selectors rotate.
 
+---
 
+## 28. Accessibility Tree / DOM Tab Matching Ambiguity Resolution
+* **Resolution**:
+  1. **Capability Registration**: Registered `document.generate`, `notification.send`, and `notification.show` in `DesktopCapabilityProvider`.
+  2. **Notification Dispatch Unification**: Added `notification.send` and `notification.show` as first-class aliases for `notify.toast` in `NotificationManager`.
+  3. **Contention Rollback Hardening**: Attached active `rollback` restoration closure across both native and fallback execution branches in `ClipboardManager.clear`.
+  4. **Observation Formatting Branching**: Updated `DesktopBackend.execute()` to branch on `is_window_op`, generating domain-specific observations for security, notification, network, clipboard, and keyboard capabilities.
+  5. **Failure Observation Propagation**: Updated `ResultMerger.merge_session()` to append failure observations (`❌`, `error`, `failed`) to `obs_texts` when `not success`.
+  6. **Architecture Report Generator**: Implemented `_execute_report()` in `AntigravityBackend` to synthesize markdown architecture and compliance reports.
+  7. **Confidence-Threshold Fail-Closed Gate**: Added `ArtifactLowConfidence` in `pipeline_error.py` and updated `AgentSession.require_artifact(min_confidence=0.40)` to reject populated artifacts with `confidence < 0.40`.
+  8. **Live Verification**:
+     - Part 1 (5 Distinct Roles): `MEMORY` (`memory.recall`) $\to$ `DESKTOP` (`security.firewall_audit`) $\to$ `RESEARCH` (`research.search`) $\to$ `CODING` (`code.report`) $\to$ `DESKTOP` (`notification.send`) completed in 59.70s with clean observation text and physical file creation (`scratch/track_b_audit_report.md`).
+     - Part 2 (Fail-Closed Stop Invariant): Missing upstream input artifact caused `MasterOrchestrator` to halt immediately and return explicit failure observation (`"❌ Research stage completed without producing a payload..."`).
+  9. **Regression**: 60/60 unit tests passed in 24.78s.
+
+---
+
+## 16. Dynamic CodeAct OS-Level Containment & Adversarial Probe Blast Radius (TD-010 / M29)
+* **Location**: [`src/codeact/staging_sandbox.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/codeact/staging_sandbox.py), [`src/desktop/native/sandbox/restricted_user_sandbox.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/desktop/native/sandbox/restricted_user_sandbox.py), [`src/desktop/native/sandbox/account_provisioner.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/desktop/native/sandbox/account_provisioner.py), [`tests/test_codeact/test_restricted_staging.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/test_codeact/test_restricted_staging.py)
+* **Status**: ✅ **RESOLVED** (filesystem containment) / ⚠️ **PARTIAL** (network egress — see item 17)
+* **Severity**: HIGH
+* **Provenance**: Verified against source code and self-healing test assertions in `tests/test_codeact/test_restricted_staging.py` and M29 documentation.
+* **Context**: `StagingSandbox` originally relied on the AST static checker alone for filesystem confinement, so any AST-clean script using plain `pathlib` could read or write anywhere the host user could. M29 moved confinement down to the OS kernel: scripts execute under the low-privilege `AuraSandboxUser` service account via `CreateProcessWithLogonW`, inside a Windows Job Object (512MB RAM cap, 4-process limit, kill-on-close), writing only into an ephemeral `.staging/aura_run_<uuid>` directory granted `(OI)(CI)(M)`. The workspace root carries a standing `(OI)(CI)(RX)` grant — deliberately read-execute only, so the interpreter and installed packages load without opening any write surface outside `.staging/`.
+* **Secondary Defect Found (post-milestone audit)**: The G4b adversarial traversal probe aims its `# MALICIOUS_MUTATION_*` marker payload at two **real repository files** (`src/daemon/governance.py`, `docs/technical_debt.md`) — correct as a threat model, but its post-condition asserted content integrity for `governance.py` only. A pre-hardening run of that probe successfully wrote through to `docs/technical_debt.md`, truncating this registry from 244 lines to a 28-byte stub. Because the surviving assertion covered the other target, the suite reported green and the loss sat undetected in the working tree while the milestone was recorded as verified.
+* **Resolution**:
+  1. **Fail-Closed Sandbox Execution**: Removed the permissive fallback in `RestrictedUserSandbox.execute()`; account unavailability or logon failure now raises `RuntimeError("Fail-Closed Security Invariant: RestrictedUserSandbox is unavailable")` rather than executing unconfined.
+  2. **Fail-Closed Job Object Assignment**: `StagingSandbox` raises `RuntimeError` if `Win32JobSandbox` initialization or process assignment fails, instead of running the script outside the job.
+  3. **CLIXML Stream Unwrapping**: `_read_pipe` extracts `<S S="Error|Warning|verbose|debug">` payloads and strips the `#< CLIXML` envelope that `powershell.exe -EncodedCommand` wraps around subprocess stderr, so real tracebacks reach the CodeAct repair loop instead of XML noise.
+  4. **Bounded Probe Blast Radius**: `test_g4b_adversarial_relative_traversal_to_ceiling_blocked` now snapshots the bytes of **every** ceiling target before execution, asserts byte-for-byte identity for all of them afterward inside a `finally` block, and restores any mutated file before failing with an explicit `CONTAINMENT BREACH` message. The probe keeps its adversarial realism but can no longer leave the repository damaged, and can no longer pass while one of its targets is being overwritten.
+  5. **Data Recovery**: This registry was restored from `HEAD` (244 lines recovered); `src/daemon/governance.py` was confirmed uncorrupted, and the G4a `C:\aura_m29_escape_probe.txt` root-write probe left no artifact.
+* **Verification**: `tests/test_codeact/test_restricted_staging.py` — 5/5 passed in 7.60s (G1 lifecycle, G2 fail-closed, G3 real PPTX synthesis under the restricted user, G4a AST-clean escape blocked, G4b traversal blocked with byte-integrity assertions on both ceiling targets). Post-run integrity re-confirmed: registry 244 lines, zero payload matches, clean `git diff`.
+* **Lesson**: An adversarial containment test that writes to production paths must assert integrity on *every* path it targets. Partial post-condition coverage converts a containment breach into a silent green.
+
+---
+
+## 17. `AuraSandboxUser` Outbound Network Egress Confinement (TD-011 / M29)
+* **Location**: [`src/desktop/native/sandbox/account_provisioner.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/desktop/native/sandbox/account_provisioner.py) (`configure_firewall_rules`), [`scripts/setup_sandbox_account.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/scripts/setup_sandbox_account.py)
+* **Status**: ⚠️ **OPEN** (active debt)
+* **Severity**: MEDIUM
+* **Provenance**: Verified against source code in `src/desktop/native/sandbox/account_provisioner.py`.
+* **Context**: Filesystem read/write/delete is now contained at the NTFS kernel layer (item 16), but no outbound firewall rule is registered for `AuraSandboxUser`. An AST-clean script that evades the static checker's `socket`/`subprocess` import blocks could still initiate outbound TCP/HTTP egress under that account's network profile.
+* **Remediation Target**: One-time administrative elevation to run `AccountProvisioner.configure_firewall_rules()`, registering a deny-by-default outbound rule scoped to the sandbox account SID. Requires an elevated shell — cannot be provisioned from the un-elevated test/runtime path, which is why it remains open rather than automated.
+* **Risk Note**: Does not invalidate the filesystem containment proven in item 16; the two are independent confinement layers.
+
+---
+
+## 18. `ExecutionPolicy._pending` Legacy Singleton Store (TD-M26-01)
+* **Location**: [`src/core/orchestration/execution_policy.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/execution_policy.py) (`_pending`, `has_pending_confirmation`, `resolve_confirmation`)
+* **Status**: ⚠️ **OPEN / TRACKED** (Low priority clean-up)
+* **Severity**: LOW
+* **Provenance**: *Origin: Reconstructed from M26 architecture review session; not independently re-verified against source at time of this entry.*
+* **Context**: `ExecutionPolicy._pending` is a vestigial dictionary from pre-M19. All active interactive confirmation flows route through session-scoped `ActionPlanConfirmation` on `AgentSession` via `MasterOrchestrator.resolve_pending_confirmation()`. The internal `_pending` store in `ExecutionPolicy` is written to during `evaluate_action()` but never read in production execution.
+* **Remediation**: Deprecate and remove `_pending`, `has_pending_confirmation()`, and `resolve_confirmation()` on `ExecutionPolicy` once isolated legacy unit tests are migrated to `ActionPlanConfirmation`.
+
+---
+
+## 19. Cross-Channel Session Isolation & `_last_session` Pollution (TD-M26-02 / TD-009)
+* **Location**: [`src/core/orchestration/master_orchestrator.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/master_orchestrator.py) (`process_request_async`, `_process_request_async_inner`)
+* **Status**: ✅ **RESOLVED**
+* **Severity**: HIGH
+* **Provenance**: Verified against source in `src/core/orchestration/master_orchestrator.py` and regression test suite `tests/unit/test_cross_channel_session_isolation.py` (4/4 passed).
+* **Context**: `self._last_session` was previously overwritten unconditionally on every request. A background autonomous trigger executing through `MasterOrchestrator` would overwrite `self._last_session`. If the trigger halted on `ASK_USER`, a subsequent interactive `"yes"` in chat would resolve the trigger's confirmation rather than an interactive request.
+* **Resolution**: Guarded `self._last_session = session` with `if source == RequestSource.HUMAN_INTERACTIVE:`. Non-interactive sources (`TRIGGER_AUTONOMOUS`, `DAEMON_BACKGROUND`, `AGENT_DELEGATED`) execute with isolated session context and cannot pollute the interactive confirmation channel.
+* **Verification**: `tests/unit/test_cross_channel_session_isolation.py` (4/4 passed).
+
+---
+
+## 20. `ExecutionTraceModel` Dynamic Replan Graph Node Splicing (TD-M26-03)
+* **Location**: [`src/gui/models/execution_trace_model.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/gui/models/execution_trace_model.py)
+* **Status**: ⚠️ **OPEN / TRACKED**
+* **Severity**: LOW
+* **Provenance**: *Origin: Reconstructed from M26 architecture review session; not independently re-verified against source at time of this entry.*
+* **Context**: When `MasterOrchestrator` or a domain supervisor triggers an adaptive replan mid-stream, `ReplanTriggeredEvent` is currently consumed by `ExecutionTraceModel` to log the event and increment `replan_count`. Dynamic in-flight node splicing (reconciling completed/verified ancestor nodes with a regenerated subtask graph) is deferred; the model preserves the initially decomposed graph structure during execution.
+* **Remediation**: Implement a full DAG reconciliation handler in `ExecutionTraceModel._handle_replan_triggered()` to dynamically replace remaining pending nodes with the newly decomposed plan while retaining completed ancestor state.
+
+---
+
+## 21. Dual-Root Import Fallback Ambiguity in Trigger Scheduling (TD-002)
+* **Location**: [`src/autonomy/trigger_scheduler.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/trigger_scheduler.py) (lines 20-21)
+* **Status**: ⚠️ **OPEN / TRACKED**
+* **Severity**: LOW
+* **Provenance**: Identified during M26 architecture review; confirmed dual-root import pattern (`from brain...`, `from core...`) directly in [`src/autonomy/trigger_scheduler.py:20-21`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/trigger_scheduler.py#L20-L21).
+* **Context**: `TriggerScheduler` utilizes top-level relative imports across dual root paths rather than canonical `src.*` absolute module references. While functional when both roots exist on sys.path, it creates import ambiguity during isolated test runner invocations.
+* **Remediation**: Consolidate import paths to absolute canonical `src.autonomy.*` references once legacy root compatibility shims are phased out.
+
+---
+
+## 22. Research Engine Citation Coalescing Under-Counts Discrete Sources (TD-003)
+* **Location**: [`src/brain/citation_builder.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/citation_builder.py) (`_extract_domain`, lines 83-112)
+* **Status**: ⚠️ **OPEN / TRACKED**
+* **Severity**: ⚠️ **MEDIUM**
+* **Provenance**: Identified during M26 architecture review; confirmed domain-level truncation logic directly in [`src/brain/citation_builder.py:83-112`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/citation_builder.py#L83-L112).
+* **Context**: The citation builder applies aggressive domain-level deduplication to search results via `_extract_domain`. Multiple distinct, authoritative articles retrieved from the same root domain (e.g., separate documentation pages on `learn.microsoft.com` or `docs.python.org`) are collapsed into a single base domain reference, under-reporting evidentiary depth and diversity in synthesized research responses.
+* **Remediation**: Update citation deduplication keys to full normalized URL paths rather than base network domains while preserving snippet clustering.
+
+---
+
+## 23. Autonomous Engineering Loop Pytest Execution Without Privilege Dropping (TD-008 / M27)
+* **Location**: [`src/engineering/test_runner.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/engineering/test_runner.py) (`SandboxedPytestRunnerAdapter`), [`src/engineering/autonomous_loop.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/engineering/autonomous_loop.py), [`tests/test_engineering_sandboxed_runner.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/test_engineering_sandboxed_runner.py)
+* **Status**: ✅ **RESOLVED**
+* **Severity**: 🔴 **HIGH**
+* **Provenance**: Directly verified from [`docs/milestones/milestone27.md:41`](file:///D:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/milestones/milestone27.md#L41), source implementation in `src/engineering/test_runner.py`, and 5/5 passed in `tests/test_engineering_sandboxed_runner.py`.
+* **Context**: In Milestone 27's autonomous engineering loop, `PytestRunnerAdapter.run_tests()` originally executed `subprocess.run([self.python_exe, "-m", "pytest", ...])` directly under the host process token without privilege dropping.
+* **Resolution**:
+  1. **`SandboxedPytestRunnerAdapter`**: Subclassed `PytestRunnerAdapter` to execute pytest under `AuraSandboxUser` using `RestrictedUserSandbox` (`CreateProcessWithLogonW`) bound to a Win32 Job Object (512MB RAM cap, process limit, kill-on-close).
+  2. **Cache & Temp Redirection**: Configured pytest to write exclusively to `.aura_staging/pytest_cache` and `.aura_staging/tmp` (granted `(OI)(CI)(M)` to `AuraSandboxUser`), preserving read-only `(RX)` on the workspace root.
+  3. **Fail-Closed Invariant**: Raises `RuntimeError` immediately if sandbox logon or Job Object initialization fails.
+  4. **Sanitized Environment**: Subprocess environment scrubbed of all `*_API_KEY` and host token variables.
+  5. **Default Loop Wiring**: `AutonomousEngineeringLoop` defaults to `SandboxedPytestRunnerAdapter`.
+* **Verification**: `tests/test_engineering_sandboxed_runner.py` — 5/5 passed in 6.30s across all 5 security gates (Gate 1 lifecycle/fail-closed, Gate 2 ceiling write block, Gate 3 workspace write block, Gate 4 `.env` read block, Gate 5 credential scrubbing). Full engineering loop suite (15/15 passed) and CodeAct suite (43/43 passed) green.
+
+---
+
+## 24. Human Ticket-Issuance UI/CLI Flow for Git-Operation Approvals (TD-009 / M27)
+* **Location**: [`src/engineering/pr_assembler.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/engineering/pr_assembler.py), [`clients/`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/clients/)
+* **Status**: ⚠️ **OPEN**
+* **Severity**: ⚠️ **MEDIUM**
+* **Provenance**: Directly verified from [`docs/milestones/milestone27.md:42`](file:///D:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/milestones/milestone27.md#L42) and `src/engineering/pr_assembler.py`.
+* **Context**: `authorize_git_operation()` strictly requires a valid cryptographic approval ticket (`CryptographicApprovalAuthority.verify_and_redeem()`) to execute destructive operations (`merge_to_main`, `git_push_force`). While the fail-closed security backstop is verified, there is currently no interactive CLI command or UI modal for human operators to review pending PR diffs and sign/issue the approval ticket.
+* **Remediation**: Implement a dedicated `aura pr approve <ticket_id>` CLI sub-command and desktop notification prompt to issue signed approval tokens.
+
+---
+
+## 25. CodeAct Drafter Multiline Fence Extraction Truncation & Markdown Escaping
+* **Location**: [`src/codeact/drafters.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/codeact/drafters.py), [`src/codeact/executor.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/codeact/executor.py), [`tests/test_codeact/test_static_checker.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/test_codeact/test_static_checker.py)
+* **Status**: ✅ **RESOLVED**
+* **Severity**: HIGH
+* **Provenance**: Directly verified against source code in `src/codeact/`, 43/43 unit tests passing, and live multi-goal Groq sweep (100% convergence across 3 tasks).
+* **Context**: In M28 convergence testing, Task 5 (markdown cheat sheet synthesis with code blocks) failed repeatedly with `SyntaxError: unterminated triple-quoted string literal`. Audit revealed two distinct failure mechanisms:
+  1. `extract_code_block()` used non-greedy regex `r"```(?:python)?\s*\n(.*?)```"` that truncated scripts at the *first* internal markdown code fence.
+  2. Drafters generated raw Python triple-quoted string literals (`'''` or `"""`) containing unescaped backticks.
+* **Resolution**:
+  1. **Multiline Standalone-Fence Extraction**: Updated `extract_code_block()` to use multiline line-anchored regex `(?m)^\s*```(?:python|py)\s*\n(.*?)(?:\n\s*```\s*$|\Z)` and outer-fence extraction, preserving embedded code fences and isolating sibling language blocks (`test_extract_code_block_sibling_languages`, `test_extract_code_block_nested_fences_in_python_script`).
+  2. **JSON / List-Array Prompt Hardening**: Updated `GroqDrafter` and `AgyDrafter` system prompts and `DynamicCodeActExecutor._build_initial_prompt()` to mandate JSON string decoding (`json.loads`) or list joining (`"\n".join([...])`) for document text.
+  3. **Syntax-Aware Static Safety Repair**: Enhanced `_build_static_repair_prompt()` to detect `SyntaxError` violations, display the failed script, and provide explicit JSON/list-array escaping instructions.
+* **Verification**: 43/43 tests passed in `tests/test_codeact/`. Live multi-goal sweep against real `GroqDrafter` converged 100% (Task 5 Repeat: 1 attempt, API Reference Guide: 1 attempt, Linux Troubleshooting Playbook: 2 attempts via closed-loop repair).
+
+---
+
+## 26. Root-Folder Screenshot Leaks & Split-Brain Database Path Anchoring
+* **Location**: [`src/vision/screenshot_manager.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/vision/screenshot_manager.py), [`src/vision/vision_manager.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/vision/vision_manager.py), [`src/core/backends/adapters/vision_backend.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/adapters/vision_backend.py), [`src/agents/desktop_agent.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/agents/desktop_agent.py), [`src/voice/continuous_loop.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/voice/continuous_loop.py), [`src/core/orchestration/runtime_checkpoint.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/runtime_checkpoint.py), [`src/daemon/state_store.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/daemon/state_store.py), [`plugins/calendar/calendar_plugin.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/plugins/calendar/calendar_plugin.py), [`tests/test_screenshot_manager_lifecycle.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/test_screenshot_manager_lifecycle.py)
+* **Status**: ✅ **RESOLVED**
+* **Severity**: HIGH
+* **Provenance**: Identified during root folder hygiene inspection and path-anchoring review; verified with 5/5 automated lifecycle tests.
+* **Context**: 
+  1. Three parallel screen-capture implementations (`desktop_agent.py`, `vision_backend.py`, `screenshot_manager.py`) wrote temporary PNG captures directly into `os.getcwd()` (repository root), accumulating orphan files without cleanup.
+  2. Subsystems (`continuous_loop.py`, `runtime_checkpoint.py`, `state_store.py`, `calendar_plugin.py`) instantiated SQLite databases with bare relative string paths (`"Memory.db"`, `"daemon_state.db"`, `"calendar_tasks.db"`), risking split-brain duplicate database creation when executed from outside the workspace root.
+  3. Diagnostic test scripts (`script_aura_fix_cycle.py`, etc.) regenerated root artifacts (`buggy_code.py`, `test_aura_fixed.py`) on every invocation.
+* **Resolution**:
+  1. **Single-Owner Screen Capture**: Consolidated all screenshot logic exclusively into `ScreenshotManager`. Enforced canonical runtime directory `Data/runtime/screenshots/` and collision-proof UUID naming (`f"screenshot_{type}_{timestamp}_{uid}.png"`).
+  2. **Scoped Lifecycle with Fail-Open Guard**: Implemented `capture_scoped()` context manager that safely unlinks the temporary image on verified consumer exit while preserving it on disk for post-mortem debugging if an exception is thrown.
+  3. **Bounded Retention Sweeper**: Implemented `_prune_failure_captures()` enforcing a 20-file count ceiling and 24-hour age limit.
+  4. **Database Path Anchoring**: Explicitly anchored `Memory.db`, `ChatLog.json`, `daemon_state.db`, and `calendar_tasks.db` default paths to `PROJECT_ROOT`.
+  5. **Generator Redirection**: Redirected test generator scripts to write temporary artifacts into `dev/scratch/`. Relocated benchmarks to `benchmarks/`, scratch files to `dev/scratch/`, and manual test scripts to `tests/manual/`. Purged 14 stale root screenshots.
+* **Verification**: `tests/test_screenshot_manager_lifecycle.py` (5/5 passed); `tests/test_vision_system.py` (25 passed, 2 skipped hardware); core memory and capability suites green.
+
+---
+
+## 27. Post-M30 Architectural Remediation & Hardening Roadmap (Prioritized)
+
+This sequence establishes the scheduled implementation order for ongoing reliability and stability:
+
+### 🥇 Priority 1: Dual Package Root Import Normalization (TD-002)
+* **Stage A (TD-002a: Live Facade Relocation & Core Unification)**: ✅ **RESOLVED**
+  1. Relocated live 2,213-line application coordinator from `root/core/aura_core.py` to [`src/core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/aura_core.py).
+  2. Removed reciprocal `__path__` monkey-patch hacks in `src/core/__init__.py`.
+  3. Cleaned dead unused imports (`ToolRouter`, `WorkspaceManager`, `MemoryManager`) from `src/brain/decision_engine.py` and `src/brain/brain_integration.py`.
+  4. Archived 6 divergent root prototype files (`app.py`, `config.py`, `event_bus.py`, `logger.py`, `__init__.py`, `aura_core.py`) into `dev/legacy_archive/core/`.
+  5. **Verification**: Post-move identity assertion passed; live `AuraCore.get_instance()` initialized with 13 components; 29/29 regression tests green (100% passed in 49.06s).
+* **Stage B (TD-002b: Submodule Consolidation & Root/Core Teardown)**: ⚠️ **SCHEDULED**
+  1. Relocate `AutonomousCodingAgent` and `CodeExecutionTool` to `src/agents/` and `src/tools/`, updating `CLIClient`.
+  2. Migrate remaining legacy test fixtures referencing `core/memory/` or `core/workspace/` to `src/memory/` and `src/workspace/`.
+  3. Fully purge empty `root/core/` directory.
+
+### 🥈 Priority 2: Overlay Process Supervisor (TD-012)
+* **Goal**: Centralized PID registry and lifecycle management for detached PySide6 HUD overlay subprocesses.
+* **Architecture**:
+  1. Registry file: `Data/active_overlays.json` tracking `{"pid": int, "overlay_type": str, "launched_at": float}`.
+  2. Auto-registration on subprocess spawn; deregistration on clean exit via `atexit` signal handlers.
+  3. CLI Command: `aura close overlays` / `aura close hud` walks the registry, sends `SIGTERM`/`taskkill` to live PIDs, and purges the file.
+  4. Startup Reconciliation: On Aura boot, check active PIDs against the OS process table and purge stale entries from unexpected crashes.
+
+### 🥉 Priority 3: Scoped Hybrid Intent Classifier (TD-013)
+* **Goal**: Eliminate regex keyword collision without adding heavyweight local embedding model overhead.
+* **Architecture**:
+  1. **Fast-Path Command Grammar**: Keep ultra-fast regex matching for unambiguous command prefixes (`aura launch ...`, `aura confirm ...`, `aura resume ...`, `aura browse ...`).
+  2. **LLM Fallback**: For free-form natural language queries that contain trigger keywords but don't strictly match command grammar, fall back to lightweight LLM / classifier routing to avoid false-positive command execution.
+
+### 🏅 Priority 4: Externalized Bot-Challenge Selector Configuration (TD-014)
+* **Goal**: Decouple third-party anti-bot / CAPTCHA selectors from hardcoded source files.
+* **Architecture**:
+  1. Hot-patchable config: `config/browser_challenge_selectors.yaml` containing CSS selectors and XPath queries for Cloudflare Turnstile, Google reCAPTCHA, hCaptcha, and Amazon bot checks.
+  2. Visual OCR Heuristic Fallback: Secondary scanner looking for on-screen text phrases (*"Verify you are human"*, *"Enter the characters you see"*) when DOM selectors rotate.
+
+---
+
+## 28. Accessibility Tree / DOM Tab Matching Ambiguity Resolution
+* **Location**: [`src/vision/grounding_engine.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/vision/grounding_engine.py)
+* **Status**: ⚠️ **DEFERRED / LOGGED**
+* **Context**: 
+   - *Symptom*: When multiple tabs or window panes contain matching DOM selectors or accessibility labels (e.g., two open browser tabs showing different YouTube videos), `GroundingEngine._resolve_tier1_a11y_or_dom` currently returns `.first` or highest single ratio without checking active tab visibility.
+   - *Impact*: In multi-tab browser windows, grounding might resolve and click a background DOM element if active tab scoping is absent.
+   - *Mitigation*: Restrict DOM text search to `:visible` elements in the active Playwright tab/page context when CDP attached.
+
+29. **Media Grounding Single-Best-Guess & Candidate Disambiguation Risk**
+   - *Severity*: 🚨 **CRITICAL / HIGH SEVERITY** (Higher priority than Item 28: high probability of false-positive selection on video platforms due to near-duplicate title search results)
+   - *Symptom*: Platform search pages (e.g. YouTube result lists) display near-duplicate title candidates (e.g., "GTA 6 Trailer" vs "GTA 6 Trailer Reaction"). `GroundingEngine.resolve()` returns the single best fuzzy match without computing a runner-up confidence-gap.
+   - *Impact*: Low confidence-gap scenarios could click a false-positive video title and report false success to the user.
+   - *Mitigation*: Incorporate composite trace ranking or runner-up delta check in `GroundingEngine` when multiple candidates match above threshold.
+
+30. **`AutonomousBrowserEngine` Unmocked Live Integration Test Divergence & Fixture Error**
+   - *Severity*: ⚠️ **MEDIUM / UNCONFIRMED CAUSE**
+   - *Location*: [`tests/test_autonomous_browser.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/tests/test_autonomous_browser.py)
+   - *Symptom*:
+     1. Live integration tests (`test_autonomous_goal_dry_run`, `test_ticket_confirmation_flow`) fail when executing live browser goals: the agent's plan selects an unrelated click target (e.g., attempting `Click on the 'Amazon Pay' link` during a `"search wikipedia for artificial intelligence"` goal). Cause is unconfirmed; do not assume rate-limiting alone.
+     2. `test_intent_routing_autonomous_browser` raises a setup error: `sqlite3.OperationalError: no such table: facts` in `Memory.__init__` when `recover_profile_from_chat_log()` queries `fact_value` on an in-memory database before schema creation.
+   - *Impact*: `tests/test_autonomous_browser.py` fails on unmocked test runs.
+   - *Remediation*:
+     1. Mock external network/browser calls or isolate live integration tests behind explicit `@pytest.mark.network` decorators.
+     2. Fix schema initialization ordering in `Memory.__init__` so `facts` table exists before `recover_profile_from_chat_log()` runs.
+* **Scheduled Remediation**:
+  1. Add a secondary runner-up score tracking check to detect close candidates (`ratio_gap < 0.05`).
+  2. Perform path-uniquification or ask for clarification when ambiguous tabs are detected.

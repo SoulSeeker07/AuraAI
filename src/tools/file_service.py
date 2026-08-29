@@ -73,6 +73,16 @@ class FileService:
         roots: list[Path] = []
         home = Path.home()
 
+        # 0. Current workspace project root & cwd
+        if _PROJECT_ROOT.exists() and _PROJECT_ROOT not in roots:
+            roots.append(_PROJECT_ROOT)
+        try:
+            cwd = Path.cwd().resolve()
+            if cwd.exists() and cwd not in roots:
+                roots.append(cwd)
+        except Exception:
+            pass
+
         # 1. User primary personal drive paths on Windows
         for dev_path_str in ("D:/Sreekanta", "D:/Sreekanta/Documents", "D:/Sreekanta/Downloads", "D:/Sreekanta/Desktop", "D:/Documents", "D:/Downloads"):
             p = Path(dev_path_str)
@@ -86,7 +96,7 @@ class FileService:
                 roots.append(p)
 
         # 3. Workspace document directories
-        for gen_dir in ("Generated_Documents", "docs"):
+        for gen_dir in ("Generated_Documents", "docs", "notes", "training"):
             p = _PROJECT_ROOT / gen_dir
             if p.exists() and p not in roots:
                 roots.append(p)
@@ -108,39 +118,64 @@ class FileService:
         self._cached_search_roots = roots
         return roots
 
-    def normalize_query(self, query: str) -> tuple[str, list[str], bool]:
+    def normalize_query(self, query: str) -> tuple[str, list[str], bool, str | None]:
         """
-        Normalize query string and return cleaned stem, token list, and is_self flag.
+        Normalize query string and return cleaned stem, token list, is_self flag, and explicit extension.
         
-        Example: 'open my Sreekanta_resume' -> ('sreekanta_resume', ['sreekanta', 'resume'], True)
+        Example: 'open this agent.md' -> ('agent', ['agent'], False, '.md')
         """
         raw = query.strip()
         is_self_query = bool(re.search(r"\b(my|i|me|mine|myself|worked|company|experience)\b", raw, re.IGNORECASE))
         
-        # Strip common action noise words
-        noise_pattern = r"\b(open|find|launch|show|get|view|display|my|the|a|an|file|document|doc|pdf|which|what|where|are|is|in)\b"
+        # Check for explicit file extension
+        explicit_ext: str | None = None
+        for ext in self.PRIORITY_EXTENSIONS:
+            pattern = re.escape(ext) + r"(\b|$)"
+            if re.search(pattern, raw, re.IGNORECASE):
+                explicit_ext = ext.lower()
+                break
+
+        # Strip common action and demonstrative noise words
+        noise_pattern = r"\b(open|find|launch|show|get|view|display|my|the|a|an|this|that|these|those|current|here|selected|file|document|doc|which|what|where|are|is|in)\b"
         cleaned = re.sub(noise_pattern, " ", raw, flags=re.IGNORECASE)
+        if explicit_ext:
+            cleaned = re.sub(re.escape(explicit_ext) + r"(\b|$)", " ", cleaned, flags=re.IGNORECASE)
         cleaned = " ".join(cleaned.split()).strip()
         if not cleaned:
             cleaned = raw.strip()
+            if explicit_ext:
+                cleaned = re.sub(re.escape(explicit_ext) + r"(\b|$)", " ", cleaned, flags=re.IGNORECASE).strip()
 
-        # Split tokens on spaces, underscores, and hyphens
-        tokens = [t.lower() for t in re.split(r"[\s_\-\.]+", cleaned) if t]
+        # Split tokens on spaces, underscores, and hyphens (ignoring bare extension names)
+        tokens = [
+            t.lower() for t in re.split(r"[\s_\-\.]+", cleaned)
+            if t and t.lower() not in ("md", "txt", "pdf", "docx", "doc", "py", "json", "csv", "xlsx", "pptx", "html", "png", "jpg")
+        ]
         stem = cleaned.lower()
-        return stem, tokens, is_self_query
+        return stem, tokens, is_self_query, explicit_ext
 
-    def _score_file(self, file_path: Path, query_stem: str, query_tokens: list[str], is_self_query: bool = False) -> float:
+    def _score_file(
+        self,
+        file_path: Path,
+        query_stem: str,
+        query_tokens: list[str],
+        is_self_query: bool = False,
+        explicit_ext: str | None = None,
+    ) -> float:
         """Calculate a relevance match score between 0.0 and 1.0 for a candidate file."""
         import difflib
 
         name_lower = file_path.name.lower().strip()
         stem_lower = file_path.stem.lower().strip()
+        ext_lower = file_path.suffix.lower().strip()
         path_str_lower = str(file_path).lower()
 
         query_trimmed = query_stem.strip()
 
         # 1. Exact match on filename or stem
         if stem_lower == query_trimmed or name_lower == query_trimmed:
+            return 1.0
+        if explicit_ext and name_lower == f"{query_trimmed}{explicit_ext}":
             return 1.0
 
         # 2. Match with underscores or spaces normalized
@@ -149,20 +184,29 @@ class FileService:
         if stem_norm == query_norm:
             return 0.98
 
-        # 3. Query stem is complete substring in filename stem
-        if query_trimmed in stem_lower:
-            return 0.92
-        if query_norm in stem_norm:
-            return 0.90
+        # 3. Singular / plural stem matching (e.g. "agent" vs "agents", "doc" vs "docs")
+        if stem_norm.rstrip("s") == query_norm.rstrip("s") and len(query_norm.rstrip("s")) >= 3:
+            ext_bonus = 0.02 if (explicit_ext and ext_lower == explicit_ext) else 0.0
+            return min(0.98, 0.96 + ext_bonus)
 
-        # 4. Fuzzy stem similarity for typos (e.g. "importent" -> "important")
+        # 4. Query stem is complete substring in filename stem
+        if query_trimmed and len(query_trimmed) >= 3:
+            if query_trimmed in stem_lower:
+                len_diff = abs(len(stem_lower) - len(query_trimmed))
+                base = 0.95 if len_diff <= 2 else 0.90
+                ext_bonus = 0.03 if (explicit_ext and ext_lower == explicit_ext) else 0.0
+                return min(0.98, base + ext_bonus)
+            if query_norm in stem_norm:
+                return 0.90
+
+        # 5. Fuzzy stem similarity for typos (e.g. "importent" -> "important", "agent" -> "agents")
         fuzzy_stem_ratio = difflib.SequenceMatcher(None, query_norm, stem_norm).ratio()
-        if fuzzy_stem_ratio >= 0.80:
-            ext_boost = 0.05 if file_path.suffix.lower() in self.PRIORITY_EXTENSIONS else 0.0
-            drive_boost = 0.05 if "d:\\sreekanta" in path_str_lower else 0.0
-            return min(0.96, max(0.65, fuzzy_stem_ratio * 0.9 + ext_boost + drive_boost))
+        if fuzzy_stem_ratio >= 0.78:
+            ext_boost = 0.06 if (explicit_ext and ext_lower == explicit_ext) or (ext_lower in self.PRIORITY_EXTENSIONS) else 0.0
+            drive_boost = 0.05 if ("d:\\sreekanta" in path_str_lower or "auraai" in path_str_lower) else 0.0
+            return min(0.98, max(0.65, fuzzy_stem_ratio * 0.9 + ext_boost + drive_boost))
 
-        # 5. Token matching with User Identity Awareness and Fuzzy Token Matching
+        # 6. Token matching with User Identity Awareness and Fuzzy Token Matching
         user_aliases = self.get_known_user_aliases()
         is_user_doc = any(alias in stem_lower or alias in path_str_lower for alias in user_aliases)
 
@@ -170,9 +214,13 @@ class FileService:
             stem_tokens = set(re.split(r"[\s_\-\.]+", stem_lower))
             matched_tokens = []
             for qt in query_tokens:
-                if qt in stem_tokens or any(qt == st or (len(qt) >= 4 and len(st) >= 4 and qt in st) for st in stem_tokens):
+                if (
+                    qt in stem_tokens
+                    or any(qt.rstrip("s") == st.rstrip("s") for st in stem_tokens)
+                    or any(qt == st or (len(qt) >= 4 and len(st) >= 4 and qt in st) for st in stem_tokens)
+                ):
                     matched_tokens.append(qt)
-                elif any(len(qt) >= 4 and len(st) >= 4 and difflib.SequenceMatcher(None, qt, st).ratio() >= 0.82 for st in stem_tokens):
+                elif any(len(qt) >= 4 and len(st) >= 4 and difflib.SequenceMatcher(None, qt, st).ratio() >= 0.80 for st in stem_tokens):
                     matched_tokens.append(qt)
 
             token_ratio = len(matched_tokens) / len(query_tokens)
@@ -195,11 +243,16 @@ class FileService:
                 if any(alias in stem_lower for alias in user_aliases):
                     token_ratio += 0.15
 
-            # Extension boost for primary document formats (.docx, .pdf)
-            ext_boost = 0.05 if file_path.suffix.lower() in self.PRIORITY_EXTENSIONS else 0.0
+            # Extension boost
+            if explicit_ext and ext_lower == explicit_ext:
+                ext_boost = 0.15
+            elif ext_lower in self.PRIORITY_EXTENSIONS:
+                ext_boost = 0.05
+            else:
+                ext_boost = 0.0
 
             # Drive path boost for primary user drive and personal folders
-            is_personal_folder = any(p in path_str_lower for p in ("d:\\sreekanta", "\\documents", "\\desktop", "\\downloads"))
+            is_personal_folder = any(p in path_str_lower for p in ("d:\\sreekanta", "\\documents", "\\desktop", "\\downloads", "auraai"))
             is_dev_scratch = any(p in path_str_lower for p in ("\\scratch\\", "\\tests\\", "\\scripts\\", "\\.git\\"))
 
             personal_boost = 0.15 if is_personal_folder else 0.0
@@ -216,7 +269,7 @@ class FileService:
         
         Returns a list of candidate dictionaries sorted by relevance score.
         """
-        query_stem, query_tokens, is_self_query = self.normalize_query(query)
+        query_stem, query_tokens, is_self_query, explicit_ext = self.normalize_query(query)
         if not query_stem and not query_tokens:
             return []
 
@@ -237,7 +290,7 @@ class FileService:
                         if norm_key in seen_paths:
                             continue
 
-                        score = self._score_file(entry, query_stem, query_tokens, is_self_query=is_self_query)
+                        score = self._score_file(entry, query_stem, query_tokens, is_self_query=is_self_query, explicit_ext=explicit_ext)
                         if score >= 0.5:
                             seen_paths.add(norm_key)
                             try:
@@ -307,7 +360,7 @@ class FileService:
                         if norm_key in seen_paths:
                             continue
 
-                        score = self._score_file(full_path, query_stem, query_tokens, is_self_query=is_self_query)
+                        score = self._score_file(full_path, query_stem, query_tokens, is_self_query=is_self_query, explicit_ext=explicit_ext)
                         if score >= 0.5:
                             seen_paths.add(norm_key)
                             try:

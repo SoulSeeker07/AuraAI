@@ -93,6 +93,8 @@ def test_intent_router_detects_open_file_and_rag():
         ("find and open resume.pdf", "resume.pdf"),
         ("open project_notes.md", "project_notes.md"),
         ("open resume", "resume"),
+        ("open this agent.md", "agent.md"),
+        ("open this agents.md", "agents.md"),
     ]
     for q, expected_target in file_queries:
         intent = router.detect(q)

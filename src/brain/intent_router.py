@@ -496,9 +496,13 @@ class IntentRouter:
         open_verbs = ("find and open ", "open ", "launch ", "display ", "show ")
         for v in open_verbs:
             if normalized.startswith(v):
-                # Preserve original casing from user_input
-                return user_input.strip()[len(v):].strip(" '\"")
-        return user_input.strip()
+                # Preserve original casing from user_input and strip demonstratives
+                target = user_input.strip()[len(v):].strip(" '\"")
+                target = re.sub(r"^(this|that|the|a|an)\s+", "", target, flags=re.IGNORECASE).strip()
+                return target
+        target = user_input.strip()
+        target = re.sub(r"^(this|that|the|a|an)\s+", "", target, flags=re.IGNORECASE).strip()
+        return target
 
     def _asks_for_rag_query(self, normalized: str) -> bool:
         rag_triggers = (

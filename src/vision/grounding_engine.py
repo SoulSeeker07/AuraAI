@@ -123,6 +123,10 @@ class GroundingEngine:
         )
         return None
 
+    def resolve_foreground_only(self, reference: str, app_context: Any | None) -> GroundedTarget | None:
+        """UIA/DOM-only resolution, no vision fallback, no screenshot cost."""
+        return self._resolve_tier1_a11y_or_dom(reference, app_context)
+
     # ── Tier 1 Implementations ─────────────────────────────────────────────────
 
     def _resolve_tier1_a11y_or_dom(

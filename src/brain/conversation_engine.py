@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import mimetypes
+
+logger = logging.getLogger(__name__)
 import os
 import re
 import subprocess
@@ -24,8 +27,33 @@ from brain.models import (
     Intent,
     image_attachment_from_conversation,
 )
+from dataclasses import dataclass
 from brain.web_search import WebSearchClient
 from Memory import Memory, MemoryFact
+
+FILE_CONTAINER_APPS = frozenset({
+    "code.exe", "antigravity.exe", "cursor.exe", "pycharm64.exe",
+    "sublime_text.exe", "notepad.exe", "notepad++.exe",
+    "explorer.exe", "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe",
+    "acrobat.exe", "acrord32.exe", "winword.exe", "excel.exe", "powerpnt.exe",
+})
+
+
+MEDIA_VERBS = ("play", "watch", "listen to", "open video", "open stream")
+
+
+def _extract_media_target(goal: str) -> str:
+    clean = goal.strip()
+    clean = re.sub(r"\s+(?:on|in|from|at|via)\s+(?:youtube|spotify|chrome|edge|browser|web)\b.*$", "", clean, flags=re.IGNORECASE).strip()
+    clean = re.sub(r"^(?:play|watch|listen\s+to|open\s+video|open\s+stream)\s+", "", clean, flags=re.IGNORECASE).strip()
+    clean = re.sub(r"^(?:the|a|an|my)\s+", "", clean, flags=re.IGNORECASE).strip()
+    return clean if clean else goal
+
+
+@dataclass
+class ForegroundMatch:
+    message: str
+    resolution_path: str
 
 
 class ConversationEngine:
@@ -839,6 +867,132 @@ class ConversationEngine:
         self._save_turn(context, fallback_text)
         return ConversationResult(text=fallback_text, intent=context.intent)
 
+    def _try_resolve_in_foreground(self, target: str) -> ForegroundMatch | None:
+        if self.aura_core is None:
+            return None
+        app_context = self.aura_core.app_context_router.detect_current_app()
+        if app_context is None or app_context.app_name.lower() not in FILE_CONTAINER_APPS:
+            return None
+
+        from workspace.editor_tracker import EditorTracker
+        import difflib
+        title_doc_res = EditorTracker.parse_window_title(app_context.window_title)
+        title_doc = title_doc_res.get("filename") if isinstance(title_doc_res, dict) else (title_doc_res if isinstance(title_doc_res, str) else None)
+        if title_doc and difflib.SequenceMatcher(None, target.lower(), title_doc.lower()).ratio() >= 0.80:
+            if hasattr(app_context, "window_handle") and app_context.window_handle:
+                try:
+                    from core.backends.adapters.desktop_backend import _force_foreground
+                    ok = _force_foreground(app_context.window_handle)
+                    if ok is False:
+                        logger.warning(f"[ConversationEngine] Window focus returned False for '{title_doc}'")
+                        return None
+                except Exception as err:
+                    logger.warning(f"[ConversationEngine] Window focus failed for '{title_doc}': {err}")
+                    return None
+            return ForegroundMatch(
+                f"'{title_doc}' is already open in {app_context.app_name} — switched to it.",
+                "window_title_foreground",
+            )
+
+        grounded = self.aura_core.grounding_engine.resolve_foreground_only(target, app_context)
+        if grounded is not None:
+            action_ok = True
+            if grounded.source_tier == "tier1_dom" and grounded.element_handle is not None:
+                try:
+                    grounded.element_handle.click()
+                except Exception as err:
+                    logger.warning(f"[ConversationEngine] Playwright DOM click failed for '{grounded.label}': {err}")
+                    action_ok = False
+            elif grounded.source_tier == "tier1_a11y" and grounded.element_handle is not None:
+                try:
+                    from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+                    registry = NativeManagerRegistry.get_instance()
+                    uia_mgr = registry.get_manager("uia")
+                    if uia_mgr and hasattr(uia_mgr, "adapter") and uia_mgr.adapter:
+                        res = uia_mgr.adapter.click_element(grounded.element_handle, getattr(app_context, "window_title", ""))
+                        if res is False:
+                            action_ok = False
+                    elif hasattr(grounded.element_handle, "click_input"):
+                        grounded.element_handle.click_input()
+                except Exception as err:
+                    logger.warning(f"[ConversationEngine] UIA click failed for '{grounded.label}': {err}")
+                    action_ok = False
+            elif hasattr(app_context, "window_handle") and app_context.window_handle:
+                try:
+                    from core.backends.adapters.desktop_backend import _force_foreground
+                    ok = _force_foreground(app_context.window_handle)
+                    if ok is False:
+                        action_ok = False
+                except Exception as err:
+                    logger.warning(f"[ConversationEngine] Fallback window focus failed for '{grounded.label}': {err}")
+                    action_ok = False
+
+            if not action_ok:
+                return None
+
+            return ForegroundMatch(
+                f"Found '{grounded.label}' already open in {app_context.app_name} — switched to it.",
+                f"{grounded.source_tier}_foreground",
+            )
+        return None
+
+    def _try_resolve_media_in_foreground(self, goal: str, target: str) -> ForegroundMatch | None:
+        if self.aura_core is None:
+            return None
+        app_context = self.aura_core.app_context_router.detect_current_app()
+        if app_context is None or not getattr(app_context, "is_browser", False):
+            return None
+        if not any(v in goal.lower() for v in MEDIA_VERBS):
+            return None
+
+        grounded = self.aura_core.grounding_engine.resolve(target, app_context=app_context)
+        if grounded is None:
+            return None
+
+        action_ok = True
+        if grounded.source_tier == "tier1_dom" and grounded.element_handle is not None:
+            try:
+                grounded.element_handle.click()
+            except Exception as err:
+                logger.warning(f"[ConversationEngine] Media DOM click failed for '{grounded.label}': {err}")
+                action_ok = False
+        elif grounded.element_handle is not None:
+            try:
+                from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+                registry = NativeManagerRegistry.get_instance()
+                uia_mgr = registry.get_manager("uia")
+                if uia_mgr and hasattr(uia_mgr, "adapter") and uia_mgr.adapter:
+                    res = uia_mgr.adapter.click_element(grounded.element_handle, getattr(app_context, "window_title", ""))
+                    if res is False:
+                        action_ok = False
+                elif hasattr(grounded.element_handle, "click_input"):
+                    grounded.element_handle.click_input()
+            except Exception as err:
+                logger.warning(f"[ConversationEngine] Media UIA click failed for '{grounded.label}': {err}")
+                action_ok = False
+        else:
+            try:
+                from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+                registry = NativeManagerRegistry.get_instance()
+                input_mgr = registry.get_manager("input")
+                if input_mgr and hasattr(grounded, "center") and grounded.center:
+                    res = input_mgr.execute("input.click", goal=goal, arguments={"x": grounded.center[0], "y": grounded.center[1]})
+                    if res is False:
+                        action_ok = False
+                else:
+                    action_ok = False
+            except Exception as err:
+                logger.warning(f"[ConversationEngine] Media vision click failed for '{grounded.label}': {err}")
+                action_ok = False
+
+        if not action_ok:
+            return None
+
+        return ForegroundMatch(
+            f"Found '{grounded.label}' already open in {app_context.app_name} — playing it.",
+            f"{grounded.source_tier}_foreground",
+        )
+
     def _answer_local_intent(self, intent: Intent) -> str | None:
         if intent.name == "memory_summary":
             return self.memory.summarize()
@@ -1114,6 +1268,10 @@ class ConversationEngine:
 
         if intent.name == "open_file":
             target = (intent.data or {}).get("target", "").strip()
+            foreground = self._try_resolve_in_foreground(target)
+            if foreground is not None:
+                logger.info(f"[ConversationEngine] open_file resolved via {foreground.resolution_path}")
+                return foreground.message
             try:
                 from tools.file_service import FileService
                 ok, msg, matched_path = FileService.get_instance().find_and_open(target)
@@ -1155,6 +1313,11 @@ class ConversationEngine:
 
         if intent.name == "autonomous_browser":
             goal = (intent.data or {}).get("goal", "").strip()
+            target = _extract_media_target(goal)
+            foreground = self._try_resolve_media_in_foreground(goal, target)
+            if foreground is not None:
+                logger.info(f"[ConversationEngine] autonomous_browser resolved via {foreground.resolution_path}")
+                return foreground.message
             try:
                 from browser.paused_session import PausedSessionStore
                 if PausedSessionStore.get_instance().has_pending():
