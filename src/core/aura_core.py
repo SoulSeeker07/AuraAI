@@ -412,7 +412,10 @@ class AuraCore:
         resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ", "open task ", "open thread ", "open focus thread ")
         create_prefixes = ("start new task ", "new task ", "begin task ", "start task ")
         list_phrases = ("what was i doing", "list tasks", "list my tasks", "show tasks",
-                        "show active tasks", "what are my tasks", "active threads", "my tasks")
+                        "show active tasks", "what are my tasks", "active threads", "my tasks",
+                        "list focus threads", "list focus thread", "list all focus threads",
+                        "list threads", "list all threads", "show threads", "show focus threads",
+                        "list focus", "show focus", "focus threads", "focus thread")
         query_phrases = ("what am i working on", "current task", "current focus")
 
         for phrase in close_all_phrases:
@@ -431,6 +434,10 @@ class AuraCore:
         for phrase in list_phrases:
             if phrase in msg:
                 return {"action": "list", "task_id": ""}
+
+        # Fuzzy token matching for speech-to-text variations (e.g. "list are a focus thread")
+        if ("list" in msg or "show" in msg or "display" in msg) and ("focus" in msg or "thread" in msg or "task" in msg):
+            return {"action": "list", "task_id": ""}
 
         for phrase in query_phrases:
             if phrase in msg:
