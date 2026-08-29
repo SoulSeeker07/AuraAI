@@ -7,6 +7,8 @@ orientation, DPI awareness, and brightness configuration.
 
 import ctypes
 import logging
+import os
+import sys
 from typing import Any
 
 import win32api
@@ -177,6 +179,21 @@ def get_display_layout() -> dict[str, Any]:
     }
 
 
+def ensure_dpi_awareness() -> bool:
+    """Ensure process Per-Monitor DPI Awareness is enabled on Windows."""
+    if os.name != "nt":
+        return False
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+        return True
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+            return True
+        except Exception:
+            return False
+
+
 def get_display_dpi(handle: int | None = None) -> dict[str, Any]:
     """
     Get DPI awareness information for a monitor handle or primary screen.
@@ -184,21 +201,17 @@ def get_display_dpi(handle: int | None = None) -> dict[str, Any]:
     Returns:
         Dict with dpi_x, dpi_y, scale_factor.
     """
+    ensure_dpi_awareness()
     try:
-        shcore = ctypes.windll.shcore
-        # PROCESS_PER_MONITOR_DPI_AWARE
-        dpi_x = ctypes.c_uint()
-        dpi_y = ctypes.c_uint()
-
         if handle:
-            shcore.GetDpiForMonitor(handle, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+            dpi_x = ctypes.c_uint()
+            dpi_y = ctypes.c_uint()
+            ctypes.windll.shcore.GetDpiForMonitor(handle, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
             dx = dpi_x.value
             dy = dpi_y.value
         else:
-            hdc = win32api.GetDC(0)
-            dx = win32api.GetDeviceCaps(hdc, win32con.LOGPIXELSX)
-            dy = win32api.GetDeviceCaps(hdc, win32con.LOGPIXELSY)
-            win32api.ReleaseDC(0, hdc)
+            dx = ctypes.windll.user32.GetDpiForSystem()
+            dy = dx
 
         scale_factor = round((dx / 96.0) * 100, 2)
         return {

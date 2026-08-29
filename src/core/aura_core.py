@@ -159,6 +159,12 @@ class AuraCore:
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
 
+        try:
+            from desktop.native.managers.display_helpers import ensure_dpi_awareness
+            ensure_dpi_awareness()
+        except Exception:
+            pass
+
         self.workspace = self.config.get("workspace", str(self.project_root))
 
         self.chat_log_path = Path(
