@@ -237,6 +237,7 @@ class AuraWakeDetector(WakeWordEngine):
         """Auto-save triggered positive wake word audio into the existing dataset folder."""
         try:
             import wave
+            import numpy as np
             from datetime import datetime
             from pathlib import Path
 
@@ -245,12 +246,40 @@ class AuraWakeDetector(WakeWordEngine):
             if not output_dir.exists():
                 output_dir.mkdir(parents=True, exist_ok=True)
 
+            # 1. Detect vocal speech start (20ms sliding RMS energy)
+            frame_len = int(self.sample_rate * 0.02)  # 320 samples (20ms)
+            n_frames = len(audio_buf) // frame_len
+            rms_vals = np.array([
+                np.sqrt(np.mean(audio_buf[i * frame_len : (i + 1) * frame_len] ** 2))
+                for i in range(n_frames)
+            ])
+
+            # Find first vocal frame exceeding vocal threshold (0.005)
+            vocal_indices = np.where(rms_vals > 0.005)[0]
+            if len(vocal_indices) > 0:
+                # Start 350ms before vocal onset to capture full initial consonant ("Au-", "H-")
+                pre_roll_samples = int(self.sample_rate * 0.35)
+                start_sample = max(0, (vocal_indices[0] * frame_len) - pre_roll_samples)
+                audio_clip = audio_buf[start_sample:]
+            else:
+                audio_clip = audio_buf
+
+            # Ensure minimum clip length of 1.5s for model compatibility
+            min_samples = int(self.sample_rate * 1.5)
+            if len(audio_clip) < min_samples:
+                audio_clip = audio_buf[-min_samples:] if len(audio_buf) >= min_samples else audio_buf
+
+            # 2. Normalize peak volume to 90% full scale so voice is crisp
+            max_amp = float(np.max(np.abs(audio_clip)))
+            if max_amp > 1e-4:
+                audio_clip = (audio_clip / max_amp) * 0.90
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
             filename = f"positive_{timestamp}.wav"
             filepath = output_dir / filename
 
             # Convert float32 clean buffer (-1.0 to 1.0) back to 16-bit PCM WAV
-            int16_pcm = (audio_buf * 32767.0).clip(-32768.0, 32767.0).astype(np.int16)
+            int16_pcm = (audio_clip * 32767.0).clip(-32768.0, 32767.0).astype(np.int16)
 
             with wave.open(str(filepath), "wb") as wf:
                 wf.setnchannels(1)
@@ -258,6 +287,6 @@ class AuraWakeDetector(WakeWordEngine):
                 wf.setframerate(self.sample_rate)
                 wf.writeframes(int16_pcm.tobytes())
 
-            logger.info(f"[AuraWakeDetector] Auto-saved positive sample to '{filename}' for future model training.")
+            logger.info(f"[AuraWakeDetector] Auto-saved aligned positive sample: '{filename}' ({len(audio_clip)/self.sample_rate:.2f}s)")
         except Exception as se:
             logger.debug(f"[AuraWakeDetector] Sample auto-save note: {se}")
