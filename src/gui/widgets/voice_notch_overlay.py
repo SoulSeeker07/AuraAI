@@ -497,6 +497,10 @@ class _ExpandedPanel(QWidget):
         self._input_field.returnPressed.connect(self._on_bottom_submit)
         b_lay.addWidget(self._input_field, 1)
 
+        self._focus_badge = QLabel("Focus: Active")
+        self._focus_badge.setStyleSheet(f"QLabel{{color:#00f0ff; background:rgba(0,240,255,0.12); border:1px solid rgba(0,240,255,0.35); border-radius:4px; font-family:{FONT_SANS}; font-size:9px; font-weight:700; padding:2px 6px;}}")
+        b_lay.addWidget(self._focus_badge)
+
         self._bottom_wave = _RainbowWaveform(bar_count=18, bar_w=1.8, gap=1.8, h=16)
         b_lay.addWidget(self._bottom_wave)
 
@@ -1255,6 +1259,17 @@ class VoiceNotchOverlay(QWidget):
         self._proc_title.setText("Processing your request...")
         self.set_state(NotchState.PROCESSING, "Processing your request...")
         logger.info(f"[CHAT] You: {text}")
+
+        # Update live Focus Thread badge chip
+        try:
+            from core.aura_core import AuraCore
+            core = AuraCore.get_instance()
+            if core and hasattr(core, "focus_manager") and core.focus_manager:
+                curr = core.focus_manager.get_current()
+                task_name = curr.task_id if curr else "Active"
+                self._expanded_panel._focus_badge.setText(f"Focus: {task_name}")
+        except Exception:
+            pass
 
         # Cancel any previous in-flight task output
         if hasattr(self, "_active_cmd_cancel_event") and self._active_cmd_cancel_event is not None:
