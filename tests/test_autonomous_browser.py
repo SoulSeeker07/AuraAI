@@ -86,7 +86,7 @@ def test_autonomous_goal_dry_run(browser_engine):
 
 def test_ticket_confirmation_flow(browser_engine):
     """Verify high-risk block generates ticket, and confirmation authorizes execution on registered site."""
-    res = browser_engine.run_autonomous_goal("browse to amazon and transfer funds")
+    res = browser_engine.run_autonomous_goal("search wikipedia for transfer funds")
     assert res["success"] is False
     assert res["risk_level"] == "HIGH"
     ticket_id = res.get("ticket_id")

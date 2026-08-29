@@ -669,6 +669,7 @@ class AutonomousBrowserEngine:
                         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     )
                 page = context.pages[0] if context.pages else context.new_page()
+                summary_text = ""
 
                 # Step 1: Navigate to initial URL
                 page.goto(target_url, timeout=15000, wait_until="domcontentloaded")
