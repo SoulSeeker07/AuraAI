@@ -440,18 +440,19 @@ class AuraCore:
 
         # 1. Deterministic patterns
         close_all_phrases = ("close all tasks", "close all focus threads", "archive all tasks",
-                             "clear all tasks", "clear focus threads", "close all threads")
+                             "clear all tasks", "clear focus threads", "close all threads", "archive all threads")
         close_current_phrases = ("close current task", "end current task", "archive current task",
-                                 "finish current task", "close active task")
-        close_prefixes = ("close task ", "archive task ", "end task ", "complete task ", "finish task ")
+                                 "finish current task", "close active task", "close current thread", "archive current thread")
+        close_prefixes = ("close task ", "archive task ", "end task ", "complete task ", "finish task ",
+                          "close thread ", "close focus thread ", "archive thread ", "archive focus thread ")
         resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ", "open task ", "open thread ", "open focus thread ")
-        create_prefixes = ("start new task ", "new task ", "begin task ", "start task ")
+        create_prefixes = ("start new task ", "new task ", "begin task ", "start task ", "create task ", "create thread ", "start thread ", "start focus thread ")
         list_phrases = ("what was i doing", "list tasks", "list my tasks", "show tasks",
                         "show active tasks", "what are my tasks", "active threads", "my tasks",
                         "list focus threads", "list focus thread", "list all focus threads",
                         "list threads", "list all threads", "show threads", "show focus threads",
-                        "list focus", "show focus", "focus threads", "focus thread")
-        query_phrases = ("what am i working on", "current task", "current focus")
+                        "list focus", "show focus", "active focus threads")
+        query_phrases = ("what am i working on", "current task", "current focus", "current thread")
 
         for phrase in close_all_phrases:
             if phrase in msg:
@@ -465,6 +466,21 @@ class AuraCore:
             if msg.startswith(prefix):
                 slug = msg[len(prefix):].strip().replace(" ", "_")
                 return {"action": "close", "task_id": slug}
+
+        for prefix in resume_prefixes:
+            if msg.startswith(prefix):
+                slug = msg[len(prefix):].strip().replace(" ", "_")
+                return {"action": "resume", "task_id": slug}
+            if prefix.strip() in msg:
+                idx = msg.index(prefix.strip())
+                slug = msg[idx + len(prefix.strip()):].strip().split()[0].replace(" ", "_")
+                if slug:
+                    return {"action": "resume", "task_id": slug}
+
+        for prefix in create_prefixes:
+            if msg.startswith(prefix):
+                slug = msg[len(prefix):].strip().replace(" ", "_")
+                return {"action": "create", "task_id": slug}
 
         for phrase in list_phrases:
             if phrase in msg:

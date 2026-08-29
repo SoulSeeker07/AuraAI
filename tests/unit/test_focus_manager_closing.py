@@ -63,6 +63,14 @@ def test_aura_core_focus_intent_closing():
     intent6 = AuraCore._resolve_focus_intent(core, "List are a focus thread.")
     assert intent6["action"] == "list"
 
+    intent7 = AuraCore._resolve_focus_intent(core, "close focus thread UI_redesign")
+    assert intent7["action"] == "close"
+    assert intent7["task_id"] == "ui_redesign"
+
+    intent8 = AuraCore._resolve_focus_intent(core, "start focus thread auth_module")
+    assert intent8["action"] == "create"
+    assert intent8["task_id"] == "auth_module"
+
 
 def test_aura_core_focus_preamble_fast_path(tmp_path):
     fm = FocusManager(db_path=tmp_path / "focus.db")
