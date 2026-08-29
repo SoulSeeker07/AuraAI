@@ -186,7 +186,7 @@ class AuraWakeDetector(WakeWordEngine):
 
                     # Auto-save triggered positive sample into existing dataset folder (AuraWakeWord/dataset/raw/positive)
                     if os.environ.get("SAVE_WAKE_WORD_SAMPLES", "true").lower() == "true":
-                        self._save_positive_sample(clean_buf)
+                        self._save_positive_sample_deferred(clean_buf, post_delay_s=0.5)
 
                     # Trigger callback
                     if self.on_wake_word_detected:
@@ -232,6 +232,28 @@ class AuraWakeDetector(WakeWordEngine):
             "phrase_count": len(self.phrase_list),
             "is_active": self.is_active(),
         }
+
+    def _save_positive_sample_deferred(self, pre_trigger_buf: np.ndarray, post_delay_s: float = 0.5) -> None:
+        """Collect post-trigger microphone audio so the end of the word ('-ra') is never truncated."""
+        import threading
+        import time
+
+        pre_snapshot = np.copy(pre_trigger_buf)
+
+        def _worker():
+            try:
+                time.sleep(post_delay_s)
+                # Grab the post-trigger samples added to self.audio_buffer during the 0.5s delay
+                post_samples_count = int(self.sample_rate * post_delay_s)
+                post_snapshot = np.copy(self.audio_buffer[-post_samples_count:])
+
+                # Combine pre-trigger (2.0s) + post-trigger (0.5s)
+                full_combined = np.concatenate([pre_snapshot, post_snapshot])
+                self._save_positive_sample(full_combined)
+            except Exception as e:
+                logger.debug(f"[AuraWakeDetector] Deferred save error: {e}")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _save_positive_sample(self, audio_buf: np.ndarray) -> None:
         """Auto-save triggered positive wake word audio into the existing dataset folder."""

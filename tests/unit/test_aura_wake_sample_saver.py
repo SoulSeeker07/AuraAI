@@ -35,3 +35,22 @@ def test_aura_wake_detector_save_positive_sample(tmp_path, monkeypatch):
         assert wf.getframerate() == 16000
         
     latest_file.unlink()  # Remove test artifact
+
+def test_aura_wake_detector_save_positive_sample_deferred(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(AuraWakeDetector, "initialize", lambda self: True)
+    detector = AuraWakeDetector(model_path="dummy.onnx")
+    audio_buf = np.zeros(32000, dtype=np.float32)
+    
+    target_dir = Path(__file__).resolve().parents[2] / "AuraWakeWord" / "dataset" / "raw" / "positive"
+    count_before = len(list(target_dir.glob("positive_*.wav"))) if target_dir.exists() else 0
+    
+    detector._save_positive_sample_deferred(audio_buf, post_delay_s=0.1)
+    time.sleep(0.3)
+    
+    count_after = len(list(target_dir.glob("positive_*.wav"))) if target_dir.exists() else 0
+    assert count_after == count_before + 1
+    
+    new_files = sorted(list(target_dir.glob("positive_*.wav")), key=lambda p: p.stat().st_mtime)
+    latest_file = new_files[-1]
+    latest_file.unlink()
