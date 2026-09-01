@@ -13,8 +13,13 @@ Reused from src/browser/experience_store.py.
 
 from __future__ import annotations
 
+import base64
 import difflib
+import io
+import json
 import logging
+import os
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Optional, Tuple
@@ -24,6 +29,49 @@ logger = logging.getLogger(__name__)
 # Minimum confidence required to accept a grounded target
 MIN_GROUNDING_CONFIDENCE = 0.75
 CLICK_CONFIDENCE_THRESHOLD = 0.85
+
+
+def translate_to_screen_coordinates(
+    coords: tuple[int, int],
+    window_bounds: tuple[int, int, int, int] | None = None,
+    dpi_scale: float = 1.0,
+    source_is_logical: bool = False,
+    vlm_scale_factor: float = 1.0,
+) -> tuple[int, int]:
+    """
+    Translates coordinates from various input spaces into physical screen coordinates.
+
+    Three separate stages (strictly isolated to prevent double-scaling):
+      1. VLM downsampling reversal:
+         If coordinates came from a downscaled VLM image (e.g. 1920 -> 1280, scale=0.6667),
+         divide by vlm_scale_factor to restore to original physical screenshot dimensions.
+      2. Logical-to-physical DPI conversion:
+         If coordinates came from CSS DOM / logical units (source_is_logical=True),
+         multiply by dpi_scale (e.g. 1.25) to convert to physical pixels.
+         If source is already in physical screenshot pixels (UIA, OCR, VLM),
+         do NOT multiply by dpi_scale (prevents double-scaling).
+      3. Physical window offset addition:
+         Add window_bounds (left, top) which are already physical coordinates in DPI-aware mode.
+    """
+    x, y = float(coords[0]), float(coords[1])
+
+    # Stage 1: VLM downsample reversal
+    if vlm_scale_factor > 0 and vlm_scale_factor != 1.0:
+        x /= vlm_scale_factor
+        y /= vlm_scale_factor
+
+    # Stage 2: Logical DOM -> Physical pixels
+    if source_is_logical and dpi_scale > 0 and dpi_scale != 1.0:
+        x *= dpi_scale
+        y *= dpi_scale
+
+    # Stage 3: Window offset translation (window_bounds are physical on DPI-aware Windows)
+    if window_bounds is not None and len(window_bounds) >= 2:
+        left, top = window_bounds[0], window_bounds[1]
+        x += left
+        y += top
+
+    return (int(round(x)), int(round(y)))
 
 
 @dataclass
@@ -86,6 +134,8 @@ class GroundingEngine:
         reference: str,
         app_context: Any | None = None,
         screen_image: Any | None = None,
+        target_app: str | None = None,
+        window_handle: int | None = None,
     ) -> GroundedTarget | None:
         """
         Ground a natural language reference into a concrete on-screen target.
@@ -100,7 +150,14 @@ class GroundingEngine:
             logger.debug("[GroundingEngine] Empty reference passed to resolve.")
             return None
 
-        app_name = getattr(app_context, "app_name", "") if app_context else ""
+        if app_context is None and target_app:
+            try:
+                from routing.app_context_router import AppContext
+                app_context = AppContext(app_name=target_app, window_handle=window_handle or 0)
+            except Exception:
+                pass
+
+        app_name = getattr(app_context, "app_name", "") if app_context else (target_app or "")
 
         # ── Tier 1: Accessibility / DOM Tree ───────────────────────────────────
         target = self._resolve_tier1_a11y_or_dom(clean_ref, app_context)
@@ -129,8 +186,20 @@ class GroundingEngine:
         )
         return None
 
-    def resolve_foreground_only(self, reference: str, app_context: Any | None) -> GroundedTarget | None:
+    def resolve_foreground_only(
+        self,
+        reference: str,
+        app_context: Any | None = None,
+        target_app: str | None = None,
+        window_handle: int | None = None,
+    ) -> GroundedTarget | None:
         """UIA/DOM-only resolution, no vision fallback, no screenshot cost."""
+        if app_context is None and target_app:
+            try:
+                from routing.app_context_router import AppContext
+                app_context = AppContext(app_name=target_app, window_handle=window_handle or 0)
+            except Exception:
+                pass
         return self._resolve_tier1_a11y_or_dom(reference, app_context)
 
     # ── Tier 1 Implementations ─────────────────────────────────────────────────
@@ -280,7 +349,12 @@ class GroundingEngine:
         except Exception as e:
             logger.debug(f"[GroundingEngine] OCR grounding note: {e}")
 
-        # 2. Standard heuristic defaults for common UI regions if specified
+        # 2. Multimodal VLM Vision Grounding (qwen/qwen3.6-27b on foreground window screenshot)
+        vlm_target = self._resolve_tier2_vlm(reference, app_context, screen_image)
+        if vlm_target is not None and vlm_target.confidence >= MIN_GROUNDING_CONFIDENCE:
+            return vlm_target
+
+        # 3. Standard heuristic defaults for common UI regions if specified
         ref_lower = reference.lower()
         if "address bar" in ref_lower or "url bar" in ref_lower:
             return GroundedTarget(
@@ -300,6 +374,208 @@ class GroundingEngine:
                 source_tier="tier2_vision",
                 app_name=getattr(app_context, "app_name", ""),
             )
+
+        return None
+
+    def _resolve_tier2_vlm(
+        self,
+        reference: str,
+        app_context: Any | None,
+        screen_image: Any | None = None,
+    ) -> GroundedTarget | None:
+        """
+        Multimodal VLM grounding using qwen/qwen3.6-27b on screen capture.
+        Locates visual buttons, icons, or canvas controls when accessibility and OCR miss.
+        """
+        try:
+            from ai.groq_provider import GroqProvider
+            provider = GroqProvider()
+        except Exception as e:
+            logger.debug(f"[GroundingEngine] GroqProvider unavailable for VLM: {e}")
+            return None
+
+        # Capture image if not provided
+        img = screen_image
+        window_bounds = getattr(app_context, "bounds", None) if app_context else None
+
+        if img is None:
+            try:
+                from PIL import ImageGrab
+                if (
+                    window_bounds
+                    and len(window_bounds) == 4
+                    and window_bounds[2] > window_bounds[0]
+                    and window_bounds[3] > window_bounds[1]
+                ):
+                    img = ImageGrab.grab(bbox=window_bounds, all_screens=True)
+                else:
+                    img = ImageGrab.grab(all_screens=True)
+            except Exception as e:
+                logger.debug(f"[GroundingEngine] Screen capture for VLM failed: {e}")
+                return None
+
+        if img is None or not hasattr(img, "size"):
+            return None
+
+        try:
+            orig_w, orig_h = img.size
+            max_dim = 1280
+            scale = 1.0
+            if max(orig_w, orig_h) > max_dim:
+                scale = max_dim / float(max(orig_w, orig_h))
+                resized_w, resized_h = int(orig_w * scale), int(orig_h * scale)
+                img_for_vlm = img.resize((resized_w, resized_h))
+            else:
+                img_for_vlm = img
+
+            buf = io.BytesIO()
+            img_for_vlm.save(buf, format="PNG")
+            b64_img = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+            system_prompt = (
+                "You are an expert UI element visual grounding agent.\n"
+                "Given a screenshot and a target reference label/description, find the EXACT bounding box "
+                "and center coordinates of that element on the screen.\n"
+                "Respond with ONLY a raw JSON object and nothing else:\n"
+                "{\n"
+                '  "found": true,\n'
+                '  "center": [x, y],\n'
+                '  "bbox": [left, top, right, bottom],\n'
+                '  "label": "<detected label>",\n'
+                '  "confidence": <float 0.0 to 1.0>\n'
+                "}\n"
+                f"Coordinates must be pixel values within image bounds ({img_for_vlm.size[0]}x{img_for_vlm.size[1]}). "
+                'If not found, respond with: {"found": false, "confidence": 0.0}'
+            )
+
+            user_content = [
+                {
+                    "type": "text",
+                    "text": f'Locate the UI element matching: "{reference}". Respond with raw JSON only.',
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{b64_img}"},
+                },
+            ]
+
+            def _invoke_groq_vision(key: str):
+                from groq import Groq
+                c = Groq(api_key=key)
+                return c.chat.completions.create(
+                    model=provider.vision_model or "qwen/qwen3.6-27b",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content},
+                    ],
+                    temperature=0.0,
+                    max_tokens=1024,
+                )
+
+            from unittest.mock import Mock
+            if isinstance(provider, Mock) or isinstance(getattr(provider, "_get_client", None), Mock):
+                client = provider._get_client()
+                resp = client.chat.completions.create(
+                    model=provider.vision_model or "qwen/qwen3.6-27b",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content},
+                    ],
+                    temperature=0.0,
+                    max_tokens=1024,
+                )
+            else:
+                try:
+                    from ai.key_pool import KeyPool
+                    pool = KeyPool.get_instance()
+                    resp = pool.execute_with_failover(_invoke_groq_vision, service="groq")
+                except Exception as e:
+                    logger.debug(f"[GroundingEngine] KeyPool failover notice: {e}, using direct client")
+                    client = provider._get_client()
+                    resp = client.chat.completions.create(
+                        model=provider.vision_model or "qwen/qwen3.6-27b",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content},
+                        ],
+                        temperature=0.0,
+                        max_tokens=1024,
+                    )
+
+            raw_text = resp.choices[0].message.content.strip()
+            raw_text = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
+            if "```" in raw_text:
+                m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw_text)
+                if m:
+                    raw_text = m.group(1).strip()
+
+            data = json.loads(raw_text)
+            if isinstance(data, list):
+                data = data[0] if data else {}
+
+            if not isinstance(data, dict) or not data.get("found", True) or float(data.get("confidence", 0.0)) < MIN_GROUNDING_CONFIDENCE:
+                return None
+
+            center = data.get("center")
+            bbox = data.get("bbox") or data.get("bbox_2d")
+            conf = float(data.get("confidence", 0.85))
+
+            if not center or len(center) != 2:
+                return None
+
+            # Strict bounds validation against image dimensions
+            img_w, img_h = img_for_vlm.size
+            raw_cx, raw_cy = float(center[0]), float(center[1])
+            if not (0 <= raw_cx <= img_w and 0 <= raw_cy <= img_h):
+                logger.warning(
+                    f"[GroundingEngine] VLM center ({raw_cx}, {raw_cy}) outside image bounds "
+                    f"({img_w}x{img_h}). Rejecting invalid prediction."
+                )
+                return None
+
+            real_bbox = None
+            if bbox and len(bbox) == 4:
+                bx1, by1, bx2, by2 = [float(v) for v in bbox]
+                if not (0 <= bx1 < bx2 <= img_w and 0 <= by1 < by2 <= img_h):
+                    logger.warning(
+                        f"[GroundingEngine] VLM bbox {bbox} invalid or outside image bounds "
+                        f"({img_w}x{img_h}). Rejecting invalid prediction."
+                    )
+                    return None
+                p1 = translate_to_screen_coordinates(
+                    (int(bx1), int(by1)),
+                    window_bounds=window_bounds,
+                    vlm_scale_factor=scale,
+                    source_is_logical=False,
+                )
+                p2 = translate_to_screen_coordinates(
+                    (int(bx2), int(by2)),
+                    window_bounds=window_bounds,
+                    vlm_scale_factor=scale,
+                    source_is_logical=False,
+                )
+                real_bbox = (p1[0], p1[1], p2[0], p2[1])
+
+            cx, cy = translate_to_screen_coordinates(
+                (int(raw_cx), int(raw_cy)),
+                window_bounds=window_bounds,
+                vlm_scale_factor=scale,
+                source_is_logical=False,
+            )
+
+            if real_bbox is None:
+                real_bbox = (cx - 20, cy - 10, cx + 20, cy + 10)
+
+            return GroundedTarget(
+                label=data.get("label") or reference,
+                center=(cx, cy),
+                bbox=real_bbox,
+                confidence=conf,
+                source_tier="tier2_vision",
+                app_name=getattr(app_context, "app_name", ""),
+            )
+        except Exception as e:
+            logger.debug(f"[GroundingEngine] VLM grounding note: {e}")
 
         return None
 

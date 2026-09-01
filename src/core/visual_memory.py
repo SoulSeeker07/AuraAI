@@ -72,6 +72,10 @@ class VisualWorkingMemory:
         self._active_apps: dict[str, str] = {}
         # {task_id: GroundedTarget | None} (1-turn alternative slot for fast verbal correction)
         self._last_alternatives: dict[str, Optional[GroundedTarget]] = {}
+        # {task_id: GroundedTarget | None} (cross-app transfer register for cross-app copy/upload/open handoff)
+        self._cross_app_transfer_slot: dict[str, Optional[GroundedTarget]] = {}
+        # {task_id: int} (turn at which cross-app transfer target was set)
+        self._cross_app_transfer_turn: dict[str, int] = {}
 
     @classmethod
     def get_instance(cls) -> "VisualWorkingMemory":
@@ -126,8 +130,16 @@ class VisualWorkingMemory:
                 # Sort descending by confidence
                 sorted_targets = sorted(targets, key=lambda t: t.confidence, reverse=True)
                 self._last_alternatives[task_id] = sorted_targets[1]
+                best_t = sorted_targets[0]
+                best_t.metadata["origin_app"] = app_name.lower().strip()
+                self._cross_app_transfer_slot[task_id] = best_t
+                self._cross_app_transfer_turn[task_id] = current_turn
             else:
                 self._last_alternatives[task_id] = None
+                best_t = targets[0]
+                best_t.metadata["origin_app"] = app_name.lower().strip()
+                self._cross_app_transfer_slot[task_id] = best_t
+                self._cross_app_transfer_turn[task_id] = current_turn
 
             logger.debug(
                 f"[VisualWorkingMemory] Remembered {len(targets)} target(s) for task '{task_id}' "
@@ -155,11 +167,14 @@ class VisualWorkingMemory:
                 return True
         return False
 
+    CROSS_APP_VERBS = ("upload", "paste", "attach", "send", "transfer", "insert", "import")
+
     def resolve_reference(
         self,
         phrase: str,
         task_id: str = "default",
         current_app: str = "",
+        allow_cross_app: bool = False,
     ) -> tuple[Optional[GroundedTarget], str]:
         """
         Resolve a pronoun or referential phrase to the best matching GroundedTarget.
@@ -169,6 +184,7 @@ class VisualWorkingMemory:
         """
         with self._lock:
             app_clean = current_app.lower().strip()
+            phrase_lower = phrase.lower()
 
             # 1. Alternative correction fast-path ("no, the other one")
             if self.is_alternative_correction(phrase):
@@ -184,20 +200,16 @@ class VisualWorkingMemory:
                         self._last_alternatives[task_id] = None
                         return alt, "alternative_correction"
 
-            # 2. Referential ring-buffer lookup
-            buffer = self._buffers.get(task_id, [])
-            if not buffer:
-                return None, "empty_memory"
-
-            current_turn = self._turn_counters.get(task_id, 0)
-            phrase_lower = phrase.lower()
-
             # Extract specific entity hint if present (e.g. "that file" -> "file", "that button" -> "button")
             entity_hint = ""
-            for word in ("file", "folder", "button", "link", "window", "tab", "input", "field"):
+            for word in ("file", "folder", "button", "link", "window", "tab", "input", "field", "image", "document"):
                 if word in phrase_lower:
                     entity_hint = word
                     break
+
+            # 2. Referential ring-buffer lookup for intra-app targets
+            buffer = self._buffers.get(task_id, [])
+            current_turn = self._turn_counters.get(task_id, 0)
 
             best_target: Optional[GroundedTarget] = None
             best_score: float = -1.0
@@ -231,6 +243,50 @@ class VisualWorkingMemory:
                 )
                 return best_target, "referential_match"
 
+            # 3. Cross-app transfer resolution
+            # Guard against false positives: Do NOT hijack intra-app commands like "insert a row", "paste", or "import os".
+            # Cross-app transfer requires:
+            #   a) allow_cross_app is explicitly enabled, OR
+            #   b) The utterance combines a transfer action ("upload", "attach", "drop", "transfer", "send") with a
+            #      deictic reference ("that", "it", "this", "the file", "the document", "the link") or explicit cross-app phrasing.
+            has_deictic = any(d in phrase_lower.split() for d in ("that", "it", "this", "the", "those", "these"))
+            has_transfer_verb = any(w in phrase_lower for w in ("upload", "attach", "drop", "transfer", "send"))
+            has_explicit_cross = any(w in phrase_lower for w in ("from explorer", "into chrome", "to chat", "to ticket", "cross-app", "transfer to"))
+
+            # Exclude non-transferable local operations like spreadsheet rows/columns or code imports
+            incompatible_local_hints = {"row", "column", "cell", "sheet", "code", "variable", "function", "module", "library"}
+            is_local_operation = any(lh in phrase_lower for lh in incompatible_local_hints)
+
+            is_cross_intent = (
+                allow_cross_app
+                or (has_transfer_verb and has_deictic and not is_local_operation)
+                or (has_explicit_cross and not is_local_operation)
+            )
+
+            if is_cross_intent:
+                x_target = self._cross_app_transfer_slot.get(task_id)
+                if x_target is not None:
+                    x_turn = self._cross_app_transfer_turn.get(task_id, 0)
+                    if current_turn - x_turn <= 3:
+                        origin = x_target.metadata.get("origin_app", "")
+                        # Verify entity compatibility
+                        target_label_lower = x_target.label.lower()
+                        valid_entity = (
+                            not entity_hint
+                            or entity_hint in target_label_lower
+                            or (entity_hint in ("file", "folder", "document", "item", "attachment", "pdf", "image", "link")
+                                and any(ext in target_label_lower for ext in (".", "file", "doc", "pdf", "xls", "csv", "txt", "png", "jpg", "http", "www", "folder")))
+                        )
+                        if valid_entity:
+                            logger.info(
+                                f"[VisualWorkingMemory] Resolved cross-app transfer '{phrase}' -> '{x_target.label}' "
+                                f"(origin={origin}, confidence={x_target.confidence:.2f})"
+                            )
+                            return x_target, "cross_app_transfer"
+
+            if not buffer:
+                return None, "empty_memory"
+
             return None, "no_active_candidate"
 
     # ── App-Switch Decay ───────────────────────────────────────────────────────
@@ -243,7 +299,9 @@ class VisualWorkingMemory:
     ) -> None:
         """
         Decay or invalidate memory entries when the foreground window switches,
-        preventing 'that file' in Explorer from leaking into VS Code or Chrome.
+        preventing 'that file' in Explorer from leaking into VS Code or Chrome,
+        while preserving the most recent high-confidence target in the cross-app
+        transfer register for explicit cross-app handoffs.
         """
         prev = previous_app.lower().strip()
         new = new_app.lower().strip()
@@ -257,6 +315,22 @@ class VisualWorkingMemory:
             self._active_apps[task_id] = new
 
             buffer = self._buffers.get(task_id, [])
+
+            # Preserve the most recent high-confidence target from previous app into transfer slot
+            prev_targets = []
+            for entry in buffer:
+                if entry.app_name == prev:
+                    prev_targets.extend(entry.targets)
+            if prev_targets:
+                best_prev = max(prev_targets, key=lambda t: t.confidence)
+                if best_prev.confidence >= 0.70:
+                    import copy
+                    x_target = copy.deepcopy(best_prev)
+                    x_target.confidence = max(0.75, x_target.confidence * 0.85)
+                    x_target.metadata["origin_app"] = prev
+                    self._cross_app_transfer_slot[task_id] = x_target
+                    self._cross_app_transfer_turn[task_id] = self._turn_counters.get(task_id, 0)
+
             # Filter out entries from the previous app or apply heavy confidence penalty
             retained = []
             for entry in buffer:
@@ -272,3 +346,25 @@ class VisualWorkingMemory:
                 f"[VisualWorkingMemory] Applied app-switch decay '{prev}' -> '{new}' "
                 f"for task '{task_id}'. Retained {len(retained)} entry(ies)."
             )
+
+    # ── Cross-App Transfer Helpers ─────────────────────────────────────────────
+
+    def get_cross_app_transfer(self, task_id: str = "default") -> Optional[GroundedTarget]:
+        """Retrieve current cross-app transferable target if available."""
+        with self._lock:
+            return self._cross_app_transfer_slot.get(task_id)
+
+    def set_cross_app_transfer(
+        self,
+        target: GroundedTarget,
+        task_id: str = "default",
+        origin_app: str = "",
+    ) -> None:
+        """Explicitly register a target into the cross-app transfer register."""
+        with self._lock:
+            import copy
+            t = copy.deepcopy(target)
+            if origin_app:
+                t.metadata["origin_app"] = origin_app.lower().strip()
+            self._cross_app_transfer_slot[task_id] = t
+            self._cross_app_transfer_turn[task_id] = self._turn_counters.get(task_id, 0)

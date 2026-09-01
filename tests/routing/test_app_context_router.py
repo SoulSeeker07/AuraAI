@@ -65,3 +65,48 @@ class TestAppContextRouter:
         cap, risk = router.resolve_verb("save", ctx)
         assert cap == "input.hotkey_save"
         assert risk == "LOW"
+
+    def test_terminal_and_powershell_routing(self, router):
+        ctx_wt = AppContext(app_name="windowsterminal.exe", window_handle=5001, window_title="PowerShell 7")
+        cap, risk = router.resolve_verb("run", ctx_wt)
+        assert cap == "terminal.run"
+        assert risk == "HIGH"
+
+        cap_clr, _ = router.resolve_verb("clear", ctx_wt)
+        assert cap_clr == "terminal.clear"
+
+        ctx_ps = AppContext(app_name="powershell.exe", window_handle=5002)
+        cap_ps, _ = router.resolve_verb("execute", ctx_ps)
+        assert cap_ps == "terminal.run"
+
+    def test_slack_and_spotify_routing(self, router):
+        ctx_slack = AppContext(app_name="slack.exe", window_handle=6001)
+        cap_send, _ = router.resolve_verb("send", ctx_slack)
+        assert cap_send == "slack.send_message"
+
+        ctx_spot = AppContext(app_name="spotify.exe", window_handle=6002)
+        cap_play, _ = router.resolve_verb("play", ctx_spot)
+        assert cap_play == "audio.play"
+        cap_vol, _ = router.resolve_verb("volume_up", ctx_spot)
+        assert cap_vol == "audio.volume_up"
+
+    def test_cross_app_intent_detection(self, router):
+        # 1. Direct switch
+        is_cross, src, tgt = router.detect_cross_app_intent("switch to Chrome and search", current_app="code.exe")
+        assert is_cross is True
+        assert src == "code.exe"
+        assert tgt == "chrome.exe"
+
+        # 2. "in <app>, <action>"
+        is_cross2, src2, tgt2 = router.detect_cross_app_intent("in VS Code, run tests", current_app="chrome.exe")
+        assert is_cross2 is True
+        assert tgt2 == "code.exe"
+
+        # 3. Cross-app upload/paste transfer
+        is_cross3, _, tgt3 = router.detect_cross_app_intent("paste to Discord", current_app="explorer.exe")
+        assert is_cross3 is True
+        assert tgt3 == "discord.exe"
+
+        # 4. Intra-app non-cross intent
+        is_cross4, _, _ = router.detect_cross_app_intent("scroll down and click link", current_app="chrome.exe")
+        assert is_cross4 is False

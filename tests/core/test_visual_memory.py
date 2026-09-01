@@ -107,3 +107,27 @@ class TestAppSwitchDecayAndThreadIsolation:
         res_b, _ = vm.resolve_reference("that", task_id="thread_b", current_app="code.exe")
         assert res_b is not None
         assert res_b.label == "project_b_code.py"
+
+    def test_cross_app_transfer_preserved_and_resolved(self, vm):
+        # In explorer.exe, user interacts with an important document
+        t_doc = _make_target("invoice_2026.pdf", confidence=0.96, app_name="explorer.exe")
+        vm.remember([t_doc], task_id="workflow_1", app_name="explorer.exe")
+
+        # Switch to chrome.exe
+        vm.decay_on_app_switch(previous_app="explorer.exe", new_app="chrome.exe", task_id="workflow_1")
+
+        # Direct in-app resolution for "that file" prevents accidental click leakage
+        res_intra, _ = vm.resolve_reference("open that file", task_id="workflow_1", current_app="chrome.exe")
+        assert res_intra is None
+
+        # Cross-app transfer intent ("upload that file", "attach it", "paste it") resolves the document!
+        res_cross, match_type = vm.resolve_reference("upload that file", task_id="workflow_1", current_app="chrome.exe")
+        assert res_cross is not None
+        assert res_cross.label == "invoice_2026.pdf"
+        assert match_type == "cross_app_transfer"
+        assert res_cross.metadata.get("origin_app") == "explorer.exe"
+
+        # Explicit getter test
+        x_slot = vm.get_cross_app_transfer(task_id="workflow_1")
+        assert x_slot is not None
+        assert x_slot.label == "invoice_2026.pdf"

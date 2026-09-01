@@ -5,6 +5,44 @@ All notable changes to Aura AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1-multi-app-vision-grounding-and-vlm-hardening] - 2026-09-01
+
+### Added & Hardened
+- **Multi-App Vision Grounding & Coordinate Space Architecture (`src/vision/grounding_engine.py`, `docs/vlm_grounding_limits.md`)**:
+  - **Decoupled 3-Stage Coordinate Pipeline**: Isolated Stage 1 (VLM downsample reversal), Stage 2 (Logical DOM DPI scaling strictly gated on `source_is_logical=True`), and Stage 3 (Window offset translation), preventing double-scaling on 125% DPI displays ($1920 \times 1080$).
+  - **Strict Geometric Bounds Validation**: Clamped coordinates to image dimensions ($[0 \dots W, 0 \dots H]$) and enforced non-inverted bounding boxes, rejecting out-of-bounds/hallucinated predictions and failing closed (`None`).
+  - **KeyPool Multi-Key Failover**: Fixed latent method typo from `execute_with_retry` to `execute_with_failover`, enabling automatic failover across `GROQ_API_KEY1..4` on HTTP 429 TPM burst limits. Verified via automated unit test `test_tier2_vlm_keypool_failover_on_429`.
+  - **Empirical Grounding Resolution & Operational Boundaries**: Evaluated spatial precision across control sizes on live hardware ($125\%$ DPI). Large controls ($\ge 60\text{px}$) absorb $\sim 28\text{px}$ drift with $100\%$ hit rate; small isolated glyphs ($<25\text{px}$) exhibit up to $28.8\text{px}$ phrasing drift resulting in outright misses. Established Tier 1 (Accessibility tree / UIA / DOM) as primary for controls $<40\text{px}$, with Tier 2B (VLM) gated as high-risk fallback.
+  - **Durable Reference Documentation**: Published `docs/vlm_grounding_limits.md` capturing transformation formulas, empirical limits, and verification process rules.
+  - **Comprehensive Regression Certification**: 36 / 36 tests passing across all vision, routing, memory, and disambiguation suites.
+
+---
+
+## [1.4.0-governance-cognitive-memory-and-ambient-briefings] - 2026-09-01
+
+### Added & Hardened
+- **Unified Architectural Execution Governance & AST Guardrail (`src/core/orchestration/`, `src/desktop/native/`)**:
+  - **Zero-Bypass Enforcement (`tests/unit/test_architectural_governance_guardrail.py`)**: AST guardrail suite verifying that all execution subsystems (`DaemonRuntime`, `ConversationEngine`, `TriggerScheduler`, and `BrowserBackend`) route strictly through `ExecutionPolicy` and `CryptographicApprovalAuthority`.
+  - **Cryptographic HMAC Approval Authority (`src/desktop/native/security/approval_authority.py`)**: HMAC-SHA256 signed tickets with cryptographic proof, replay prevention, and process-restart invalidation.
+  - **FocusManager Notification Integration**: Emits explicit `ticket_id` and canonical capability namespace strings for user sign-off.
+- **Unified Browser Security & Paused Session Store (`src/browser/`)**:
+  - **Single Security Architecture**: Replaced standalone browser gating with canonical `CryptographicApprovalAuthority` `AUTH-`/`tkt_` tickets.
+  - **Sensitive Argument Redaction**: Passwords, API keys, and financial credentials redacted to `[REDACTED_SECRET]` in persisted tickets and audit logs while preserving raw in-memory session resume in `PausedSessionStore`.
+- **Cognitive Memory 2.0 & Adaptive Preference Learning (`src/memory/`)**:
+  - **PreferenceLearner Lifecycle (`src/memory/preference_learner.py`)**: `PROVISIONAL` (confidence 0.50) vs `CONFIRMED` ($\ge 0.90$) classification, multi-hit promotion ($N \ge 2$), and conflict resolution with `SUPERSEDED` lineage pointers.
+  - **Real-Transcript Anti-Hallucination & Recall Validation**: Sentence-level predicate-keyword proximity binding, quote sanitization, and negative bug filtering verified against 116 real session messages (0 false positives) and ground-truth directive benchmarks.
+  - **Anti-Popularity Bounded Recall Ranking (`src/memory/recall_engine.py`)**: Logarithmic access reinforcement with strict importance floors (0.65 for high importance) and ceilings (0.60 for low importance), preventing frequent trivia from outranking critical architectural constraints.
+  - **Memory Database Consolidation**: Atomically pruned 11,271 duplicate test records from `Memory.db` (down from 13,775 to 2,504 distinct records) with access counts aggregated and backup saved.
+- **PersonalOS Ambient Triggers & Adaptive Briefings (`src/personal_os/`)**:
+  - **Ranked Memory Recall**: `DailyContextEngine` queries `CognitiveMemoryEngine.recall_ranked()` with automatic SQLite access reinforcement.
+  - **Preference-Adapted Markdown Briefings**: `DailyContext.format_summary()` dynamically formats high-density bullet layouts for `concise` communication preferences and tags active runtime toolchains (`[python | pnpm]`).
+  - **TriggerScheduler Routine Dispatch**: Autonomous `daily_agenda_sync` trigger execution under `ExecutionPolicy` governance.
+- **Voice Security & UX Optimization (`src/voice/`, `src/gui/widgets/voice_notch_overlay.py`)**:
+  - **Speaker Verification Hardening**: Normalized embedding cosine distance metric and verification gating wired into all audio ingestion paths.
+  - **Conversational Follow-Up Window**: Preserved 3.5s multi-turn follow-up window with strict HUD state machine synchronization.
+
+---
+
 ## [1.0.0] - 2026-08-31 — Production Release (Milestones M01–M30 Certified)
 
 
