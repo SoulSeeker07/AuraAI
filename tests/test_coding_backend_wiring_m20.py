@@ -88,7 +88,8 @@ class TestGenerateAgy:
 
         assert result.success is True
         obs = "\n".join(result.observations)
-        assert "Plan source     : groq" in obs
+        assert ("Plan source     : groq" in obs) or ("Plan source     : gemini" in obs)
+
 
     def test_both_agy_and_groq_fail_returns_error(self, tmp_path):
         """If both agy and Groq fallback fail, result is honest failure."""

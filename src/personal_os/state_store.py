@@ -12,6 +12,7 @@ import json
 import logging
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -118,6 +119,20 @@ class PersonalOSStateStore:
                 );
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS personal_os_suspended_sessions (
+                    ticket_id TEXT PRIMARY KEY,
+                    trigger_id TEXT,
+                    session_id TEXT NOT NULL,
+                    task_graph_json TEXT NOT NULL,
+                    subtask_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at REAL NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'PENDING'
+                );
+                """
+            )
             row = conn.execute(
                 "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1;"
             ).fetchone()
@@ -150,6 +165,20 @@ class PersonalOSStateStore:
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
                 updated_at TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS personal_os_suspended_sessions (
+                ticket_id TEXT PRIMARY KEY,
+                trigger_id TEXT,
+                session_id TEXT NOT NULL,
+                task_graph_json TEXT NOT NULL,
+                subtask_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING'
             );
             """
         )
@@ -188,15 +217,22 @@ class PersonalOSStateStore:
     # ── Trigger Operations ──────────────────────────────────────────────────
 
     def save_trigger(self, trigger: PersonalOSTrigger) -> None:
-        """Create or update a persistent trigger routine."""
+        """Insert or replace a trigger record in the SQLite database."""
         with self._db_lock, self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO personal_os_triggers (
+                INSERT INTO personal_os_triggers (
                     trigger_id, name, goal_text, schedule, enabled,
                     created_at, last_fired_at, run_count, last_result_summary,
                     template_vars, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(trigger_id) DO UPDATE SET
+                    name=excluded.name,
+                    goal_text=excluded.goal_text,
+                    schedule=excluded.schedule,
+                    enabled=excluded.enabled,
+                    template_vars=excluded.template_vars,
+                    metadata=excluded.metadata;
                 """,
                 (
                     trigger.trigger_id,
@@ -213,6 +249,34 @@ class PersonalOSStateStore:
                 ),
             )
             conn.commit()
+
+    def register_authorized_trigger(
+        self,
+        trigger: PersonalOSTrigger,
+        allowed_capabilities: list[str] | None = None,
+        execution_map: dict[str, Any] | None = None,
+    ) -> PersonalOSTrigger:
+        """
+        Register a trigger and bind its cryptographic HMAC authorization signature
+        for standing execution of whitelisted capabilities.
+        """
+        if allowed_capabilities:
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+
+            auth = CryptographicApprovalAuthority.get_instance()
+            sig = auth.sign_trigger(
+                trigger_id=trigger.trigger_id,
+                action_goal=trigger.goal_text,
+                allowed_capabilities=allowed_capabilities,
+                execution_map=execution_map or {},
+            )
+            trigger.metadata["allowed_capabilities"] = allowed_capabilities
+            trigger.metadata["auth_signature"] = sig
+            if execution_map:
+                trigger.metadata["execution_map"] = execution_map
+
+        self.save_trigger(trigger)
+        return trigger
 
     def get_trigger(self, identifier: str) -> PersonalOSTrigger | None:
         """Retrieve a trigger by trigger_id or exact name."""
@@ -349,3 +413,77 @@ class PersonalOSStateStore:
                 except Exception:
                     result[r["key"]] = r["value"]
             return result
+
+    # ── Suspended Session Operations (Resumable Approvals) ───────────────────
+
+    def save_suspended_session(
+        self,
+        ticket_id: str,
+        trigger_id: str | None,
+        session_id: str,
+        task_graph_json: str,
+        subtask_id: str,
+        expires_at: float,
+    ) -> None:
+        """Persist a suspended DAG session awaiting cryptographic human approval."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._db_lock, self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO personal_os_suspended_sessions
+                (ticket_id, trigger_id, session_id, task_graph_json, subtask_id, created_at, expires_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING');
+                """,
+                (ticket_id, trigger_id, session_id, task_graph_json, subtask_id, now, expires_at),
+            )
+            conn.commit()
+
+    def get_suspended_session(self, ticket_id: str) -> dict[str, Any] | None:
+        """Retrieve suspended session details by ticket ID."""
+        with self._db_lock, self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM personal_os_suspended_sessions WHERE ticket_id = ? LIMIT 1;",
+                (ticket_id,),
+            ).fetchone()
+            if not row:
+                return None
+            return dict(row)
+
+    def get_active_suspended_for_trigger(self, trigger_id: str) -> dict[str, Any] | None:
+        """
+        Check if a trigger already has an active, unexpired pending approval ticket.
+        Used to prevent duplicate approval ticket pile-ups on recurring triggers.
+        """
+        now = time.time()
+        with self._db_lock, self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM personal_os_suspended_sessions
+                WHERE trigger_id = ? AND status = 'PENDING' AND expires_at > ?
+                ORDER BY expires_at DESC LIMIT 1;
+                """,
+                (trigger_id, now),
+            ).fetchone()
+            if not row:
+                return None
+            return dict(row)
+
+    def mark_suspended_session_status(self, ticket_id: str, status: str) -> None:
+        """Update status of a suspended session (e.g. 'REDEEMED', 'EXPIRED_ABORTED', 'CANCELLED')."""
+        with self._db_lock, self._get_connection() as conn:
+            conn.execute(
+                "UPDATE personal_os_suspended_sessions SET status = ? WHERE ticket_id = ?;",
+                (status, ticket_id),
+            )
+            conn.commit()
+
+    def cleanup_expired_suspended_sessions(self) -> int:
+        """Clean up expired suspended sessions."""
+        now = time.time()
+        with self._db_lock, self._get_connection() as conn:
+            cur = conn.execute(
+                "UPDATE personal_os_suspended_sessions SET status = 'EXPIRED_ABORTED' WHERE status = 'PENDING' AND expires_at <= ?;",
+                (now,),
+            )
+            conn.commit()
+            return cur.rowcount

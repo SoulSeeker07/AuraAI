@@ -205,7 +205,14 @@ class AuraCore:
         self.current_task: str | None = None
         self.current_task_status: AuraCoreStatus = AuraCoreStatus.READY
         self.conversation_history: list[dict[str, str]] = []
-        self.max_history = 100
+        self.max_history: int = int(self.config.get("max_history", 100))
+        self.focus_manager = None
+        self.grounding_engine = None
+        self.visual_memory = None
+        self.app_context_router = None
+        self.macro_compiler = None
+        self.speculative_indexer = None
+        self.proactive_watcher = None
 
         AuraCore._initialized = True
         self.groq_model = self.config.get("groq_model", "openai/gpt-oss-120b")
@@ -332,10 +339,12 @@ class AuraCore:
         Returns a formatted string response if the action is fully handled locally,
         or None if control should pass to general LLM reasoning.
         """
-        if self.focus_manager is None:
+        focus_mgr = getattr(self, "focus_manager", None)
+        if focus_mgr is None:
             try:
                 from core.focus_manager import FocusManager
-                self.focus_manager = FocusManager()
+                focus_mgr = FocusManager.get_instance()
+                self.focus_manager = focus_mgr
             except Exception as fe:
                 logger.debug(f"[AuraCore] FocusManager lazy-init skipped: {fe}")
                 return None
@@ -345,10 +354,10 @@ class AuraCore:
             task_id = intent.get("task_id", "")
 
             if action == "list":
-                threads = self.focus_manager.list_active()
+                threads = focus_mgr.list_active()
                 if not threads:
                     return "📋 **Focus Threads**: No active focus threads currently open."
-                curr = self.focus_manager.get_current()
+                curr = focus_mgr.get_current()
                 curr_id = curr.task_id if curr else None
                 lines = ["📋 **Active Focus Threads**:"]
                 for t in threads:
@@ -357,42 +366,42 @@ class AuraCore:
                 return "\n".join(lines)
 
             elif action == "query":
-                curr = self.focus_manager.get_current()
+                curr = focus_mgr.get_current()
                 if curr:
                     return f"🎯 **Current Focus Task**: '{curr.task_id}' (Severity: {curr.severity})"
                 return "🎯 **Current Focus Task**: Neutral (No active focus thread)."
 
             elif action == "close_all":
-                count = self.focus_manager.close_all_threads()
+                count = focus_mgr.close_all_threads()
                 return f"🗑️ **Focus Manager**: Closed and archived {count} focus thread(s) to long-term memory."
 
             elif action == "close" and task_id:
-                if self.focus_manager.close_thread(task_id):
+                if focus_mgr.close_thread(task_id):
                     return f"🗑️ **Focus Manager**: Closed and archived task '{task_id}' to long-term memory."
                 return f"⚠️ **Focus Manager**: Could not find active task '{task_id}'."
 
             elif action == "close_current":
-                curr = self.focus_manager.get_current()
-                if curr and self.focus_manager.close_thread(curr.task_id):
+                curr = focus_mgr.get_current()
+                if curr and focus_mgr.close_thread(curr.task_id):
                     return f"🗑️ **Focus Manager**: Closed current task '{curr.task_id}'."
                 return "⚠️ **Focus Manager**: No active focus thread to close."
 
             elif action == "switch" and task_id:
-                res = self.focus_manager.switch_to(task_id)
+                res = focus_mgr.switch_to(task_id)
                 if res:
                     return f"📌 **Focus Manager**: Switched active focus context to thread '{task_id}'."
-                self.focus_manager.create(task_id, {}, severity_origin="user")
+                focus_mgr.create(task_id, {}, severity_origin="user")
                 return f"📌 **Focus Manager**: Created and switched to thread '{task_id}'."
 
             elif action == "resume" and task_id:
-                res = self.focus_manager.resume(task_id) or self.focus_manager.switch_to(task_id)
+                res = focus_mgr.resume(task_id) or focus_mgr.switch_to(task_id)
                 if res:
                     return f"📌 **Focus Manager**: Resumed focus thread '{task_id}'."
-                self.focus_manager.create(task_id, {}, severity_origin="user")
+                focus_mgr.create(task_id, {}, severity_origin="user")
                 return f"📌 **Focus Manager**: Started new focus thread '{task_id}'."
 
             elif action == "create" and task_id:
-                self.focus_manager.create(task_id, {}, severity_origin="user")
+                focus_mgr.create(task_id, {}, severity_origin="user")
                 return f"📌 **Focus Manager**: Started new focus thread '{task_id}'."
 
         except Exception as e:
@@ -410,17 +419,18 @@ class AuraCore:
 
         Returns the (possibly annotated) response text.
         """
-        if self.focus_manager is None:
+        focus_mgr = getattr(self, "focus_manager", None)
+        if focus_mgr is None:
             return response_text
         try:
-            current = self.focus_manager.get_current()
+            current = focus_mgr.get_current()
             if current:
-                self.focus_manager.update_state(
+                focus_mgr.update_state(
                     current.task_id,
                     {"last_summary": response_text[:500], "last_user_msg": user_message[:200]},
                 )
 
-            notifications = self.focus_manager.drain_pending_notifications()
+            notifications = focus_mgr.drain_pending_notifications()
             if notifications:
                 suffix_lines = ["\n\n---"]
                 for notif in notifications:
@@ -455,11 +465,15 @@ class AuraCore:
         resume_prefixes = ("back to ", "resume ", "go back to ", "switch to ", "switch back to ", "open task ", "open thread ", "open focus thread ")
         create_prefixes = ("start new task ", "new task ", "begin task ", "start task ", "create task ", "create thread ", "start thread ", "start focus thread ")
         list_phrases = ("what was i doing", "list tasks", "list my tasks", "show tasks",
-                        "show active tasks", "what are my tasks", "active threads", "my tasks",
+                        "show active tasks", "what are my tasks", "what are my active tasks", "active threads", "my tasks",
                         "list focus threads", "list focus thread", "list all focus threads",
                         "list threads", "list all threads", "show threads", "show focus threads",
                         "list focus", "show focus", "active focus threads")
-        query_phrases = ("what am i working on", "current task", "current focus", "current thread")
+
+        query_phrases = (
+            "what am i working on", "current task", "current focus", "current thread",
+            "focus?", "focus", "my focus", "my focus?", "what is my focus", "what's my focus"
+        )
 
         for phrase in close_all_phrases:
             if phrase in msg:
@@ -517,9 +531,12 @@ class AuraCore:
                 slug = msg[len(prefix):].strip().replace(" ", "_")
                 return {"action": "create", "task_id": slug}
 
-        # 2. LLM slug extraction for ambiguous phrasing
-        if self.llm_enabled and self.groq_client is not None:
+        # 2. LLM slug extraction for ambiguous phrasing (strictly gated by focus keywords)
+        focus_keywords = ("task", "thread", "focus", "project", "work on", "working on", "switch", "resume", "archive")
+        has_focus_context = any(k in msg for k in focus_keywords)
+        if has_focus_context and self.llm_enabled and self.groq_client is not None:
             try:
+
                 extract_prompt = (
                     f"You are a focus-thread router. Classify this message into one of:\n"
                     f"  - switch:<slug>  (e.g. 'back to api_refactor')\n"
@@ -779,6 +796,12 @@ class AuraCore:
     def _init_llm(self):
         """Initialize the Groq LLM client."""
         try:
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(dotenv_path=self.project_root / ".env", override=False)
+            except Exception:
+                pass
+
             api_key = os.environ.get("GROQ_API_KEY")
             if not api_key:
                 raise ValueError(
@@ -787,11 +810,14 @@ class AuraCore:
             if Groq is None:
                 raise ImportError("groq package not installed. Run: pip install groq")
 
+
             self.groq_client = Groq(api_key=api_key)
             self.llm_enabled = True
-            self.voice_llm_model = os.environ.get("AURA_VOICE_MODEL", "openai/gpt-oss-20b")
+            self.voice_llm_model = os.environ.get("AURA_VOICE_MODEL", "openai/gpt-oss-120b")
             self.reasoning_llm_model = os.environ.get("AURA_REASONING_MODEL", "openai/gpt-oss-120b")
             self.llm_model = self.reasoning_llm_model
+
+
             logger.info(
                 f"Groq LLM client initialized successfully (Voice: {self.voice_llm_model}, Reasoning: {self.reasoning_llm_model})"
             )
@@ -1089,8 +1115,12 @@ class AuraCore:
             return
 
         try:
+            from core.tools.aura_tool_registry import AuraToolRegistry
+            tools = AuraToolRegistry.get_tool_definitions()
+
             messages = self._build_chat_messages(user_message)
-            target_model = model or getattr(self, "voice_llm_model", "openai/gpt-oss-20b")
+            target_model = model or getattr(self, "voice_llm_model", "openai/gpt-oss-120b")
+
             kwargs: dict[str, Any] = {
                 "model": target_model,
                 "messages": messages,
@@ -1098,11 +1128,16 @@ class AuraCore:
                 "temperature": 0.7,
                 "max_tokens": 1024,
             }
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = "medium"
 
+
             full_response_chunks = []
             completion = self.groq_client.chat.completions.create(**kwargs)
+            in_think = False
             for chunk in completion:
                 if (
                     chunk.choices
@@ -1111,7 +1146,15 @@ class AuraCore:
                 ):
                     token = chunk.choices[0].delta.content
                     full_response_chunks.append(token)
-                    yield token
+                    if "<think>" in token:
+                        in_think = True
+                        token = token.split("<think>")[0]
+                    if "</think>" in token:
+                        in_think = False
+                        token = token.split("</think>")[-1]
+                    if not in_think and token:
+                        yield token
+
 
             # Record turn in conversation history
             full_text = "".join(full_response_chunks).strip()
@@ -1120,9 +1163,12 @@ class AuraCore:
                 self.add_to_conversation("assistant", full_text)
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             logger.error(f"get_ai_response_stream error: {e}", exc_info=True)
             resp = await self.get_ai_response(user_message)
             yield resp
+
 
     async def get_ai_response(
         self, user_message: str, enable_tools: bool = True
@@ -1145,7 +1191,7 @@ class AuraCore:
             )
 
         # 1. Deterministic Local Intent Fast-Path (0ms latency & 0 API tokens across all frontends)
-        # Skip fast-path for compound multi-action queries (e.g. connectors or comma-separated multi-actions)
+        # Handle single and compound multi-action queries matching local intents
         msg_lower = user_message.lower().strip()
         has_connector = any(w in msg_lower for w in (" and ", " then ", " also ", " after that ", " plus ", " & "))
         has_multi_clause = ("," in msg_lower or ";" in msg_lower) and any(
@@ -1153,19 +1199,19 @@ class AuraCore:
         )
         is_compound = has_connector or (has_multi_clause and len([c for c in msg_lower.replace(";", ",").split(",") if c.strip()]) > 1)
 
+        conv_engine = getattr(self, "conversation_engine", None)
+        if conv_engine is None:
+            try:
+                self._init_brain()
+                conv_engine = getattr(self, "conversation_engine", None)
+            except Exception as be:
+                logger.warning(f"[AuraCore] Lazy init_brain failed: {be}")
+
         if not is_compound:
             focus_ans = self._focus_preamble(user_message)
             if focus_ans is not None:
                 logger.debug(f"[AuraCore] Resolved via Focus Preamble fast-path: {user_message}")
                 return focus_ans
-
-            conv_engine = getattr(self, "conversation_engine", None)
-            if conv_engine is None:
-                try:
-                    self._init_brain()
-                    conv_engine = getattr(self, "conversation_engine", None)
-                except Exception as be:
-                    logger.warning(f"[AuraCore] Lazy init_brain failed: {be}")
 
             if conv_engine is not None:
                 try:
@@ -1178,6 +1224,40 @@ class AuraCore:
                     import traceback
                     traceback.print_exc()
                     logger.error(f"[AuraCore] Local intent router exception: {ce_err}")
+        else:
+            # Deterministic Compound Fast-Path Splitter
+            # Restrict strictly to 0ms deterministic local intents (e.g. time, weather, battery, settings)
+            DETERMINISTIC_LOCAL_INTENTS = {
+                "local_time", "live_weather", "battery_status", "memory_summary",
+                "brightness_control", "audio_control", "profile_lookup",
+                "skills_lookup", "goals_lookup", "preferences_lookup", "projects_lookup",
+                "remember_fact"
+            }
+            if conv_engine is not None:
+                try:
+                    import re
+                    clauses = [c.strip() for c in re.split(r",|;|\band\b|\bthen\b|\balso\b|\bafter that\b|\bplus\b", user_message, flags=re.IGNORECASE) if c.strip()]
+                    if len(clauses) > 1:
+                        local_answers = []
+                        all_resolved = True
+                        for clause in clauses:
+                            c_intent = conv_engine.intent_router.detect(clause)
+                            if c_intent and c_intent.name in DETERMINISTIC_LOCAL_INTENTS:
+                                c_ans = conv_engine._answer_local_intent(c_intent)
+                                if c_ans is not None:
+                                    local_answers.append(c_ans)
+                                    continue
+                            all_resolved = False
+                            break
+                        if all_resolved and len(local_answers) == len(clauses):
+                            combined = "\n".join(local_answers)
+                            logger.info(f"[AuraCore] Resolved {len(clauses)} compound actions via deterministic local fast-path.")
+                            self.add_to_conversation("user", user_message)
+                            self.add_to_conversation("assistant", combined)
+                            return combined
+
+                except Exception as comp_err:
+                    logger.debug(f"[AuraCore] Compound local fast-path pass: {comp_err}")
 
         try:
             import json
@@ -1223,8 +1303,9 @@ class AuraCore:
                     kw.pop("reasoning_effort", None)
 
                 def _do_chat(api_key: str):
-                    client = Groq(api_key=api_key)
+                    client = key_pool.get_groq_client(api_key)
                     return client.chat.completions.create(**kw)
+
 
                 try:
                     return key_pool.execute_with_failover(_do_chat, service="groq")
@@ -1315,6 +1396,61 @@ class AuraCore:
             yield resp
             return
 
+        # Fast Local Deterministic & Focus Preamble Resolution
+        focus_ans = self._focus_preamble(user_goal)
+        if focus_ans is not None:
+            yield focus_ans
+            return
+
+        conv_engine = getattr(self, "conversation_engine", None)
+        if conv_engine is None and hasattr(self, "_init_brain"):
+            try:
+                self._init_brain()
+                conv_engine = getattr(self, "conversation_engine", None)
+            except Exception as be:
+                logger.warning(f"[AuraCore] Streaming init_brain failed: {be}")
+
+        if conv_engine is not None:
+            try:
+                import re
+                DETERMINISTIC_LOCAL_INTENTS = {
+                    "local_time", "live_weather", "battery_status", "memory_summary",
+                    "brightness_control", "audio_control", "profile_lookup",
+                    "skills_lookup", "goals_lookup", "preferences_lookup", "projects_lookup",
+                    "remember_fact"
+                }
+                intent = conv_engine.intent_router.detect(user_goal)
+                if intent and intent.name in DETERMINISTIC_LOCAL_INTENTS:
+                    local_ans = conv_engine._answer_local_intent(intent)
+                    if local_ans is not None:
+                        yield local_ans
+                        return
+
+
+
+
+                clauses = [c.strip() for c in re.split(r",|;|\band\b|\bthen\b|\balso\b|\bafter that\b|\bplus\b", user_goal, flags=re.IGNORECASE) if c.strip()]
+                if len(clauses) > 1:
+                    local_answers = []
+                    all_resolved = True
+                    for clause in clauses:
+                        c_intent = conv_engine.intent_router.detect(clause)
+                        if c_intent and c_intent.name in DETERMINISTIC_LOCAL_INTENTS:
+                            c_ans = conv_engine._answer_local_intent(c_intent)
+                            if c_ans is not None:
+                                local_answers.append(c_ans)
+                                continue
+                        all_resolved = False
+                        break
+                    if all_resolved and len(local_answers) == len(clauses):
+                        yield " ".join(local_answers)
+                        return
+            except Exception as ce_err:
+                import traceback
+                traceback.print_exc()
+                logger.debug(f"[AuraCore] Streaming local intent check note: {ce_err}")
+
+
         try:
             from core.orchestration import MasterOrchestrator
             orchestrator = MasterOrchestrator.get_instance()
@@ -1325,6 +1461,7 @@ class AuraCore:
                 yield f"I need your confirmation to {pending_conf.action_plan.goal}. Should I proceed?"
                 return
 
+
             # Fast Pre-evaluation via DecisionEngine
             decision = orchestrator.decision_engine.evaluate(user_goal)
             intent_type = decision.intent_type
@@ -1332,24 +1469,32 @@ class AuraCore:
             needs_planner = decision.needs_planner
 
             # System Self-Knowledge Queries (Instant local resolution)
-            if intent_type == "system_query" or can_from_sys:
+            intent_val = getattr(intent_type, "value", str(intent_type)).lower()
+            if intent_val == "system_query" or can_from_sys:
                 from core.system.system_knowledge_resolver import SystemKnowledgeResolver
                 yield SystemKnowledgeResolver.resolve(user_goal)
                 return
 
             # Conversational Chat Queries -> Stream directly from Groq LLM immediately!
-            if (intent_type == "chat" or not needs_planner) and self.llm_enabled and self.groq_client is not None:
+            if (intent_val == "chat" or not needs_planner) and self.llm_enabled and self.groq_client is not None:
                 async for token in self.get_ai_response_stream(user_goal):
                     yield token
                 return
 
-            # Fast Tool Execution via Autonomous ReAct LLM Engine (Groq openai/gpt-oss-120b)
-            if self.llm_enabled and self.groq_client is not None:
-                ai_resp = await self.get_ai_response(user_goal, enable_tools=True)
-                yield ai_resp
-                return
+
+            # Contextual Acoustic Filler for Voice / Streaming Pipeline
+            if yield_filler:
+                intent_type_str = getattr(intent_type, "value", str(intent_type)).lower()
+                if intent_type_str in ("research", "web_search", "browser"):
+                    yield "Looking that up now... "
+                elif intent_type_str in ("coding", "engineering", "software"):
+                    yield "Working on that now... "
+                else:
+                    yield "On it... "
 
             result = await orchestrator.process_request_async(user_goal)
+
+
 
             # Check if pending confirmation was generated during execution (Hard-Block invariant)
             pending_conf = orchestrator.check_pending_confirmation()
@@ -1866,6 +2011,17 @@ class AuraCore:
         self._brain_call_count += 1
         logger.info(f"[_init_brain] ENTERING (call #{self._brain_call_count})")
         try:
+            global Memory
+            if Memory is None:
+                try:
+                    from Memory import Memory
+                except ImportError:
+                    from pathlib import Path
+                    repo_root = Path(__file__).resolve().parent.parent.parent
+                    if str(repo_root) not in sys.path:
+                        sys.path.insert(0, str(repo_root))
+                    from Memory import Memory
+
             if Memory is None:
                 raise ImportError("Memory module not available")
 
@@ -1873,6 +2029,7 @@ class AuraCore:
             self.memory = Memory(
                 db_path=self.memory_db_path, chat_log_path=self.chat_log_path
             )
+
 
             # Create ConversationEngine
             from ai.provider_manager import ProviderManager
@@ -1917,9 +2074,11 @@ class AuraCore:
         except Exception as e:
             logger.critical(
                 f"[_init_brain] FAILED — brain will be DISABLED. "
+
                 f"ConversationEngine is NOT wired. Memory context will NOT flow. "
                 f"Cause: {type(e).__name__}: {e}"
             )
+
             logger.exception("Full brain_init traceback:")
             self._brain_init_error = e          # expose for tests / health checks
             self.brain_enabled = False

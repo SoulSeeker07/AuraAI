@@ -132,9 +132,10 @@ class AppSignals(QObject):
     memory_entry_added = Signal(MemoryEntry)
     memory_entry_removed = Signal(str)  # entry_id
 
-    # ── System / Provider ──
+    # ── System / Provider / Logs ──
     provider_changed = Signal(str)  # provider_name
     system_metrics = Signal(dict)  # cpu, ram, disk dict
+    log_message = Signal(str, str)  # message, level ("INFO", "WARNING", "ERROR")
 
     # ── UI Commands ──
     toggle_overlay = Signal()

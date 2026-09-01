@@ -1,0 +1,57 @@
+START 0: eslint.config.mjs
+DONE 0: 9 symbols
+START 1: examples\demo\eslint.config.js
+DONE 1: 5 symbols
+START 2: examples\demo\src\App.jsx
+DONE 2: 7 symbols
+START 3: examples\demo\src\components\CodePreview.jsx
+DONE 3: 8 symbols
+START 4: examples\demo\src\components\CopyButton.jsx
+DONE 4: 3 symbols
+START 5: examples\demo\src\components\Details.jsx
+DONE 5: 1 symbols
+START 6: examples\demo\src\components\Fireflies.jsx
+DONE 6: 7 symbols
+START 7: examples\demo\src\components\Scene.jsx
+DONE 7: 19 symbols
+START 8: examples\demo\src\components\SnippetLang.jsx
+DONE 8: 1 symbols
+START 9: examples\demo\src\main.jsx
+DONE 9: 4 symbols
+START 10: examples\demo\src\materials\layerMaterial.js
+DONE 10: 3 symbols
+START 11: examples\demo\src\resources\javascript-code.js
+DONE 11: 0 symbols
+START 12: examples\demo\src\resources\typescript-code.js
+DONE 12: 0 symbols
+START 13: examples\demo\src\utils\copy-to-clipboard.js
+DONE 13: 1 symbols
+START 14: examples\demo\vite.config.js
+DONE 14: 2 symbols
+START 15: examples\starter\src\index.tsx
+DONE 15: 9 symbols
+START 16: examples\starter\src\vite-env.d.ts
+DONE 16: 0 symbols
+START 17: examples\starter\vite.config.ts
+DONE 17: 2 symbols
+START 18: rollup.config.mjs
+DONE 18: 14 symbols
+START 19: src\index.ts
+DONE 19: 0 symbols
+START 20: src\middleware\combine.ts
+DONE 20: 3 symbols
+START 21: src\middleware\devtools.ts
+DONE 21: 31 symbols
+START 22: src\middleware\immer.ts
+DONE 22: 12 symbols
+START 23: src\middleware\persist.ts
+DONE 23: 17 symbols
+START 24: src\middleware\redux.ts
+DONE 24: 11 symbols
+START 25: src\middleware\ssrSafe.ts
+DONE 25: 2 symbols
+START 26: src\middleware\subscribeWithSelector.ts
+DONE 26: 8 symbols
+START 27: src\middleware.ts
+DONE 27: 0 symbols
+START 28: src\react\shallow.ts

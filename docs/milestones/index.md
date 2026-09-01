@@ -86,6 +86,9 @@ This directory contains permanent design documents for each milestone in the Aur
 ### Milestone 29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction
 [milestone29.md](milestone29.md) — Home Assistant WebSocket & REST client, local Tapo/Kasa KLAP AES-CBC-128 crypto, SmartHome capability domain, Jarvis rings & floating chat overlays
 
+### Milestone 30 — Holographic AI Core GUI & Command Center
+[milestone30.md](milestone30.md) — Sci-Fi holographic interface, reactive DAG visualizer, Claude/ChatGPT memory ingestion, live weather, persistent token telemetry, and responsive geometry compression
+
 ---
 
 ## Quick Links
@@ -111,9 +114,10 @@ Phase 6 — Personal OS & Daily Workflows ████████████�
 Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
 Phase 8 — Integrated Aura OS & HUDs     ████████████████████   1/1   COMPLETE (M28)
 Phase 9 — Smart Home & Ambient HUDs     ████████████████████   1/1   COMPLETE (M29)
+Phase 10 — Holographic GUI & Importers  ████████████████████   1/1   COMPLETE (M30)
 ```
 
-**Overall Progress:** 29/29 Milestones Baseline (M01–M29) | 250+ Deterministic Tests 100% Green
+**Overall Progress:** 30/30 Milestones Baseline (M01–M30) | 468+ Deterministic Tests 100% Green
 
 - ✅ Milestone 16 — Cognitive Orchestration Layer (100%)
 - ✅ Milestone 17 — Cognitive Memory (100%)
@@ -129,6 +133,8 @@ Phase 9 — Smart Home & Ambient HUDs     ████████████�
 - ✅ Milestone 27 — Autonomous Engineering Platform (100%)
 - ✅ Milestone 28 — Dynamic CodeAct Runtime, HUD Overlays & Integrated Aura OS (100%)
 - ✅ Milestone 29 — Smart Home / IoT Integration & Ambient Desktop HUD Interaction (100%)
+- ✅ Milestone 30 — Holographic AI Core GUI & Command Center (100%)
+
 
 
 ---

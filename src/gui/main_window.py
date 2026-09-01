@@ -25,6 +25,9 @@ if str(_SRC_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(1, str(_PROJECT_ROOT))
 
+from gui.webengine_init import ensure_webengine_flags
+ensure_webengine_flags()
+
 from PySide6.QtCore import (
     Qt,
     QPoint,
@@ -714,10 +717,13 @@ class MainWindow(QMainWindow):
             return scroll
 
         self._tab_home = self._build_home_tab()
-        self._center_stack.addWidget(self._tab_home)
+        self._center_stack.addWidget(_wrap_tab(self._tab_home))
 
         self._tab_cognition = self._build_cognition_tab()
         self._center_stack.addWidget(_wrap_tab(self._tab_cognition))
+
+        self._tab_preview = self._build_preview_tab()
+        self._center_stack.addWidget(_wrap_tab(self._tab_preview))
 
         self._tab_settings = self._build_settings_tab()
         self._center_stack.addWidget(_wrap_tab(self._tab_settings))
@@ -785,7 +791,7 @@ class MainWindow(QMainWindow):
             background: rgba(16, 185, 129, 0.12);
             border: 1px solid rgba(16, 185, 129, 0.4);
             border-radius: 6px;
-            padding: 1px 5px;
+            padding: 2px 6px;
         """)
         tb_layout.addWidget(core_badge)
 
@@ -799,7 +805,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid rgba(0, 229, 255, 0.25);
                 border-radius: 4px;
                 color: #00e5ff;
-                padding: 3px 8px;
+                padding: 4px 8px;
             }
             QPushButton:hover {
                 background: rgba(0, 229, 255, 0.2);
@@ -852,7 +858,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid rgba(0, 229, 255, 0.3);
                 border-radius: 4px;
                 color: #00e5ff;
-                padding: 3px 10px;
+                padding: 4px 10px;
             }
             QPushButton:hover {
                 background: rgba(0, 229, 255, 0.22);
@@ -863,7 +869,20 @@ class MainWindow(QMainWindow):
         btn_logs_bar.clicked.connect(self.show_agent_task_logs)
         tb_layout.addWidget(btn_logs_bar)
 
-        # 6 Autonomous Tool & Policy Guardrail Badges
+        # 6 Autonomous Tool & Policy Guardrail Badges (Responsive Container)
+        class _BadgeContainer(QWidget):
+            def minimumSizeHint(self):
+                return QSize(0, 20)
+
+            def sizeHint(self):
+                return QSize(580, 20)
+
+        badge_box = _BadgeContainer()
+
+        badge_layout = QHBoxLayout(badge_box)
+        badge_layout.setContentsMargins(0, 0, 0, 0)
+        badge_layout.setSpacing(4)
+
         tools = [
             ("⚡ Terminal & CLI", "#66ff99"),
             ("🌐 Headless Browser", "#66ff99"),
@@ -882,7 +901,10 @@ class MainWindow(QMainWindow):
                 border-radius: 4px;
                 padding: 2px 6px;
             """)
-            tb_layout.addWidget(badge)
+            badge_layout.addWidget(badge)
+
+        tb_layout.addWidget(badge_box)
+
 
         tb_layout.addStretch(1)
 
@@ -983,11 +1005,12 @@ class MainWindow(QMainWindow):
         core_box.addLayout(core_info)
         layout.addLayout(core_box)
 
-        # Nav Buttons (3 tabs matching Autonomous Agent OS screenshot)
+        # Nav Buttons (4 tabs matching Autonomous Agent OS workspace)
         self._nav_buttons: List[SciFiNavButton] = []
         tabs = [
             ("00", "🏠", "Home", "Control Center"),
             ("02", "🧠", "Cognition", "DAG Planner"),
+            ("04", "🌐", "Preview", "Live Webview"),
             ("03", "⚙️", "Settings", "Engine Config"),
         ]
         for idx, (num, icon, title, subtitle) in enumerate(tabs):
@@ -1130,7 +1153,7 @@ class MainWindow(QMainWindow):
         brain_box.setStyleSheet("background: transparent; border: none;")
         bb_layout = QVBoxLayout(brain_box)
         bb_layout.setContentsMargins(6, 0, 8, 0)
-        bb_layout.setSpacing(1)
+        bb_layout.setSpacing(2)
 
         brain_top = QLabel("● PRIMARY AGENT BRAIN")
         brain_top.setFont(QFont("Consolas", 7, QFont.Bold))
@@ -1436,12 +1459,12 @@ class MainWindow(QMainWindow):
 
         model_badge = QLabel("⚡ MODEL: GPT-OSS-120B")
         model_badge.setFont(QFont("Consolas", 8, QFont.Bold))
-        model_badge.setStyleSheet("color: #fbbf24; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 4px; padding: 3px 8px;")
+        model_badge.setStyleSheet("color: #fbbf24; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 4px; padding: 4px 8px;")
         rl.addWidget(model_badge)
 
         dag_badge = QLabel("🌐 ACA TOPOLOGY: ACTIVE")
         dag_badge.setFont(QFont("Consolas", 8, QFont.Bold))
-        dag_badge.setStyleSheet("color: #10b981; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 3px 8px;")
+        dag_badge.setStyleSheet("color: #10b981; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 4px 8px;")
         rl.addWidget(dag_badge)
 
         reset_btn = QPushButton("↺ RESET GRAPH")
@@ -1505,7 +1528,7 @@ class MainWindow(QMainWindow):
             row.setStyleSheet("background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding: 1px;")
             rl_m = QVBoxLayout(row)
             rl_m.setContentsMargins(8, 4, 8, 4)
-            rl_m.setSpacing(1)
+            rl_m.setSpacing(2)
 
             tl = QLabel(title)
             tl.setFont(QFont("Consolas", 7, QFont.Bold))
@@ -1654,7 +1677,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 4px;
                 color: #a5b4cb;
-                padding: 3px 8px;
+                padding: 4px 8px;
             }
             QPushButton:hover {
                 background: rgba(239, 68, 68, 0.2);
@@ -1927,6 +1950,58 @@ class MainWindow(QMainWindow):
         return tab
 
     # -------------------------------------------------------------------------
+    # TAB 3: LIVE FRONTEND PREVIEW PANEL (CHROMIUM / WEBENGINE STAGING)
+    # -------------------------------------------------------------------------
+    def _build_preview_tab(self) -> QWidget:
+        """Tab 2: Live In-GUI Webview Preview Panel & Staging Sandbox."""
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        from gui.widgets.webview_panel import WebViewPanel
+        from engineering.preview_server import get_preview_server
+
+        self.webview_panel = WebViewPanel()
+        layout.addWidget(self.webview_panel)
+
+        server = get_preview_server()
+        default_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Live Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #080c14; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-[#0f172a] border border-[#1e293b] rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+        <div class="flex items-center space-x-3 mb-4">
+            <div class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></div>
+            <span class="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase">Aura Preview Engine</span>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white mb-2">Live Webview Active</h1>
+        <p class="text-sm text-slate-400 mb-6">Interactive software-rendered viewport with Live Log telemetry streaming and viewport presets.</p>
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="console.log('[Preview] Interactive button clicked at ' + new Date().toLocaleTimeString())" class="py-2.5 px-4 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-sm font-semibold transition">
+                Trigger Log
+            </button>
+            <button onclick="console.error('[Preview] Simulated JS exception')" class="py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-sm font-semibold transition">
+                Trigger Error
+            </button>
+        </div>
+    </div>
+</body>
+</html>"""
+        preview_url = server.serve_html(default_html, "index.html")
+        self.webview_panel.load_url(preview_url)
+
+        return panel
+
+    # -------------------------------------------------------------------------
     # RIGHT LIVE DECK
     # -------------------------------------------------------------------------
     def _build_right_deck(self) -> QWidget:
@@ -2178,12 +2253,7 @@ class MainWindow(QMainWindow):
     def toggle_chat_overlay(self):
         if self._chat_overlay is None:
             self._chat_overlay = ChatWindowOverlay()
-        if self._chat_overlay.isVisible():
-            self._chat_overlay.hide()
-        else:
-            self._chat_overlay.show()
-            self._chat_overlay.raise_()
-            self._chat_overlay.activateWindow()
+        self._chat_overlay.toggle()
 
     def toggle_voice_notch(self):
         if self._voice_notch is None:
@@ -2206,15 +2276,16 @@ class MainWindow(QMainWindow):
         pos = self._settings.value("pos", None)
         size = self._settings.value("size", None)
 
-        # Full HD (1920x1080) responsive scaling
-        target_w = max(1360, min(int(screen.width() * 0.94), 1920, screen.width() - 20))
-        target_h = max(760, min(int(screen.height() * 0.90), 1080, screen.height() - 40))
+        target_max_w = min(1920, max(100, screen.width() - 20))
+        target_max_h = min(1080, max(100, screen.height() - 40))
+        target_w = min(target_max_w, max(min(MIN_W, target_max_w), int(screen.width() * 0.94)))
+        target_h = min(target_max_h, max(min(MIN_H, target_max_h), int(screen.height() * 0.90)))
 
         if size is not None:
             try:
                 w, h = int(size.width()), int(size.height())
-                w = max(MIN_W, min(w, screen.width() - 20))
-                h = max(MIN_H, min(h, screen.height() - 40))
+                w = min(target_max_w, max(min(MIN_W, target_max_w), w))
+                h = min(target_max_h, max(min(MIN_H, target_max_h), h))
             except Exception:
                 w, h = target_w, target_h
             self.resize(w, h)
@@ -2224,8 +2295,8 @@ class MainWindow(QMainWindow):
         # Center safely on screen
         w_curr = self.width()
         h_curr = self.height()
-        safe_x = screen.left() + max(10, (screen.width() - w_curr) // 2)
-        safe_y = screen.top() + max(10, (screen.height() - h_curr) // 2)
+        safe_x = screen.left() + max(0, (screen.width() - w_curr) // 2)
+        safe_y = screen.top() + max(0, (screen.height() - h_curr) // 2)
 
         if pos is not None:
             try:
@@ -2242,14 +2313,16 @@ class MainWindow(QMainWindow):
     def auto_fit_screen(self):
         """Auto-adjust window to Full HD / maximum screen display."""
         screen = QApplication.primaryScreen().availableGeometry()
-        auto_w = max(1360, min(int(screen.width() * 0.94), 1920, screen.width() - 20))
-        auto_h = max(760, min(int(screen.height() * 0.90), 1080, screen.height() - 40))
+        target_max_w = min(1920, max(100, screen.width() - 20))
+        target_max_h = min(1080, max(100, screen.height() - 40))
+        auto_w = min(target_max_w, max(min(MIN_W, target_max_w), int(screen.width() * 0.94)))
+        auto_h = min(target_max_h, max(min(MIN_H, target_max_h), int(screen.height() * 0.90)))
         self.resize(auto_w, auto_h)
-        self.move(
-            screen.left() + (screen.width() - auto_w) // 2,
-            screen.top() + (screen.height() - auto_h) // 2,
-        )
+        safe_x = screen.left() + max(0, (screen.width() - self.width()) // 2)
+        safe_y = screen.top() + max(0, (screen.height() - self.height()) // 2)
+        self.move(safe_x, safe_y)
         self._save_geometry()
+
 
     def set_1080p(self):
         """Snap window to 1080p resolution (if supported by screen) or auto-fit."""

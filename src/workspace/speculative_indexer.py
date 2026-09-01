@@ -74,6 +74,10 @@ class SpeculativeIndexer:
         self._cache: dict[str, PrewarmedWorkspaceContext] = {}
         self._worker_thread: Optional[threading.Thread] = None
         self._cache_lock = threading.Lock()
+        self._ready_event = threading.Event()
+
+        # Kick off background pre-warm pass immediately
+        self.trigger_speculative_prewarm()
 
     @classmethod
     def get_instance(cls, repo_root: str | Path | None = None) -> "SpeculativeIndexer":
@@ -87,6 +91,14 @@ class SpeculativeIndexer:
         with cls._lock:
             cls._instance = None
 
+    def is_ready(self) -> bool:
+        """Check if background workspace indexing has completed at least one pass."""
+        return self._ready_event.is_set()
+
+    def await_ready(self, timeout: float | None = 2.0) -> bool:
+        """Block until the indexer completes its prewarm pass, or until timeout expires."""
+        return self._ready_event.wait(timeout=timeout)
+
     def trigger_speculative_prewarm(self, window_title: str | None = None) -> None:
         """
         Non-blocking trigger to pre-warm workspace context in a background daemon thread.
@@ -96,9 +108,12 @@ class SpeculativeIndexer:
                 self._compute_and_cache_context(window_title)
             except Exception as e:
                 logger.debug(f"[SpeculativeIndexer] Pre-warm job notice: {e}")
+            finally:
+                self._ready_event.set()
 
         t = threading.Thread(target=_prewarm_job, daemon=True)
         t.start()
+
 
     def _compute_and_cache_context(self, window_title: str | None = None) -> PrewarmedWorkspaceContext:
         """Compute the full context and store in thread-safe memory cache."""
@@ -174,6 +189,7 @@ class SpeculativeIndexer:
         self,
         repo_root: str | Path | None = None,
         force_sync: bool = False,
+        wait_if_pending: bool = True,
     ) -> Optional[PrewarmedWorkspaceContext]:
         """
         Instant (<1ms) retrieval of pre-warmed context from memory.
@@ -186,7 +202,16 @@ class SpeculativeIndexer:
             if cached and not cached.is_expired():
                 return cached
 
+        # If an initial background pass is in-flight, wait briefly for it to land
+        if wait_if_pending and not self._ready_event.is_set():
+            self.await_ready(timeout=1.5)
+            with self._cache_lock:
+                cached = self._cache.get(root_key)
+                if cached and not cached.is_expired():
+                    return cached
+
         if force_sync:
             return self._compute_and_cache_context()
 
         return None
+

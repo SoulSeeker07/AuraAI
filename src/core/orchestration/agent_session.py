@@ -64,6 +64,7 @@ class AgentSession:
     execution_trace: ExecutionTrace | None = None
     decision_trace: Any | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     # Session-scoped pending confirmation — replaces AuraCore-level yes/no intercept
     pending_confirmation: "ActionPlanConfirmation | None" = field(

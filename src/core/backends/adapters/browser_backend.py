@@ -118,7 +118,9 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
             "browser.pagination",
             "browser.list_tabs",
             "browser.switch_tab",
+            "browser.screenshot",
             "shopping.search",
+
             "shopping.filter",
             "shopping.compare",
             "shopping.reviews",
@@ -452,6 +454,43 @@ class PlaywrightBrowserAdapter(BaseBackendAdapter):
                 observations=[f"✓ Browser observation: '{title}' ({url})"],
                 data={"backend": self.name, "title": title, "url": url, "result": res},
             )
+
+        # ── 8b. Capture Page Screenshot ───────────────────────────────────────
+        elif cap_clean == "browser.screenshot":
+            full_page = bool(arguments.get("full_page", False))
+            if self._engine is not None and hasattr(self._engine, "take_screenshot"):
+                res = await self._engine.take_screenshot(full_page=full_page)
+                if not res.get("success", False):
+                    err = res.get("error", "Screenshot capture failed.")
+                    return ExecutionResult(
+                        success=False,
+                        planner="browser",
+                        goal=goal,
+                        confidence=0.0,
+                        observations=[f"❌ Screenshot failed: {err}"],
+                        data={"backend": self.name, "error": err},
+                    )
+                return ExecutionResult(
+                    success=True,
+                    planner="browser",
+                    goal=goal,
+                    confidence=1.0,
+                    observations=["✓ Captured active browser screenshot."],
+                    data={
+                        "backend": self.name,
+                        "image_b64": res.get("image_b64"),
+                        "size_bytes": res.get("size_bytes"),
+                    },
+                )
+            return ExecutionResult(
+                success=True,
+                planner="browser",
+                goal=goal,
+                confidence=0.9,
+                observations=["✓ Simulated browser screenshot (engine offline)."],
+                data={"backend": self.name, "status": "simulated"},
+            )
+
 
         # ── 9. Close Browser Session ──────────────────────────────────────────
         elif cap_clean in ("browser.close", "browser.close_tabs"):

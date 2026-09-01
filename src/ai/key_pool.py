@@ -36,6 +36,7 @@ class KeyPool:
         self._keys: Dict[str, List[str]] = {}
         self._key_indices: Dict[str, int] = {}
         self._cooldowns: Dict[str, Dict[str, float]] = {}  # service -> {key: expire_timestamp}
+        self._groq_clients: Dict[str, Any] = {}
         self._mu = threading.RLock()
 
         if explicit_keys:
@@ -45,6 +46,7 @@ class KeyPool:
                 self._cooldowns[service] = {}
         else:
             self._discover_keys()
+
 
     @classmethod
     def get_instance(cls) -> "KeyPool":
@@ -121,6 +123,45 @@ class KeyPool:
         else:
             logger.debug("[KeyPool] No Groq API keys found in environment.")
 
+        # 2. Discover Gemini keys
+        gemini_keys: List[str] = []
+        multi_gemini = os.environ.get("GEMINI_API_KEYS", "")
+        if multi_gemini:
+            for part in re.split(r"[,;\s\n]+", multi_gemini):
+                k = part.strip()
+                if k and k not in gemini_keys:
+                    gemini_keys.append(k)
+
+        single_gemini = os.environ.get("GEMINI_API_KEY", "")
+        if single_gemini:
+            for part in re.split(r"[,;\s\n]+", single_gemini):
+                k = part.strip()
+                if k and k not in gemini_keys:
+                    gemini_keys.append(k)
+
+        for i in range(1, 25):
+            for var_name in (
+                f"GEMINI_API_KEY{i}",
+                f"GEMINI_API_KEY_{i}",
+                f"GEMINI_KEY_{i}",
+                f"GEMINI_KEY{i}",
+            ):
+                val = os.environ.get(var_name, "").strip()
+                if val and val not in gemini_keys:
+                    gemini_keys.append(val)
+
+        self._keys["gemini"] = gemini_keys
+        self._key_indices["gemini"] = 0
+        self._cooldowns["gemini"] = {}
+
+        if gemini_keys:
+            logger.info(
+                f"[KeyPool] Loaded {len(gemini_keys)} Gemini API key(s) into rotation pool."
+            )
+        else:
+            logger.debug("[KeyPool] No Gemini API keys found in environment.")
+
+
     # -------------------------------------------------------------------------
     # Pool Querying & Rotation
     # -------------------------------------------------------------------------
@@ -134,6 +175,17 @@ class KeyPool:
         """Return total number of keys registered for a service."""
         with self._mu:
             return len(self._keys.get(service, []))
+
+    def get_groq_client(self, api_key: str):
+        """Return a persistent cached Groq client instance for an API key, reusing connection pools."""
+        with self._mu:
+            client = self._groq_clients.get(api_key)
+            if client is None:
+                from groq import Groq
+                client = Groq(api_key=api_key)
+                self._groq_clients[api_key] = client
+            return client
+
 
     def get_active_key(self, service: str = "groq") -> str:
         """

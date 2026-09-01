@@ -172,17 +172,19 @@ class VoiceManager:
         self.wake_word.on_error = self._on_wake_word_error
 
         # STT callbacks — use set_callbacks() so callbacks persist through lazy init
-        self.stt_manager.set_callbacks(
-            partial=self._on_stt_partial,
-            final=self._on_stt_final,
-        )
+        if hasattr(self.stt_manager, "set_callbacks"):
+            self.stt_manager.set_callbacks(
+                partial=self._on_stt_partial,
+                final=self._on_stt_final,
+            )
 
         # TTS callbacks — use set_callbacks() so they are stored and applied
         # when the engine is lazily created, even if it doesn't exist yet.
-        self.tts_manager.set_callbacks(
-            complete=self._on_tts_complete,
-            interrupt=self._on_tts_interrupt,
-        )
+        if hasattr(self.tts_manager, "set_callbacks"):
+            self.tts_manager.set_callbacks(
+                complete=self._on_tts_complete,
+                interrupt=self._on_tts_interrupt,
+            )
 
         # Interruption callbacks
         self.interruption_manager.on_interrupt_start = self._on_interrupt_start
@@ -312,8 +314,12 @@ class VoiceManager:
         """
         with self._lock:
             try:
-                # Process wake word detection ONLY during WAKE_LISTENING state to prevent self-interruption
-                if self.state == ConversationState.WAKE_LISTENING:
+                # Update is_speaking on wake word engine
+                if self.wake_word and getattr(self.wake_word, "engine", None) is not None:
+                    self.wake_word.engine.is_speaking = (self.state == ConversationState.SPEAKING)
+
+                # Process wake word detection during WAKE_LISTENING or SPEAKING (barge-in) state
+                if self.state in (ConversationState.WAKE_LISTENING, ConversationState.SPEAKING):
                     self.wake_word.process_audio(audio_data, sample_rate)
 
                 # Process VAD

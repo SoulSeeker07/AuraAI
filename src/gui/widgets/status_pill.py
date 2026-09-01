@@ -47,7 +47,7 @@ class StatusPill(QWidget):
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 5, 14, 5)
+        layout.setContentsMargins(10, 4, 14, 4)
         layout.setSpacing(6)
 
         # Animated dot

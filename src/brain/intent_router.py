@@ -57,6 +57,18 @@ class IntentRouter:
             logger.info("[IntentRouter] Intent detected: restart_aura")
             return Intent("restart_aura", {"raw": user_input})
 
+        if any(phrase in normalized for phrase in (
+            "mark task as complete", "mark task complete", "mark as complete",
+            "mark as done", "complete task", "task complete", "complete reminder",
+            "mark reminder complete", "mark task done", "complete the task", "mark it complete"
+        )):
+            logger.info("[IntentRouter] Intent detected: task_complete")
+            return Intent("task_complete", {"raw": user_input, "normalized": normalized})
+
+        if any(w in normalized for w in ("reminder", "reminders", "my focus", "my reminders", "what are my reminders", "show reminders", "list reminders", "my tasks", "check reminders")):
+            logger.info("[IntentRouter] Intent detected: reminders_query")
+            return Intent("reminders_query", {"raw": user_input, "normalized": normalized})
+
         if self._asks_for_time_or_date(normalized):
             logger.info("[IntentRouter] Intent detected: local_time")
             return Intent("local_time")
@@ -109,6 +121,44 @@ class IntentRouter:
             logger.info("[IntentRouter] Intent detected: battery_status")
             return Intent("battery_status")
 
+        # ── Bluetooth Control & Diagnostics ──
+        if any(p in normalized for p in ("turn on bluetooth", "enable bluetooth", "switch on bluetooth", "start bluetooth")):
+            logger.info("[IntentRouter] Intent detected: bluetooth_control (enable)")
+            return Intent("bluetooth_control", {"enable": True, "raw": user_input, "normalized": normalized})
+        if any(p in normalized for p in ("turn off bluetooth", "disable bluetooth", "switch off bluetooth", "stop bluetooth")):
+            logger.info("[IntentRouter] Intent detected: bluetooth_control (disable)")
+            return Intent("bluetooth_control", {"enable": False, "raw": user_input, "normalized": normalized})
+        if "toggle bluetooth" in normalized:
+            logger.info("[IntentRouter] Intent detected: bluetooth_control (toggle)")
+            return Intent("bluetooth_control", {"enable": "toggle", "raw": user_input, "normalized": normalized})
+        if any(w in normalized for w in ("bluetooth status", "bluetooth devices", "bluetooth state", "bluetooth info", "check bluetooth", "paired bluetooth", "connected bluetooth", "bt status", "is bluetooth on", "show bluetooth", "get bluetooth")) or normalized in ("bluetooth", "bt"):
+            logger.info("[IntentRouter] Intent detected: bluetooth_status")
+            return Intent("bluetooth_status", {"raw": user_input, "normalized": normalized})
+
+        # ── Wi-Fi Control & Diagnostics ──
+        if any(p in normalized for p in ("turn on wifi", "enable wifi", "switch on wifi", "turn on wi-fi", "enable wi-fi")):
+            logger.info("[IntentRouter] Intent detected: wifi_control (enable)")
+            return Intent("wifi_control", {"enable": True, "raw": user_input, "normalized": normalized})
+        if any(p in normalized for p in ("turn off wifi", "disable wifi", "switch off wifi", "turn off wi-fi", "disable wi-fi")):
+            logger.info("[IntentRouter] Intent detected: wifi_control (disable)")
+            return Intent("wifi_control", {"enable": False, "raw": user_input, "normalized": normalized})
+        if any(p in normalized for p in ("toggle wifi", "toggle wi-fi")):
+            logger.info("[IntentRouter] Intent detected: wifi_control (toggle)")
+            return Intent("wifi_control", {"enable": "toggle", "raw": user_input, "normalized": normalized})
+        if any(w in normalized for w in ("wifi status", "wi-fi status", "wifi network", "wi-fi network", "what wifi", "wifi signal", "wi-fi signal", "check wifi", "is wifi on", "show wifi", "get wifi", "wifi info")) or normalized in ("wifi", "wi-fi", "wlan"):
+            logger.info("[IntentRouter] Intent detected: wifi_status")
+            return Intent("wifi_status", {"raw": user_input, "normalized": normalized})
+
+        # ── Network & IP Diagnostics ──
+        if any(w in normalized for w in ("network status", "internet status", "my ip", "ip address", "network info", "active network", "ip config", "network config", "ip configuration", "dns server", "default gateway")):
+            logger.info("[IntentRouter] Intent detected: network_status")
+            return Intent("network_status", {"raw": user_input, "normalized": normalized})
+
+        # ── System & Hardware Telemetry ──
+        if any(w in normalized for w in ("system status", "hardware status", "pc status", "system info", "hardware info", "cpu usage", "ram usage", "memory usage", "disk usage", "system specs", "pc specs", "hardware specs", "system telemetry", "hardware telemetry", "cpu percent", "memory percent", "hardware diagnostics")) or normalized in ("specs", "system", "hardware", "telemetry"):
+            logger.info("[IntentRouter] Intent detected: system_status")
+            return Intent("system_status", {"raw": user_input, "normalized": normalized})
+
         if self._asks_for_smarthome(normalized):
             logger.info("[IntentRouter] Intent detected: smarthome_control")
             return Intent("smarthome_control", {"raw": user_input, "normalized": normalized})
@@ -150,15 +200,61 @@ class IntentRouter:
             folder_name, parent_loc = self._parse_folder_creation(normalized, user_input)
             return Intent("folder_creation", {"folder_name": folder_name, "location": parent_loc, "raw": user_input})
 
-        confirm_m = re.search(r"\b(?:confirm|approve|authorize)\s+((?:AUTH|TICK)-[A-F0-9]{4,12})\b", normalized, re.IGNORECASE)
+        # ── Human-in-the-loop Security & Ticket Approvals ──
+        confirm_m = re.search(
+            r"\b(?:confirm|approve|authorize|allow)\s+((?:AUTH|TICK)-[A-F0-9]{4,12}|tkt_[a-f0-9]{6,16})\b",
+            normalized,
+            re.IGNORECASE,
+        )
         if confirm_m:
-            ticket_id = confirm_m.group(1).upper()
-            logger.info(f"[IntentRouter] Intent detected: confirm_ticket ({ticket_id})")
-            return Intent("confirm_ticket", {"ticket_id": ticket_id, "raw": user_input})
+            ticket_id = confirm_m.group(1).lower()
+            if ticket_id.startswith(("auth-", "tick-")):
+                ticket_id = ticket_id.upper()
+            logger.info(f"[IntentRouter] Intent detected: confirm_ticket (approve, {ticket_id})")
+            return Intent("confirm_ticket", {"ticket_id": ticket_id, "decision": "approve", "raw": user_input})
+
+        deny_m = re.search(
+            r"\b(?:reject|deny|cancel|disapprove|block)\s+((?:AUTH|TICK)-[A-F0-9]{4,12}|tkt_[a-f0-9]{6,16})\b",
+            normalized,
+            re.IGNORECASE,
+        )
+        if deny_m:
+            ticket_id = deny_m.group(1).lower()
+            if ticket_id.startswith(("auth-", "tick-")):
+                ticket_id = ticket_id.upper()
+            logger.info(f"[IntentRouter] Intent detected: confirm_ticket (deny, {ticket_id})")
+            return Intent("confirm_ticket", {"ticket_id": ticket_id, "decision": "deny", "raw": user_input})
+
+        # Natural language approvals without explicit ticket IDs
+        if normalized in (
+            "yes", "y", "yeah", "yep", "sure", "ok", "okay", "yup",
+            "approve", "approve it", "yes approve", "confirm", "confirm it",
+            "authorize", "authorize it", "allow", "allow it", "go ahead",
+            "yes please", "sure go ahead", "yes go ahead", "i approve",
+            "approved", "proceed", "accept", "grant permission", "allow action",
+            "run it", "yes run it"
+        ) or normalized.startswith(("aura approve", "approve ", "confirm ", "authorize ", "allow ")):
+            logger.info("[IntentRouter] Intent detected: confirm_ticket (natural approve)")
+            return Intent("confirm_ticket", {"ticket_id": None, "decision": "approve", "raw": user_input})
+
+        # Natural language denials without explicit ticket IDs
+        if normalized in (
+            "no", "n", "nope", "nah",
+            "reject", "reject it", "deny", "deny it", "cancel", "cancel it",
+            "disapprove", "don't do it", "dont do it", "block it", "no cancel",
+            "no deny", "i reject", "declined", "disallow", "stop action", "don't run", "dont run"
+        ) or normalized.startswith(("aura reject", "aura deny", "reject ", "deny ")):
+            logger.info("[IntentRouter] Intent detected: confirm_ticket (natural deny)")
+            return Intent("confirm_ticket", {"ticket_id": None, "decision": "deny", "raw": user_input})
 
         if any(w in normalized for w in ("aura resume", "resume browser", "continue browser", "solved captcha", "captcha solved", "i solved the captcha")):
             logger.info("[IntentRouter] Intent detected: resume_browser")
             return Intent("resume_browser", {"raw": user_input})
+
+        if self._asks_for_play_music(normalized):
+            logger.info("[IntentRouter] Intent detected: play_music")
+            query = self._parse_play_music_query(normalized, user_input)
+            return Intent("play_music", {"query": query, "raw": user_input})
 
         if self._asks_for_autonomous_browser(normalized):
             logger.info("[IntentRouter] Intent detected: autonomous_browser")
@@ -257,6 +353,33 @@ class IntentRouter:
         if "programming language" in normalized or "language" in normalized:
             return "programming_language"
         return ""
+
+    def _asks_for_play_music(self, normalized: str) -> bool:
+        """Detect music-play requests like 'play kannada top songs'."""
+        clean = re.sub(r"^aura\s+", "", normalized).strip()
+        # Must start with a play verb
+        if not re.match(r"^(?:play|listen\s+to|stream)\s+", clean):
+            return False
+        music_kw = (
+            "song", "songs", "music", "track", "tracks", "playlist", "hits",
+            "top songs", "latest songs", "new songs", "best songs",
+            "kannada", "hindi", "telugu", "tamil", "malayalam", "marathi",
+            "punjabi", "bengali", "odia", "gujarati", "bhojpuri",
+            "pop", "rock", "jazz", "classical", "lofi", "lo-fi",
+            "bollywood", "kollywood", "tollywood", "sandalwood",
+            "devotional", "instrumental",
+        )
+        return any(kw in clean for kw in music_kw)
+
+    def _parse_play_music_query(self, normalized: str, raw: str) -> str:
+        """Extract the YouTube search query from a play_music intent."""
+        clean = re.sub(r"^aura\s+", "", normalized).strip()
+        clean = re.sub(r"^(?:play|listen\s+to|stream)\s+", "", clean, flags=re.IGNORECASE).strip()
+        clean = re.sub(
+            r"\s+(?:on|in|via|using)\s+(?:youtube|spotify|gaana|jiosaavn|wynk|apple\s+music|amazon\s+music)\s*$",
+            "", clean, flags=re.IGNORECASE,
+        ).strip()
+        return clean if clean else raw
 
     def _asks_for_restart(self, normalized: str) -> bool:
         clean = re.sub(r"^aura\s+", "", normalized).strip()
@@ -454,7 +577,9 @@ class IntentRouter:
             "firefox", "brave", "spotify", "cmd", "command prompt", "powershell", "terminal",
             "code", "vscode", "vs code", "visual studio code", "explorer", "file explorer",
             "task manager", "settings", "paint", "mspaint", "word", "ms word", "excel", "ms excel",
-            "powerpoint", "whatsapp", "antigravity", "antigravity ide", "start menu", "start"
+            "powerpoint", "whatsapp", "antigravity", "antigravity ide", "start menu", "start",
+            "instagram", "intagram", "insta", "ig", "youtube", "yt", "gmail", "twitter", "x", "reddit",
+            "github", "linkedin", "facebook", "fb", "netflix", "chatgpt"
         )
         if clean_target.lower() in known_folders or clean_target.lower() in known_apps or clean.lower() in known_apps:
             return False
@@ -564,6 +689,29 @@ class IntentRouter:
             return False
 
         clean = re.sub(r"^aura\s+", "", normalized).strip()
+
+        # Pure app launch/focus requests (e.g. "open chrome", "open instagram", "open youtube")
+        # should be desktop_action app launch so open windows are brought to front or opened in the user's real browser,
+        # not autonomous browser goals.
+        pure_launch_match = re.match(
+            r"^(?:open|launch|start|focus|switch to|bring up)\s+(?:the\s+)?(?:app\s+)?([a-zA-Z0-9_\-\.\s]+)$",
+            clean,
+            re.IGNORECASE,
+        )
+        if pure_launch_match:
+            launch_target = pure_launch_match.group(1).strip().lower()
+            # If no sub-action or conjunction is in the target, check if it's an app/site launch
+            automation_verbs = (" and ", " then ", "search", "find", "buy", "cart", "checkout", "add", "order", "message", "click", "type", "scrape", "check", "track", "play")
+            if not any(av in launch_target for av in automation_verbs):
+                from desktop.native.managers.window_manager import WindowManager
+                known_app_names = set(WindowManager.KNOWN_APPS) | set(WindowManager.FAST_PATH_ALIASES.keys()) | set(WindowManager.WEB_FALLBACK_MAP.keys())
+                if launch_target in known_app_names or any(s in launch_target for s in ("chrome", "browser", "edge", "firefox", "brave", "instagram", "youtube", "whatsapp", "spotify", "gmail", "twitter", "reddit", "github", "linkedin", "facebook", "netflix", "chatgpt")):
+                    return False
+
+        if any(w in clean for w in (
+            "reminder", "reminders", "focus", "schedule", "tasks", "task", "agenda", "todo", "to-do"
+        )):
+            return False
         site_names = (
             "wikipedia", "amazon", "google", "youtube", "github", "reddit",
             "flipkart", "ebay", "twitter", "x.com", "instagram", "facebook",
@@ -657,13 +805,30 @@ class IntentRouter:
         if self._asks_for_voice_control(normalized):
             return False
 
+        # Direct git commands and common git phrasing
+        if normalized == "git" or normalized.startswith("git ") or normalized.startswith("git-"):
+            return True
+
+        git_phrases = (
+            "push git", "push to git", "push to github", "push repo", "push origin", "git push",
+            "pull git", "pull from git", "pull from github", "pull repo", "git pull",
+            "status git", "check git status", "git status",
+            "diff git", "check git diff", "git diff",
+            "log git", "check git log", "git log",
+            "commit git", "git commit",
+        )
+        if any(normalized == gp or normalized.startswith(gp + " ") for gp in git_phrases):
+            return True
+
         known_apps = (
             "notepad", "calculator", "calc", "chrome", "edge", "spotify", "cmd", "command prompt",
             "powershell", "terminal", "code", "vscode", "vs code", "visual studio code",
             "explorer", "file explorer", "task manager", "settings", "paint", "word", "excel",
-            "documents", "downloads", "pictures", "music", "videos", "desktop"
+            "documents", "downloads", "pictures", "music", "videos", "desktop",
+            "instagram", "intagram", "insta", "ig", "youtube", "yt", "whatsapp", "gmail",
+            "twitter", "x", "reddit", "github", "linkedin", "facebook", "fb", "netflix", "chatgpt"
         )
-        verbs = ("open ", "launch ", "start ", "run ", "close ", "kill ", "minimize ", "maximize ", "restore ", "focus ", "activate ", "switch to ", "organize ", "sort ", "clean up ", "tidy ")
+        verbs = ("open ", "launch ", "start ", "run ", "exec ", "execute ", "close ", "kill ", "minimize ", "maximize ", "restore ", "focus ", "activate ", "switch to ", "organize ", "sort ", "clean up ", "tidy ")
         
         if normalized.startswith(verbs):
             # Ignore web searches or URLs
@@ -681,22 +846,41 @@ class IntentRouter:
 
     def _parse_desktop_action(self, normalized: str) -> tuple[str, str]:
         import re
-        verbs = ["switch to", "focus", "activate", "minimize", "maximize", "restore", "close", "kill", "organize", "sort", "clean up", "tidy", "open", "launch", "start", "run"]
+
+        # Handle git phrases explicitly
+        if normalized == "push git" or normalized.startswith(("push git ", "push to git", "push to github", "push repo", "push origin")):
+            return "run", "git push"
+        if normalized == "pull git" or normalized.startswith(("pull git ", "pull from git", "pull from github", "pull repo")):
+            return "run", "git pull"
+        if normalized in ("status git", "check git status") or normalized.startswith("check git status"):
+            return "run", "git status"
+        if normalized in ("diff git", "check git diff") or normalized.startswith("check git diff"):
+            return "run", "git diff"
+        if normalized in ("log git", "check git log") or normalized.startswith("check git log"):
+            return "run", "git log"
+        if normalized == "git" or normalized.startswith("git "):
+            return "run", normalized
+
+        verbs = ["switch to", "focus", "activate", "minimize", "maximize", "restore", "close", "kill", "organize", "sort", "clean up", "tidy", "open", "launch", "start", "execute", "exec", "run"]
         detected_verb = "open"
         target = normalized
 
         for v in verbs:
             if normalized.startswith(v):
-                detected_verb = v.split()[0]
+                detected_verb = "run" if v in ("exec", "execute", "run") else v.split()[0]
                 target = normalized[len(v):].strip()
                 break
             elif f" {v} " in f" {normalized} ":
-                detected_verb = v.split()[0]
+                detected_verb = "run" if v in ("exec", "execute", "run") else v.split()[0]
                 parts = normalized.split(v, 1)
                 target = parts[1].strip() if len(parts) > 1 else parts[0].strip()
                 break
 
-        # Clean noise words from target
+        # If it's a shell run command, preserve the target command without word stripping
+        if detected_verb == "run":
+            return detected_verb, target
+
+        # Clean noise words from target for app/folder launch
         target = re.sub(r"\b(my|the|a|an|app|application|folder|directory)\b", " ", target, flags=re.IGNORECASE)
         target = " ".join(target.split()).strip()
         return detected_verb, target

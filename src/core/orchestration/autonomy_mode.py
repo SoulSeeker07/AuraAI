@@ -13,7 +13,95 @@ import re
 from enum import Enum
 from typing import Any
 
+import os
+import tempfile
+from pathlib import Path
+
 logger = logging.getLogger(__name__)
+
+SAFE_SANDBOX_PATTERNS = (
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".tox",
+    ".cache",
+    ".coverage",
+)
+
+
+def is_safe_sandbox_path(path: str | Path | list[Any] | None) -> bool:
+    """
+    Determine whether a target path resides strictly within a safe, disposable sandbox directory
+    (e.g., system temp folders, pytest caches, __pycache__, temporary runtime logs/screenshots).
+    """
+    if not path:
+        return False
+
+    if isinstance(path, (list, tuple, set)):
+        return len(path) > 0 and all(is_safe_sandbox_path(p) for p in path)
+
+    try:
+        p = Path(str(path)).resolve()
+        p_str = str(p).lower()
+
+        # 1. System/OS Temp Directories
+        temp_dirs = [tempfile.gettempdir().lower()]
+        for env_var in ("TEMP", "TMP", "TMPDIR"):
+            val = os.environ.get(env_var)
+            if val:
+                temp_dirs.append(str(Path(val).resolve()).lower())
+
+        for t_dir in temp_dirs:
+            if p_str.startswith(t_dir):
+                return True
+
+        if "appdata\\local\\temp" in p_str or "appdata/local/temp" in p_str:
+            return True
+
+        # 2. Known Safe Disposable Sandbox Cache Folders in Path Parts
+        parts = [part.lower() for part in p.parts]
+        for pattern in SAFE_SANDBOX_PATTERNS:
+            if pattern in parts or pattern in p_str:
+                return True
+
+        # 3. Project runtime temporary files / screenshots / logs / scratch
+        if ("data\\runtime" in p_str or "data/runtime" in p_str) and (
+            "temp" in p_str or "screenshots" in p_str or "scratch" in p_str
+        ):
+            return True
+
+        # 4. Old logs in log directories if aged or temporary
+        if ("logs" in parts or "log" in parts) and p.suffix in (".log", ".tmp", ".bak"):
+            if p.exists() and p.is_file():
+                import time
+
+                age_days = (time.time() - p.stat().st_mtime) / 86400
+                if age_days >= 7:
+                    return True
+            elif "temp" in p_str or "cache" in p_str:
+                return True
+
+    except Exception as e:
+        logger.debug(f"[is_safe_sandbox_path] Path inspection failed for '{path}': {e}")
+        return False
+
+    return False
+
+
+def _extract_target_paths(params: dict[str, Any] | None) -> list[str]:
+    if not params:
+        return []
+    target_paths: list[str] = []
+    for key in ("path", "target", "file_path", "target_path", "target_file", "dir_path", "directory"):
+        val = params.get(key)
+        if val and isinstance(val, (str, Path)):
+            target_paths.append(str(val))
+    for key in ("paths", "files", "targets"):
+        val = params.get(key)
+        if val and isinstance(val, (list, tuple, set)):
+            target_paths.extend([str(item) for item in val if item])
+    return target_paths
 
 
 class AutonomyLevel(str, Enum):
@@ -57,6 +145,11 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
             if cap.risk_level == ActionRisk.CRITICAL:
                 return ActionRisk.CRITICAL
             if cap.risk_level == ActionRisk.HIGH or cap.requires_confirmation or getattr(cap, "is_destructive", False):
+                # Allow Scoped Sandbox Auto-Approval for safe disposable paths
+                if action_lower in ("file.delete", "file.remove", "directory.delete"):
+                    extracted_paths = _extract_target_paths(params)
+                    if extracted_paths and all(is_safe_sandbox_path(p) for p in extracted_paths):
+                        return ActionRisk.LOW
                 return ActionRisk.HIGH
             return cap.risk_level
         elif "." in action:
@@ -87,15 +180,14 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
         "rmdir", "destroy", "format", "submit", "form.submit", "form.fill"
     ]
     if any(kw in action_lower for kw in high_keywords):
+        # Allow Scoped Sandbox Auto-Approval for safe paths
+        if action_lower in ("file.delete", "file.remove", "directory.delete", "delete", "remove", "clear", "unlink"):
+            extracted_paths = _extract_target_paths(params)
+            if extracted_paths and all(is_safe_sandbox_path(p) for p in extracted_paths):
+                return ActionRisk.LOW
         return ActionRisk.HIGH
 
-    # 2b. High-risk phrasing embedded in the execution parameters (intent text,
-    #     app targets, or UI labels). Provider/chat-styled steps collapse to a
-    #     generic action such as `open_app`, hiding the original intent in the
-    #     action name — but the params keep the actual user wording. Phrase-based
-    #     matching preserves innocuous chat (e.g. "what is format in excel?",
-    #     "explain kill in linux") while blocking destructive imperatives such
-    #     as "format drive C" or "kill all running processes".
+    # 2b. High-risk phrasing embedded in the execution parameters
     params_text = str(params).lower()
     high_risk_phrase_patterns = [
         r"\bformat\b.*\b(?:drive|disk|volume|partition|usb|flash|media)\b",
@@ -111,6 +203,9 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
 
     # Check file modification risk
     if action_lower in ("file.delete", "file.remove", "directory.delete"):
+        extracted_paths = _extract_target_paths(params)
+        if extracted_paths and all(is_safe_sandbox_path(p) for p in extracted_paths):
+            return ActionRisk.LOW
         return ActionRisk.HIGH
 
     # 3. Medium Risk Operations
@@ -153,4 +248,10 @@ def should_require_confirmation(level: AutonomyLevel | str, risk: ActionRisk | s
     return True
 
 
-__all__ = ["AutonomyLevel", "ActionRisk", "classify_action_risk", "should_require_confirmation"]
+__all__ = [
+    "AutonomyLevel",
+    "ActionRisk",
+    "classify_action_risk",
+    "should_require_confirmation",
+    "is_safe_sandbox_path",
+]

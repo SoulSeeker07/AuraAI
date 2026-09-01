@@ -18,6 +18,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,11 @@ class ApprovalTicket:
     is_redeemed: bool = False
     description: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """Convenience alias for metadata dictionary holding parameters."""
+        return self.metadata
 
     @property
     def command_hash(self) -> str:
@@ -71,6 +77,55 @@ class CryptographicApprovalAuthority:
             self._key_meta = None
         self._tickets: dict[str, ApprovalTicket] = {}
         self._ticket_lock: threading.Lock = threading.Lock()
+        self._load_persisted_tickets()
+
+    def _get_storage_path(self) -> Path:
+        p = Path(__file__).resolve().parents[4] / "storage" / "approval_tickets.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+
+    def _persist_tickets(self) -> None:
+        try:
+            sp = self._get_storage_path()
+            data = {}
+            for tid, t in self._tickets.items():
+                data[tid] = {
+                    "ticket_id": t.ticket_id,
+                    "action_type": t.action_type,
+                    "target": t.target,
+                    "action_hash": t.action_hash,
+                    "created_at": t.created_at,
+                    "expires_at": t.expires_at,
+                    "is_redeemed": t.is_redeemed,
+                    "description": t.description,
+                    "metadata": t.metadata,
+                }
+            sp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.debug(f"Failed to persist tickets: {e}")
+
+    def _load_persisted_tickets(self) -> None:
+        try:
+            sp = self._get_storage_path()
+            if not sp.exists():
+                return
+            data = json.loads(sp.read_text(encoding="utf-8"))
+            now = time.time()
+            for tid, td in data.items():
+                if tid not in self._tickets and td.get("expires_at", 0) > now:
+                    self._tickets[tid] = ApprovalTicket(
+                        ticket_id=td["ticket_id"],
+                        action_type=td["action_type"],
+                        target=td["target"],
+                        action_hash=td["action_hash"],
+                        created_at=td["created_at"],
+                        expires_at=td["expires_at"],
+                        is_redeemed=td.get("is_redeemed", False),
+                        description=td.get("description", ""),
+                        metadata=td.get("metadata", {}),
+                    )
+        except Exception as e:
+            logger.debug(f"Failed to load persisted tickets: {e}")
 
     @classmethod
     def get_instance(cls) -> "CryptographicApprovalAuthority":
@@ -148,6 +203,7 @@ class CryptographicApprovalAuthority:
 
         with self._ticket_lock:
             self._tickets[ticket_id] = ticket
+            self._persist_tickets()
 
         try:
             from .audit_logger import SecurityAuditLogger
@@ -192,6 +248,7 @@ class CryptographicApprovalAuthority:
 
         with self._ticket_lock:
             self._tickets[ticket_id] = ticket
+            self._persist_tickets()
 
         try:
             from .audit_logger import SecurityAuditLogger
@@ -221,6 +278,7 @@ class CryptographicApprovalAuthority:
         See docs/adr/0007-hmac-approval-trust-boundary.md before relying on it as one.
         """
         with self._ticket_lock:
+            self._load_persisted_tickets()
             ticket = self._tickets.get(ticket_id)
             if not ticket or ticket.is_redeemed or time.time() > ticket.expires_at:
                 return None
@@ -243,6 +301,9 @@ class CryptographicApprovalAuthority:
 
             return sig
 
+    generate_ticket = create_ticket
+    sign_ticket = generate_human_signature
+
     def verify_and_redeem(
         self,
         ticket_id: str,
@@ -255,6 +316,7 @@ class CryptographicApprovalAuthority:
         Verify human signature with constant-time comparison and mark ticket as redeemed.
         """
         with self._ticket_lock:
+            self._load_persisted_tickets()
             ticket = self._tickets.get(ticket_id)
             if not ticket:
                 self._log_audit_failure("TICKET_NOT_FOUND", action_type, target, ticket_id, "Invalid or unknown approval ticket.")
@@ -290,6 +352,7 @@ class CryptographicApprovalAuthority:
 
             # Redeem ticket (single-use enforcement)
             ticket.is_redeemed = True
+            self._persist_tickets()
             try:
                 from .audit_logger import SecurityAuditLogger
                 SecurityAuditLogger.get_instance().log_event(
@@ -313,6 +376,7 @@ class CryptographicApprovalAuthority:
         Verify human signature for terminal command execution and mark ticket as redeemed.
         """
         with self._ticket_lock:
+            self._load_persisted_tickets()
             ticket = self._tickets.get(ticket_id)
             if not ticket:
                 self._log_audit_failure("TICKET_NOT_FOUND", "command", command, ticket_id, "Invalid or unknown approval ticket.")
@@ -391,12 +455,14 @@ class CryptographicApprovalAuthority:
     def get_ticket(self, ticket_id: str) -> ApprovalTicket | None:
         """Lookup ticket by ID."""
         with self._ticket_lock:
+            self._load_persisted_tickets()
             return self._tickets.get(ticket_id)
 
     def get_pending_tickets(self) -> list[ApprovalTicket]:
         """Return list of unredeemed, unexpired tickets awaiting approval."""
-        now = time.time()
         with self._ticket_lock:
+            self._load_persisted_tickets()
+            now = time.time()
             return [
                 t for t in self._tickets.values()
                 if not t.is_redeemed and t.expires_at > now
@@ -405,9 +471,11 @@ class CryptographicApprovalAuthority:
     def revoke_ticket(self, ticket_id: str) -> bool:
         """Revoke a ticket manually."""
         with self._ticket_lock:
+            self._load_persisted_tickets()
             ticket = self._tickets.get(ticket_id)
             if ticket and not ticket.is_redeemed:
                 ticket.is_redeemed = True
+                self._persist_tickets()
                 return True
             return False
 
@@ -456,12 +524,14 @@ class CryptographicApprovalAuthority:
         trigger_id: str,
         action_goal: str,
         execution_map: dict[str, Any],
+        allowed_capabilities: list[str] | None = None,
     ) -> str:
         """
-        Cryptographically sign an autonomous or recurring trigger definition.
+        Cryptographically sign an autonomous or recurring trigger definition with its allowed capability whitelist.
         """
         exec_str = json.dumps(execution_map or {}, sort_keys=True, default=str)
-        payload = f"trigger:{trigger_id.strip()}:{action_goal.strip()}:{exec_str}".encode("utf-8")
+        caps_str = json.dumps(sorted(allowed_capabilities or []), default=str)
+        payload = f"trigger:{trigger_id.strip()}:{action_goal.strip()}:{caps_str}:{exec_str}".encode("utf-8")
         return hmac.new(self._secret_key, payload, hashlib.sha256).hexdigest()
 
     def verify_trigger_signature(
@@ -470,6 +540,7 @@ class CryptographicApprovalAuthority:
         action_goal: str,
         execution_map: dict[str, Any],
         signature: str,
+        allowed_capabilities: list[str] | None = None,
     ) -> tuple[bool, str]:
         """
         Verify that an autonomous or recurring trigger definition has not been tampered with.
@@ -480,7 +551,8 @@ class CryptographicApprovalAuthority:
             trigger_id=trigger_id,
             action_goal=action_goal,
             execution_map=execution_map,
+            allowed_capabilities=allowed_capabilities,
         )
         if not hmac.compare_digest(expected_sig, signature):
-            return False, "Trigger definition or execution map tampered with (signature mismatch)."
+            return False, "Trigger definition, allowed capabilities, or execution map tampered with (signature mismatch)."
         return True, "Trigger signature verified successfully."

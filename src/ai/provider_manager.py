@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterable
+from typing import Any
 
 from ai.exceptions import ProviderNotFoundError
 from ai.models import ChatRequest, ProviderCapabilities, ProviderResponse, VisionRequest
@@ -11,18 +13,27 @@ class ProviderManager:
     def __init__(self, default_provider: str = "groq"):
         self.providers: dict[str, Provider] = {}
         self.default_provider = default_provider
+        self.role_mappings: dict[str, str] = {
+            "code_generation": "gemini",
+        }
 
     def register(self, name: str, provider: Provider) -> None:
         self.providers[name] = provider
 
+    def register_role(self, role: str, provider_name: str) -> None:
+        self.role_mappings[role] = provider_name
+
     def get(self, name: str | None = None) -> Provider:
-        provider_name = name or self.default_provider
+        target_name = name or self.default_provider
+        # Resolve role mapping if target_name matches a registered role
+        provider_name = self.role_mappings.get(target_name, target_name)
         provider = self.providers.get(provider_name)
         if provider is None:
             raise ProviderNotFoundError(
                 f"AI provider is not registered: {provider_name}"
             )
         return provider
+
 
     def set_default(self, name: str) -> None:
         self.get(name)

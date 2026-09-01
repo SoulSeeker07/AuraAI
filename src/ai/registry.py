@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from ai.gemini_provider import GeminiProvider
 from ai.groq_provider import GroqProvider
 from ai.provider_manager import ProviderManager
 
@@ -16,4 +15,12 @@ def build_provider_manager(
             vision_model=env.get("AURA_GROQ_VISION_MODEL", "qwen/qwen3.6-27b"),
         ),
     )
+    manager.register(
+        "gemini",
+        GeminiProvider(
+            api_key=env.get("GEMINI_API_KEY", ""),
+            default_model=env.get("AURA_GEMINI_MODEL", "gemini-3.6-flash"),
+        ),
+    )
     return manager
+

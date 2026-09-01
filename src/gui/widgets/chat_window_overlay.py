@@ -144,7 +144,7 @@ class ChatOverlayMessageCard(QFrame):
                 background: rgba(251, 191, 36, 0.12);
                 border: 1px solid rgba(251, 191, 36, 0.35);
                 border-radius: 3px;
-                padding: 1px 5px;
+                padding: 2px 6px;
             """)
             head.addWidget(intent_lbl)
 
@@ -283,7 +283,7 @@ class ChatWindowOverlay(QWidget):
             background: rgba(56, 189, 248, 0.12);
             border: 1px solid rgba(56, 189, 248, 0.3);
             border-radius: 8px;
-            padding: 3px 8px;
+            padding: 4px 8px;
         """)
         hb_l.addWidget(engine_badge)
 
@@ -484,7 +484,6 @@ class ChatWindowOverlay(QWidget):
         app_signals.execution_started.connect(self._on_execution_started)
         app_signals.execution_finished.connect(self._on_execution_finished)
         app_signals.step_updated.connect(self._on_step_updated)
-        app_signals.toggle_chat_overlay.connect(self.toggle)
 
     def _load_initial_history(self):
         # Auto-load recent history from ChatLog.json if available
@@ -512,10 +511,20 @@ class ChatWindowOverlay(QWidget):
                 intent_tag="INITIALIZE",
             )
 
+    MAX_CARDS: int = 100
+
     def _append_card(self, sender: str, text: str, intent_tag: str = "REASONING"):
         card = ChatOverlayMessageCard(sender, text, intent_tag=intent_tag)
         count = self._messages_layout.count()
         self._messages_layout.insertWidget(max(0, count - 1), card)
+
+        # FIFO Prune to enforce bounded memory / prevent unconstrained widget growth
+        while self._messages_layout.count() > (self.MAX_CARDS + 1):
+            item = self._messages_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
         self._scroll_to_bottom()
 
     def _scroll_to_bottom(self):
@@ -637,15 +646,20 @@ class ChatWindowOverlay(QWidget):
 
     def _apply_window_flags(self):
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window
+        if self._always_on_top:
+            flags |= Qt.WindowType.WindowStaysOnTopHint
         self.setWindowFlags(flags)
 
     def toggle(self):
         """Toggle visibility, focus, and state of the Chat Window HUD."""
-        if self.isVisible():
+        if self.isVisible() and not self.isMinimized():
             self.hide()
         else:
-            self.show()
-            self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized | Qt.WindowState.WindowActive)
+            self.showNormal()
+            self.setWindowState(
+                (self.windowState() & ~Qt.WindowState.WindowMinimized)
+                | Qt.WindowState.WindowActive
+            )
             self.raise_()
             self.activateWindow()
             if hasattr(self, "_input_field"):
@@ -707,19 +721,29 @@ class ChatWindowOverlay(QWidget):
         if size is not None:
             try:
                 w, h = int(size.width()), int(size.height())
-                self.resize(max(MIN_W, w), max(MIN_H, h))
-            except Exception:
-                self.resize(target_w, target_h)
+            except (AttributeError, TypeError, ValueError):
+                try:
+                    w, h = int(size[0]), int(size[1])
+                except Exception:
+                    w, h = target_w, target_h
+            w = max(MIN_W, min(w, screen.width() - 40))
+            h = max(MIN_H, min(h, screen.height() - 40))
+            self.resize(w, h)
         else:
             self.resize(target_w, target_h)
 
         if pos is not None:
             try:
-                self.move(pos)
+                x = int(pos.x()) if hasattr(pos, "x") else int(pos[0])
+                y = int(pos.y()) if hasattr(pos, "y") else int(pos[1])
+                # Ensure clamped to visible screen boundaries so it can never be offscreen or -32000
+                x = max(screen.left() + 10, min(x, screen.right() - self.width() - 10))
+                y = max(screen.top() + 10, min(y, screen.bottom() - self.height() - 10))
+                self.move(x, y)
             except Exception:
                 self.move(
-                    screen.left() + (screen.width() - self.width()) // 2,
-                    screen.top() + (screen.height() - self.height()) // 2,
+                    screen.left() + int(screen.width() * 0.58),
+                    screen.top() + int(screen.height() * 0.18),
                 )
         else:
             self.move(
@@ -728,8 +752,17 @@ class ChatWindowOverlay(QWidget):
             )
 
     def _save_geometry(self):
-        self._settings.setValue("pos", self.pos())
-        self._settings.setValue("size", self.size())
+        if not self.isMinimized() and self.isVisible():
+            screen = QApplication.primaryScreen().availableGeometry()
+            p = self.pos()
+            if (
+                p.x() >= screen.left() - 50
+                and p.x() <= screen.right()
+                and p.y() >= screen.top() - 50
+                and p.y() <= screen.bottom()
+            ):
+                self._settings.setValue("pos", p)
+                self._settings.setValue("size", self.size())
 
     # -------------------------------------------------------------------------
     # DRAG & RESIZE HANDLING

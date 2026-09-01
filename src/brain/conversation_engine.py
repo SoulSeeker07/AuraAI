@@ -9,6 +9,8 @@ import os
 import re
 import subprocess
 import sys
+import time
+import uuid
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -912,18 +914,22 @@ class ConversationEngine:
                     action_ok = False
             elif grounded.source_tier == "tier1_a11y" and grounded.element_handle is not None:
                 try:
-                    from desktop.native.managers.native_manager_registry import NativeManagerRegistry
-                    registry = NativeManagerRegistry.get_instance()
-                    uia_mgr = registry.get_manager("uia")
-                    if uia_mgr and hasattr(uia_mgr, "adapter") and uia_mgr.adapter:
-                        res = uia_mgr.adapter.click_element(grounded.element_handle, getattr(app_context, "window_title", ""))
-                        if res is False:
-                            action_ok = False
-                    elif hasattr(grounded.element_handle, "click_input"):
+                    if hasattr(grounded.element_handle, "click_input"):
                         grounded.element_handle.click_input()
+                    elif hasattr(grounded.element_handle, "invoke"):
+                        grounded.element_handle.invoke()
+                    else:
+                        from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+                        registry = NativeManagerRegistry.get_instance()
+                        uia_mgr = registry.get_manager("uia")
+                        if uia_mgr and hasattr(uia_mgr, "adapter") and uia_mgr.adapter:
+                            res = uia_mgr.adapter.click_element(grounded.element_handle, getattr(app_context, "window_title", ""))
+                            if res is False:
+                                action_ok = False
                 except Exception as err:
                     logger.warning(f"[ConversationEngine] UIA click failed for '{grounded.label}': {err}")
                     action_ok = False
+
             elif hasattr(app_context, "window_handle") and app_context.window_handle:
                 try:
                     from core.backends.adapters.desktop_backend import _force_foreground
@@ -1033,6 +1039,25 @@ class ConversationEngine:
                 import logging
                 logging.getLogger(__name__).warning(f"Live weather lookup failed: {e}")
 
+        if intent.name == "play_music":
+            query = (intent.data or {}).get("query", "").strip()
+            if not query:
+                query = (intent.data or {}).get("raw", "top songs")
+            import urllib.parse
+            import webbrowser
+            search_url = "https://www.youtube.com/results?search_query=" + urllib.parse.quote_plus(query)
+            try:
+                webbrowser.open(search_url)
+                return (
+                    f"\u25b6\ufe0f Opening YouTube search for **{query}**\n"
+                    f"[{search_url}]({search_url})"
+                )
+            except Exception as _err:
+                return (
+                    f"\u25b6\ufe0f Here is your YouTube search link for **{query}**:\n"
+                    f"[Click to Play]({search_url})"
+                )
+
         if intent.name == "battery_status":
             try:
                 from tools.battery_service import BatteryDiagnosticsService
@@ -1041,12 +1066,108 @@ class ConversationEngine:
             except Exception as e:
                 return f"🔋 Battery diagnostics error: {e}"
 
+        # ── Bluetooth Status & Control ──
+        if intent.name == "bluetooth_status":
+            try:
+                from tools.bluetooth_service import BluetoothDiagnosticsService
+                report = BluetoothDiagnosticsService.get_full_bluetooth_report()
+                return report.get("markdown", "🔵 Bluetooth status unavailable.")
+            except Exception as e:
+                return f"🔵 Bluetooth diagnostics error: {e}"
+
+        if intent.name == "bluetooth_control":
+            enable = (intent.data or {}).get("enable", True)
+            try:
+                from tools.bluetooth_service import BluetoothDiagnosticsService
+                if enable == "toggle":
+                    cur_st = BluetoothDiagnosticsService.get_radio_state()
+                    enable = (cur_st != "On")
+                res = BluetoothDiagnosticsService.set_radio_state(bool(enable))
+                return res.get("message", "🔵 Bluetooth command processed.")
+            except Exception as e:
+                return f"🔵 Bluetooth control error: {e}"
+
+        # ── Wi-Fi Status & Control ──
+        if intent.name == "wifi_status":
+            try:
+                from tools.network_service import NetworkDiagnosticsService
+                report = NetworkDiagnosticsService.get_full_network_report(wifi_only=True)
+                return report.get("markdown", "📶 Wi-Fi status unavailable.")
+            except Exception as e:
+                return f"📶 Wi-Fi diagnostics error: {e}"
+
+        if intent.name == "wifi_control":
+            enable = (intent.data or {}).get("enable", True)
+            try:
+                from tools.network_service import NetworkDiagnosticsService
+                if enable == "toggle":
+                    cur_st = NetworkDiagnosticsService.get_wifi_radio_state()
+                    enable = (cur_st != "On")
+                res = NetworkDiagnosticsService.set_wifi_state(bool(enable))
+                return res.get("message", "📶 Wi-Fi command processed.")
+            except Exception as e:
+                return f"📶 Wi-Fi control error: {e}"
+
+        # ── Network & IP Diagnostics ──
+        if intent.name == "network_status":
+            try:
+                from tools.network_service import NetworkDiagnosticsService
+                report = NetworkDiagnosticsService.get_full_network_report(wifi_only=False)
+                return report.get("markdown", "🌐 Network status unavailable.")
+            except Exception as e:
+                return f"🌐 Network diagnostics error: {e}"
+
+        # ── System Hardware Telemetry ──
+        if intent.name == "system_status":
+            try:
+                from tools.system_diagnostics_service import SystemDiagnosticsService
+                report = SystemDiagnosticsService.get_full_system_report()
+                return report.get("markdown", "⚡ System diagnostics unavailable.")
+            except Exception as e:
+                return f"⚡ System diagnostics error: {e}"
+
         if intent.name == "smarthome_control":
             raw_input = (intent.data or {}).get("raw", "").lower()
             try:
                 from core.backends.adapters.smarthome_backend import SmartHomeBackendAdapter
                 from integrations.smarthome.tapo_client import COLOR_NAME_TO_HSV, COLOR_TEMP_PRESETS, parse_color_to_hsv_or_temp
+                from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+                from core.orchestration.master_orchestrator import MasterOrchestrator
+                from core.planning.action_plan import ActionPlan
+                from core.planning.execution_result import ExecutionResult
+
                 adapter = SmartHomeBackendAdapter()
+                orchestrator = MasterOrchestrator()
+
+                def _dispatch_smart_action(cap_name: str, cap_args: dict[str, Any]) -> ExecutionResult:
+                    pol = ExecutionPolicy.get_instance().evaluate_action(
+                        engine="smarthome",
+                        action=cap_name,
+                        params=cap_args,
+                    )
+                    if pol.action == PolicyAction.FAIL:
+                        return ExecutionResult(
+                            success=False,
+                            planner="smarthome",
+                            goal=raw_input,
+                            error=f"Action blocked by policy: {pol.message}",
+                        )
+                    if pol.action == PolicyAction.ASK_USER:
+                        return ExecutionResult(
+                            success=False,
+                            planner="smarthome",
+                            goal=raw_input,
+                            error=f"Action requires confirmation: {pol.message}",
+                        )
+                    plan = ActionPlan.for_desktop(
+                        action=cap_name,
+                        target="smarthome",
+                        goal=raw_input,
+                        capability=cap_name,
+                        arguments=cap_args,
+                    )
+                    return orchestrator._dispatch_plan(adapter, plan, task_id=plan.plan_id)
+
                 import re
 
                 # Extract brightness level if specified (numeric or semantic keywords like max, full, min, half)
@@ -1074,7 +1195,7 @@ class ConversationEngine:
                 # 1. Effects (Party / Relax / Off)
                 if any(w in clean_query for w in ("party", "relax", "effect")):
                     eff = "Party" if "party" in clean_query else ("Relax" if "relax" in clean_query else "Off")
-                    res = adapter.execute("light.set_effect", raw_input, {"effect": eff, "brightness": level})
+                    res = _dispatch_smart_action("light.set_effect", {"effect": eff, "brightness": level})
                     if res.success:
                         b_str = f", Brightness: **{level}%**" if level is not None else ""
                         return f"🎉 **Smart Bulb Light Effect:** Activated **{eff} Mode**{b_str}."
@@ -1115,14 +1236,14 @@ class ConversationEngine:
 
                 # 3. Execute Color or Temperature if detected
                 if color_target is not None:
-                    res = adapter.execute("light.set_color", raw_input, {"color": color_target, "brightness": level})
+                    res = _dispatch_smart_action("light.set_color", {"color": color_target, "brightness": level})
                     if res.success:
                         b_str = f" and Brightness to **{level}%**" if level is not None else ""
                         return f"🎨 **Smart Bulb Color updated:** Set to **{color_target.title()}**{b_str}."
                     return f"⚠️ Could not set light color: {res.data.get('error', 'Device unreachable')}"
 
                 elif temp_target is not None:
-                    res = adapter.execute("light.set_color_temp", raw_input, {"color_temp": temp_target, "brightness": level})
+                    res = _dispatch_smart_action("light.set_color_temp", {"color_temp": temp_target, "brightness": level})
                     if res.success:
                         b_str = f", Brightness: **{level}%**" if level is not None else ""
                         return f"💡 **Smart Bulb Color Temperature:** Set to **{temp_target}K**{b_str}."
@@ -1132,7 +1253,7 @@ class ConversationEngine:
                 elif any(w in clean_query for w in ("turn on", "switch on", "power on")) or (clean_query.strip().endswith(" on") and not any(w in clean_query for w in ("turn off", "switch off", "power off"))):
                     cap = "light.turn_on"
                     args = {"brightness": level} if level is not None else {}
-                    res = adapter.execute(cap, raw_input, args)
+                    res = _dispatch_smart_action(cap, args)
                     if res.success:
                         b_lvl = res.data.get('state', {}).get('attributes', {}).get('brightness', level or 100)
                         return f"💡 **Smart Bulb turned ON** (Brightness: **{b_lvl}%**)."
@@ -1141,7 +1262,7 @@ class ConversationEngine:
                 # 5. Turn OFF / Power OFF
                 elif any(w in clean_query for w in ("turn off", "switch off", "power off", "shutdown light")) or clean_query.strip().endswith(" off"):
                     cap = "light.turn_off"
-                    res = adapter.execute(cap, raw_input, {})
+                    res = _dispatch_smart_action(cap, {})
                     if res.success:
                         return "💡 **Smart Bulb turned OFF.**"
                     return f"⚠️ Could not turn off bulb: {res.data.get('error', 'Device unreachable')}"
@@ -1149,7 +1270,7 @@ class ConversationEngine:
                 # 6. Toggle
                 elif "toggle" in clean_query:
                     cap = "light.toggle"
-                    res = adapter.execute(cap, raw_input, {})
+                    res = _dispatch_smart_action(cap, {})
                     if res.success:
                         st = res.data.get('state', {}).get('state', 'toggled')
                         return f"💡 **Smart Bulb toggled:** now **{st.upper()}**."
@@ -1163,7 +1284,7 @@ class ConversationEngine:
                     elif "min" in clean_query or "lowest" in clean_query:
                         target_lvl = 1
                     cap = "light.set_brightness"
-                    res = adapter.execute(cap, raw_input, {"brightness": target_lvl})
+                    res = _dispatch_smart_action(cap, {"brightness": target_lvl})
                     if res.success:
                         actual_lvl = res.data.get('state', {}).get('attributes', {}).get('brightness', target_lvl)
                         return f"💡 **Smart Bulb Brightness updated:** Set to **{actual_lvl}%**."
@@ -1171,7 +1292,7 @@ class ConversationEngine:
 
                 # 8. State / Status
                 else:
-                    res = adapter.execute("entity.get_state", raw_input, {})
+                    res = _dispatch_smart_action("entity.get_state", {})
                     if res.success:
                         st = res.data.get('state', {})
                         attrs = st.get('attributes', {})
@@ -1246,6 +1367,59 @@ class ConversationEngine:
             except Exception as e:
                 return f"🔊 Audio control error: {e}"
 
+        raw_q = (intent.data or {}).get("raw", "") or str(intent.name)
+        q_lower = raw_q.lower().strip()
+
+        # ── Task Completion Handler ──
+        if intent.name in ("task_complete", "tasks.complete") or any(phrase in q_lower for phrase in (
+            "mark task as complete", "mark task complete", "mark as complete",
+            "mark as done", "complete task", "task complete", "complete reminder",
+            "mark reminder complete", "mark task done", "complete the task", "mark it complete"
+        )):
+            try:
+                import sqlite3
+                with sqlite3.connect("calendar_tasks.db") as conn:
+                    row = conn.execute("SELECT id, title FROM tasks WHERE status='pending' ORDER BY rowid DESC LIMIT 1").fetchone()
+                    if row:
+                        tid, ttitle = row
+                        conn.execute("UPDATE tasks SET status='completed' WHERE id=?", (tid,))
+                        conn.commit()
+                        return f"✓ **Task Marked as Complete!**\n\nSuccessfully completed: **{ttitle}**"
+                    else:
+                        return "✓ All tasks are already up to date! No pending tasks found to mark complete."
+            except Exception as e:
+                logger.debug(f"Task complete notice: {e}")
+
+        # ── Reminder & Focus Query Handler ──
+        if intent.name == "reminders_query" or any(kw in q_lower for kw in ("reminder", "reminders", "focus", "schedule", "tasks", "my tasks", "my focus")):
+            try:
+                import sqlite3
+                rems = []
+                with sqlite3.connect("calendar_tasks.db") as conn:
+                    rows = conn.execute("SELECT title, start_time, description FROM events").fetchall()
+                    for r in rows:
+                        rems.append(f"📅 **{r[0]}** at `{r[1]}` - {r[2]}")
+                    t_rows = conn.execute("SELECT title, due_date, priority FROM tasks WHERE status='pending'").fetchall()
+                    for t in t_rows:
+                        rems.append(f"📋 **{t[0]}** (Due: `{t[1]}`, Priority: {t[2].upper()})")
+
+                directives = []
+                with sqlite3.connect("Memory.db") as m_conn:
+                    m_rows = m_conn.execute("SELECT content FROM cognitive_memories WHERE topic='voice_test_reminder' OR type='directive'").fetchall()
+                    for m in m_rows:
+                        directives.append(m[0])
+
+                if rems or directives:
+                    resp_parts = ["📌 **Active Reminders & Focus Directives:**\n"]
+                    if rems:
+                        resp_parts.extend(rems)
+                    if directives:
+                        resp_parts.append("\n🎯 **AI Focus Directive:** " + directives[0])
+                    resp_parts.append("\n*I will notify you at 8:00 PM today and follow up if missed.*")
+                    return "\n".join(resp_parts)
+            except Exception as e:
+                logger.debug(f"Reminder query notice: {e}")
+
         if intent.name == "voice_control":
             action = (intent.data or {}).get("action", "start")
             try:
@@ -1306,14 +1480,101 @@ class ConversationEngine:
                 return f"⚠️ Knowledge retrieval notice: {e}"
 
         if intent.name == "confirm_ticket":
-            ticket_id = (intent.data or {}).get("ticket_id", "").strip().upper()
+            data = intent.data or {}
+            ticket_id = (data.get("ticket_id") or "").strip()
+            decision = data.get("decision", "approve")  # "approve" or "deny"
+
+            # 1. Handle browser ticket (AUTH-XXXX or TICK-XXXX)
+            if ticket_id and (ticket_id.startswith("AUTH-") or ticket_id.startswith("TICK-")):
+                try:
+                    from browser.agent_loop import confirm_ticket
+                    from browser.run_browser_goal import format_for_chat
+                    if decision == "deny":
+                        return f"❌ Browser authorization for ticket `{ticket_id}` cancelled."
+                    res = confirm_ticket(ticket_id.upper())
+                    return format_for_chat(res, goal=f"ticket {ticket_id}")
+                except Exception as e:
+                    return f"⚠️ Confirmation processing error: {e}"
+
+            # 2. Check CryptographicApprovalAuthority and PersonalOSStateStore for tickets
             try:
-                from browser.agent_loop import confirm_ticket
-                from browser.run_browser_goal import format_for_chat
-                res = confirm_ticket(ticket_id)
-                return format_for_chat(res, goal=f"ticket {ticket_id}")
+                from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+                from personal_os.state_store import PersonalOSStateStore
+                auth_inst = CryptographicApprovalAuthority.get_instance()
+                os_store = PersonalOSStateStore.get_instance()
+
+                target_ticket = None
+                if ticket_id:
+                    target_ticket = auth_inst.get_ticket(ticket_id)
+                else:
+                    pending = auth_inst.get_pending_tickets()
+                    if pending:
+                        target_ticket = pending[-1]
+
+                if target_ticket:
+                    t_id = target_ticket.ticket_id
+                    raw_act = target_ticket.target or target_ticket.action_type or "action"
+                    act_name = raw_act.replace("_", " ").replace(".", " ").title()
+
+                    if decision == "deny":
+                        auth_inst.revoke_ticket(t_id)
+                        os_store.mark_suspended_session_status(t_id, "CANCELLED")
+                        if target_ticket.action_type in ("terminal_execution", "shell_execution"):
+                            return f"❌ Cancelled: Command `{target_ticket.target}` was not executed."
+                        return f"❌ **Denied:** Action **{act_name}** has been cancelled."
+                    else:
+                        sig = auth_inst.sign_ticket(t_id)
+
+                        # Handle terminal/shell execution tickets directly
+                        if target_ticket.action_type in ("terminal_execution", "shell_execution"):
+                            from desktop.native.managers.shell_executor import execute_command
+                            cmd_to_run = target_ticket.target or target_ticket.metadata.get("command", "")
+                            cwd = target_ticket.metadata.get("cwd")
+                            auth_inst.verify_and_redeem(
+                                ticket_id=t_id,
+                                signature=sig,
+                                action_type=target_ticket.action_type,
+                                target=target_ticket.target,
+                                parameters=target_ticket.parameters,
+                            )
+                            result = execute_command(cmd_to_run, cwd=cwd)
+                            return result.format_response()
+
+                        suspended = os_store.get_suspended_session(t_id)
+                        if suspended:
+                            import asyncio
+                            from core.orchestration.master_orchestrator import MasterOrchestrator
+                            orchestrator = MasterOrchestrator()
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running():
+                                    asyncio.create_task(orchestrator.approve_and_resume_ticket(t_id, signature=sig))
+                                else:
+                                    loop.run_until_complete(orchestrator.approve_and_resume_ticket(t_id, signature=sig))
+                            except Exception as run_err:
+                                logger.debug(f"[ConversationEngine] Resume ticket task dispatch: {run_err}")
+
+                        return f"✅ **Approved:** Permission granted for **{act_name}**. Resuming execution."
+
+                # 3. Check for paused browser session if no desktop ticket was found
+                try:
+                    from browser.paused_session import PausedSessionStore
+                    if PausedSessionStore.get_instance().has_pending():
+                        from browser.agent_loop import resume_goal
+                        from browser.run_browser_goal import format_for_chat
+                        if decision == "deny":
+                            return "❌ Paused browser action cancelled."
+                        res = resume_goal()
+                        return format_for_chat(res, goal=res.get("summary", "resumed goal"))
+                except Exception:
+                    pass
+
+                if decision == "deny":
+                    return "No pending actions found to deny."
+                return "There are currently no pending tasks or security actions awaiting your approval."
+
             except Exception as e:
-                return f"⚠️ Confirmation processing error: {e}"
+                return f"⚠️ Authorization processing error: {e}"
 
         if intent.name == "resume_browser":
             try:
@@ -1462,29 +1723,40 @@ class ConversationEngine:
                     else:
                         return f"📂 **{folder_path.name} folder is already organized.** (No loose files found)"
 
-                elif verb in ("open", "launch", "start", "run"):
-                    from desktop.native.managers.window_manager import WindowManager
-                    wm = WindowManager()
-                    res = wm.execute(capability="app_open", goal=raw_goal, arguments={"app_name": target, "target": target})
-                    if res.success:
-                        reused = (res.data or {}).get("reused", False)
-                        msg = f"✓ {target.title()} is already open — brought to front." if reused else f"✓ {target.title()} is open."
-                        return msg
-                    return f"❌ {res.error or f'Could not open {target}.'}"
-
-                elif verb in ("close", "kill"):
-                    from desktop.native.managers.window_manager import WindowManager
-                    wm = WindowManager()
-                    res = wm.execute(capability="app_close", goal=raw_goal, arguments={"app_name": target, "target": target})
-                    if res.success:
-                        return f"✓ Closed {target.title()}."
-                    return f"❌ {res.error or f'Could not close {target}.'}"
+                elif verb == "run":
+                    # Shell command execution path.
+                    # LOW-risk read-only commands are executed directly with
+                    # output verification. MEDIUM/HIGH require human confirmation via
+                    # CryptographicApprovalAuthority ticket flow.
+                    from desktop.native.managers.shell_executor import (
+                        ShellExecutionResult,
+                        classify_command,
+                        execute_low_risk,
+                    )
+                    risk = classify_command(target)
+                    if risk == "LOW":
+                        result = execute_low_risk(target)
+                        return result.format_response()
+                    else:
+                        from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+                        auth = CryptographicApprovalAuthority.get_instance()
+                        ticket_id = auth.create_ticket(
+                            action_type="terminal_execution",
+                            target=target,
+                            description=f"Execute shell command: {target}",
+                        )
+                        return (
+                            f"⚠️ `{target}` is classified as a **{risk}-risk** command and requires an approval ticket before execution.\n\n"
+                            f"Proceed with `{target}` to the repository / system? (yes/no)\n\n"
+                            f"*(Approval ticket: `{ticket_id}`)*"
+                        )
 
                 else:
-                    from core.backends.adapters.desktop_backend import DesktopBackend
-                    backend = DesktopBackend()
-                    cap = "app_open"
-                    if verb == "minimize":
+                    if verb in ("open", "launch", "start"):
+                        cap = "app_open"
+                    elif verb in ("close", "kill"):
+                        cap = "app_close"
+                    elif verb == "minimize":
                         cap = "window.minimize"
                     elif verb == "maximize":
                         cap = "window.maximize"
@@ -1494,14 +1766,65 @@ class ConversationEngine:
                         cap = "window.activate"
                     elif "screenshot" in raw_goal:
                         cap = "screen.capture"
-
-                    res = backend.execute(goal=raw_goal, capability=cap, arguments={"app_name": target, "target": target})
-                    if res.observations:
-                        return "\n".join(res.observations)
-                    elif res.success:
-                        return f"✓ {verb.title()} {target} completed successfully."
                     else:
-                        return f"⚠️ {res.error or 'Action could not be completed.'}"
+                        cap = "app_open"
+
+                    # 1. Structural Policy Check: Gated by risk tier prior to execution
+                    from core.orchestration.execution_policy import ExecutionPolicy, PolicyAction
+                    from core.orchestration.master_orchestrator import MasterOrchestrator
+                    from core.planning.action_plan import ActionPlan
+                    from core.backends.adapters.desktop_backend import DesktopBackend
+
+                    pol_decision = ExecutionPolicy.get_instance().evaluate_action(
+                        engine="desktop",
+                        action=cap,
+                        params={"app_name": target, "target": target},
+                    )
+                    if pol_decision.action == PolicyAction.FAIL:
+                        return f"❌ Action blocked by security policy: {pol_decision.message}"
+                    if pol_decision.action == PolicyAction.ASK_USER:
+                        return (
+                            f"⚠️ Action `{cap}` requires explicit confirmation before execution: {pol_decision.message}\n\n"
+                            f"Direct fast-path execution is prohibited by security policy."
+                        )
+
+                    # 2. Policy Cleared: Dispatch through unified _dispatch_plan chokepoint
+                    backend = DesktopBackend()
+                    plan = ActionPlan.for_desktop(
+                        action=verb,
+                        target=target,
+                        goal=raw_goal,
+                        capability=cap,
+                        arguments={"app_name": target, "target": target},
+                    )
+                    orchestrator = MasterOrchestrator()
+                    res = orchestrator._dispatch_plan(backend, plan, task_id=plan.plan_id)
+
+                    if verb in ("open", "launch", "start"):
+                        if res.success:
+                            reused = (res.data or {}).get("reused", False)
+                            is_web = bool((res.data or {}).get("web_url"))
+                            if reused:
+                                msg = f"✓ {target.title()} is already open — brought to front."
+                            elif is_web:
+                                msg = f"✓ Opened {target.title()} in your web browser."
+                            else:
+                                msg = f"✓ {target.title()} is open."
+                            return msg
+                        return f"❌ {res.error or f'Could not open {target}.'}"
+
+                    elif verb in ("close", "kill"):
+                        if res.success:
+                            return f"✓ Closed {target.title()}."
+                        return f"❌ {res.error or f'Could not close {target}.'}"
+
+                    else:
+                        if res.observations:
+                            return "\n".join(res.observations)
+                        elif res.success:
+                            return f"✓ {verb.title()} {target} completed successfully."
+                        else:
+                            return f"⚠️ {res.error or 'Action could not be completed.'}"
             except Exception as e:
                 return f"⚠️ Desktop automation error: {e}"
 

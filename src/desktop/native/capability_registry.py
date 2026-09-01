@@ -169,6 +169,7 @@ class CapabilityRegistry:
         # Security & privacy
         self._register_security_capabilities()
 
+
     def _register_window_capabilities(self) -> None:
         """Register window management capabilities"""
         self.register(

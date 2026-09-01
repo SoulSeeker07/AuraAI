@@ -27,6 +27,7 @@ from .dashboard import EngineeringDashboard
 from .dependency_graph import Dependency, DependencyGraph
 from .doctor import AuraDoctor, AuraVerifier
 from .documentation_engine import DocumentationEngine
+from .duplicate_detector import DuplicateAuditReport, DuplicateCandidatePair, DuplicateDetector
 from .engineering_manager import EngineeringManager
 from .engineering_memory import EngineeringMemory
 from .engineering_planner import EngineeringPlanner, PlanningPhase
@@ -34,11 +35,12 @@ from .git_intelligence import GitIntelligence
 from .import_manager import ImportManager
 from .inspector import AuraInspector
 from .lsp_manager import LSPManager
+from .project_index import ProjectIndex, SymbolRecord
 from .quality_engine import QualityEngine
 from .refactoring_engine import RefactoringEngine, RefactoringOperation
 from .repository_manager import RepositoryManager, RepositoryState
-
-__version__ = "1.0.0"
+from .symbol_graph import Symbol, SymbolGraph
+from .test_engine import TestEngine, TestResult
 
 __all__ = [
     "AuraDoctor",
@@ -69,4 +71,9 @@ __all__ = [
     "EngineeringMemory",
     "EngineeringDashboard",
     "LSPManager",
+    "ProjectIndex",
+    "SymbolRecord",
+    "DuplicateDetector",
+    "DuplicateAuditReport",
+    "DuplicateCandidatePair",
 ]

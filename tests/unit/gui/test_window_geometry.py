@@ -73,3 +73,43 @@ def test_hud_overlays_menu_actions(qapp):
     assert any("System Status" in t for t in action_texts)
     assert any("System HUD" in t for t in action_texts)
     assert any("Weather HUD" in t for t in action_texts)
+
+
+def test_chat_overlay_offscreen_geometry_clamped(qapp):
+    """
+    Ensure ChatWindowOverlay properly clamps off-screen or negative coordinates
+    (e.g., from secondary monitor disconnects or minimized states) back into
+    the visible primary screen area.
+    """
+    from PySide6.QtCore import QPoint, QSettings
+    from gui.widgets.chat_window_overlay import ChatWindowOverlay
+
+    # Artificially set an off-screen position (-1500, -3000)
+    settings = QSettings("AuraAI", "ChatWindowOverlay")
+    settings.setValue("pos", QPoint(-1500, -3000))
+
+    overlay = ChatWindowOverlay()
+    screen = QApplication.primaryScreen().availableGeometry()
+
+    assert overlay.x() >= screen.left(), f"Chat HUD X {overlay.x()} is off-screen left"
+    assert overlay.y() >= screen.top(), f"Chat HUD Y {overlay.y()} is off-screen top"
+    assert overlay.x() + overlay.width() <= screen.right() + 1, "Chat HUD overflows screen right"
+    assert overlay.y() + overlay.height() <= screen.bottom() + 1, "Chat HUD overflows screen bottom"
+
+
+def test_chat_overlay_toggle_unminimizes(qapp):
+    """
+    Ensure toggle() unminimizes and restores a minimized ChatWindowOverlay.
+    """
+    from PySide6.QtCore import Qt
+    from gui.widgets.chat_window_overlay import ChatWindowOverlay
+
+    overlay = ChatWindowOverlay()
+    overlay.showMinimized()
+    assert overlay.isMinimized()
+
+    # Calling toggle while minimized should unminimize and make it visible/active
+    overlay.toggle()
+    assert not overlay.isMinimized()
+    assert overlay.isVisible()
+

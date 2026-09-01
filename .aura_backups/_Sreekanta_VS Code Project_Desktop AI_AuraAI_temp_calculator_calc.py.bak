@@ -1,0 +1,5 @@
+"""Calculator module with deliberate bug."""
+
+def add(a: int, b: int) -> int:
+    # Deliberate bug: subtracts instead of adds!
+    return a - b

@@ -12,3 +12,10 @@ class ProviderNotFoundError(ProviderError):
 
 class KeyPoolExhaustedError(ProviderError):
     """Raised when all API keys in the rotation pool are exhausted or rate-limited."""
+
+
+class GeminiQuotaExhaustedError(ProviderError):
+    """Raised when Gemini API quota is exhausted or rate-limited (HTTP 429)."""
+
+
+

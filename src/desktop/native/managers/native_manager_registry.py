@@ -47,7 +47,9 @@ class NativeManagerRegistry:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = cls()
+                cls._instance.discover("desktop.native.managers")
             return cls._instance
+
 
     @classmethod
     def reset_instance(cls) -> None:

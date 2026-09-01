@@ -11,7 +11,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from execution import ExecutionEngine, FunctionToolAdapter, ToolRegistry
 
 
-def test_func(name: str):
+__test__ = False
+
+def sample_tool_func(name: str):
     """Test function."""
     print(f"Test function called with name: {name}")
     return {"status": "success", "tool": name}
@@ -19,8 +21,9 @@ def test_func(name: str):
 
 print("Creating test tool...")
 adapter = FunctionToolAdapter(
-    name="test_tool", function=test_func, description="A test tool", version="1.0.0"
+    name="test_tool", function=sample_tool_func, description="A test tool", version="1.0.0"
 )
+
 
 print("Getting metadata before registration...")
 metadata = adapter.get_metadata()

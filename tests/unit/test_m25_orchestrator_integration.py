@@ -12,6 +12,9 @@ from core.orchestration.task_decomposer import PlannerRole, SubTask, TaskGraph
 from core.planning.execution_result import ExecutionResult
 from experts.base_expert import DomainAssessment, PlanDAG, PlanNode
 from experts.router import ExpertDomainRouter
+from core.orchestration.execution_policy import ExecutionPolicy
+from core.orchestration.autonomy_mode import AutonomyLevel
+
 
 
 def create_mock_backend(planner: str = "coding", goal: str = "test"):
@@ -75,15 +78,23 @@ async def test_opt_in_expert_routing_all_domains():
     mock_backend = create_mock_backend(planner="desktop", goal="subtask")
     orchestrator.backend_registry.select_best_backend = MagicMock(return_value=mock_backend)
 
-    for goal, expected_domain in domain_goals:
-        res = await orchestrator.process_request_async(goal)
+    # Scoped to AUTONOMOUS so this integration test validates end-to-end domain expert routing,
+    # DAG compilation, and subtask dispatch across all 4 domains without halting on interactive
+    # human CLI confirmation prompts for HIGH-risk actions (e.g. code.edit).
+    # Interactive confirmation flow & gating are tested in test_autonomous_trigger_risk_gating.py.
+    with ExecutionPolicy.autonomy_scope(AutonomyLevel.AUTONOMOUS):
+        for goal, expected_domain in domain_goals:
 
-        assert res.success is True
-        session = orchestrator._last_session
-        assert session.metrics.get("expert_domain") == expected_domain
-        assert session.metrics.get("expert_assessment_id") is not None
-        assert session.metrics.get("expert_confidence") >= 0.50
-        assert any(f"Routed to {expected_domain} expert" in obs.content for obs in session.observations)
+
+            res = await orchestrator.process_request_async(goal)
+
+            assert res.success is True
+            session = orchestrator._last_session
+            assert session.metrics.get("expert_domain") == expected_domain
+            assert session.metrics.get("expert_assessment_id") is not None
+            assert session.metrics.get("expert_confidence") >= 0.50
+            assert any(f"Routed to {expected_domain} expert" in obs.content for obs in session.observations)
+
 
 
 @pytest.mark.asyncio

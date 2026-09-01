@@ -238,6 +238,7 @@ class BackendRegistry:
         self.register(SecurityBackendAdapter())
         self.register(SmartHomeBackendAdapter())
 
+
     def load_capability_manifest(self, manifest_path: Path | None = None) -> None:
         """Load capability mapping manifest from config/capabilities.json or .yaml."""
         if manifest_path is None:

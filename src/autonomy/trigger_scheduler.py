@@ -142,10 +142,28 @@ class TriggerScheduler:
             policy = self.policy or ExecutionPolicy.get_instance()
             steps = exec_map.get("steps", [])
 
-            # M26 — Goal-based Orchestration Path for Autonomous Triggers
+            # Coordinator dispatch path when explicit coordinator is configured
+            if not steps and self.coordinator:
+                try:
+                    res = await self.coordinator.coordinate(exec_map)
+                    provenance.execution_id = getattr(res, "execution_id", uuid.uuid4().hex[:8])
+                    if getattr(res, "success", False):
+                        provenance.result_status = "VERIFIED"
+                        self.registry.update_state(trigger.trigger_id, TriggerState.VERIFIED, provenance=provenance)
+                    else:
+                        provenance.result_status = "FAILED"
+                        self.registry.update_state(trigger.trigger_id, TriggerState.FAILED, provenance=provenance)
+                except Exception as exc:
+                    logger.error(f"[TriggerScheduler] Coordinator execution error for '{trigger.trigger_id}': {exc}")
+                    provenance.result_status = "FAILED"
+                    self.registry.update_state(trigger.trigger_id, TriggerState.FAILED, provenance=provenance)
+                return
+
+            # M26 — Goal-based Orchestration Path for Autonomous Triggers (MasterOrchestrator)
             if not steps and trigger.action_goal:
                 try:
                     from core.orchestration.master_orchestrator import MasterOrchestrator
+
                     from core.orchestration.request_source import RequestSource
                     from desktop.native.security.audit_logger import SecurityAuditLogger
                     from personal_os.state_store import PersonalOSStateStore

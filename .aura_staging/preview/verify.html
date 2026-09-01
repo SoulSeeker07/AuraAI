@@ -1,0 +1,22 @@
+<html><body><h1>Aura Webview Verification</h1><script>console.log('Webview live verification');</script>
+<script id="aura-hot-reload">
+(function() {
+    let lastModified = 0;
+    const pollInterval = 400;
+    function checkUpdate() {
+        fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
+            .then(res => {
+                const cur = res.headers.get('last-modified') || res.headers.get('etag');
+                if (cur && lastModified && cur !== lastModified) {
+                    window.location.reload();
+                }
+                lastModified = cur || lastModified;
+            })
+            .catch(() => {})
+            .finally(() => setTimeout(checkUpdate, pollInterval));
+    }
+    setTimeout(checkUpdate, pollInterval);
+})();
+</script>
+
+</body></html>

@@ -24,8 +24,10 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
+from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
+
 from enum import Enum
 from typing import Any
 
@@ -99,6 +101,17 @@ class ExecutionPolicy:
 
     # ── Autonomy Level API (Coroutine & Thread-Safe via ContextVar) ──────────
 
+    @classmethod
+    @contextmanager
+    def autonomy_scope(cls, level: Any):
+        """Context manager to temporarily set the coroutine-scoped autonomy level."""
+        policy = cls.get_instance()
+        token = policy.set_autonomy_level(level)
+        try:
+            yield policy
+        finally:
+            policy.reset_autonomy_level(token)
+
     def set_autonomy_level(self, level: Any) -> Token:
         if isinstance(level, str):
             level = AutonomyLevel(level.lower())
@@ -115,6 +128,7 @@ class ExecutionPolicy:
 
     def get_autonomy_level(self) -> AutonomyLevel:
         return _autonomy_level_ctx.get()
+
 
     def evaluate_action(
         self, engine: str, action: str, params: dict[str, Any] | None = None

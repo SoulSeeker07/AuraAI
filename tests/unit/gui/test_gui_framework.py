@@ -78,6 +78,7 @@ def test_main_window_instantiation(qapp):
     assert window._center_stack.count() == 4
 
 
+
 def test_main_window_chat_overlay_toggle(qapp):
     window = MainWindow()
     assert window._chat_overlay is None

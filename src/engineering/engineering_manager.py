@@ -26,11 +26,13 @@ from .code_editor import CodeEditor
 from .dashboard import EngineeringDashboard
 from .dependency_graph import DependencyGraph
 from .documentation_engine import DocumentationEngine
+from .duplicate_detector import DuplicateAuditReport, DuplicateDetector
 from .engineering_memory import EngineeringMemory
 from .engineering_planner import EngineeringPlanner, PlanningPhase
 from .git_intelligence import GitIntelligence
 from .import_manager import ImportManager
 from .lsp_manager import LSPManager
+from .project_index import ProjectIndex
 from .quality_engine import QualityEngine
 from .refactoring_engine import RefactoringEngine, RefactoringOperation
 from .repository_manager import RepositoryManager, RepositoryState
@@ -138,6 +140,8 @@ class EngineeringManager:
             max_files=2000
         )
 
+        self.project_index = ProjectIndex(repo_root=self.repository_path)
+
         # Initialize sub-managers
         self.repository_manager = RepositoryManager(
             repository_path=self.repository_path, 
@@ -151,7 +155,8 @@ class EngineeringManager:
 
         self.symbol_graph = SymbolGraph(
             repository_path=self.repository_path,
-            workspace_walker=self.workspace_walker
+            workspace_walker=self.workspace_walker,
+            index=self.project_index,
         )
 
         self.dependency_graph = DependencyGraph(
@@ -168,6 +173,7 @@ class EngineeringManager:
             ast_manager=self.ast_manager,
             symbol_graph=self.symbol_graph,
             dependency_graph=self.dependency_graph,
+            project_index=self.project_index,
         )
 
         self.refactoring_engine = RefactoringEngine(
@@ -205,6 +211,10 @@ class EngineeringManager:
             repository_path=self.repository_path,
             ast_manager=self.ast_manager,
             symbol_graph=self.symbol_graph,
+        )
+
+        self.duplicate_detector = DuplicateDetector(
+            project_index=self.project_index
         )
 
         self.engineering_memory = EngineeringMemory(
@@ -389,9 +399,22 @@ class EngineeringManager:
             last_sync=self.repository_state.last_sync,
         )
 
+    def audit_duplicates(self, threshold: float = 0.85) -> DuplicateAuditReport:
+        """
+        Audit the codebase for architectural duplicates, legacy clones, and facade chains.
+
+        Args:
+            threshold: Minimum cosine similarity threshold (default 0.85).
+
+        Returns:
+            DuplicateAuditReport categorized into 4 prioritized tiers.
+        """
+        return self.duplicate_detector.audit_repository(threshold=threshold)
+
     def close(self):
         """Clean up resources."""
         logger.info("Closing EngineeringManager")
+        self.project_index.close()
         self.symbol_graph.close()
         self.dependency_graph.close()
         self.ast_manager.close()

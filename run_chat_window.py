@@ -132,6 +132,7 @@ class ChatWindowApp:
 
         # Connect user message signal to core runner
         app_signals.message_received.connect(self._on_message_received)
+        app_signals.toggle_chat_overlay.connect(self.chat_overlay.toggle)
         self.app.aboutToQuit.connect(self._cleanup)
 
         # Start Global Hotkey Service (Alt+Space anywhere, Ctrl+Q in terminal)
@@ -186,7 +187,12 @@ class ChatWindowApp:
         app_signals.execution_finished.emit(task_id, False)
 
     def run(self):
-        self.chat_overlay.show()
+        from PySide6.QtCore import Qt
+        self.chat_overlay.showNormal()
+        self.chat_overlay.setWindowState(
+            (self.chat_overlay.windowState() & ~Qt.WindowState.WindowMinimized)
+            | Qt.WindowState.WindowActive
+        )
         self.chat_overlay.raise_()
         self.chat_overlay.activateWindow()
 

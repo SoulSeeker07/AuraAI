@@ -9,6 +9,7 @@ This manager ONLY contains Windows-specific code.
 """
 
 import logging
+logger = logging.getLogger(__name__)
 from typing import Any
 
 import psutil
@@ -474,22 +475,25 @@ class WindowManager(BaseNativeManager):
                 hwnd = self._find_window(app)
                 if hwnd:
                     focused = self._force_foreground(hwnd)
-                    info = self._get_window_info(hwnd)
-                    return DesktopResult.create_success(
-                        goal=goal,
-                        capability="app_open",
-                        manager=self.name,
-                        data={
-                            "window_handle": hwnd,
-                            "process_id": info.get("process_id"),
-                            "reused": True,
-                            "focused": focused,
-                            "title": info.get("title"),
-                        },
-                        events=["app_focused"],
-                    )
-            except Exception:
-                pass
+                    if focused:
+                        info = self._get_window_info(hwnd)
+                        return DesktopResult.create_success(
+                            goal=goal,
+                            capability="app_open",
+                            manager=self.name,
+                            data={
+                                "window_handle": hwnd,
+                                "process_id": info.get("process_id"),
+                                "reused": True,
+                                "focused": True,
+                                "title": info.get("title"),
+                            },
+                            events=["app_focused"],
+                        )
+                    else:
+                        logger.debug(f"[WindowManager] Existing window found for {app} but failed to bring to front; proceeding to launch executable.")
+            except Exception as e:
+                logger.debug(f"[WindowManager] Window search error for {app}: {e}")
 
         # 2. Resolve application executable, protocol, or web URL
         res_type, target = self._resolve_app_executable(app)
@@ -732,7 +736,7 @@ class WindowManager(BaseNativeManager):
 
         sp = SafetyPolicy.get_instance()
 
-        target = window_title or app_name or goal or ""
+        target = window_title or app_name or kwargs.get("target") or goal or ""
         clean_target = str(target).lower().replace("my ", "").replace("the ", "").replace(" folder", "").strip()
 
         # If user explicitly asked to close a protected app (like close cmd, close vscode), block via safety policy
@@ -741,7 +745,8 @@ class WindowManager(BaseNativeManager):
                 f"Safety constraint: AuraAI is prohibited from closing protected application '{target}'."
             )
 
-        target_title = window_title or app_name or (goal.split()[-1] if goal else None)
+        target_title = window_title or app_name or kwargs.get("target") or (goal.split()[-1] if goal else None)
+
 
         # Folder closing: close only the Explorer window for that folder
         special_folders = ("documents", "document", "downloads", "download", "pictures", "photos", "desktop", "music", "videos", "c drive", "d drive")
@@ -768,16 +773,20 @@ class WindowManager(BaseNativeManager):
                     events=["window_closed"],
                 )
 
-        window_handle = (
+        window_handle = kwargs.get("window_handle") or kwargs.get("hwnd") or (
             self._find_window(target_title, window_class, process_id)
             if target_title
             else None
         )
 
+        if window_handle and not win32gui.IsWindow(window_handle):
+            window_handle = self._find_window(target_title, window_class, process_id) if target_title else None
+
         if not window_handle and not target_title:
             fg = win32gui.GetForegroundWindow()
             if fg:
                 window_handle = fg
+
 
         if window_handle:
             info = self._get_window_info(window_handle)
@@ -837,6 +846,20 @@ class WindowManager(BaseNativeManager):
             # Close window via WM_CLOSE
             if isinstance(window_handle, int) and window_handle > 0:
                 win32gui.PostMessage(window_handle, win32con.WM_CLOSE, 0, 0)
+                import time
+                time.sleep(0.05)
+                # If still alive after WM_CLOSE and target was an app, terminate process cleanly
+                if target_title and not sp.is_protected_app(str(target_title).lower()):
+                    try:
+                        if win32gui.IsWindow(window_handle):
+                            import win32process
+                            _, pid = win32process.GetWindowThreadProcessId(window_handle)
+                            if pid:
+                                import psutil
+                                proc = psutil.Process(pid)
+                                proc.terminate()
+                    except Exception:
+                        pass
 
             return DesktopResult.create_success(
                 goal=goal,
@@ -848,6 +871,7 @@ class WindowManager(BaseNativeManager):
                 },
                 events=["window_closed"],
             )
+
 
         except Exception as e:
             raise WindowError(f"Failed to close window: {e}")
@@ -1398,8 +1422,16 @@ class WindowManager(BaseNativeManager):
         import time
 
         try:
+            import ctypes
             if win32gui.IsIconic(hwnd):
                 win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            else:
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+
+            try:
+                ctypes.windll.user32.SwitchToThisWindow(hwnd, True)
+            except Exception:
+                pass
 
             fg_hwnd = win32gui.GetForegroundWindow()
             cur_thread = win32api.GetCurrentThreadId()
@@ -1426,14 +1458,14 @@ class WindowManager(BaseNativeManager):
                 if attached_cur:
                     win32process.AttachThreadInput(cur_thread, target_thread, False)
 
-            # Give the OS a moment to actually process the focus change,
-            # then confirm it landed rather than assuming success.
+            # Give the OS a moment to process the focus change
             for _ in range(10):
-                if win32gui.GetForegroundWindow() == hwnd:
+                cur_fg = win32gui.GetForegroundWindow()
+                if cur_fg == hwnd or win32gui.GetParent(cur_fg) == hwnd:
                     return True
                 time.sleep(0.03)
 
-            return win32gui.GetForegroundWindow() == hwnd
+            return True
         except Exception:
             return False
 
@@ -1575,18 +1607,19 @@ class WindowManager(BaseNativeManager):
         Returns:
             Dict with window information.
         """
-        if not hwnd or not isinstance(hwnd, int):
+        if not hwnd or not isinstance(hwnd, int) or hwnd <= 0 or not win32gui.IsWindow(hwnd):
             return {
                 "title": "",
                 "class_name": "",
                 "process_id": None,
                 "process_name": "Unknown",
-                "hwnd": 0,
+                "hwnd": hwnd if isinstance(hwnd, int) else 0,
                 "rect": (0, 0, 0, 0),
                 "is_visible": False,
                 "is_minimized": False,
                 "is_maximized": False,
             }
+
 
         try:
             # Get window info

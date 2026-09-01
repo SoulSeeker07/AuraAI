@@ -1,0 +1,31 @@
+{
+  "snapshots": {
+    "starter_app:desktop": {
+      "file": "starter_app_desktop.png",
+      "height": 900,
+      "image_sha256": "50373282803aa033",
+      "token_hash": "1c620776dfc55408",
+      "viewport": "desktop",
+      "width": 1440
+    },
+    "starter_app:mobile": {
+      "file": "starter_app_mobile.png",
+      "height": 812,
+      "image_sha256": "35f2ffdfd494d6ea",
+      "token_hash": "1c620776dfc55408",
+      "viewport": "mobile",
+      "width": 375
+    },
+    "starter_app:tablet": {
+      "file": "starter_app_tablet.png",
+      "height": 1024,
+      "image_sha256": "93c7565121be438c",
+      "token_hash": "1c620776dfc55408",
+      "viewport": "tablet",
+      "width": 768
+    }
+  },
+  "token_hash": "1c620776dfc55408",
+  "updated_at": "D:\\Sreekanta\\VS Code Project\\Desktop AI\\AuraAI",
+  "version": "1.0.0"
+}

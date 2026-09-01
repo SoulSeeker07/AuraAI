@@ -108,7 +108,16 @@ graph TD
    - `MacroCompiler`: Compiles repeated verified action traces ($\ge 3$ consecutive runs with identical step signatures, confidence $\ge 0.90$) into zero-token deterministic macros. Scoped by `(intent, app_name, workspace_scope)` to prevent cross-project coordinate leakage. Enforces fail-closed `MacroDriftError` on UI signature mismatch.
    - `SpeculativeIndexer`: Asynchronously pre-warms AST symbols, active editor document structures, and git diff summaries in background threads on foreground window/editor change events, providing $<1\text{ms}$ instant context retrieval.
    - `ProactiveDiagnosticsWatcher`: Low-overhead background daemon that monitors workspace health strictly inside `.aura_staging/` (via `StagingWorkspace`). Enforces state-change cost gating (0 tokens on unchanged workspace), routes non-interrupting notices via `FocusManager.enqueue_notification(severity="LOW")` without stealing focus threads, and enforces 24h staging directory retention ($\le 10$ directories).
-6. **Single Coordinator**: Only `ExecutionCoordinator` invokes execution engines via `EngineRegistry` & `EngineAdapters`.
-7. **Shared Blackboard**: All stages read from and write to `Blackboard` (`CognitiveState`).
-
-*Generated automatically on 2026-08-08 03:06:53 by `generate_architecture.py`.*
+6. **M35 Engineering Intelligence 3.0 & Project Indexing**:
+   - `ProjectIndex`: High-performance inverted trigram and AST symbol index providing sub-millisecond symbol and text searches across 600+ repository files with fine-grained differential cache invalidation on disk modification events.
+   - `DuplicateDetector`: Multi-tier duplicate code analysis pipeline evaluating AST structural representations, token similarity metrics, and facade exemptions to detect redundant logic, copy-paste drift, and unmaintained shims.
+   - `SymbolGraph` & `CodeEditor`: Transactional multi-file AST symbol dependency tracking and atomic editing with byte-exact snapshot rollbacks.
+7. **AI Provider Resiliency & Key Rotation Pool**:
+   - `KeyPool`: Thread-safe multi-account API key check-out and rotation pool with automatic exponential cooldown on HTTP 429 / resource exhaustion errors.
+   - `GeminiProvider`: Multi-tier fallback hierarchy with schema-enforced structured JSON output and explicit exception isolation.
+8. **Continuous Voice Perception & Wake-Word Pipeline**:
+   - `ContinuousLoop`: Asynchronous finite state machine (`IDLE`, `LISTENING`, `PROCESSING`, `SPEAKING`, `ERROR`) driving streaming speech recognition and speech synthesis.
+   - `VoiceNotchOverlay`: Always-on-top Win32 `HWND_TOPMOST` Dynamic Island HUD with real-time microphone spectrum visualizer, live focus thread chips, and 60-second watchdog task protection.
+   - Wake Word Auto-Saver: Vocal alignment, audio normalization, and 0.5s post-trigger tail retention auto-saving triggered wake phrases directly into positive training datasets.
+9. **Single Coordinator**: Only `ExecutionCoordinator` invokes execution engines via `EngineRegistry` & `EngineAdapters`.
+10. **Shared Blackboard**: All stages read from and write to `Blackboard` (`CognitiveState`).

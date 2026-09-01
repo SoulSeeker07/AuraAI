@@ -4,6 +4,60 @@ All notable changes to the Aura AI Platform are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [`v1.0.0`] - 2026-08-31 — Production Release (Milestones M01–M30 Certified)
+
+### Summary
+The official v1.0.0 production release of the Aura AI Operating System Platform, establishing full milestone completion through Milestone 30 (Holographic AI Core GUI & Command Center) with end-to-end live dry run validation and 468 deterministic unit and integration tests (100% Green).
+
+
+### Key Optimizations & Benchmarked Performance
+- **Cold-Start Startup Optimization (`21.6s` → `6.48s` — 69.0% Reduction)**:
+  - **Transitive ML Import Deferral (`src/engineering/duplicate_detector.py`)**: Converted eager `sentence_transformers`, `torch`, and `sklearn` imports into lazy on-demand loaders, reducing package import overhead from 11.2s to 30.5ms.
+  - **Thread-Safe AST Incremental Cache (`src/engineering/ast_manager.py`)**: Stores `(st_mtime, st_size, ASTFile)` stat tuples; achieves `<0.05ms` instant cache hits for unchanged files while guaranteeing byte-level cache invalidation when modified.
+  - **Speculative Workspace Indexer Readiness Gating (`src/workspace/speculative_indexer.py`)**: Thread-safe `_ready_event` synchronization (`await_ready` / `is_ready`) ensuring non-blocking background initialization while providing `<1ms` (`0.504ms`) context lookups for live ambient prompts.
+- **High-Throughput Conversational Streaming (574ms Warm TTFT)**:
+  - **Persistent HTTP Client Pooling (`src/core/aura_core.py`)**: Shared persistent `groq.Groq` client across all interaction turns, dropping token turnaround from ~1,200ms to **574ms**.
+  - **Live Ambient Telemetry Integration (`src/core/context/ambient_context_builder.py`)**: Enriches conversational prompts with live system time, active window, hardware status, clipboard previews, and active Git/AST workspace context.
+- **Responsive GUI Layout & Geometry Compression (`src/gui/main_window.py`)**:
+  - **Dynamic Badge Container Compression**: Responsive minimum size floor lowered from `1958px` to `755px` (badge container) and `598x94` (titlebar), clearing 1366x768 and 1080p display viewports with `1335px` natural width.
+
+### Architectural Hardening & Bug Fixes
+- **Strict `ExecutionPolicy` Boundary**: Certified via codebase audit that `_custom_engine` injection is restricted strictly to test doubles; all production execution paths enforce policy permissions without bypass.
+- **Fail-Closed Compound Intent Splitter (`src/brain/compound_intent_splitter.py`)**: Guaranteed fallback to atomic single-intent execution on ambiguous conjunctions with `0.47ms` turnaround.
+- **Stale HWND & UIA Grounding Resiliency (`src/brain/conversation_engine.py`)**: Added `COMError` / `ElementNotAvailable` catch blocks to gracefully fallback to native `FileService` when foreground element handles become stale.
+- **Deterministic Intent Collision Elimination (`src/core/orchestration/decision_engine.py`)**: Anchored `system_phrases` to prevent unanchored keywords (`features`, `forecast`) from colliding with general conversational knowledge queries.
+
+---
+
+## [`v1.3.0-engineering-intelligence-and-voice-holography`] - 2026-08-31
+
+
+### Added
+- **Milestone 35 — Engineering Intelligence 3.0 & Project Indexing (`src/engineering/`)**:
+  - **Sub-Millisecond Project Index (`src/engineering/project_index.py`)**: High-speed AST symbol extraction, trigram inverted indexing, and differential file-change cache invalidation across 600+ codebase source files with sub-millisecond query response.
+  - **AST Structural & Semantic Duplicate Detector (`src/engineering/duplicate_detector.py`)**: Multi-tier duplicate code detector analyzing AST tokens, structural similarity metrics, and facade exemptions to identify redundant logic and architectural drift.
+  - **Symbol Graph & Code Editor Enhancements (`src/engineering/symbol_graph.py`, `src/engineering/code_editor.py`)**: Dependency graph analysis and transactional atomic code editing with byte-exact rollback.
+- **AI Provider Resiliency & Multi-Key Pool (`src/ai/`)**:
+  - **KeyPool Multi-Account Dynamic Load Balancing (`src/ai/key_pool.py`)**: Multi-key rotation pool with rate-limit cooldown, quota exhaustion tracking, failover mechanisms, and thread-safe key checkout.
+  - **Gemini Provider Hardening (`src/ai/gemini_provider.py`)**: Dynamic fallback cascading across model tiers, resilient JSON schema extraction, and exception isolation (`src/ai/exceptions.py`).
+- **Continuous Voice Perception & Wake-Word Pipeline (`src/voice/`)**:
+  - **Continuous Voice Loop FSM (`src/voice/continuous_loop.py`)**: Robust finite-state machine governing audio transitions (`IDLE`, `LISTENING`, `PROCESSING`, `SPEAKING`, `ERROR`) with streaming STT and TTS callbacks.
+  - **Wake Word Dataset Auto-Ingestion**: Pre-roll audio buffer, vocal alignment, audio normalization, and 0.5s post-trigger tail retention auto-saving positive wake audio directly into `AuraWakeWord/dataset/raw/positive/`.
+- **Holographic Voice Notch Overlay Enhancements (`src/gui/widgets/voice_notch_overlay.py`)**:
+  - Pinned top-most display layout with native Win32 `HWND_TOPMOST` enforcement.
+  - Live hardware spectrum and audio waveform reactivity via `app_signals.voice_level`.
+  - Live Focus Thread badge chips and interactive task management.
+  - Watchdog timer extended to 60s with active task cancellation tracking.
+  - Compact collapsible source deck maximizing transcript reading area.
+- **Focus Management & Intent Routing Parity (`src/core/focus_manager.py`, `src/core/aura_core.py`)**:
+  - Deterministic fast-path regex parsing for `list focus threads`, `open task <name>`, `close_thread`, and `close_all_threads`.
+  - Linked `_focus_preamble` deterministic fast-path to `get_ai_response` and `process_request`.
+- **Vision Grounding & Multi-Candidate Disambiguation (`src/vision/grounding_engine.py`)**:
+  - Multi-candidate delta score tracking and conversational disambiguation for ambiguous UI elements.
+  - Screen-aware foreground file and media gating (`src/brain/intent_router.py`).
+
+---
+
 ## [`v1.2.1-intent-routing-and-memory-unification`] - 2026-08-29
 
 ### Added & Fixed

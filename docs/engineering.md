@@ -48,3 +48,22 @@ The Autonomous Engineering Platform enables closed-loop, self-healing code repai
 - **`WorkspacePolicy` & Single-Write Gate**: Enforces directory containment, blocks edits to the protected safety ceiling (`PROTECTED_SAFETY_CEILING`), and ensures test-file immunity.
 - **`AutonomousEngineeringLoop`**: Orchestrates snapshotting, retry bounds (`max_retries=3`), diff generation, patch application, and byte-exact rollbacks.
 - **`PatchBundleAssembler`**: Compiles structured PR markdown summaries with unified diffs, requiring cryptographic HMAC approval tokens before git merge/push actions.
+
+---
+
+## 5. Engineering Intelligence 3.0 & Project Indexing (Milestone 35)
+
+The engineering intelligence subsystem delivers scalable, sub-millisecond codebase search, static dependency graph tracking, and deep structural duplicate detection across 600+ repository source files:
+
+- **`ProjectIndex` (`src/engineering/project_index.py`)**:
+  - Inverted trigram and AST symbol index mapping classes, methods, functions, and import declarations.
+  - Differential file invalidation on disk modification events with thread-safe read/write locking.
+  - Sub-millisecond fuzzy and exact symbol resolution for rapid context assembly.
+- **`DuplicateDetector` (`src/engineering/duplicate_detector.py`)**:
+  - Multi-tier duplicate code detector evaluating AST token sequences and normalized structural subtree hashes.
+  - Configurable similarity bounds and facade exclusion filters to prevent false positives on standard re-export shims.
+  - Legacy archive auditing utilities for identifying obsolete or redundant legacy modules.
+- **`SymbolGraph` (`src/engineering/symbol_graph.py`)**:
+  - Global symbol dependency graph mapping caller/callee relationships, import trees, and class inheritance hierarchies.
+- **`CodeEditor` (`src/engineering/code_editor.py`)**:
+  - AST-validated atomic file modifier ensuring transactional integrity, single-write gating, and byte-exact rollback mechanisms.

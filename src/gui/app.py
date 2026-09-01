@@ -10,6 +10,9 @@ import logging
 import sys
 import time
 
+from gui.webengine_init import ensure_webengine_flags
+ensure_webengine_flags()
+
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QApplication
 

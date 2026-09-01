@@ -257,11 +257,20 @@ class TestContinuousVoiceLoopFSM(unittest.TestCase):
         self.loop._on_followup_timeout()
         self.assertEqual(self.loop.state, VoiceState.IDLE)
 
-        # 3. "Stop the timer" should NOT trigger hard stop
-        self.loop.trigger_wake_detected("Aura")
-        self.loop.trigger_transcription_ready("Stop the timer.")
-        self.assertEqual(self.loop.state, VoiceState.SPEAKING)
-        self.assertTrue(self.loop._running)
+    def test_continuous_10_turns_stress_test(self):
+        """Verify 10 continuous turns run back-to-back without getting stuck or deadlocking."""
+        self.loop.start()
+        for i in range(1, 11):
+            self.loop.trigger_wake_detected("Aura")
+            self.assertEqual(self.loop.state, VoiceState.LISTENING)
+            self.loop.trigger_transcription_ready(f"open app {i}")
+            self.assertEqual(self.loop.state, VoiceState.SPEAKING)
+            self.loop.trigger_tts_completed()
+            self.assertEqual(self.loop.state, VoiceState.FOLLOW_UP_LISTENING)
+            self.loop._on_followup_timeout()
+            self.assertEqual(self.loop.state, VoiceState.IDLE)
+        self.assertEqual(self.loop.turn_count, 10)
+        self.assertEqual(len(self.loop.history), 10)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

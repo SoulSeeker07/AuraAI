@@ -16,11 +16,10 @@ if EXAMPLES not in sys.path:
 import pytest
 
 @pytest.fixture(autouse=True)
-def cleanup_world_model():
+def cleanup_singletons():
     """
-    Ensure WorldModel instance thread pools are cleanly shut down after every test.
-    We use reset_instance() rather than just shutdown() to ensure the next test 
-    gets a fresh instance rather than a singleton with a dead executor.
+    Ensure singleton registries and thread pools are cleanly shut down and reset
+    after every test to prevent cross-test pollution and leaked background state.
     """
     yield
     try:
@@ -28,3 +27,15 @@ def cleanup_world_model():
         WorldModel.reset_instance()
     except ImportError:
         pass
+    try:
+        from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+        NativeManagerRegistry.reset_instance()
+    except ImportError:
+        pass
+    try:
+        from desktop.native.desktop_execution_engine import reset_desktop_execution_engine
+        reset_desktop_execution_engine()
+    except ImportError:
+        pass
+
+

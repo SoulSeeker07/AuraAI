@@ -67,6 +67,28 @@ class PluginManager:
             logger.error(f"PluginManager initialization failed: {e}", exc_info=True)
             return False
 
+    def load_plugin(self, plugin_name_or_path: str) -> bool:
+        """
+        Load a plugin by name or file path.
+
+        Args:
+            plugin_name_or_path: Plugin name or full path to the plugin file
+
+        Returns:
+            True if loaded successfully
+        """
+        import os
+        if os.path.exists(plugin_name_or_path):
+            return self.registry.load_plugin(plugin_name_or_path)
+
+        plugins_dir = getattr(self.registry, "plugins_dir", None)
+        if plugins_dir and os.path.exists(plugins_dir):
+            for root, _, files in os.walk(plugins_dir):
+                for f in files:
+                    if f.endswith(".py") and f[:-3] == plugin_name_or_path:
+                        return self.registry.load_plugin(os.path.join(root, f))
+        return False
+
     def get_registry(self) -> PluginRegistry:
         """Get the plugin registry."""
         return self.registry

@@ -42,8 +42,9 @@ def test_g1_corrupted_stt_and_noise_normalize_without_crash(nlu):
     cases = {
         "opn notepad plz": "open notepad please",
         "opn crom n search yutub python tutrial": "open chrome and search youtube python tutorial",
-        "naviagte to youtub": "naviagte to youtube",
+        "naviagte to youtub": "navigate to youtube",
         "o pen   note  pad": "o pen note pad",
+
     }
     for raw, expected in cases.items():
         res = nlu.process(raw)

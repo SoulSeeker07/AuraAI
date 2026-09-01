@@ -85,17 +85,21 @@ def test_key_pool_execute_with_failover_on_429():
 
 def test_key_pool_env_discovery(monkeypatch):
     """Verify auto-discovery of single, comma-separated, and numbered environment variables."""
+    from unittest.mock import patch
+
     # Clear any ambient env vars first
     for k in list(os.environ.keys()):
-        if "GROQ" in k:
+        if "GROQ" in k or "GEMINI" in k:
             monkeypatch.delenv(k, raising=False)
 
     monkeypatch.setenv("GROQ_API_KEY", "env_key_0")
     monkeypatch.setenv("GROQ_API_KEY1", "env_key_1")
     monkeypatch.setenv("GROQ_API_KEY2", "env_key_2")
     monkeypatch.setenv("GROQ_API_KEYS", "env_key_3,env_key_4")
-    
-    pool = KeyPool()
-    keys = pool.get_all_keys("groq")
-    assert len(keys) == 5
-    assert set(keys) == {"env_key_0", "env_key_1", "env_key_2", "env_key_3", "env_key_4"}
+
+    with patch("dotenv.load_dotenv"):
+        pool = KeyPool()
+        keys = pool.get_all_keys("groq")
+        assert len(keys) == 5
+        assert set(keys) == {"env_key_0", "env_key_1", "env_key_2", "env_key_3", "env_key_4"}
+

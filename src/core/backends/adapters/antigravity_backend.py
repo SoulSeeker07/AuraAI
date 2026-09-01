@@ -6,20 +6,44 @@ Routes coding requests through the EngineeringManager (src/engineering/).
 Provides honest success/failure based on real operations — never returns a
 hardcoded success.
 
-Capability contract:
-    - code.analyze   → analyze repository or target files via AST
-    - code.edit      → apply file edits via CodeEditor (requires edit_operations)
-    - code.report    → quality + dependency report
-    - code.modify    → alias for code.edit
-    - code.refactor  → alias for code.edit
-    - code.test      → alias for code.analyze (test coverage scan)
-    - coding         → routes by sub-operation in arguments
+Capability contract (live = dispatched and executable today):
+    - code.analyze   → analyze repository or target files via AST        [live]
+    - code.edit      → apply file edits via CodeEditor (requires edit_operations
+                       or target_files + new_content; falls back to agy plan
+                       inference, then Gemini 3 Flash LLM JSON generation)  [live]
+    - code.generate  → LLM-guided generation via Gemini 3 Flash + Groq    [live]
+    - code.debug     → agy workspace-aware root-cause fix (no LLM fallback) [live]
+    - code.execute   → subprocess execution of shell/test commands          [live]
+    - code.report    → quality + dependency report                          [live]
+    - code.modify    → alias for code.edit                                  [live]
+    - code.refactor  → alias for code.edit                                  [live]
+    - code.test      → alias for code.analyze (test coverage scan)          [live]
+    - coding         → routes by sub-operation in arguments                 [live]
+    - code.repair    → NOT EXECUTABLE. Registered in CodingProvider with
+                       is_live=False, availability="scaffolded". No dispatch
+                       branch exists in execute(). Falls through to "Unknown
+                       capability" failure. The "3-phase chain" (generate →
+                       test → repair) described in design notes is aspirational;
+                       code.repair was never wired. [scaffolded — not live]
 
-LLM-guided code generation is NOT available here.
-That is scheduled for M20 (Coding Intelligence 2.0).
+KNOWN ARCHITECTURE GAP (as of 2026-08-30):
+    There is no automated path from "code.test returns failure" back to a new
+    code.generate/code.edit invocation with the test failure as context.
+    When a code.test subtask fails in MasterOrchestrator, the orchestrator sets
+    pipeline_halted=True and reports failure up. Nothing re-invokes generation
+    with the error trace. The repair loop exists only inside _execute_generate's
+    AST syntax-repair (immediate post-generation syntax fix), which is a different
+    and narrower capability than runtime test-failure-driven regeneration.
 
-Foundation Truth Pass — Phase 0 repair.
+    The AST syntax repair path inside _execute_generate/_execute_edit IS live
+    and fires on generation, before tests run. It repairs syntax errors only.
+
+Scope-drift detection (M20.SCOPE):
+    _apply_edit_operations warns (does not block) when an LLM writes to a file
+    outside the declared target_files scope. Intra-file over-edit is not detectable
+    at this layer without content-diffing.
 """
+
 
 import logging
 from pathlib import Path
@@ -398,6 +422,24 @@ class CodingBackendAdapter(BaseBackendAdapter):
         except Exception as e:
             return self._error_result(goal, "code.execute", f"Failed to execute: {e}")
 
+    def _chat_with_fallback(self, provider_mgr: Any, request: Any) -> Any:
+        """
+        Executes LLM chat with primary route 'code_generation' (Gemini 3 Flash).
+        If ProviderError (429 quota, 503 unavailable, key pool exhaustion) occurs,
+        gracefully falls back to Groq ('groq') to prevent breaking the pipeline.
+        """
+        from ai.exceptions import ProviderError
+
+        try:
+            return provider_mgr.chat(request, provider="code_generation")
+        except ProviderError as exc:
+            logger.warning(
+                f"Primary code_generation provider failed ({exc}); "
+                "falling back gracefully to Groq provider."
+            )
+            return provider_mgr.chat(request, provider="groq")
+
+
     def _execute_generate(
         self, goal: str, args: dict[str, Any], repo_path: Path
     ) -> ExecutionResult:
@@ -415,8 +457,7 @@ class CodingBackendAdapter(BaseBackendAdapter):
             
         provider_mgr = build_provider_manager(os.environ)
         
-        # 1. Requirement Extraction (still Groq — cheap, and req_model feeds
-        #    both the agy prompt and the Groq fallback prompt below)
+        # 1. Requirement Extraction (Primary: Gemini 3 Flash, Degrade: Groq)
         req_sys = (
             "You are an expert technical product manager. Extract the requirements for the requested feature. "
             "Output exactly a JSON object matching this schema: "
@@ -428,7 +469,8 @@ class CodingBackendAdapter(BaseBackendAdapter):
             ChatMessage(role="user", content=f"Goal: {goal}\nArguments: {json.dumps(args, default=str)}")
         ]
         
-        req_resp = provider_mgr.chat(ChatRequest(messages=req_msg))
+        req_resp = self._chat_with_fallback(provider_mgr, ChatRequest(messages=req_msg))
+
         try:
             req_data = json.loads(req_resp.text.strip())
             req_model = RequirementModel(**req_data)
@@ -497,7 +539,7 @@ class CodingBackendAdapter(BaseBackendAdapter):
                                 ),
                                 ChatMessage(role="user", content=repair_prompt),
                             ]
-                            repair_resp = provider_mgr.chat(ChatRequest(messages=repair_msg, max_tokens=4096))
+                            repair_resp = self._chat_with_fallback(provider_mgr, ChatRequest(messages=repair_msg, max_tokens=4096))
                             try:
                                 fix_data = json.loads(repair_resp.text.strip())
                                 fixed_plan = CodeGenerationPlan(**fix_data)
@@ -646,29 +688,32 @@ class CodingBackendAdapter(BaseBackendAdapter):
             )
             return plan, "agy"
         except AgyError as e:
-            logger.warning("agy unavailable for code.generate (%s); falling back to Groq", e)
+            logger.warning("agy unavailable for code.generate (%s); falling back to Gemini", e)
         except Exception as e:
             logger.warning(
-                "agy output failed CodeGenerationPlan validation (%s); falling back to Groq", e
+                "agy output failed CodeGenerationPlan validation (%s); falling back to Gemini", e
             )
+
 
         # Groq fallback — identical to the pre-M20.3 flow.
         plan_sys = (
-            "You are an expert software engineer. Implement the feature. "
-            "Put new projects in their own subdirectory (e.g., `calculator_app/app.py`), never directly in the repository root. "
-            "Output exactly a JSON object matching this schema: "
+            "You are an expert software engineer. Implement the feature concisely. "
+            "Keep implementation focused to requested target files. "
+            "Output exactly a valid JSON object matching this schema: "
             '{"files": [{"path": "relative/path.py", "content": "full source code"}]}. '
-            "Do not output any markdown formatting."
+            "Do not output any markdown formatting or extra text."
         )
+
         plan_msg = [
             ChatMessage(role="system", content=plan_sys),
             ChatMessage(role="user", content=f"Requirements:\n{_json.dumps(req_model.model_dump())}"),
         ]
-        plan_resp = provider_mgr.chat(ChatRequest(messages=plan_msg, max_tokens=4096))
+        plan_resp = self._chat_with_fallback(provider_mgr, ChatRequest(messages=plan_msg, max_tokens=4096))
         try:
-            plan_data = _json.loads(plan_resp.text.strip())
+            plan_data = _json.loads(plan_resp.text.strip(), strict=False)
             plan = CodeGenerationPlan(**plan_data)
-            return plan, "groq"
+            return plan, "gemini"
+
         except Exception as e:
             logger.error(
                 "Groq fallback also failed to produce CodeGenerationPlan: %s. Response: %s",
@@ -911,13 +956,11 @@ class CodingBackendAdapter(BaseBackendAdapter):
                 ]
 
         agy_attempted = False
-        if not edit_operations:
-            # No explicit content given — ask agy to work out the edit from
-            # the goal (and target_files, if given), by inspecting the real
-            # repo via --add-dir. agy runs in --mode plan only: it returns
-            # edit_operations, it never writes anything itself. Everything
-            # it returns still goes through WorkspacePolicy below exactly
-            # like explicitly-supplied edit_operations do.
+        target_file_spec = target_files or args.get("file_path") or args.get("target_file") or args.get("repository_path") or args.get("repo_path")
+        if not edit_operations and target_file_spec:
+
+            # Explicit files provided without content — ask agy to work out the edit from
+            # the goal and target_files, by inspecting the real repo via --add-dir.
             agy_attempted = True
             edit_goal = (
                 f"Goal: {goal}\n"
@@ -928,10 +971,12 @@ class CodingBackendAdapter(BaseBackendAdapter):
             try:
                 result = self.agy_client.run_plan(goal=edit_goal, add_dir=str(repo_path))
                 edit_operations = result.raw.get("edit_operations", [])
-            except AgyError as e:
+            except Exception as e:
                 logger.warning("agy unavailable for code.edit goal inference (%s)", e)
 
         if not edit_operations:
+
+
             if args.get("plan_id") or args.get("assessment_id") or args.get("dry_run"):
                 return ExecutionResult(
                     success=True,
@@ -962,7 +1007,14 @@ class CodingBackendAdapter(BaseBackendAdapter):
                 data={"backend": self.name, "capability": "code.edit", "agy_attempted": agy_attempted},
             )
 
+        # M20.SCOPE: Stamp the declared target_files scope onto each edit_operation
+        # so _apply_edit_operations can detect and warn on cross-file scope drift.
+        if target_files:
+            for op in edit_operations:
+                op.setdefault("_target_files_scope", target_files)
+
         return self._apply_edit_operations(goal, edit_operations, repo_path, capability="code.edit")
+
 
     def _execute_debug(
         self, goal: str, args: dict[str, Any], repo_path: Path
@@ -1055,13 +1107,30 @@ class CodingBackendAdapter(BaseBackendAdapter):
                     {"file": file_path_str, "error": "Missing file_path or new_content"}
                 )
                 continue
-            
+
+            # M20.SCOPE: Scope-drift detection — warn when LLM writes to a file
+            # that was not named in the original target_files scope. This does NOT
+            # block the write; it is a passive observability signal only.
+            # Note: this catches cross-file drift. Intra-file over-edit (e.g. extra
+            # functions added within the target file's new_content) is not detectable
+            # here without content-diffing, which is a separate, harder problem.
+            declared_scope: list[str] = op.get("_target_files_scope", [])
+            if declared_scope and file_path_str not in declared_scope:
+                logger.warning(
+                    "Scope drift detected: LLM wrote to '%s' which was not in "
+                    "declared target_files scope %s. "
+                    "This is a passive warning — write was not blocked.",
+                    file_path_str,
+                    declared_scope,
+                )
+
             try:
                 # Enforce WorkspacePolicy invariant on edit mutations
                 policy.authorize_write(file_path_str, allow_overwrite=True)
             except WorkspacePolicyError as e:
                 failed.append({"file": file_path_str, "error": f"Policy violation: {e}"})
                 continue
+
 
             result = mgr.code_editor.edit_file(
                 file_path=file_path_str,

@@ -7,8 +7,9 @@ class FakeProvider(Provider):
         self.call_count = 0
         self.capabilities = ProviderCapabilities(name="FakeProvider", default_model="fake-model")
 
-    def chat(self, request: ChatRequest) -> ProviderResponse:
+    def chat(self, request: ChatRequest, **kwargs) -> ProviderResponse:
         if self.call_count < len(self.responses):
+
             response_text = self.responses[self.call_count]
             self.call_count += 1
         else:

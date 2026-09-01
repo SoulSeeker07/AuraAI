@@ -759,7 +759,7 @@ class PersonalOSDashboardOverlay(QWidget):
                     background: rgba(102, 255, 153, 0.1);
                     border: 1px solid rgba(102, 255, 153, 0.25);
                     border-radius: 4px;
-                    padding: 3px 8px;
+                    padding: 4px 8px;
                     color: #66ff99;
                 }
             """)

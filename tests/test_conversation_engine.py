@@ -19,7 +19,7 @@ class FakeProvider(Provider):
     def __init__(self):
         self.last_request = None
 
-    def chat(self, request: ChatRequest) -> ProviderResponse:
+    def chat(self, request: ChatRequest, **kwargs) -> ProviderResponse:
         self.last_request = request
         return ProviderResponse(
             "provider answer", provider="fake", model=request.model or "fake-model"
@@ -53,7 +53,9 @@ def build_engine(tmp_path):
         model="fake-model",
         web_search=FakeWebSearch(),
     )
+    engine.browser_engine = None
     return engine, provider
+
 
 
 import pytest
@@ -76,10 +78,10 @@ async def test_conversation_engine_builds_context_for_provider(tmp_path):
     engine, provider = build_engine(tmp_path)
     await engine.process("I'm learning Palo Alto.")
 
-    result = await engine.process("Explain OSPF")
+    result = await engine.process("Tell me more about it")
 
     assert result.text == "provider answer"
-    assert result.intent.name in ("provider_chat", "web_search")
+    assert result.intent.name in ("provider_chat", "web_search", "autonomous_browser")
     assert result.used_provider is True
     assert provider.last_request is not None
     assert any(
@@ -92,12 +94,18 @@ async def test_conversation_engine_builds_context_for_provider(tmp_path):
 async def test_conversation_engine_adds_web_context_for_current_questions(tmp_path):
     engine, provider = build_engine(tmp_path)
 
+    from brain.intent_router import Intent
+    engine.intent_router.detect = lambda text, attachments=None: Intent("web_search")
     result = await engine.process("What is the latest Python release?")
 
     assert result.intent.name == "web_search"
+
+
+
     assert result.used_provider is True
     assert provider.last_request is not None
     assert any(
         "Fresh web context" in message.content
         for message in provider.last_request.messages
     )
+

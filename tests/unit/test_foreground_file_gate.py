@@ -197,3 +197,44 @@ async def test_click_failure_returns_none_and_falls_back_to_file_service(mock_en
         res = await engine.process("open agent.md")
         assert mock_fs.find_and_open.call_count == 1
         assert "Opened agent.md via fallback" in res.text
+
+
+@pytest.mark.asyncio
+async def test_uia_stale_click_failure_falls_back_to_file_service(mock_engine):
+    """
+    Ensure that if a grounded UIA element is stale/destroyed and click_input raises,
+    ConversationEngine catches the error, marks action_ok=False, and safely falls
+    back to FileService.find_and_open().
+    """
+    engine, mock_aura = mock_engine
+
+    app_ctx = AppContext(
+        app_name="code.exe",
+        window_title="Visual Studio Code",
+        window_handle=12351,
+    )
+    mock_aura.app_context_router.detect_current_app.return_value = app_ctx
+
+    mock_uia_element = MagicMock()
+    mock_uia_element.click_input.side_effect = RuntimeError("Element handle is stale / Window closed")
+    grounded_target = GroundedTarget(
+        label="agent.md",
+        center=(100, 200),
+        element_handle=mock_uia_element,
+        source_tier="tier1_a11y",
+        app_name="code.exe",
+    )
+    mock_aura.grounding_engine.resolve_foreground_only.return_value = grounded_target
+
+    with patch("tools.file_service.FileService.get_instance") as mock_fs_instance:
+        mock_fs = MagicMock()
+        mock_fs.find_and_open.return_value = (True, "Opened agent.md via fallback", "/path/to/agent.md")
+        mock_fs_instance.return_value = mock_fs
+
+        match = engine._try_resolve_in_foreground("agent.md")
+        assert match is None
+
+        res = await engine.process("open agent.md")
+        assert mock_fs.find_and_open.call_count == 1
+        assert "Opened agent.md via fallback" in res.text
+

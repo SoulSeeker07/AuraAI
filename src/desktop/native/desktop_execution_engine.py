@@ -92,14 +92,16 @@ class DesktopExecutionEngine:
         registry: CapabilityRegistry | None = None,
         config: ExecutionConfig | None = None,
     ):
-        self.manager_registry = manager_registry or NativeManagerRegistry.get_instance()
-        if not self.manager_registry.list():
-            self.manager_registry.discover("desktop.native.managers")
-            if not self.manager_registry.list():
-                self.manager_registry.discover("src.desktop.native.managers")
+        self._manager_registry = manager_registry
+        reg = self.manager_registry
+        if not reg.list():
+            reg.discover("desktop.native.managers")
+            if not reg.list():
+                reg.discover("src.desktop.native.managers")
 
         self.manager = manager or MockManager()
         self.manager_registry.register(self.manager)
+
 
         self.registry = registry or CapabilityRegistry()
         self.config = config or ExecutionConfig()
@@ -116,7 +118,16 @@ class DesktopExecutionEngine:
             f"capabilities={len(self.registry.list_all())})"
         )
 
+    @property
+    def manager_registry(self) -> NativeManagerRegistry:
+        return self._manager_registry or NativeManagerRegistry.get_instance()
+
+    @manager_registry.setter
+    def manager_registry(self, value: NativeManagerRegistry | None) -> None:
+        self._manager_registry = value
+
     def execute(
+
         self,
         goal: str,
         capability: str | None = None,

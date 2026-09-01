@@ -135,7 +135,8 @@ class ASTManager:
         self.repository_path = Path(repository_path).resolve()
         self.enable_lsp = enable_lsp
         self.language = language
-        self._cache: dict[Path, ASTFile] = {}
+        # Cache stores mapping: full_path -> (st_mtime, st_size, ASTFile)
+        self._cache: dict[Path, tuple[float, int, ASTFile]] = {}
 
     def parse_file(self, file_path: str | Path) -> ASTFile:
         """
@@ -156,10 +157,16 @@ class ASTManager:
         if not full_path.exists():
             raise FileNotFoundError(f"File not found: {full_path}")
 
-        # Check cache
-        if full_path in self._cache:
-            logger.debug(f"Using cached AST for: {file_path}")
-            return self._cache[full_path]
+        stat = full_path.stat()
+
+        # Check cache with mtime and size validation
+        cached = self._cache.get(full_path)
+        if cached is not None:
+            cached_mtime, cached_size, ast_file = cached
+            if cached_mtime == stat.st_mtime and cached_size == stat.st_size:
+                logger.debug(f"Using cached AST for: {file_path}")
+                return ast_file
+
 
         logger.info(f"Parsing file: {file_path}")
 
@@ -220,12 +227,27 @@ class ASTManager:
                 docstring_count=0,
             )
 
-        # Cache the result
-        self._cache[full_path] = ast_file
+        # Cache the result with mtime and size metadata
+        self._cache[full_path] = (stat.st_mtime, stat.st_size, ast_file)
 
         return ast_file
 
+    def invalidate_file(self, file_path: str | Path) -> None:
+        """Explicitly invalidate a cached file AST."""
+        p = Path(file_path)
+        if p.is_absolute():
+            full_path = p.resolve()
+        else:
+            full_path = (self.repository_path / p).resolve()
+        self._cache.pop(full_path, None)
+
+    def clear_cache(self) -> None:
+        """Clear all cached AST entries."""
+        self._cache.clear()
+        logger.info("AST cache cleared")
+
     def _parse_python(self, file_path: Path) -> ASTFile:
+
         """Parse a Python file."""
         with open(file_path, encoding="utf-8") as f:
             source = f.read()
@@ -287,52 +309,53 @@ class ASTManager:
         )
 
     def _parse_javascript(self, file_path: Path) -> ASTFile:
-        """Parse a JavaScript/TypeScript file."""
-        # For JavaScript, we can use js2py or similar
-        # For now, use a simple approach with regex
-        with open(file_path, encoding="utf-8") as f:
-            source = f.read()
+        """Parse a JavaScript/TypeScript/JSX/TSX file using Tree-sitter."""
+        try:
+            from .language_providers.typescript import TypeScriptLanguageProvider
+            ts_provider = TypeScriptLanguageProvider()
+            return ts_provider.get_ast_file(file_path)
+        except Exception as e:
+            logger.debug(f"Tree-sitter TS parse fallback for {file_path}: {e}")
+            with open(file_path, encoding="utf-8", errors="replace") as f:
+                source = f.read()
 
-        line_count = len(source.splitlines())
-        comment_count = len(re.findall(r"//.*", source)) + len(
-            re.findall(r"/\*.*?\*/", source, re.DOTALL)
-        )
-
-        # Build a simple AST structure
-        root = ASTNode(type="Program", name="root")
-
-        # Extract functions (simplified)
-        func_pattern = r"function\s+(\w+)\s*\([^)]*\)"
-        class_pattern = r"class\s+(\w+)"
-
-        for match in re.finditer(func_pattern, source):
-            func_node = ASTNode(
-                type="FunctionDeclaration",
-                name=match.group(1),
-                line=source[: match.start()].count("\n") + 1,
+            line_count = len(source.splitlines())
+            comment_count = len(re.findall(r"//.*", source)) + len(
+                re.findall(r"/\*.*?\*/", source, re.DOTALL)
             )
-            root.children.append(func_node)
 
-        for match in re.finditer(class_pattern, source):
-            class_node = ASTNode(
-                type="ClassDeclaration",
-                name=match.group(1),
-                line=source[: match.start()].count("\n") + 1,
+            root = ASTNode(type="Program", name="root")
+            func_pattern = r"function\s+(\w+)\s*\([^)]*\)"
+            class_pattern = r"class\s+(\w+)"
+
+            for match in re.finditer(func_pattern, source):
+                func_node = ASTNode(
+                    type="FunctionDeclaration",
+                    name=match.group(1),
+                    line=source[: match.start()].count("\n") + 1,
+                )
+                root.children.append(func_node)
+
+            for match in re.finditer(class_pattern, source):
+                class_node = ASTNode(
+                    type="ClassDeclaration",
+                    name=match.group(1),
+                    line=source[: match.start()].count("\n") + 1,
+                )
+                root.children.append(class_node)
+
+            return ASTFile(
+                path=file_path,
+                root=root,
+                language="typescript" if file_path.suffix in (".ts", ".tsx") else "javascript",
+                imports=[],
+                classes=[],
+                functions=[],
+                constants=[],
+                line_count=line_count,
+                comment_count=comment_count,
+                docstring_count=0,
             )
-            root.children.append(class_node)
-
-        return ASTFile(
-            path=file_path,
-            root=root,
-            language="typescript" if file_path.suffix == ".ts" else "javascript",
-            imports=[],
-            classes=[],
-            functions=[],
-            constants=[],
-            line_count=line_count,
-            comment_count=comment_count,
-            docstring_count=0,
-        )
 
     def _parse_java(self, file_path: Path) -> ASTFile:
         """Parse a Java file."""
@@ -654,11 +677,6 @@ class ASTManager:
         """
         ast_file = self.parse_file(file_path)
         return ast_file.get_all_symbols()
-
-    def clear_cache(self):
-        """Clear the AST cache."""
-        self._cache.clear()
-        logger.info("AST cache cleared")
 
     def close(self):
         """Clean up resources."""

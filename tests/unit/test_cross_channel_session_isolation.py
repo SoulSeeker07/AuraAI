@@ -110,11 +110,10 @@ async def test_background_trigger_cannot_leak_confirmation_to_human_channel():
     )
     assert res.success is False
 
-    # 3. Prove that the confirmation WAS created on the trigger's local session
-    assert trigger_session.pending_confirmation is not None
-    assert isinstance(trigger_session.pending_confirmation, ActionPlanConfirmation)
-    assert trigger_session.pending_confirmation.resolved is False
-    assert trigger_session.pending_confirmation.action_plan.target == "notepad"
+    # 3. Prove that the trigger session was suspended with an approval ticket
+    assert trigger_session.data.get("is_suspended") is True
+    assert trigger_session.data.get("suspended_ticket_id") is not None
+    assert str(trigger_session.data.get("suspended_ticket_id")).startswith("tkt_")
 
     # 4. Prove that self._last_session was NOT overwritten (remains the human session)
     assert orchestrator._last_session is human_session
@@ -127,8 +126,8 @@ async def test_background_trigger_cannot_leak_confirmation_to_human_channel():
     # 6. An interactive 'yes' from the user must return None and NOT execute the trigger confirmation
     resolved = orchestrator.resolve_pending_confirmation("yes")
     assert resolved is None
-    assert trigger_session.pending_confirmation.resolved is False
-    assert trigger_session.pending_confirmation.answer is None
+    assert trigger_session.data.get("is_suspended") is True
+
 
 
 @pytest.mark.asyncio

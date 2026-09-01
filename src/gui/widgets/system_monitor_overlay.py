@@ -390,31 +390,48 @@ class SystemMonitorOverlay(QWidget):
     # Geometry & Drag/Resize Management
     # ------------------------------------------------------------------
     def _restore_geometry(self):
+        screen = QApplication.primaryScreen().availableGeometry()
         pos = self._settings.value("pos", None)
         size = self._settings.value("size", None)
 
         if size is not None:
             try:
                 w, h = int(size.width()), int(size.height())
-            except AttributeError:
-                w, h = int(size[0]), int(size[1])
-            self.resize(max(w, MIN_W), max(h, MIN_H))
+            except (AttributeError, TypeError, ValueError):
+                try:
+                    w, h = int(size[0]), int(size[1])
+                except Exception:
+                    w, h = int(REF_W * 0.20), int(REF_H * 0.54)
+            w = max(MIN_W, min(w, screen.width() - 20))
+            h = max(MIN_H, min(h, screen.height() - 20))
+            self.resize(w, h)
         else:
-            # Default HUD proportions
             self.resize(int(REF_W * 0.20), int(REF_H * 0.54))
 
         if pos is not None:
             try:
-                self.move(pos)
-            except TypeError:
-                self.move(QPoint(pos[0], pos[1]))
+                x = int(pos.x()) if hasattr(pos, "x") else int(pos[0])
+                y = int(pos.y()) if hasattr(pos, "y") else int(pos[1])
+                x = max(screen.left() + 10, min(x, screen.right() - self.width() - 10))
+                y = max(screen.top() + 10, min(y, screen.bottom() - self.height() - 10))
+                self.move(x, y)
+            except Exception:
+                self.move(screen.right() - self.width() - 30, screen.top() + 40)
         else:
-            screen = QApplication.primaryScreen().availableGeometry()
             self.move(screen.right() - self.width() - 30, screen.top() + 40)
 
     def _save_geometry(self):
-        self._settings.setValue("pos", self.pos())
-        self._settings.setValue("size", self.size())
+        if not self.isMinimized() and self.isVisible():
+            screen = QApplication.primaryScreen().availableGeometry()
+            p = self.pos()
+            if (
+                p.x() >= screen.left() - 50
+                and p.x() <= screen.right()
+                and p.y() >= screen.top() - 50
+                and p.y() <= screen.bottom()
+            ):
+                self._settings.setValue("pos", p)
+                self._settings.setValue("size", self.size())
 
     def closeEvent(self, event):
         self._save_geometry()

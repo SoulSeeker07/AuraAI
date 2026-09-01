@@ -185,6 +185,20 @@ def _run_loop(
                     except Exception as ex:
                         logger.debug("[AgentLoop] Experience recording notice: %s", ex)
 
+                screenshot_path = None
+                try:
+                    if tools.page:
+                        import time
+                        import uuid
+                        from vision.screenshot_manager import ScreenshotManager
+                        sm = ScreenshotManager()
+                        ss_file = f"browser_verification_{int(time.time())}_{uuid.uuid4().hex[:6]}.png"
+                        save_path = sm._get_save_path(ss_file)
+                        tools.page.screenshot(path=save_path)
+                        screenshot_path = save_path
+                except Exception as ss_ex:
+                    logger.debug("[AgentLoop] Completion screenshot capture failed: %s", ss_ex)
+
                 if keep_open:
                     PausedSessionStore.get_instance().save(
                         PausedSession(
@@ -197,7 +211,14 @@ def _run_loop(
                             step_log=step_log,
                         )
                     )
-                return {"status": status, "summary": summary, "url": tools.page.url, "steps": step_log, "close_session": not keep_open}
+                return {
+                    "status": status,
+                    "summary": summary,
+                    "url": tools.page.url if tools.page else "",
+                    "screenshot_path": screenshot_path,
+                    "steps": step_log,
+                    "close_session": not keep_open,
+                }
 
             gate_result = gate.check(name, args, goal, authorized=False)
             if not gate_result["allowed"]:

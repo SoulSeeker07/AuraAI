@@ -196,9 +196,16 @@ class DesktopEngineBackend(BaseBackendAdapter):
             "security.credential_scan",
             "security.cve_check",
             "security.remediate",
+            "security.firewall_audit",
             "network.remediate",
             "network.route_inspect",
+            "network.interface_list",
+            "network.dns_query",
+            "network.socket_probe",
+            "notification.send",
+            "notification.show",
         ]
+
         mgr_caps = list(self.engine.manager_registry._capability_map.keys()) if hasattr(self.engine, "manager_registry") else []
         reg_caps = list(self.engine.registry._capabilities.keys()) if hasattr(self.engine, "registry") and hasattr(self.engine.registry, "_capabilities") else []
         return list(set(mgr_caps + reg_caps + extra_caps))
@@ -899,8 +906,9 @@ class DesktopEngineBackend(BaseBackendAdapter):
 
         # ── ExecutionPolicy: evaluate app_open before touching the OS ─────────
 
-        if capability in ["app_open", "open_app", "app.launch", "window.open"]:
+        if capability in ["app_open", "open_app", "app.launch", "window.open"] and self._custom_engine is None:
             try:
+
                 from ...orchestration.execution_policy import (
                     ExecutionPolicy,
                     PolicyAction,
@@ -994,7 +1002,10 @@ class DesktopEngineBackend(BaseBackendAdapter):
                         resource_id=app_name,
                         owner="aura",
                     )
+                    self._last_hwnd = decision.hwnd
+                    self._last_app_name = app_name
                     return ExecutionResult(
+
                         success=True,
                         planner="desktop",
                         goal=goal,
@@ -1019,8 +1030,19 @@ class DesktopEngineBackend(BaseBackendAdapter):
             except Exception as exc:
                 logger.debug(f"ExecutionPolicy evaluation skipped: {exc}")
 
+        if capability == "app_close":
+            if self._last_hwnd and "window_handle" not in args:
+                args["window_handle"] = self._last_hwnd
+            if self._last_app_name and "app_name" not in args:
+                args["app_name"] = self._last_app_name
+
         res = self.engine.execute(goal=goal, capability=capability, arguments=args)
         dur = datetime.now().timestamp() - start_t
+
+        if capability == "app_close" and res.success:
+            self._last_hwnd = None
+            self._last_app_name = None
+
 
         is_verified = res.success
         logger.warning(f"[DEBUG_DESKTOP_ENGINE] capability={capability} app_name={app_name} res.success={res.success} res.error={res.error} res.data={res.data}")
@@ -1513,15 +1535,26 @@ class DesktopEngineBackend(BaseBackendAdapter):
             import win32con
             import win32gui
 
-            candidate_hwnd = args.get("hwnd") or getattr(self, "_last_hwnd", 0)
-            if candidate_hwnd and win32gui.IsWindow(candidate_hwnd):
+            candidate_hwnd = args.get("hwnd") or args.get("window_handle") or getattr(self, "_last_hwnd", 0)
+            if action in ["app_close", "close_app", "window.close"] and candidate_hwnd:
+                if not win32gui.IsWindow(candidate_hwnd) or not win32gui.IsWindowVisible(candidate_hwnd):
+                    hwnd = 0
+                    is_visible = False
+                    match_found = False
+                else:
+                    hwnd = candidate_hwnd
+                    title = win32gui.GetWindowText(candidate_hwnd) or ""
+                    is_visible = True
+                    match_found = True
+            elif candidate_hwnd and win32gui.IsWindow(candidate_hwnd):
                 hwnd = candidate_hwnd
                 title = win32gui.GetWindowText(candidate_hwnd) or ""
                 is_visible = win32gui.IsWindowVisible(candidate_hwnd) != 0
                 match_found = True
 
-            if not match_found:
+            if not match_found and action not in ["app_close", "close_app", "window.close"]:
                 fg_hwnd = win32gui.GetForegroundWindow()
+
                 if fg_hwnd:
                     fg_title = win32gui.GetWindowText(fg_hwnd) or ""
                     if target_app and target_app.lower() in fg_title.lower():
@@ -1530,8 +1563,9 @@ class DesktopEngineBackend(BaseBackendAdapter):
                         is_visible = True
                         match_found = True
 
-            if not match_found and target_app:
+            if not match_found and target_app and action not in ["app_close", "close_app", "window.close"]:
                 def _enum_win(h, _):
+
                     nonlocal hwnd, title, is_visible, match_found
                     t = win32gui.GetWindowText(h) or ""
                     if target_app.lower() in t.lower():

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraAI Cyber-HUD Starter App</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            aura: {
+              'bg-deep': '#0d1117',
+              'bg-slate': '#121722',
+              'bg-surface': '#161c28',
+              'bg-card': 'rgba(22, 28, 40, 0.85)',
+              'bg-input': 'rgba(18, 23, 34, 0.9)',
+              'cyan': '#00e5ff',
+              'cyan-dim': 'rgba(0, 229, 255, 0.15)',
+              'blue': '#50aaff',
+              'emerald': '#10b981',
+              'amber': '#fbbf24',
+              'crimson': '#f43f5e',
+              'text-primary': '#f3f6fc',
+              'text-secondary': '#a5b4cb',
+              'text-muted': '#627289',
+              'border-subtle': 'rgba(255, 255, 255, 0.08)',
+              'border-active': 'rgba(0, 229, 255, 0.4)',
+            }
+          },
+          borderRadius: {
+            'aura-sm': '6px',
+            'aura-md': '10px',
+            'aura-lg': '14px',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #f3f6fc;
+      font-family: Inter, Segoe UI, -apple-system, sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-6 flex flex-col justify-between">
+  <!-- 1. Header Bar -->
+  <header class="max-w-5xl mx-auto w-full flex items-center justify-between pb-6 border-b border-aura-border-subtle mb-6">
+    <div class="flex items-center space-x-3">
+      <div class="w-3.5 h-3.5 rounded-full bg-aura-cyan animate-pulse shadow-[0_0_10px_#00e5ff]"></div>
+      <div>
+        <h1 class="text-lg font-bold tracking-wider text-aura-text-primary uppercase">AURA CYBER-HUD // STARTER</h1>
+        <p class="text-xs text-aura-text-muted font-mono">Design-Token Synchronized Prototype</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span class="inline-flex items-center space-x-2 px-3 py-1 rounded-aura-sm border border-emerald-500/30 bg-emerald-500/10 text-aura-emerald text-xs font-mono">
+        <span class="w-2 h-2 rounded-full bg-aura-emerald"></span>
+        <span>ENGINE ONLINE</span>
+      </span>
+    </div>
+  </header>
+
+  <!-- 2. Main Dashboard Grid -->
+  <main class="max-w-5xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+    <!-- Left Column: Metrics -->
+    <div class="space-y-4">
+      <div class="bg-aura-bg-surface border border-aura-border-subtle rounded-aura-md p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-mono text-aura-text-muted uppercase">GTX 1650 VRAM</span>
+          <span class="text-lg font-mono font-bold text-aura-cyan">1.69 / 4.0 GB</span>
+        </div>
+        <div class="w-full bg-aura-bg-deep rounded-full h-1.5 mt-3 overflow-hidden">
+          <div class="h-full bg-aura-cyan w-[42%]"></div>
+        </div>
+        <p class="text-[10px] text-aura-text-muted font-mono mt-1">Software Rasterization: Active</p>
+      </div>
+
+      <div class="bg-aura-bg-surface border border-aura-border-subtle rounded-aura-md p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-mono text-aura-text-muted uppercase">SYSTEM RAM</span>
+          <span class="text-lg font-mono font-bold text-aura-emerald">5.8 / 16.0 GB</span>
+        </div>
+        <div class="w-full bg-aura-bg-deep rounded-full h-1.5 mt-3 overflow-hidden">
+          <div class="h-full bg-aura-emerald w-[36%]"></div>
+        </div>
+        <p class="text-[10px] text-aura-text-muted font-mono mt-1">Host Buffer: Stable</p>
+      </div>
+
+      <div class="bg-aura-bg-surface border border-aura-border-subtle rounded-aura-md p-4">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-mono text-aura-text-muted uppercase">NETWORK THROUGHPUT</span>
+          <span class="text-lg font-mono font-bold text-aura-blue">341 fps</span>
+        </div>
+        <div class="w-full bg-aura-bg-deep rounded-full h-1.5 mt-3 overflow-hidden">
+          <div class="h-full bg-aura-blue w-[85%]"></div>
+        </div>
+        <p class="text-[10px] text-aura-text-muted font-mono mt-1">AST Indexing Engine: Peak</p>
+      </div>
+    </div>
+
+    <!-- Center Column: CyberCard & Interactive Controls -->
+    <div class="md:col-span-2 space-y-4">
+      <div class="bg-aura-bg-card border border-aura-border-subtle hover:border-aura-border-active rounded-aura-md p-6 backdrop-blur-md transition-all shadow-lg">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-bold text-aura-text-primary tracking-wide">Neural Agent Dispatcher</h2>
+          <span class="px-2.5 py-0.5 text-xs font-mono font-semibold rounded-aura-sm border bg-aura-cyan-dim text-aura-cyan border-aura-cyan/30">
+            AUTONOMOUS
+          </span>
+        </div>
+        <p class="text-sm text-aura-text-secondary mb-6 leading-relaxed">
+          The AuraAI agent ecosystem operates on top of native design tokens. Interactive elements stream real-time logs directly to the Qt Live Log Viewer HUD.
+        </p>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button onclick="console.log('[HUD:Telemetry] Agent step triggered: Planner -> Execution');" class="px-3 py-2 text-xs font-semibold rounded-aura-sm border bg-aura-cyan-dim text-aura-cyan border-aura-cyan/40 hover:bg-aura-cyan/25 transition">
+            Dispatch Step
+          </button>
+          <button onclick="console.warn('[HUD:Warning] High throughput burst detected');" class="px-3 py-2 text-xs font-semibold rounded-aura-sm border bg-amber-500/10 text-aura-amber border-amber-500/30 hover:bg-amber-500/20 transition">
+            Trigger Warn
+          </button>
+          <button onclick="console.error('[HUD:Error] Simulated runtime exception in agent worker');" class="px-3 py-2 text-xs font-semibold rounded-aura-sm border bg-rose-500/10 text-aura-crimson border-rose-500/30 hover:bg-rose-500/20 transition">
+            Trigger Error
+          </button>
+          <button onclick="alert('AuraAI Token Starter Interactive Modal');" class="px-3 py-2 text-xs font-semibold rounded-aura-sm border bg-aura-bg-surface text-aura-text-secondary border-aura-border-subtle hover:text-aura-text-primary transition">
+            Open Modal
+          </button>
+        </div>
+      </div>
+
+      <!-- Secondary Info Card -->
+      <div class="bg-aura-bg-card border border-aura-border-subtle rounded-aura-md p-5 flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-bold text-aura-text-primary">Theme Token Sync Status</h3>
+          <p class="text-xs text-aura-text-muted mt-0.5">theme.py ↔ tailwind.config.js ↔ aura-theme.css</p>
+        </div>
+        <span class="text-xs font-mono font-bold text-aura-emerald">100% IN SYNC</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 3. Footer -->
+  <footer class="max-w-5xl mx-auto w-full pt-6 border-t border-aura-border-subtle flex justify-between items-center text-xs text-aura-text-muted font-mono mt-6">
+    <span>AURA// OS v0.3.21 // TOKEN-STARTER</span>
+    <span>VIEWPORT TEST READY</span>
+  </footer>
+
+<script id="aura-hot-reload">
+(function() {
+    let lastModified = 0;
+    const pollInterval = 400;
+    function checkUpdate() {
+        fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
+            .then(res => {
+                const cur = res.headers.get('last-modified') || res.headers.get('etag');
+                if (cur && lastModified && cur !== lastModified) {
+                    window.location.reload();
+                }
+                lastModified = cur || lastModified;
+            })
+            .catch(() => {})
+            .finally(() => setTimeout(checkUpdate, pollInterval));
+    }
+    setTimeout(checkUpdate, pollInterval);
+})();
+</script>
+
+</body>
+</html>

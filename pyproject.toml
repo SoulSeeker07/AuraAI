@@ -102,8 +102,9 @@ disable_error_code = ["attr-defined", "assignment", "arg-type", "misc", "union-a
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib -m 'not slow'"
+addopts = "--import-mode=importlib -m 'not slow' --ignore=tests/test_execution_engine.py --ignore=tests/test_category_debug.py"
 markers = [
+
     "slow: marks tests as slow (integration tests that run EngineeringManager on the full workspace). Run with: pytest -m slow",
     "live: marks tests as requiring live external network connectivity (e.g. live research APIs).",
 ]

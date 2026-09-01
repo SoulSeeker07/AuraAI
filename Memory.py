@@ -464,10 +464,12 @@ class Memory:
                 "role": item["role"],
                 "content": item["content"],
                 "topic": item.get("topic", ""),
+                **({"timestamp": item["timestamp"]} if "timestamp" in item else {}),
             }
             for item in self.load_chat_log()[-limit:]
             if item.get("role") in {"user", "assistant"} and item.get("content")
         ]
+
 
     def load_chat_log(self) -> list[dict[str, str]]:
         try:
@@ -1005,7 +1007,7 @@ class Memory:
 
     def add_message(self, role: str, content: str) -> None:
         """Append a message turn to the chat log file."""
-        messages = self.recent_messages(limit=1000)
+        messages = self.load_chat_log()
         messages.append({
             "role": role,
             "content": content,
@@ -1017,6 +1019,7 @@ class Memory:
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"[Memory] Failed to write chat log: {e}")
+
 
     def _format_answer(self, text: str) -> str:
         return "\n".join(line.strip() for line in text.splitlines() if line.strip())

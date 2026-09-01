@@ -119,12 +119,6 @@ class ResearchDecision:
         "since",
         "until",
         # Company/product specific
-        "company",
-        "product",
-        "service",
-        "platform",
-        "technology",
-        "ai",
         "machine learning",
         "deep learning",
     }
@@ -209,6 +203,18 @@ class ResearchDecision:
                 logger.info("[ResearchDecision] NO RESEARCH - Conversational greeting")
                 return False, "Conversational greeting", SearchMode.STANDARD
 
+        # Local codebase, memory, project, architecture, or internal system queries should never trigger web research
+        if any(
+            w in clean_query
+            for w in (
+                "memorize", "remember", "project structure", "architecture", "codebase",
+                "repository", "workspace", "my project", "this project", "aura ai project",
+                "index project", "index codebase", "in memory", "save memory"
+            )
+        ):
+            logger.info("[ResearchDecision] NO RESEARCH - Local codebase / memory / project query")
+            return False, "Local codebase / memory / project query", SearchMode.STANDARD
+
         # Check for always-research intents
         if normalized in self.ALWAYS_RESEARCH_INTENTS:
             reason = f"Intent is '{normalized}'"
@@ -222,10 +228,10 @@ class ResearchDecision:
             )
             return True, reason, search_mode
 
-        # Check for research keywords
+        # Check for research keywords using word-boundary matching
         matched_keywords = []
         for keyword in self.RESEARCH_KEYWORDS:
-            if keyword in normalized:
+            if re.search(r"\b" + re.escape(keyword) + r"\b", clean_query):
                 matched_keywords.append(keyword)
 
         if matched_keywords:

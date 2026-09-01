@@ -1,0 +1,18 @@
+"""Bulk-order pricing tiers."""
+
+def calculate_discount_rate(quantity: int) -> float:
+    """Returns discount rate based on order quantity tier.
+
+    Tiers:
+      1-9 units   -> 0% discount
+      10-49 units -> 5% discount
+      50-99 units -> 10% discount
+      100+ units  -> 15% discount
+    """
+    if quantity > 100:
+        return 0.15
+    elif quantity > 50:
+        return 0.10
+    elif quantity > 10:
+        return 0.05
+    return 0.0

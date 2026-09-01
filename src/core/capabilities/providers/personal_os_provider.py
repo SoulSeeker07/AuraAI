@@ -88,7 +88,7 @@ class PersonalOSCapabilityProvider(ICapabilityProvider):
                 name="personal_os.trigger.create",
                 domain="desktop",
                 description="Create a persistent automated routine trigger",
-                risk_level=ActionRisk.LOW,
+                risk_level=ActionRisk.MEDIUM,
                 permissions=["personal_os.manage"],
                 input_schema={
                     "type": "object",
@@ -96,6 +96,7 @@ class PersonalOSCapabilityProvider(ICapabilityProvider):
                         "name": {"type": "string"},
                         "goal_text": {"type": "string"},
                         "schedule": {"type": "string"},
+                        "allowed_capabilities": {"type": "array", "items": {"type": "string"}},
                     },
                     "required": ["name", "goal_text"],
                 },
@@ -105,7 +106,7 @@ class PersonalOSCapabilityProvider(ICapabilityProvider):
                 name="personal_os.trigger.delete",
                 domain="desktop",
                 description="Delete a persistent automated routine trigger",
-                risk_level=ActionRisk.LOW,
+                risk_level=ActionRisk.MEDIUM,
                 permissions=["personal_os.manage"],
                 input_schema={
                     "type": "object",

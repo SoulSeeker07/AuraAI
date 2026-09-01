@@ -245,7 +245,28 @@ class AutonomyPolicyGate:
             )
 
         # 4. Determine Risk Tier
-        if any(h in intent_type for h in HIGH_RISK_INTENT_TYPES):
+        meta = dict(getattr(assessment, "metadata", {}) or {})
+        ctx_res = dict(getattr(assessment, "context_resolution", {}) or {})
+        candidate_params = getattr(assessment, "candidate_params", None) or meta or ctx_res
+        if not candidate_params and isinstance(getattr(assessment, "candidate_intent", None), dict):
+            candidate_params = assessment.candidate_intent
+
+        target_path = (
+            candidate_params.get("path")
+            or candidate_params.get("target")
+            or candidate_params.get("file_path")
+            or candidate_params.get("target_path")
+            or meta.get("path")
+            or ctx_res.get("path")
+        )
+        from core.orchestration.autonomy_mode import is_safe_sandbox_path
+
+        if ("file.delete" in intent_type or intent_type in ("file.remove", "directory.delete")) and (
+            (target_path and is_safe_sandbox_path(target_path))
+            or (isinstance(assessment.candidate_intent, str) and is_safe_sandbox_path(assessment.candidate_intent))
+        ):
+            risk_tier = ActionRisk.LOW
+        elif any(h in intent_type for h in HIGH_RISK_INTENT_TYPES):
             risk_tier = ActionRisk.HIGH
         elif "diagnose" in intent_type or "inspect" in intent_type or "read" in intent_type or "search" in intent_type:
             risk_tier = ActionRisk.LOW

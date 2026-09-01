@@ -19,6 +19,8 @@ logs/
 *.npy
 Memory.db
 aura_memory_db/
+.aura/
+.aura/memory/
 
 .pytest_cache/
 .mypy_cache/

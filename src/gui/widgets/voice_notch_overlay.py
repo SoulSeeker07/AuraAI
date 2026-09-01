@@ -436,7 +436,7 @@ class _ExpandedPanel(QWidget):
         c1_lay.setSpacing(2)
 
         c1_head = QLabel("∿  Transcript")
-        c1_head.setStyleSheet(f"color:#60a5fa; font-family:{FONT_SANS}; font-size:9px; font-weight:800; text-transform:uppercase;")
+        c1_head.setStyleSheet(f"color:#60a5fa; font-family:{FONT_SANS}; font-size:11px; font-weight:800; text-transform:uppercase;")
         c1_lay.addWidget(c1_head)
 
         self._transcript_scroll = QScrollArea()
@@ -445,10 +445,10 @@ class _ExpandedPanel(QWidget):
         self._transcript_content = QWidget()
         self._transcript_layout = QVBoxLayout(self._transcript_content)
         self._transcript_layout.setContentsMargins(0, 0, 0, 0)
-        self._transcript_layout.setSpacing(2)
+        self._transcript_layout.setSpacing(4)
 
         self._placeholder_lbl = QLabel("Say a command or hold Space...")
-        self._placeholder_lbl.setStyleSheet("color:#64748b; font-size:9px; font-family:'Segoe UI';")
+        self._placeholder_lbl.setStyleSheet("color:#64748b; font-size:11px; font-family:'Segoe UI';")
         self._transcript_layout.addWidget(self._placeholder_lbl)
 
         self._transcript_scroll.setWidget(self._transcript_content)
@@ -463,7 +463,7 @@ class _ExpandedPanel(QWidget):
         s_bar_lay.setSpacing(6)
 
         c3_head = QLabel("⬡ Sources:")
-        c3_head.setStyleSheet(f"color:#00f0ff; font-family:{FONT_SANS}; font-size:9px; font-weight:800; text-transform:uppercase;")
+        c3_head.setStyleSheet(f"color:#00f0ff; font-family:{FONT_SANS}; font-size:11px; font-weight:800; text-transform:uppercase;")
         s_bar_lay.addWidget(c3_head)
 
         self._sources_box = QHBoxLayout()
@@ -482,18 +482,18 @@ class _ExpandedPanel(QWidget):
         b_lay.setSpacing(6)
 
         mic_lbl = QLabel("🎙")
-        mic_lbl.setStyleSheet("font-size:12px; color:#00f0ff;")
+        mic_lbl.setStyleSheet("font-size:13px; color:#00f0ff;")
         b_lay.addWidget(mic_lbl)
 
         self._input_field = QLineEdit()
         self._input_field.setPlaceholderText("Ask anything… · Hold Space")
-        self._input_field.setFixedHeight(24)
-        self._input_field.setStyleSheet(f"QLineEdit{{color:#ffffff; background:transparent; border:none; font-family:{FONT_SANS}; font-size:10px;}}")
+        self._input_field.setFixedHeight(28)
+        self._input_field.setStyleSheet(f"QLineEdit{{color:#ffffff; background:transparent; border:none; font-family:{FONT_SANS}; font-size:12px;}}")
         self._input_field.returnPressed.connect(self._on_bottom_submit)
         b_lay.addWidget(self._input_field, 1)
 
         self._focus_badge = QLabel("Focus: Active")
-        self._focus_badge.setStyleSheet(f"QLabel{{color:#00f0ff; background:rgba(0,240,255,0.12); border:1px solid rgba(0,240,255,0.35); border-radius:4px; font-family:{FONT_SANS}; font-size:9px; font-weight:700; padding:2px 6px;}}")
+        self._focus_badge.setStyleSheet(f"QLabel{{color:#00f0ff; background:rgba(0,240,255,0.12); border:1px solid rgba(0,240,255,0.35); border-radius:4px; font-family:{FONT_SANS}; font-size:11px; font-weight:700; padding:2px 6px;}}")
         b_lay.addWidget(self._focus_badge)
 
         self._bottom_wave = _RainbowWaveform(bar_count=18, bar_w=1.8, gap=1.8, h=16)
@@ -548,7 +548,7 @@ class _ExpandedPanel(QWidget):
                 border: 1px solid {accent}44;
                 border-radius: 5px;
                 font-family: {FONT_SANS};
-                font-size: 9px;
+                font-size: 11px;
                 font-weight: 600;
             }}
             QPushButton:hover {{
@@ -568,13 +568,13 @@ class _ExpandedPanel(QWidget):
         btn.setStyleSheet(f"""
             QPushButton {{
                 text-align: left;
-                padding: 0 5px;
+                padding: 0 6px;
                 color: #cbd5e1;
                 background: rgba(15, 23, 42, 0.6);
                 border: 1px solid rgba(0, 240, 255, 0.15);
                 border-radius: 5px;
                 font-family: {FONT_SANS};
-                font-size: 9px;
+                font-size: 11px;
                 font-weight: 600;
             }}
             QPushButton:hover {{
@@ -608,12 +608,12 @@ class _ExpandedPanel(QWidget):
             self._has_real_messages = True
 
         row = QHBoxLayout()
-        row.setSpacing(4)
+        row.setSpacing(6)
         s_lbl = QLabel(sender)
-        s_lbl.setStyleSheet(f"color:{'#00f0ff' if is_user else '#a855f7'}; font-family:{FONT_SANS}; font-size:9px; font-weight:700;")
+        s_lbl.setStyleSheet(f"color:{'#00f0ff' if is_user else '#a855f7'}; font-family:{FONT_SANS}; font-size:12px; font-weight:700;")
         m_lbl = QLabel(msg)
         m_lbl.setWordWrap(True)
-        m_lbl.setStyleSheet(f"color:#f1f5f9; font-family:{FONT_SANS}; font-size:9px;")
+        m_lbl.setStyleSheet(f"color:#f1f5f9; font-family:{FONT_SANS}; font-size:12px; font-weight:500;")
 
         row.addWidget(s_lbl)
         row.addWidget(m_lbl, 1)
@@ -712,6 +712,9 @@ class VoiceNotchOverlay(QWidget):
         self._setup_ui()
         self._position_at_top()
         self._connect_signals()
+
+        # Check for overdue reminders/tasks 1.5s after GUI startup
+        QTimer.singleShot(1500, self._check_overdue_reminders_on_startup)
 
     # ─────────────────────────────────────────────────────────────────────────
     # UI Setup
@@ -821,7 +824,7 @@ class VoiceNotchOverlay(QWidget):
         proc_layout.addWidget(self._proc_orb)
 
         proc_mid = QVBoxLayout()
-        proc_mid.setSpacing(3)
+        proc_mid.setSpacing(4)
 
         self._proc_title = QLabel("Processing your request...")
         self._proc_title.setStyleSheet(f"color: #ffffff; font-family: {FONT_SANS}; font-size: 11px; font-weight: 700;")
@@ -1572,6 +1575,45 @@ class VoiceNotchOverlay(QWidget):
             self.show()
             self._position_at_top()
             _force_always_on_top(self)
+
+    def _check_overdue_reminders_on_startup(self):
+        """Query calendar_tasks.db and cognitive_memories for overdue reminders on background thread."""
+        def _worker():
+            try:
+                import sqlite3, time
+                now_t = time.time()
+                now_str = time.strftime("%Y-%m-%d %H:%M")
+                min_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(now_t - 172800))
+                overdue_items = []
+
+                with sqlite3.connect("calendar_tasks.db", timeout=2.0) as conn:
+                    rows = conn.execute("SELECT id, title, start_time, description FROM events WHERE start_time <= ? AND start_time >= ?", (now_str, min_str)).fetchall()
+                    for r in rows:
+                        overdue_items.append(f"📅 **Missed Event**: {r[1]} (Scheduled: `{r[2]}`)")
+                    t_rows = conn.execute("SELECT id, title, due_date, priority FROM tasks WHERE status='pending' AND due_date <= ? AND due_date != '' AND due_date >= ?", (now_str, min_str)).fetchall()
+                    for t in t_rows:
+                        overdue_items.append(f"📋 **Missed Task**: {t[1]} (Due: `{t[2]}`, Priority: {t[3].upper()})")
+
+                if overdue_items:
+                    msg = "🔔 **Missed Reminder Alert!**\n\n" + "\n".join(overdue_items) + "\n\n*You returned late! Would you like to execute your real voice test now across Chrome, Calculator, and Notepad?*"
+                    
+                    def _apply_ui():
+                        self._current_response = msg
+                        self._expanded_panel.add_transcript_msg("AuraAI:", msg, False)
+                        self._has_last_result = True
+                        self._mark_ready()
+                        self.set_state(NotchState.EXPANDED)
+                        try:
+                            from voice.earcon_player import EarconPlayer
+                            EarconPlayer.play_wake_chime()
+                        except Exception:
+                            pass
+                    
+                    QTimer.singleShot(0, _apply_ui)
+            except Exception as e:
+                logger.debug(f"[VoiceNotchOverlay] Overdue check notice: {e}")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     @property
     def current_state(self) -> NotchState:

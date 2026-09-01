@@ -123,7 +123,12 @@ class CodeEditor:
     """
 
     def __init__(
-        self, repository_path: Path, ast_manager, symbol_graph, dependency_graph
+        self,
+        repository_path: Path,
+        ast_manager,
+        symbol_graph,
+        dependency_graph,
+        project_index=None,
     ):
         """
         Initialize the Code Editor.
@@ -133,11 +138,13 @@ class CodeEditor:
             ast_manager: AST manager for validation
             symbol_graph: Symbol graph for validation
             dependency_graph: Dependency graph for validation
+            project_index: Optional ProjectIndex for live index invalidation
         """
         self.repository_path = Path(repository_path).resolve()
         self.ast_manager = ast_manager
         self.symbol_graph = symbol_graph
         self.dependency_graph = dependency_graph
+        self.project_index = project_index
         self._backup_dir: Path | None = None
         self._backup_mapping: dict[str, str] = {}
 
@@ -213,6 +220,13 @@ class CodeEditor:
 
             # Write new content
             full_path.write_text(new_content, encoding="utf-8")
+
+            # Live index invalidation
+            if self.project_index is not None:
+                try:
+                    self.project_index.invalidate_file(full_path)
+                except Exception as e:
+                    logger.warning(f"ProjectIndex live invalidation failed for {file_path}: {e}")
 
             # Record changes
             if old_content_actual:

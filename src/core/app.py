@@ -1,5 +1,8 @@
 import sys
 
+from gui.webengine_init import ensure_webengine_flags
+ensure_webengine_flags()
+
 from PySide6.QtWidgets import QApplication
 
 from core.config import APP_NAME, ORGANIZATION_NAME, ensure_runtime_dirs

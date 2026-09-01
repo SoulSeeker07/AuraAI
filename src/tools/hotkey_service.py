@@ -71,10 +71,7 @@ class GlobalHotkeyService:
                     return
 
                 key_name = (event.name or "").lower()
-                is_target_key = key_name in (
-                    "right ctrl", "right control", "ctrl", "control",
-                    "right alt", "alt gr", "f8", "pause"
-                )
+                is_target_key = key_name in ("f8", "pause")
 
                 if is_target_key:
                     if event.event_type == "down":
@@ -206,13 +203,15 @@ class GlobalHotkeyService:
     def _on_alt_space(self) -> None:
         """Triggered on Alt+Space anywhere."""
         logger.info("[GlobalHotkeyService] Alt+Space detected -> Toggling Chat HUD.")
+        emitted = False
         try:
             from gui.signals import app_signals
             app_signals.toggle_chat_overlay.emit()
+            emitted = True
         except Exception as e:
             logger.debug(f"[GlobalHotkeyService] Signal emit error: {e}")
 
-        if self.on_toggle_chat:
+        if not emitted and self.on_toggle_chat:
             try:
                 self.on_toggle_chat()
             except Exception as e:

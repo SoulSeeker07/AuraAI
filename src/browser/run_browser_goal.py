@@ -22,37 +22,28 @@ def run_browser_goal(goal: str, max_steps: int = 20) -> Dict[str, Any]:
 
 
 def format_for_chat(result: Dict[str, Any], goal: str) -> str:
-    """Turn a result dict into the standard format for Aura conversation engine."""
+    """Turn a result dict into a clean, concise response for Aura conversation engine."""
     status = result.get("status")
+    summary = result.get("summary") or f"Completed request: {goal}"
+    screenshot_path = result.get("screenshot_path")
+    screenshot_suffix = f"\n\n📸 **Verification Screenshot**: `{screenshot_path}`" if screenshot_path else ""
+
     if status == "SUCCESS":
-        lines = [
-            "🌐 **Aura Autonomous Browser Engine**\n",
-            f"**Goal:** `{goal}`",
-            f"**Result:** {result.get('summary')}",
-        ]
-        if result.get("url"):
-            lines.append(f"**Page:** {result.get('url')}")
-        if result.get("steps"):
-            lines.append("\n### ⚡ Executed Browser Actions:")
-            for s in result.get("steps", []):
-                tool = s.get("tool", "action")
-                args = s.get("args", {})
-                lines.append(f"- **{tool}**: `{args}`")
-        return "\n".join(lines)
+        return f"{summary}{screenshot_suffix}"
 
     if status == "REQUIRE_AUTH_TICKET":
-        return result.get("summary", "🛑 Action blocked pending confirmation.")
+        return summary or "Action blocked pending confirmation."
 
     if status == "ASK_USER":
-        return f"⏸️ **Needs Input:**\n\n{result.get('summary')}\n**Page:** {result.get('url', 'N/A')}"
+        return f"Needs Input: {summary}{screenshot_suffix}"
 
     if status == "HAND_BACK_TO_USER":
-        return f"🔒 **Security / CAPTCHA Check:**\n\n{result.get('summary')}"
+        return f"Security Check: {summary}{screenshot_suffix}"
 
     if status == "NO_PAUSED_SESSION":
-        return result.get("summary", "No paused browser session found.")
+        return summary or "No paused browser session found."
 
     if status == "INVALID_TICKET":
-        return f"❌ {result.get('summary', 'Invalid or expired ticket.')}"
+        return summary or "Invalid or expired ticket."
 
-    return f"⚠️ Stopped ({status}): {result.get('summary', 'Unknown error')}"
+    return f"{summary or f'Stopped ({status})'}{screenshot_suffix}"

@@ -453,7 +453,7 @@ class AgentTaskStatusOverlay(QWidget):
                 background: transparent;
                 border: 1px solid rgba(100, 150, 255, 0.25);
                 color: #6496ff;
-                padding: 5px 12px;
+                padding: 6px 12px;
                 border-radius: 6px;
             }
             QPushButton:hover {
@@ -473,7 +473,7 @@ class AgentTaskStatusOverlay(QWidget):
                 background: transparent;
                 border: 1px solid rgba(100, 150, 255, 0.25);
                 color: #6496ff;
-                padding: 5px 12px;
+                padding: 6px 12px;
                 border-radius: 6px;
             }
             QPushButton:hover {
@@ -625,7 +625,7 @@ class AgentTaskStatusOverlay(QWidget):
                 border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: 4px;
                 color: #a5b4cb;
-                padding: 3px 8px;
+                padding: 4px 8px;
             }
             QPushButton:hover {
                 background: rgba(0, 229, 255, 0.12);
@@ -684,7 +684,7 @@ class AgentTaskStatusOverlay(QWidget):
                 background: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(0, 229, 255, 0.2);
                 border-radius: 4px;
-                padding: 3px 6px;
+                padding: 4px 6px;
                 color: #e2e8f0;
             }
         """)
@@ -706,7 +706,7 @@ class AgentTaskStatusOverlay(QWidget):
                 border: 1px solid rgba(0, 229, 255, 0.25);
                 border-radius: 4px;
                 color: #00e5ff;
-                padding: 3px 8px;
+                padding: 4px 8px;
             }
             QPushButton:hover {
                 background: rgba(0, 229, 255, 0.25);
@@ -725,7 +725,7 @@ class AgentTaskStatusOverlay(QWidget):
                 border: 1px solid rgba(255, 255, 255, 0.12);
                 border-radius: 4px;
                 color: #94a3b8;
-                padding: 3px 8px;
+                padding: 4px 8px;
             }
             QPushButton:hover {
                 background: rgba(239, 68, 68, 0.2);
@@ -855,7 +855,7 @@ class AgentTaskStatusOverlay(QWidget):
                     background: rgba(0, 229, 255, 0.2);
                     border: 1px solid #00e5ff;
                     color: #ffffff;
-                    padding: 5px 12px;
+                    padding: 6px 12px;
                     border-radius: 6px;
                     font-weight: bold;
                 }
@@ -867,7 +867,7 @@ class AgentTaskStatusOverlay(QWidget):
                     background: rgba(0, 229, 255, 0.08);
                     border: 1px solid rgba(0, 229, 255, 0.3);
                     color: #00e5ff;
-                    padding: 5px 12px;
+                    padding: 6px 12px;
                     border-radius: 6px;
                 }
                 QPushButton:hover {
@@ -964,7 +964,7 @@ class AgentTaskStatusOverlay(QWidget):
         # Header: Name + Status + Tag
         h = QHBoxLayout()
         info_l = QVBoxLayout()
-        info_l.setSpacing(1)
+        info_l.setSpacing(2)
 
         n_lbl = QLabel(name)
         n_lbl.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))

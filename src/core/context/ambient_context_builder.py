@@ -52,7 +52,19 @@ class AmbientContextBuilder:
         if clip_preview:
             context_parts.append(f"📋 **Clipboard Preview**: \"{clip_preview}\"")
 
+        # 5. Speculative Workspace Context
+        if aura_core and getattr(aura_core, "speculative_indexer", None):
+            try:
+                ws_ctx = aura_core.speculative_indexer.get_prewarmed_context(wait_if_pending=False)
+                if ws_ctx:
+                    snippet = ws_ctx.to_prompt_snippet()
+                    if snippet:
+                        context_parts.append(f"📁 **Workspace Context**:\n{snippet}")
+            except Exception as ws_err:
+                logger.debug(f"[AmbientContext] Speculative indexer note: {ws_err}")
+
         return "\n".join(context_parts)
+
 
     @staticmethod
     def _get_active_window() -> str:

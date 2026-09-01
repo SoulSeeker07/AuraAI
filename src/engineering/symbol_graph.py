@@ -113,15 +113,22 @@ class SymbolGraph:
         hierarchy = graph.get_class_hierarchy("BaseClass")
     """
 
-    def __init__(self, repository_path: Path, workspace_walker=None):
+    def __init__(
+        self,
+        repository_path: Path,
+        workspace_walker=None,
+        index=None,
+    ):
         """
         Initialize the Symbol Graph.
 
         Args:
             repository_path: Path to the repository
             workspace_walker: Walker instance for repository discovery
+            index: Optional ProjectIndex for incremental persistence
         """
         self.repository_path = Path(repository_path).resolve()
+        self.index = index
         self._graph = nx.DiGraph()
         self._symbols: dict[str, Symbol] = {}
         self._module_index: dict[str, list[str]] = {}
@@ -150,7 +157,53 @@ class SymbolGraph:
         self._symbols.clear()
         self._module_index.clear()
 
-        # Build symbols from each file
+        # If ProjectIndex is provided, perform incremental scan and populate
+        if self.index is not None:
+            try:
+                self.index.scan(self.repository_path, file_paths)
+                for file_path in file_paths:
+                    if not file_path.is_file():
+                        continue
+                    sym_records = self.index.get_file_symbols(file_path)
+                    module_name = file_path.stem
+                    if module_name not in self._module_index:
+                        self._module_index[module_name] = []
+
+                    module_symbol = Symbol(
+                        name=module_name,
+                        symbol_type=SymbolType.MODULE,
+                        file_path=str(file_path),
+                        line_number=1,
+                        scope=None,
+                        module=module_name,
+                    )
+                    self._add_symbol(module_symbol)
+
+                    for rec in sym_records:
+                        type_map = {
+                            "function": SymbolType.FUNCTION,
+                            "async_function": SymbolType.FUNCTION,
+                            "class": SymbolType.CLASS,
+                            "method": SymbolType.FUNCTION,
+                        }
+                        stype = type_map.get(rec.symbol_type, SymbolType.FUNCTION)
+                        sym = Symbol(
+                            name=rec.name,
+                            symbol_type=stype,
+                            file_path=rec.file_path,
+                            line_number=rec.line_start or 1,
+                            scope=rec.qualified_name.rsplit(".", 1)[0] if "." in rec.qualified_name else None,
+                            module=module_name,
+                            documentation=rec.docstring,
+                        )
+                        self._add_symbol(sym)
+                self._build_relationships()
+                logger.info(f"Symbol graph built with {len(self._symbols)} symbols from index")
+                return
+            except Exception as e:
+                logger.warning(f"Error populating symbol graph from ProjectIndex: {e}")
+
+        # Fallback path if index is not present or failed
         for file_path in file_paths:
             if file_path.is_file():
                 self._add_symbols_from_file(file_path)

@@ -123,12 +123,19 @@ class PersonalOSBackendAdapter(BaseBackendAdapter):
                     template_vars=args.get("template_vars", {}),
                     metadata=args.get("metadata", {}),
                 )
-                self.state_store.save_trigger(trig)
+                allowed_caps = args.get("allowed_capabilities")
+                exec_map = args.get("execution_map")
+                self.state_store.register_authorized_trigger(
+                    trigger=trig,
+                    allowed_capabilities=allowed_caps,
+                    execution_map=exec_map,
+                )
+                auth_status = " (cryptographically pre-authorized)" if allowed_caps else ""
                 return ExecutionResult(
                     success=True,
                     planner="personal_os",
                     goal=goal,
-                    observations=[f"Created Personal OS trigger '{trig.name}' ({trig.schedule})"],
+                    observations=[f"Created Personal OS trigger '{trig.name}' ({trig.schedule}){auth_status}"],
                     data={"trigger": trig.to_dict()},
                 )
 
