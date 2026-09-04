@@ -17,9 +17,11 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .consolidation_engine import ConsolidationEngine
+from .context_formatter import MemoryContextFormatter
 from .decay_engine import DecayEngine
 from .episodic_memory import EpisodicMemoryRecorder
 from .models import MemoryItem, MemoryProvenance, MemoryType, ProvenanceSource
+from .preference_learner import PreferenceLearner
 from .procedural_memory import ProceduralMemoryStore
 from .project_isolation import ProjectMemoryFilter
 from .recall_engine import RecallEngine
@@ -50,6 +52,8 @@ class CognitiveMemoryEngine:
         self.consolidation_engine = ConsolidationEngine()
         self.decay_engine = DecayEngine()
         self.project_filter = ProjectMemoryFilter()
+        self.preference_learner = PreferenceLearner()
+        self.context_formatter = MemoryContextFormatter()
 
         self._init_db()
         logger.info(f"[CognitiveMemoryEngine] Initialized with DB at: {self.db_path}")
@@ -217,18 +221,85 @@ class CognitiveMemoryEngine:
         valid_items = [m for m in items if not self.decay_engine.is_expired(m)]
         return valid_items[:limit]
 
+    def record_access(self, memory_ids: list[str]) -> None:
+        """Atomically increment access_count and update last_accessed for recalled memories."""
+        if not memory_ids:
+            return
+        now_str = dt.datetime.now().isoformat()
+        with self._connect() as conn:
+            placeholders = ",".join("?" for _ in memory_ids)
+            conn.execute(
+                f"UPDATE cognitive_memories SET access_count = access_count + 1, last_accessed = ? WHERE memory_id IN ({placeholders})",
+                [now_str] + memory_ids,
+            )
+
     def recall_ranked(
         self,
         query: str,
         active_project: str = "global",
         limit: int = 10,
+        record_access_stats: bool = True,
     ) -> list[MemoryItem]:
         """
         Recall top-ranked, relevant memories for active context injection using RecallEngine.
+        Optionally reinforces access counts for retrieved memories.
         """
         candidates = self.search_memories(query=query, project_id=active_project, limit=50)
+
+        # Pull standing preferences into candidate pool so RecallEngine can evaluate them
+        pref_candidates = self.search_memories(query="", memory_type=MemoryType.PREFERENCE, project_id=active_project, limit=20)
+        seen_ids = {c.memory_id for c in candidates}
+        for p in pref_candidates:
+            if p.memory_id not in seen_ids:
+                candidates.append(p)
+                seen_ids.add(p.memory_id)
+
         scored = self.recall_engine.score_and_rank(query, candidates, active_project=active_project, limit=limit)
-        return [mem for score, mem in scored]
+        recalled = [mem for score, mem in scored]
+        if record_access_stats and recalled:
+            self.record_access([m.memory_id for m in recalled])
+        return recalled
+
+    def learn_preferences_from_text(
+        self,
+        text: str,
+        session_id: str = "session_unknown",
+        project_id: str = "global",
+    ) -> list[MemoryItem]:
+        """
+        Analyze turn text for user preferences, resolve conflicts, and persist to database.
+        """
+        candidates = self.preference_learner.extract_preference_candidates(
+            text=text,
+            session_id=session_id,
+            project_id=project_id,
+        )
+        if not candidates:
+            return []
+
+        saved_items = []
+        with self._connect() as conn:
+            for cand in candidates:
+                cat = cand.metadata.get("category", "")
+                existing_rows = conn.execute(
+                    "SELECT memory_id, type, content, provenance, created_at, updated_at, importance, confidence, project_id, topic, access_count, last_accessed, expires_at, metadata FROM cognitive_memories WHERE type = 'preference'"
+                ).fetchall()
+                existing_items = [self._row_to_memory_item(r) for r in existing_rows]
+
+                to_save, superseded_ids = self.preference_learner.resolve_conflicts_and_merge(
+                    new_item=cand,
+                    existing_items=existing_items,
+                )
+                for item in to_save:
+                    self.store_memory(item)
+                    saved_items.append(item)
+
+        return saved_items
+
+    def get_active_preferences(self, active_project: str = "global") -> list[MemoryItem]:
+        """Return all active, confirmed user preference memory items."""
+        prefs = self.search_memories(query="", memory_type=MemoryType.PREFERENCE, project_id=active_project, limit=50)
+        return [p for p in prefs if p.metadata.get("status") == "CONFIRMED"]
 
     def count_memories(self) -> int:
         with self._connect() as conn:
@@ -236,8 +307,20 @@ class CognitiveMemoryEngine:
             return row[0] if row else 0
 
     def _row_to_memory_item(self, row: tuple) -> MemoryItem:
-        prov_dict = json.loads(row[3]) if row[3] else {}
-        meta_dict = json.loads(row[13]) if row[13] else {}
+        prov_dict = {}
+        if row[3] and str(row[3]).strip():
+            try:
+                prov_dict = json.loads(row[3])
+            except Exception:
+                prov_dict = {}
+
+        meta_dict = {}
+        if row[13] and str(row[13]).strip():
+            try:
+                meta_dict = json.loads(row[13])
+            except Exception:
+                meta_dict = {}
+
         prov = MemoryProvenance.from_dict(prov_dict)
 
         mt = row[1]

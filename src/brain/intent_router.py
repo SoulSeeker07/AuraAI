@@ -9,6 +9,90 @@ from Memory import Memory, MemoryFact
 
 
 class IntentRouter:
+    # Canonical pattern for Windows disk drives, partitions, and volume expressions
+    DISK_VOLUME_PATTERN = re.compile(
+        r"\b(?:new\s+volume(?:\s+[a-zA-Z])?)\b|"
+        r"\b(?:local\s+disk(?:\s+[a-zA-Z])?)\b|"
+        r"\b(?:drive|disk|volume)\s+[a-zA-Z]\b|"
+        r"\b[b-zB-Z]\s+(?:drive|disk|volume)\b|"
+        r"\b[a-zA-Z]:(?:\\|\/|\b)?(?:\s*(?:drive|disk|volume)\b)?|"
+        r"\bwindows[-_\s]*ssd\b",
+        re.IGNORECASE,
+    )
+
+    # High-precision shell command positive matchers
+    PATTERN_DIR_CMD = re.compile(
+        r"^in\s+(?P<cwd>[a-zA-Z]:[\\/][^,]+?)(?:,\s*|\s+)(?:run|execute)\s+(?:(?:the|this(?:\s+shell)?)\s+)?command[:\s]+(?P<cmd>.+)$",
+        re.IGNORECASE,
+    )
+    PATTERN_TERMINAL = re.compile(
+        r"^in\s+the\s+terminal,?\s+(?:run|execute)\s+(?:(?:the|this(?:\s+shell)?)\s+)?(?:command[:\s]+)?(?P<cmd>.+)$",
+        re.IGNORECASE,
+    )
+    PATTERN_CMD = re.compile(
+        r"^(?:run|execute)\s+(?:(?:the|this(?:\s+shell)?)\s+)?command[:\s]+(?P<cmd>.+)$",
+        re.IGNORECASE,
+    )
+
+    KNOWN_APPS = (
+        "notepad", "calculator", "calc", "chrome", "google chrome", "msedge", "edge", "microsoft edge",
+        "firefox", "brave", "spotify", "cmd", "command prompt", "powershell", "terminal",
+        "code", "vscode", "vs code", "visual studio code", "explorer", "file explorer",
+        "task manager", "settings", "paint", "mspaint", "word", "ms word", "excel", "ms excel",
+        "powerpoint", "whatsapp", "antigravity", "antigravity ide", "start menu", "start",
+        "documents", "downloads", "pictures", "music", "videos", "desktop",
+        "instagram", "intagram", "insta", "ig", "youtube", "yt", "gmail",
+        "twitter", "x", "reddit", "github", "linkedin", "facebook", "fb", "netflix", "chatgpt"
+    )
+
+    @classmethod
+    def is_disk_volume_expression(cls, text: str) -> bool:
+        """Determines if user text refers to a physical disk partition/drive, preventing audio-volume or file collision."""
+        if not text:
+            return False
+        return bool(cls.DISK_VOLUME_PATTERN.search(text))
+
+    def _detect_shell_command(self, user_input: str, normalized: str) -> Intent | None:
+        clean_raw = user_input.strip()
+
+        m_dir = self.PATTERN_DIR_CMD.match(clean_raw)
+        if m_dir:
+            return Intent(
+                "desktop_action",
+                {
+                    "verb": "run",
+                    "target": m_dir.group("cmd").strip(),
+                    "cwd": m_dir.group("cwd").strip(),
+                    "raw": user_input,
+                },
+            )
+
+        m_term = self.PATTERN_TERMINAL.match(clean_raw)
+        if m_term:
+            return Intent(
+                "desktop_action",
+                {
+                    "verb": "run",
+                    "target": m_term.group("cmd").strip(),
+                    "cwd": None,
+                    "raw": user_input,
+                },
+            )
+
+        m_cmd = self.PATTERN_CMD.match(clean_raw)
+        if m_cmd:
+            return Intent(
+                "desktop_action",
+                {
+                    "verb": "run",
+                    "target": m_cmd.group("cmd").strip(),
+                    "cwd": None,
+                    "raw": user_input,
+                },
+            )
+
+        return None
+
     def __init__(self, memory: Memory):
         self.memory = memory
         self.research_decision = ResearchDecision()
@@ -109,10 +193,6 @@ class IntentRouter:
             logger.info("[IntentRouter] Intent detected: project_doc_update")
             return Intent("project_doc_update", {"query": user_input, "normalized": normalized})
 
-        if self._asks_for_engineering_task(normalized):
-            logger.info("[IntentRouter] Intent detected: autonomous_engineering")
-            return Intent("autonomous_engineering", {"goal": user_input, "normalized": normalized})
-
         if self._asks_for_document_creation(normalized):
             logger.info("[IntentRouter] Intent detected: document_creation")
             return Intent("document_creation", {"query": user_input})
@@ -155,7 +235,21 @@ class IntentRouter:
             return Intent("network_status", {"raw": user_input, "normalized": normalized})
 
         # ── System & Hardware Telemetry ──
-        if any(w in normalized for w in ("system status", "hardware status", "pc status", "system info", "hardware info", "cpu usage", "ram usage", "memory usage", "disk usage", "system specs", "pc specs", "hardware specs", "system telemetry", "hardware telemetry", "cpu percent", "memory percent", "hardware diagnostics")) or normalized in ("specs", "system", "hardware", "telemetry"):
+        system_diag_phrases = (
+            "system status", "hardware status", "pc status", "system info", "hardware info",
+            "cpu usage", "ram usage", "memory usage", "disk usage", "system specs", "pc specs",
+            "hardware specs", "system telemetry", "hardware telemetry", "cpu percent", "memory percent",
+            "hardware diagnostics", "hardware diagnostic", "system diagnostics", "system diagnostic",
+            "full system diagnostics", "full system diagnostic", "pc diagnostics", "pc diagnostic",
+            "full diagnostics", "full diagnostic", "system health", "hardware health", "pc health",
+            "system report", "full system report", "device diagnostics", "run diagnostics",
+            "run system diagnostics", "run full system diagnostics", "run hardware diagnostics",
+            "run full diagnostics", "run pc diagnostics",
+        )
+        if any(w in normalized for w in system_diag_phrases) or normalized in (
+            "specs", "system", "hardware", "telemetry", "diagnostics", "diagnostic",
+            "full diagnostics", "system diagnostics", "full system diagnostics", "hardware diagnostics",
+        ):
             logger.info("[IntentRouter] Intent detected: system_status")
             return Intent("system_status", {"raw": user_input, "normalized": normalized})
 
@@ -167,7 +261,10 @@ class IntentRouter:
             logger.info("[IntentRouter] Intent detected: brightness_control")
             return Intent("brightness_control", {"raw": user_input, "normalized": normalized})
 
-        if any(w in normalized for w in ("mute", "unmute", "volume", "sound level", "audio level", "sound volume")):
+        # Guard: Check if "volume" refers to a disk drive volume (e.g. "volume d", "open volume d", "new volume")
+        if not self.is_disk_volume_expression(normalized) and any(
+            w in normalized for w in ("mute", "unmute", "volume", "sound level", "audio level", "sound volume")
+        ):
             logger.info("[IntentRouter] Intent detected: audio_control")
             return Intent("audio_control", {"raw": user_input, "normalized": normalized})
 
@@ -225,6 +322,24 @@ class IntentRouter:
             logger.info(f"[IntentRouter] Intent detected: confirm_ticket (deny, {ticket_id})")
             return Intent("confirm_ticket", {"ticket_id": ticket_id, "decision": "deny", "raw": user_input})
 
+        # Natural language bulk/all approvals
+        if normalized in (
+            "approve all", "approve all tickets", "confirm all", "confirm all tickets",
+            "authorize all", "allow all", "approve everything", "confirm everything",
+            "yes approve all", "aura approve all"
+        ) or normalized.startswith(("aura approve all", "approve all", "confirm all", "authorize all", "allow all")):
+            logger.info("[IntentRouter] Intent detected: confirm_ticket (bulk approve)")
+            return Intent("confirm_ticket", {"ticket_id": None, "decision": "approve", "all": True, "raw": user_input})
+
+        # Natural language bulk/all denials
+        if normalized in (
+            "deny all", "deny all tickets", "reject all", "reject all tickets",
+            "cancel all", "cancel all tickets", "disapprove all", "block all",
+            "reject everything", "deny everything", "aura deny all", "aura reject all"
+        ) or normalized.startswith(("aura deny all", "aura reject all", "deny all", "reject all", "cancel all")):
+            logger.info("[IntentRouter] Intent detected: confirm_ticket (bulk deny)")
+            return Intent("confirm_ticket", {"ticket_id": None, "decision": "deny", "all": True, "raw": user_input})
+
         # Natural language approvals without explicit ticket IDs
         if normalized in (
             "yes", "y", "yeah", "yep", "sure", "ok", "okay", "yup",
@@ -265,9 +380,15 @@ class IntentRouter:
             logger.info(f"[IntentRouter] Intent detected: hud_overlay ({overlay_type})")
             return Intent("hud_overlay", {"overlay_type": overlay_type, "raw": user_input})
 
+        # ── Shell Command Execution (Explicit Positive Framing) ──
+        cmd_intent = self._detect_shell_command(user_input, normalized)
+        if cmd_intent:
+            logger.info(f"[IntentRouter] Intent detected: desktop_action (shell command: '{cmd_intent.data.get('target')}')")
+            return cmd_intent
+
         if self._asks_for_desktop_action(normalized):
             logger.info("[IntentRouter] Intent detected: desktop_action")
-            verb, target = self._parse_desktop_action(normalized)
+            verb, target = self._parse_desktop_action(normalized, user_input)
             return Intent("desktop_action", {"verb": verb, "target": target, "raw": user_input})
 
         if any(w in normalized for w in ("restart", "reboot", "reload aura", "respawn aura")):
@@ -449,55 +570,16 @@ class IntentRouter:
             and any(dt in normalized for dt in ("docs", "document", "documents", "documentation", "milestone", "milestones", "readme", "roadmap"))
         )
 
-    def _asks_for_engineering_task(self, normalized: str) -> bool:
-        if normalized.startswith(("what is", "how does", "explain", "why", "tell me about")):
-            return False
-
-        if self._asks_for_folder_creation(normalized) or self._asks_for_document_creation(normalized):
-            return False
-
-        clean_norm = re.sub(r"^aura\s+", "", normalized).strip()
-        verbs = ("add ", "implement ", "build ", "create ", "fix ", "repair ", "refactor ", "write code ", "write a script ", "code a ", "modify code ", "edit code ", "develop ")
-        targets = ("widget", "feature", "component", "class", "function", "module", "script", "api", "endpoint", "test", "overlay", "service", "handler", "adapter", "manager", "plugin", "bug", "code", "file", ".py")
-
-        for v in verbs:
-            if clean_norm.startswith(v):
-                if any(t in clean_norm for t in targets) or "to my project" in clean_norm or "in my project" in clean_norm or "for my project" in clean_norm or ".py" in clean_norm:
-                    return True
-
-        if (".py" in clean_norm or "to my project" in clean_norm or "in my project" in clean_norm) and any(v.strip() in clean_norm for v in verbs):
-            return True
-
-        return False
-
     def _asks_for_document_creation(self, normalized: str) -> bool:
-        doc_targets = ("document", "doc", "docx", "word file", "word document", "pdf file", "text file", "leave letter document", "leave letter doc")
-        create_verbs = ("create", "generate", "make", "save", "draft", "export", "build", "write and save")
-        if any(dt in normalized for dt in doc_targets) and any(cv in normalized for cv in create_verbs):
-            return True
-        return False
+        if any(w in normalized for w in ("dockerfile", "script", "code", ".py", "function", "class", "widget", "component")):
+            return False
+        doc_pattern = r"\b(?:document|doc|docx|word\s+file|word\s+document|pdf\s+file|text\s+file|leave\s+letter)\b"
+        create_pattern = r"\b(?:create|generate|make|save|draft|export|write\s+and\s+save)\b"
+        return bool(re.search(doc_pattern, normalized) and re.search(create_pattern, normalized))
 
     def _asks_for_overlay_toggle(self, normalized: str) -> bool:
-        log_triggers = (
-            "show logs", "show log", "show task logs", "task logs", "view logs",
-            "system logs", "open logs", "logs overlay", "logs widget", "live logs",
-            "open task logs", "aura logs", "display logs"
-        )
-        if any(lt in normalized for lt in log_triggers) or normalized in ("logs", "show logs", "open logs", "view logs"):
-            return True
-        triggers = ("weather widget", "weather hud", "weather overlay",
-                    "system monitor", "system hud", "system overlay", "resource monitor", "hardware monitor",
-                    "tasks widget", "tasks overlay", "agent tasks",
-                    "personal os widget", "personal os overlay", "personal os dashboard", "personal os",
-                    "system status widget", "system status overlay", "chat hud", "chat overlay",
-                    "jarvis rings", "jarvis widget", "rings hud", "jarvis hud", "rings overlay", "voice rings", "jarvis")
-        actions = ("open", "show", "toggle", "launch", "display", "hide", "close", "bring up")
-        if any(t in normalized for t in triggers):
-            if any(a in normalized for a in actions) or "overlay" in normalized or "widget" in normalized or "hud" in normalized or "rings" in normalized:
-                return True
-        return False
+        return self._asks_for_hud_overlay(normalized)
 
-    _asks_for_hud_overlay = _asks_for_overlay_toggle
 
     def _asks_for_voice_control(self, normalized: str) -> bool:
         start_triggers = (
@@ -570,18 +652,12 @@ class IntentRouter:
         if clean_target.lower() in ("logs", "log", "task logs", "system logs", "live logs", "agent logs"):
             return False
 
-        # If it matches a known folder or known app, let desktop_action handle it
-        known_folders = ("documents", "downloads", "desktop", "pictures", "photos", "music", "videos", "c drive", "d drive")
-        known_apps = (
-            "notepad", "calculator", "calc", "chrome", "google chrome", "msedge", "edge", "microsoft edge",
-            "firefox", "brave", "spotify", "cmd", "command prompt", "powershell", "terminal",
-            "code", "vscode", "vs code", "visual studio code", "explorer", "file explorer",
-            "task manager", "settings", "paint", "mspaint", "word", "ms word", "excel", "ms excel",
-            "powerpoint", "whatsapp", "antigravity", "antigravity ide", "start menu", "start",
-            "instagram", "intagram", "insta", "ig", "youtube", "yt", "gmail", "twitter", "x", "reddit",
-            "github", "linkedin", "facebook", "fb", "netflix", "chatgpt"
-        )
-        if clean_target.lower() in known_folders or clean_target.lower() in known_apps or clean.lower() in known_apps:
+        # If it matches a disk volume, drive, known folder or known app, let desktop_action handle it
+        if self.is_disk_volume_expression(clean_target) or self.is_disk_volume_expression(clean):
+            return False
+
+        known_folders = ("documents", "downloads", "desktop", "pictures", "photos", "music", "videos", "c drive", "d drive", "this pc", "my computer")
+        if clean_target.lower() in known_folders or clean_target.lower() in self.KNOWN_APPS or clean.lower() in self.KNOWN_APPS:
             return False
 
         hud_triggers = ("logs", "weather hud", "weather overlay", "weather widget", "system hud", "system monitor", "system overlay", "jarvis rings", "jarvis hud", "chat overlay", "chat hud", "task overlay", "task hud", "personal os", "matrix overlay")
@@ -642,8 +718,12 @@ class IntentRouter:
         clean = re.sub(r"^aura\s+", "", normalized).strip()
         triggers = ("create folder", "create a folder", "create new folder", "make folder", "make a folder", "make directory", "create directory", "new folder", "mkdir ")
         if any(t in clean for t in triggers):
+            if any(w in clean for w in ("script", "code", "function", "class", "pipeline", "parser", "dockerfile")):
+                return False
             return True
-        if ("folder" in clean or "directory" in clean) and any(v in clean for v in ("create", "make", "build", "new")):
+        if re.search(r"\b(?:folder|directory)\b", clean) and re.search(r"\b(?:create|make|new)\b", clean):
+            if any(w in clean for w in ("script", "code", "function", "class", "pipeline", "parser", "dockerfile")):
+                return False
             return True
         return False
 
@@ -758,6 +838,9 @@ class IntentRouter:
 
     def _asks_for_hud_overlay(self, normalized: str) -> bool:
         clean = re.sub(r"^aura\s+", "", normalized).strip()
+        if re.search(r"\b(?:implement|build|create|write|code|develop|make|fix|repair|refactor|debug|compile|test)\b", clean):
+            if not any(clean.startswith(a) for a in ("open ", "show ", "toggle ", "launch ", "display ", "hide ", "close ", "bring up ")):
+                return False
         log_triggers = (
             "show logs", "show log", "show task logs", "task logs", "view logs",
             "system logs", "open logs", "logs overlay", "logs widget", "live logs",
@@ -806,7 +889,13 @@ class IntentRouter:
             return False
 
         # Direct git commands and common git phrasing
-        if normalized == "git" or normalized.startswith("git ") or normalized.startswith("git-"):
+        if (
+            normalized == "git"
+            or normalized.startswith("git ")
+            or normalized.startswith("git-")
+            or normalized == "run git"
+            or normalized.startswith("run git ")
+        ):
             return True
 
         git_phrases = (
@@ -820,32 +909,35 @@ class IntentRouter:
         if any(normalized == gp or normalized.startswith(gp + " ") for gp in git_phrases):
             return True
 
-        known_apps = (
-            "notepad", "calculator", "calc", "chrome", "edge", "spotify", "cmd", "command prompt",
-            "powershell", "terminal", "code", "vscode", "vs code", "visual studio code",
-            "explorer", "file explorer", "task manager", "settings", "paint", "word", "excel",
-            "documents", "downloads", "pictures", "music", "videos", "desktop",
-            "instagram", "intagram", "insta", "ig", "youtube", "yt", "whatsapp", "gmail",
-            "twitter", "x", "reddit", "github", "linkedin", "facebook", "fb", "netflix", "chatgpt"
-        )
-        verbs = ("open ", "launch ", "start ", "run ", "exec ", "execute ", "close ", "kill ", "minimize ", "maximize ", "restore ", "focus ", "activate ", "switch to ", "organize ", "sort ", "clean up ", "tidy ")
+        verbs = ("open ", "launch ", "start ", "close ", "kill ", "minimize ", "maximize ", "restore ", "focus ", "activate ", "switch to ", "organize ", "sort ", "clean up ", "tidy ")
         
         if normalized.startswith(verbs):
             # Ignore web searches or URLs
             if any(w in normalized for w in ("http", "www.", ".com", ".org", ".io", "search", "weather widget", "system monitor")):
                 return False
+            # Ignore hardware and system diagnostics phrases
+            if any(w in normalized for w in ("diagnostic", "diagnostics", "system status", "hardware status", "telemetry", "system report", "system health")):
+                return False
             return True
 
-        if any(a in normalized for a in known_apps) and any(v in normalized for v in ("open", "launch", "start", "run", "close", "kill", "minimize", "maximize", "focus", "organize", "sort")):
+        if any(a in normalized for a in self.KNOWN_APPS) and any(v in normalized for v in ("open", "launch", "start", "close", "kill", "minimize", "maximize", "focus", "organize", "sort")):
             return True
 
         if any(action in normalized for action in ("take a screenshot", "screenshot", "screen capture", "organize downloads", "sort downloads", "clean downloads")):
             return True
 
+        # Support "run <known_app>" as app launch
+        if normalized.startswith("run "):
+            app_candidate = normalized[4:].strip()
+            if app_candidate in self.KNOWN_APPS:
+                return True
+
         return False
 
-    def _parse_desktop_action(self, normalized: str) -> tuple[str, str]:
+    def _parse_desktop_action(self, normalized: str, raw_input: str = "") -> tuple[str, str]:
         import re
+
+        raw = raw_input.strip() if raw_input else normalized
 
         # Handle git phrases explicitly
         if normalized == "push git" or normalized.startswith(("push git ", "push to git", "push to github", "push repo", "push origin")):
@@ -859,19 +951,27 @@ class IntentRouter:
         if normalized in ("log git", "check git log") or normalized.startswith("check git log"):
             return "run", "git log"
         if normalized == "git" or normalized.startswith("git "):
-            return "run", normalized
+            return "run", raw
+        if normalized == "run git" or normalized.startswith("run git "):
+            return "run", raw[len("run "):].strip()
 
-        verbs = ["switch to", "focus", "activate", "minimize", "maximize", "restore", "close", "kill", "organize", "sort", "clean up", "tidy", "open", "launch", "start", "execute", "exec", "run"]
+        # If user says "run <known_app>", map to "open" so it launches via AppLauncher / WindowManager
+        if normalized.startswith("run "):
+            app_candidate = normalized[4:].strip()
+            if app_candidate in self.KNOWN_APPS:
+                return "open", app_candidate
+
+        verbs = ["switch to", "focus", "activate", "minimize", "maximize", "restore", "close", "kill", "organize", "sort", "clean up", "tidy", "open", "launch", "start"]
         detected_verb = "open"
-        target = normalized
+        target = raw
 
         for v in verbs:
             if normalized.startswith(v):
-                detected_verb = "run" if v in ("exec", "execute", "run") else v.split()[0]
-                target = normalized[len(v):].strip()
+                detected_verb = v.split()[0]
+                target = raw[len(v):].strip() if raw_input else normalized[len(v):].strip()
                 break
             elif f" {v} " in f" {normalized} ":
-                detected_verb = "run" if v in ("exec", "execute", "run") else v.split()[0]
+                detected_verb = v.split()[0]
                 parts = normalized.split(v, 1)
                 target = parts[1].strip() if len(parts) > 1 else parts[0].strip()
                 break
@@ -882,7 +982,7 @@ class IntentRouter:
 
         # Clean noise words from target for app/folder launch
         target = re.sub(r"\b(my|the|a|an|app|application|folder|directory)\b", " ", target, flags=re.IGNORECASE)
-        target = " ".join(target.split()).strip()
+        target = " ".join(target.split()).strip().rstrip(".?!,;:")
         return detected_verb, target
 
     def _is_memory_statement(self, user_input: str) -> bool:

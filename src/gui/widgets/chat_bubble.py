@@ -50,14 +50,19 @@ class ChatBubble(QWidget):
         if is_user:
             layout.addStretch()
 
+        self._container = QWidget()
+        self._container_layout = QVBoxLayout(self._container)
+        self._container_layout.setContentsMargins(0, 0, 0, 0)
+        self._container_layout.setSpacing(6)
+        self._container.setMinimumWidth(220)
+        self._container.setMaximumWidth(750)
+
         self._bubble = QLabel()
         self._bubble.setWordWrap(True)
         self._bubble.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
             | Qt.TextInteractionFlag.LinksAccessibleByMouse
         )
-        self._bubble.setMinimumWidth(180)
-        self._bubble.setMaximumWidth(700)
 
         if is_user:
             self._bubble.setStyleSheet(f"""
@@ -84,14 +89,49 @@ class ChatBubble(QWidget):
                 }}
             """)
 
-        layout.addWidget(self._bubble)
+        self._container_layout.addWidget(self._bubble)
+        layout.addWidget(self._container)
 
         if not is_user:
             layout.addStretch()
 
     def _render_content(self):
-        html = self._markdown_to_html(self._content)
-        self._bubble.setText(html)
+        from gui.widgets.message_parser import parse_message_segments, SegmentType
+        from gui.widgets.diagram_viewer import DiagramArtifactWidget
+        from gui.widgets.code_block_widget import CodeBlockWidget
+
+        # Clear existing extra widgets
+        while self._container_layout.count() > 1:
+            item = self._container_layout.takeAt(1)
+            if item.widget():
+                item.widget().deleteLater()
+
+        segments = parse_message_segments(self._content)
+        has_diagram = any(s.type in (SegmentType.DIAGRAM, SegmentType.CODE) for s in segments)
+
+        if not has_diagram:
+            html = self._markdown_to_html(self._content)
+            self._bubble.setText(html)
+            self._bubble.show()
+        else:
+            # Multi-segment rendering
+            text_acc = []
+            for seg in segments:
+                if seg.type == SegmentType.DIAGRAM:
+                    diag = DiagramArtifactWidget(seg.content, title=seg.title or "Aura Architecture Flow", parent=self)
+                    self._container_layout.addWidget(diag)
+                elif seg.type == SegmentType.CODE:
+                    code_widget = CodeBlockWidget(seg.content, language=seg.language, parent=self)
+                    self._container_layout.addWidget(code_widget)
+                else:
+                    text_acc.append(seg.content)
+
+            combined_text = "\n\n".join(text_acc).strip()
+            if combined_text:
+                self._bubble.setText(self._markdown_to_html(combined_text))
+                self._bubble.show()
+            else:
+                self._bubble.hide()
 
     def _markdown_to_html(self, text: str) -> str:
         if not text:

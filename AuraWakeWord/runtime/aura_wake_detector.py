@@ -21,10 +21,12 @@ class AuraWakeDetector(WakeWordEngine):
 
     MAX_CONSECUTIVE_FAILURES = 5
 
-    def __init__(self, model_path: str, sensitivity: float = 0.5, phrase_list: list[str] | None = None):
+    def __init__(self, model_path: str, sensitivity: float = 0.5, phrase_list: list[str] | None = None, required_hits: int = 5):
         super().__init__(sensitivity=sensitivity, phrase_list=phrase_list)
         self.model_path = model_path
         self.ort_session = None
+        import os
+        self.required_hits = int(os.environ.get("AURA_WAKE_REQUIRED_HITS", str(required_hits)))
         
         # Audio parameters matching training
         self.sample_rate = 16000
@@ -37,7 +39,7 @@ class AuraWakeDetector(WakeWordEngine):
         # 80Hz High-pass filter coefficients for anti-hum & DC removal
         from scipy import signal
         self.hp_b, self.hp_a = signal.butter(2, 80.0 / (self.sample_rate / 2), btype='high')
-        self.min_rms_energy = 0.0060  # Sensitive vocal energy threshold
+        self.min_rms_energy = 0.0030  # Sensitive vocal energy threshold
         
         # Mel Spectrogram parameters matching training
         self.mel_transform = torchaudio.transforms.MelSpectrogram(
@@ -142,10 +144,10 @@ class AuraWakeDetector(WakeWordEngine):
 
             if is_speaking and not has_voiceprint:
                 threshold = float(os.environ.get("AURA_TTS_WAKE_THRESHOLD", 0.88))
-                required_hits = 3
+                required_hits = int(os.environ.get("AURA_TTS_WAKE_REQUIRED_HITS", "3"))
             else:
                 threshold = float(os.environ.get("AURA_WAKE_THRESHOLD", 0.82))
-                required_hits = 3
+                required_hits = int(os.environ.get("AURA_WAKE_REQUIRED_HITS", str(getattr(self, "required_hits", 5))))
 
             now = time.monotonic()
             if probability > 0.10 and (now - self.last_print_time >= self.print_interval_s):
@@ -155,6 +157,30 @@ class AuraWakeDetector(WakeWordEngine):
             if probability >= threshold:
                 self.consecutive_hits += 1
                 if self.consecutive_hits >= required_hits:
+                    # 7. Speaker Voiceprint Gate (if enrolled)
+                    try:
+                        try:
+                            from voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
+                        except ImportError:
+                            from src.voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
+                        speaker_engine = SpeakerVerificationEngine.get_instance()
+                        if speaker_engine.is_enrolled():
+                            match_res, sim_score = speaker_engine.verify(clean_buf)
+                            if match_res == SpeakerMatchResult.REJECT:
+                                logger.debug(f"[SpeakerVerification] Wake candidate below threshold (sim={sim_score:.2f} < {speaker_engine.threshold_low})")
+                                if self.consecutive_hits >= 12:
+                                    logger.info(f"[SpeakerVerification] Wake word candidate rejected (sim={sim_score:.2f} < {speaker_engine.threshold_low}) — non-owner voice.")
+                                    try:
+                                        from gui.signals import app_signals
+                                        if hasattr(app_signals, "speaker_rejected"):
+                                            app_signals.speaker_rejected.emit(sim_score)
+                                    except Exception:
+                                        pass
+                                    self.consecutive_hits = 0
+                                return False
+                    except Exception as ve:
+                        logger.debug(f"[SpeakerVerification] Verification check note: {ve}")
+
                     try:
                         sys.stdout.write("\r" + " " * 45 + "\r")  # Clear the line
                         sys.stdout.flush()
@@ -167,25 +193,8 @@ class AuraWakeDetector(WakeWordEngine):
                     self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
                     self.consecutive_hits = 0
 
-                    # 7. Speaker Voiceprint Gate (if enrolled)
-                    try:
-                        try:
-                            from voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
-                        except ImportError:
-                            from src.voice.speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
-                        speaker_engine = SpeakerVerificationEngine.get_instance()
-                        match_res, sim_score = speaker_engine.verify(clean_buf)
-                        if match_res == SpeakerMatchResult.REJECT:
-                            logger.info(f"[SpeakerVerification] Wake word rejected (sim={sim_score:.2f} < {speaker_engine.threshold_low}) — ignoring background / non-owner voice.")
-                            self.audio_buffer = np.zeros(self.num_samples, dtype=np.float32)
-                            self.consecutive_hits = 0
-                            self.cooldown_frames = int(self.sample_rate / chunk_len * 1.5)
-                            return False
-                    except Exception as ve:
-                        logger.debug(f"[SpeakerVerification] Verification check note: {ve}")
-
                     # Auto-save triggered positive sample into existing dataset folder (AuraWakeWord/dataset/raw/positive)
-                    if os.environ.get("SAVE_WAKE_WORD_SAMPLES", "true").lower() == "true":
+                    if os.environ.get("SAVE_WAKE_WORD_SAMPLES", "false").lower() == "true":
                         self._save_positive_sample_deferred(clean_buf, post_delay_s=0.5)
 
                     # Trigger callback

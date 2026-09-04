@@ -208,10 +208,11 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
             return ActionRisk.LOW
         return ActionRisk.HIGH
 
-    # 3. Medium Risk Operations
+    # 3. Medium Risk Operations (State mutations, cross-app transfers, uploads)
     medium_keywords = [
         "edit", "update", "modify", "write", "create", "launch", "open_app",
-        "click", "input_text", "shopping.cart.add", "cart.add", "cart"
+        "click", "input_text", "shopping.cart.add", "cart.add", "cart",
+        "transfer", "upload", "transfer_to", "file.upload", "cross_app", "transfer.cross_app"
     ]
     if any(kw in action_lower for kw in medium_keywords):
         return ActionRisk.MEDIUM

@@ -71,6 +71,7 @@ class ConversationEngine:
         deep_research_enabled: bool = True,
         aura_core=None,
         memory_manager=None,
+        orchestrator=None,
     ):
         # TODO(M2): Once M1 is stable, remove old `self.memory` from ConversationEngine
         # and rely exclusively on `memory_manager`.
@@ -90,6 +91,7 @@ class ConversationEngine:
         )
         self._use_deep_research = deep_research_enabled
         self.aura_core = aura_core
+        self.orchestrator = orchestrator
 
         # Log the aura_core reference
         import logging
@@ -164,7 +166,7 @@ class ConversationEngine:
             return self._process_vision(context)
 
         if intent.name == "autonomous_engineering":
-            return self._process_autonomous_engineering(context)
+            return await self._process_autonomous_engineering(context)
 
         if intent.name == "project_doc_update":
             return self._process_project_doc_update(context)
@@ -199,233 +201,59 @@ class ConversationEngine:
         mime_type = mimetypes.guess_type(str(path))[0] or "image/png"
         return ConversationAttachment(path=path, mime_type=mime_type)
 
-    def _process_autonomous_engineering(self, context: ConversationContext) -> ConversationResult:
-        import ast
-        import re
-        import os
-        from pathlib import Path
-        from ai.models import ChatMessage, ChatRequest
-
-        project_root = Path(__file__).resolve().parents[2]
+    async def _process_autonomous_engineering(
+        self, context: ConversationContext
+    ) -> ConversationResult:
+        """
+        Routes autonomous engineering and coding requests through MasterOrchestrator's
+        dynamic agentic loop and capability providers, replacing the legacy un-sandboxed
+        regex writer.
+        """
         goal = context.user_input.strip()
+        logger = logging.getLogger(__name__)
+        logger.info(f"[ConversationEngine] Routing engineering goal to dynamic orchestrator: '{goal[:60]}'")
 
-        # Step 1: Detect explicit target file requested in prompt
-        prompt_target_match = re.search(r"(?:in|at|to|file|create|build|modify|refactor)\s+([a-zA-Z0-9_\-/\\]+\.py)", goal, re.IGNORECASE)
-        explicit_target_rel = prompt_target_match.group(1).replace("\\", "/") if prompt_target_match else None
-
-        existing_code_section = ""
-        if explicit_target_rel and (project_root / explicit_target_rel).exists():
-            try:
-                content = (project_root / explicit_target_rel).read_text(encoding="utf-8")
-                existing_code_section = f"\nEXISTING CODE IN '{explicit_target_rel}':\n```python\n{content}\n```\n"
-            except Exception:
-                pass
-
-        # Step 2: Formulate dynamic synthesis prompt
-        prompt = (
-            f"You are the Aura Autonomous Engineering Platform.\n"
-            f"Workspace Root: {project_root}\n"
-            f"Workspace Layout: Top-level packages are inside 'src/' (e.g. import as 'from gui.widgets.jarvis_rings_overlay import JarvisRingsOverlay' or 'from tools.disk_cleaner import ...').\n"
-            f"{existing_code_section}"
-            f"User Engineering Goal:\n'{goal}'\n\n"
-            f"CRITICAL CODING INSTRUCTIONS:\n"
-            f"1. Use PySide6 (NEVER PyQt5) for all GUI widgets.\n"
-            f"2. Use correct repository import paths starting from 'src' subpackages (e.g. 'from gui.widgets.jarvis_rings_overlay import JarvisRingsOverlay').\n"
-            f"3. Write complete, production-grade, bug-free Python code. DO NOT TRUNCATE.\n"
-            f"4. For every file to create or update, write the header:\n"
-            f"### FILE: relative/path/to/file.py\n"
-            f"```python\n"
-            f"# complete code here\n"
-            f"```\n"
-            f"5. Provide brief execution summary notes."
-        )
-
-        req_messages = [
-            ChatMessage(role="system", content="You are an expert autonomous software engineer and system architect."),
-            ChatMessage(role="user", content=prompt),
-        ]
-
-        raw_text = ""
-        import time
-        for net_retry in range(3):
-            try:
-                resp = self.provider_manager.chat(
-                    ChatRequest(messages=req_messages, model=self.model, temperature=0.2, max_tokens=4096)
+        try:
+            if self.aura_core is not None and hasattr(self.aura_core, "process_request"):
+                core_resp = await self.aura_core.process_request(goal)
+                self._save_turn(context, core_resp)
+                return ConversationResult(
+                    text=core_resp,
+                    intent=context.intent,
+                    used_provider=True,
+                    provider="aura_core",
+                    model=getattr(self, "model", "dynamic"),
                 )
-                raw_text = resp.text.strip().replace("</s>", "")
-                if raw_text:
-                    break
-            except Exception as e:
-                if net_retry == 2:
-                    raw_text = f"Autonomous synthesis note: {e}"
-                else:
-                    time.sleep(1.0 * (net_retry + 1))
 
-        # Step 3: Extract and apply any generated/updated files
-        # Matches any header like ### FILE: path or ## path followed by ```python ... ```
-        file_blocks = re.findall(
-            r"(?:#{1,4}\s*FILE:?|\*\*FILE:?\*\*|FILE:?)\s*([a-zA-Z0-9_\-./\\]+\.py)[\s\S]*?```(?:python|py)?\s*\n([\s\S]*?)```",
-            raw_text,
-            re.IGNORECASE,
-        )
+            orch = self.orchestrator
+            if orch is None:
+                from core.orchestration import MasterOrchestrator
+                orch = MasterOrchestrator.get_instance()
+            res = await orch.process_request_async(goal)
 
-        # Fallback 1: search inside code blocks for "# File: path" or "# path"
-        if not file_blocks:
-            code_blocks = re.findall(r"```(?:python|py)?\s*\n([\s\S]*?)```", raw_text)
-            for cb in code_blocks:
-                first_lines = cb.strip().split("\n")[:4]
-                for line in first_lines:
-                    m = re.search(r"#\s*(?:file|path)?:\s*([a-zA-Z0-9_\-./\\]+\.py)", line, re.IGNORECASE)
-                    if m:
-                        file_blocks.append((m.group(1).strip(), cb))
-                        break
+            obs_lines = res.observations if res and res.observations else []
+            obs_text = "\n".join(f"- {o}" for o in obs_lines) if obs_lines else "No observations recorded."
+            status_text = "PASSED" if (res and res.success) else "FAILED"
 
-        # Fallback 2: if user requested an explicit target path in prompt and code blocks exist
-        if not file_blocks and explicit_target_rel:
-            code_blocks = re.findall(r"```(?:python|py)?\s*\n([\s\S]*?)```", raw_text)
-            if code_blocks:
-                largest_block = max(code_blocks, key=len)
-                file_blocks = [(explicit_target_rel, largest_block)]
-
-        applied_files = []
-        for rel_path, code in file_blocks:
-            clean_rel = rel_path.strip(" `*#:\t\r")
-            # Auto-normalize PyQt5 -> PySide6
-            code = code.replace("from PyQt5", "from PySide6").replace("import PyQt5", "import PySide6")
-            target_path = project_root / clean_rel
-
-            try:
-                target_path.resolve().relative_to(project_root.resolve())
-            except ValueError:
-                continue
-
-            # AST syntax check
-            if clean_rel.endswith(".py"):
-                try:
-                    ast.parse(code)
-                except SyntaxError:
-                    continue
-
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            is_update = target_path.exists()
-            target_path.write_text(code, encoding="utf-8")
-
-            # Step 3b: Dynamic Runtime Dry-Run Verification with Closed-Loop Self-Repair
-            runtime_status = "AST Verified"
-            if clean_rel.endswith(".py"):
-                max_repair_attempts = 3
-                repair_attempt = 0
-                while repair_attempt < max_repair_attempts:
-                    try:
-                        dry_run_code = (
-                            f"import sys\n"
-                            f"sys.path.insert(0, r'{project_root / 'src'}')\n"
-                            f"sys.path.insert(1, r'{project_root}')\n"
-                            f"import importlib.util\n"
-                            f"spec = importlib.util.spec_from_file_location('dry_run_mod', r'{target_path}')\n"
-                            f"if spec and spec.loader:\n"
-                            f"    mod = importlib.util.module_from_spec(spec)\n"
-                            f"    spec.loader.exec_module(mod)\n"
-                            f"print('DRY_RUN_SUCCESS')\n"
-                        )
-                        proc = subprocess.run(
-                            [sys.executable, "-c", dry_run_code],
-                            capture_output=True,
-                            text=True,
-                            timeout=10,
-                            cwd=str(project_root),
-                        )
-                        if proc.returncode == 0 and "DRY_RUN_SUCCESS" in proc.stdout:
-                            if repair_attempt > 0:
-                                runtime_status = f"PASSED (0 Errors — Auto-Repaired in Attempt {repair_attempt + 1})"
-                            else:
-                                runtime_status = "PASSED (0 Errors)"
-                            break
-                        else:
-                            stderr_msg = (proc.stderr or proc.stdout).strip()
-                            repair_attempt += 1
-                            if repair_attempt >= max_repair_attempts:
-                                last_err = stderr_msg.split("\n")[-1]
-                                runtime_status = f"AST Verified (Runtime Warning: {last_err})"
-                                break
-
-                            # Trigger Closed-Loop Self-Repair Prompt
-                            repair_prompt = (
-                                f"The generated Python file '{clean_rel}' failed during execution/import test.\n"
-                                f"WORKSPACE ROOT: {project_root}\n"
-                                f"PROJECT STRUCTURE: 'src/' contains 'gui/widgets/jarvis_rings_overlay.py', 'tools/', 'brain/', etc.\n"
-                                f"ERROR TRACEBACK:\n{stderr_msg}\n\n"
-                                f"PREVIOUS CODE:\n```python\n{code}\n```\n\n"
-                                f"Please fix the imports, missing modules, or runtime errors and output the complete corrected code in a ```python ... ``` block."
-                            )
-                            try:
-                                repair_resp = self.provider_manager.chat(
-                                    ChatRequest(
-                                        messages=[
-                                            ChatMessage(role="system", content="You are an autonomous self-healing software engineer."),
-                                            ChatMessage(role="user", content=repair_prompt),
-                                        ],
-                                        model=self.model,
-                                        temperature=0.1,
-                                        max_tokens=4096,
-                                    )
-                                )
-                                repair_blocks = re.findall(r"```(?:python|py)?\s*\n([\s\S]*?)```", repair_resp.text)
-                                if repair_blocks:
-                                    code = max(repair_blocks, key=len).replace("from PyQt5", "from PySide6").replace("import PyQt5", "import PySide6")
-                                    ast.parse(code)
-                                    target_path.write_text(code, encoding="utf-8")
-                            except Exception:
-                                break
-                    except subprocess.TimeoutExpired:
-                        runtime_status = "AST Verified (Runtime: Timed out safely)"
-                        break
-                    except Exception as ex:
-                        runtime_status = f"AST Verified (Dry-run notice: {ex})"
-                        break
-
-            action_label = "Updated" if is_update else "Created"
-            applied_files.append(f"- ✅ **`{clean_rel}`** ({action_label}, AST & Dynamic Runtime Dry-Run {runtime_status})")
-
-            # Auto-export in __init__.py if widget
-            if "src/gui/widgets" in clean_rel and not clean_rel.endswith("__init__.py"):
-                try:
-                    init_p = project_root / "src" / "gui" / "widgets" / "__init__.py"
-                    mod_name = Path(clean_rel).stem
-                    class_match = re.search(r"class\s+([A-Za-z0-9_]+)\s*\(", code)
-                    if class_match and init_p.exists():
-                        cls_name = class_match.group(1)
-                        init_text = init_p.read_text(encoding="utf-8")
-                        if cls_name not in init_text:
-                            new_import = f"from .{mod_name} import {cls_name}\n"
-                            init_text = new_import + init_text
-                            if "__all__ = [" in init_text:
-                                init_text = init_text.replace("__all__ = [", f'__all__ = [\n    "{cls_name}",')
-                            init_p.write_text(init_text, encoding="utf-8")
-                except Exception:
-                    pass
-
-        # Step 4: Build transparent execution report
-        report_block = "\n".join(applied_files) + "\n\n---\n" if applied_files else ""
-        exec_notes = re.split(r"#{1,4}\s*FILE:", raw_text, flags=re.IGNORECASE)[0].strip() or "Autonomous engineering task processed successfully."
-
-        summary = (
-            f"🛠️ **Aura Autonomous Engineering Engine**\n\n"
-            f"**Goal:** `{goal}`\n"
-            f"**Workspace:** `{project_root}`\n"
-            f"**Verification:** `AST Syntax Validation: PASSED (100% Green)`\n\n"
-            + (f"### 📦 Files Created / Updated on Disk:\n{report_block}" if report_block else "")
-            + f"### 📋 Execution Notes:\n{exec_notes}"
-        )
-
-        self._save_turn(context, summary)
-        return ConversationResult(
-            text=summary,
-            intent=Intent("autonomous_engineering"),
-            used_provider=True,
-            provider="groq",
-            model=self.model,
-        )
+            summary = (
+                f"🛠️ **Aura Engineering Execution ({status_text})**\n\n"
+                f"**Goal:** `{goal}`\n"
+                f"**Planner:** `{getattr(res, 'planner', 'master_orchestrator')}`\n\n"
+                f"### 📋 Execution Observations:\n{obs_text}"
+            )
+            self._save_turn(context, summary)
+            return ConversationResult(
+                text=summary,
+                intent=context.intent,
+                used_provider=True,
+                provider="master_orchestrator",
+                model=getattr(self, "model", "dynamic"),
+            )
+        except Exception as exc:
+            err_msg = f"Autonomous engineering execution failed: {exc}"
+            logger.error(f"[ConversationEngine] {err_msg}", exc_info=True)
+            self._save_turn(context, err_msg)
+            return ConversationResult(text=err_msg, intent=context.intent)
 
     def _process_project_doc_update(self, context: ConversationContext) -> ConversationResult:
         project_root = Path(__file__).resolve().parents[2]
@@ -1483,6 +1311,7 @@ class ConversationEngine:
             data = intent.data or {}
             ticket_id = (data.get("ticket_id") or "").strip()
             decision = data.get("decision", "approve")  # "approve" or "deny"
+            is_all = data.get("all", False) or ticket_id.upper() == "ALL"
 
             # 1. Handle browser ticket (AUTH-XXXX or TICK-XXXX)
             if ticket_id and (ticket_id.startswith("AUTH-") or ticket_id.startswith("TICK-")):
@@ -1503,20 +1332,15 @@ class ConversationEngine:
                 auth_inst = CryptographicApprovalAuthority.get_instance()
                 os_store = PersonalOSStateStore.get_instance()
 
-                target_ticket = None
-                if ticket_id:
-                    target_ticket = auth_inst.get_ticket(ticket_id)
-                else:
-                    pending = auth_inst.get_pending_tickets()
-                    if pending:
-                        target_ticket = pending[-1]
-
-                if target_ticket:
+                def _process_ticket(target_ticket, dec):
                     t_id = target_ticket.ticket_id
-                    raw_act = target_ticket.target or target_ticket.action_type or "action"
+                    if target_ticket.action_type and target_ticket.action_type not in ("command", "action"):
+                        raw_act = target_ticket.action_type
+                    else:
+                        raw_act = target_ticket.target or target_ticket.action_type or "action"
                     act_name = raw_act.replace("_", " ").replace(".", " ").title()
 
-                    if decision == "deny":
+                    if dec == "deny":
                         auth_inst.revoke_ticket(t_id)
                         os_store.mark_suspended_session_status(t_id, "CANCELLED")
                         if target_ticket.action_type in ("terminal_execution", "shell_execution"):
@@ -1527,17 +1351,35 @@ class ConversationEngine:
 
                         # Handle terminal/shell execution tickets directly
                         if target_ticket.action_type in ("terminal_execution", "shell_execution"):
-                            from desktop.native.managers.shell_executor import execute_command
-                            cmd_to_run = target_ticket.target or target_ticket.metadata.get("command", "")
-                            cwd = target_ticket.metadata.get("cwd")
-                            auth_inst.verify_and_redeem(
+                            cmd_to_run = target_ticket.target
+                            if not cmd_to_run:
+                                return "❌ Security Error: Approval ticket has no target command. Execution aborted."
+
+                            params = getattr(target_ticket, "parameters", None) or getattr(target_ticket, "metadata", None) or {}
+                            cwd = params.get("cwd")
+                            if not cwd:
+                                return "❌ Security Error: Approval ticket has no bound working directory ('cwd'). Execution aborted."
+
+                            from desktop.native.sandbox.workspace_jail import validate_and_resolve_cwd
+                            is_valid, res_or_err = validate_and_resolve_cwd(cwd)
+                            if not is_valid:
+                                return f"❌ Security Error: Ticket working directory violation: {res_or_err}"
+                            resolved_cwd = res_or_err
+
+                            # Enforce fail-closed cryptographic verification
+                            valid_sig, auth_err = auth_inst.verify_and_redeem(
                                 ticket_id=t_id,
                                 signature=sig,
                                 action_type=target_ticket.action_type,
-                                target=target_ticket.target,
-                                parameters=target_ticket.parameters,
+                                target=cmd_to_run,
+                                parameters=params,
                             )
-                            result = execute_command(cmd_to_run, cwd=cwd)
+
+                            if not valid_sig:
+                                return f"❌ Security Error: Ticket authorization failed ({auth_err}). Command execution aborted."
+
+                            from desktop.native.managers.shell_executor import execute_command
+                            result = execute_command(cmd_to_run, cwd=resolved_cwd)
                             return result.format_response()
 
                         suspended = os_store.get_suspended_session(t_id)
@@ -1553,8 +1395,34 @@ class ConversationEngine:
                                     loop.run_until_complete(orchestrator.approve_and_resume_ticket(t_id, signature=sig))
                             except Exception as run_err:
                                 logger.debug(f"[ConversationEngine] Resume ticket task dispatch: {run_err}")
+                        else:
+                            # Standalone ticket without a suspended session: redeem directly
+                            params = getattr(target_ticket, "parameters", None) or getattr(target_ticket, "metadata", None) or {}
+                            auth_inst.verify_and_redeem(
+                                ticket_id=t_id,
+                                signature=sig,
+                                action_type=target_ticket.action_type,
+                                target=target_ticket.target,
+                                parameters=params,
+                            )
 
                         return f"✅ **Approved:** Permission granted for **{act_name}**. Resuming execution."
+
+                if is_all:
+                    pending_tickets = auth_inst.get_pending_tickets()
+                    if pending_tickets:
+                        return "\n\n".join([_process_ticket(pt, decision) for pt in pending_tickets])
+
+                target_ticket = None
+                if ticket_id:
+                    target_ticket = auth_inst.get_ticket(ticket_id)
+                else:
+                    pending = auth_inst.get_pending_tickets()
+                    if pending:
+                        target_ticket = pending[-1]
+
+                if target_ticket:
+                    return _process_ticket(target_ticket, decision)
 
                 # 3. Check for paused browser session if no desktop ticket was found
                 try:
@@ -1724,6 +1592,19 @@ class ConversationEngine:
                         return f"📂 **{folder_path.name} folder is already organized.** (No loose files found)"
 
                 elif verb == "run":
+                    # Defense-in-depth: Check if target is a natural language diagnostics request
+                    target_lower = (target or "").lower().strip()
+                    if any(kw in target_lower for kw in (
+                        "system diagnostics", "full system diagnostics", "hardware diagnostics",
+                        "system status", "pc diagnostics", "system health", "full diagnostics"
+                    )) or target_lower in ("diagnostics", "diagnostic"):
+                        try:
+                            from tools.system_diagnostics_service import SystemDiagnosticsService
+                            report = SystemDiagnosticsService.get_full_system_report()
+                            return report.get("markdown", "⚡ System diagnostics unavailable.")
+                        except Exception as e:
+                            return f"⚡ System diagnostics error: {e}"
+
                     # Shell command execution path.
                     # LOW-risk read-only commands are executed directly with
                     # output verification. MEDIUM/HIGH require human confirmation via
@@ -1733,9 +1614,19 @@ class ConversationEngine:
                         classify_command,
                         execute_low_risk,
                     )
+                    from desktop.native.sandbox.workspace_jail import validate_and_resolve_cwd
+
+                    # 1. Validate and resolve working directory against dedicated terminal WorkspaceJail
+                    explicit_cwd = (intent.data or {}).get("cwd")
+                    is_valid, res_or_err = validate_and_resolve_cwd(explicit_cwd)
+                    if not is_valid:
+                        return f"❌ {res_or_err}"
+                    resolved_cwd = res_or_err
+
+                    # 2. Classify risk tier and enforce gate
                     risk = classify_command(target)
                     if risk == "LOW":
-                        result = execute_low_risk(target)
+                        result = execute_low_risk(target, cwd=resolved_cwd)
                         return result.format_response()
                     else:
                         from desktop.native.security.approval_authority import CryptographicApprovalAuthority
@@ -1743,11 +1634,14 @@ class ConversationEngine:
                         ticket_id = auth.create_ticket(
                             action_type="terminal_execution",
                             target=target,
-                            description=f"Execute shell command: {target}",
+                            parameters={"cwd": resolved_cwd},
+                            description=f"Execute shell command: {target} in {resolved_cwd}",
                         )
                         return (
                             f"⚠️ `{target}` is classified as a **{risk}-risk** command and requires an approval ticket before execution.\n\n"
-                            f"Proceed with `{target}` to the repository / system? (yes/no)\n\n"
+                            f"• **Command:** `{target}`\n"
+                            f"• **Directory:** `{resolved_cwd}`\n\n"
+                            f"Proceed with execution? (yes/no)\n\n"
                             f"*(Approval ticket: `{ticket_id}`)*"
                         )
 
@@ -1804,19 +1698,25 @@ class ConversationEngine:
                         if res.success:
                             reused = (res.data or {}).get("reused", False)
                             is_web = bool((res.data or {}).get("web_url"))
+                            is_folder = bool((res.data or {}).get("folder_path"))
                             if reused:
                                 msg = f"✓ {target.title()} is already open — brought to front."
                             elif is_web:
                                 msg = f"✓ Opened {target.title()} in your web browser."
+                            elif is_folder:
+                                folder_p = (res.data or {}).get("folder_path")
+                                msg = f"✓ Opened {target.title()} ({folder_p}) in File Explorer."
                             else:
                                 msg = f"✓ {target.title()} is open."
                             return msg
-                        return f"❌ {res.error or f'Could not open {target}.'}"
+                        err_msg = getattr(res, "error", None) or (res.observations[0] if getattr(res, "observations", None) else None) or f"Could not open {target}."
+                        return f"❌ {err_msg}"
 
                     elif verb in ("close", "kill"):
                         if res.success:
                             return f"✓ Closed {target.title()}."
-                        return f"❌ {res.error or f'Could not close {target}.'}"
+                        err_msg = getattr(res, "error", None) or (res.observations[0] if getattr(res, "observations", None) else None) or f"Could not close {target}."
+                        return f"❌ {err_msg}"
 
                     else:
                         if res.observations:
@@ -1824,7 +1724,8 @@ class ConversationEngine:
                         elif res.success:
                             return f"✓ {verb.title()} {target} completed successfully."
                         else:
-                            return f"⚠️ {res.error or 'Action could not be completed.'}"
+                            err_msg = getattr(res, "error", None) or "Action could not be completed."
+                            return f"⚠️ {err_msg}"
             except Exception as e:
                 return f"⚠️ Desktop automation error: {e}"
 

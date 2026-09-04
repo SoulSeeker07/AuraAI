@@ -187,7 +187,49 @@ class FileManager(BaseNativeManager):
             pass
         return total
 
+    def _record_artifact_if_applicable(self, result: DesktopResult) -> None:
+        """Extract generated files from successful mutating file operations and register with bridge."""
+        if not result.success or not isinstance(result.data, dict):
+            return
+
+        try:
+            from gui.real_backend_bridge import RealBackendBridge
+            bridge = RealBackendBridge.get_instance()
+            paths_to_record: list[str] = []
+
+            # 1. Single target path operations (create, write)
+            if "path" in result.data and result.capability in ("file.create", "file.write", "create.file", "write.file"):
+                paths_to_record.append(result.data["path"])
+            elif "destination" in result.data:
+                paths_to_record.append(result.data["destination"])
+            elif "archive_path" in result.data:
+                paths_to_record.append(result.data["archive_path"])
+
+            # 2. Multi-file operations (decompress, organize)
+            if "extracted_files" in result.data and isinstance(result.data["extracted_files"], list):
+                paths_to_record.extend(result.data["extracted_files"])
+            elif "moved" in result.data and isinstance(result.data["moved"], list):
+                paths_to_record.extend([m["destination"] for m in result.data["moved"] if isinstance(m, dict) and "destination" in m])
+
+            for p in paths_to_record:
+                p_obj = Path(p)
+                if p_obj.exists() and p_obj.is_file():
+                    bridge.record_artifact(name=p_obj.name, path=str(p_obj.resolve()), artifact_type="file")
+        except Exception as exc:
+            logger.debug(f"[FileManager] Artifact registration notice: {exc}")
+
     def execute(
+        self,
+        capability: str,
+        goal: str = "",
+        arguments: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> DesktopResult:
+        result = self._execute_internal(capability, goal, arguments, **kwargs)
+        self._record_artifact_if_applicable(result)
+        return result
+
+    def _execute_internal(
         self,
         capability: str,
         goal: str = "",
@@ -718,12 +760,17 @@ class FileManager(BaseNativeManager):
                             )
 
                     zf.extractall(extract_dir)
+                    extracted_members = [
+                        str((extract_dir / member.filename).resolve())
+                        for member in zf.infolist()
+                        if not member.is_dir()
+                    ]
 
                 return DesktopResult.create_success(
                     goal=goal,
                     capability=capability,
                     manager=self.name,
-                    data={"extracted_to": str(extract_dir)},
+                    data={"extracted_to": str(extract_dir), "extracted_files": extracted_members},
                     events=["archive_extracted"],
                 )
 

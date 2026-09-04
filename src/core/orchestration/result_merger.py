@@ -6,12 +6,16 @@ Combines observations, artifacts, execution traces, and subsystem results
 into a unified ExecutionResult and updates the AgentSession.
 """
 
+import logging
 import uuid
+from pathlib import Path
 from typing import Any
 
 from ..planning.execution_result import ExecutionResult
 from ..planning.execution_trace import ExecutionTrace
 from .agent_session import AgentSession
+
+logger = logging.getLogger(__name__)
 
 
 class ResultMerger:
@@ -92,6 +96,20 @@ class ResultMerger:
         extracted_captures: list[dict[str, Any]] = []
 
         for art in session.artifacts:
+            loc = getattr(art, "location", "")
+            if loc:
+                try:
+                    p_obj = Path(loc).resolve()
+                    if p_obj.exists() and p_obj.is_file():
+                        from gui.real_backend_bridge import RealBackendBridge
+                        RealBackendBridge.get_instance().record_artifact(
+                            name=p_obj.name,
+                            path=str(p_obj),
+                            artifact_type=getattr(art, "artifact_type", "file"),
+                        )
+                except Exception as exc:
+                    logger.warning(f"[ResultMerger] Failed to register artifact at '{loc}': {exc}", exc_info=True)
+
             art_data = getattr(art, "content", None)
             if isinstance(art_data, dict):
                 if art_data.get("citations"):

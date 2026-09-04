@@ -393,9 +393,19 @@ class FileService:
         return candidates[:max_results]
 
     def find_best_file(self, query: str) -> Path | None:
-        """Find the single most relevant file for the given query."""
+        """Find the single most relevant file for the given query.
+
+        Threshold is 0.75 (not 0.5) — calibrated so that single-token
+        coincidences (e.g. "status" matching architecture_status.md for
+        query "git status") don't clear the bar. A genuine name match
+        scores >= 0.98; a clear partial match (query substring in stem)
+        scores >= 0.90. The 0.75 floor admits fuzzy-but-meaningful matches
+        while rejecting noise. Recalibrate against the eval corpus once
+        classification logging is in place.
+        """
+        _CONFIDENCE_FLOOR = 0.75
         results = self.find_files(query, max_results=1)
-        if results and results[0]["score"] >= 0.5:
+        if results and results[0]["score"] >= _CONFIDENCE_FLOOR:
             return results[0]["path"]
         return None
 

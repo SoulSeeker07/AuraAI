@@ -61,6 +61,25 @@ class ContextBuilder:
 
         memory_context = self.memory.get_context() if self.memory else ""
         messages = self._system_messages()
+
+        # Inject deterministic ProfileMemory facts (Tier 3: Identity & Preferences)
+        try:
+            from src.memory.profile_memory import ProfileMemory
+            prof_inst = ProfileMemory.get_instance()
+            identity = prof_inst.get_identity()
+            prefs = prof_inst.get_preferences()
+            if identity or prefs:
+                prof_lines = []
+                if identity:
+                    prof_lines.append(f"Identity: {identity}")
+                if prefs:
+                    prof_lines.append(f"Preferences: {prefs}")
+                messages.append(
+                    ChatMessage("system", "Verified User Profile (Deterministic):\n" + "\n".join(prof_lines))
+                )
+        except Exception as e:
+            logger.debug(f"[ContextBuilder] ProfileMemory injection skipped: {e}")
+
         if memory_context:
             messages.append(
                 ChatMessage("system", f"Known user memory:\n{memory_context}")
@@ -230,12 +249,15 @@ class ContextBuilder:
                     "1. **Concise & Direct Responses**: Give straightforward, helpful, and natural answers without conversational filler, boilerplate, or robotic commentary.\n"
                     "2. **Speech & Translation Directness**: When asked to translate, speak, or say a phrase in any language (such as Hindi, Kannada, etc.), output ONLY the direct, natural translation/phrase in that language. Do NOT add pronunciation guides, phonetic brackets, or meta-explanations (like 'feed this into a TTS engine') unless explicitly asked.\n"
                     "3. **Localization & Regional E-Commerce (India / INR / Amazon.in)**: The user is located in India. Always default to Indian market prices in Indian Rupees (INR / ₹) and Indian regional platforms (e.g. Amazon.in, Flipkart) for product, pricing, and shopping queries unless the user specifically specifies another country or currency (such as US, UK, or dollars).\n"
+                    "4. **Truthfulness & Telemetry Honesty**: NEVER fabricate, hallucinate, or make up device statuses, connected peripherals, hardware battery levels, or system telemetry that have not been provided in your system context. If live system information is not available, state honestly that the live telemetry is not available."
                 ),
             ),
             ChatMessage("system", f"Current local time: {now} (IST, India)."),
         ]
 
     def _recent_messages(self, limit: int) -> list[ChatMessage]:
+        if not self.memory:
+            return []
         messages = []
         for item in self.memory.recent_messages(limit=limit):
             role = cast(MessageRole, str(item["role"]))

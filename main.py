@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import io
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -234,81 +235,74 @@ def main_gui():
 
 def main():
     """Main entry point for AuraAI."""
-    parser = argparse.ArgumentParser(
-        description="AuraAI - Multi-Agent AI Assistant",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python main.py              # Run CLI mode (default)
-  python main.py --cli        # Run CLI mode
-  python main.py --gui        # Run GUI mode
-  python main.py --help       # Show help
+    raw_argv = sys.argv[1:]
 
-Modes:
-  CLI    - Interactive command-line interface
-  GUI    - Graphical user interface (QML)
-        """,
-    )
-
-    parser.add_argument(
-        "--doctor", action="store_true", help="Run Aura Doctor diagnostics"
-    )
-
-    parser.add_argument(
-        "--inspect", action="store_true", help="Run Aura Inspector debugging dashboard"
-    )
-
-    parser.add_argument(
-        "--verify", action="store_true", help="Run CI quality pipeline verification"
-    )
-
-    parser.add_argument("--cli", action="store_true", help="Run in CLI mode (default)")
-
-    parser.add_argument("--gui", action="store_true", help="Run in GUI mode")
-
-    parser.add_argument("--notch", "--voice", action="store_true", help="Launch Voice Notch overlay (Dynamic Island HUD)")
-
-    parser.add_argument("--tts", "--speak", action="store_true", help="Speak Aura's response aloud using Text-to-Speech")
-
-    parser.add_argument("--workspace", type=str, help="Override workspace path")
-
-    parser.add_argument("query", nargs="*", default=[], help="Direct command or query to execute")
-
-    args = parser.parse_args()
-
-    query_text = " ".join(args.query).strip() if args.query else ""
-
-    if args.doctor:
+    # Check for known top-level action flags first
+    if "--doctor" in raw_argv:
         from engineering.doctor import AuraDoctor
-
         doctor = AuraDoctor(project_root=PROJECT_ROOT)
         doctor.diagnose()
         sys.exit(0)
-    elif args.inspect:
+    elif "--inspect" in raw_argv:
         from engineering.inspector import AuraInspector
-
         inspector = AuraInspector(project_root=PROJECT_ROOT)
         inspector.inspect()
         sys.exit(0)
-    elif args.verify:
+    elif "--verify" in raw_argv:
         from engineering.doctor import AuraVerifier
-
         verifier = AuraVerifier(project_root=PROJECT_ROOT)
         success = verifier.run_verify()
         sys.exit(0 if success else 1)
-    elif args.notch:
+    elif ("--notch" in raw_argv or "--voice" in raw_argv) and len(raw_argv) == 1:
         import run_voice_notch
         return run_voice_notch.main()
-    elif args.gui:
-        # GUI mode
+    elif "--gui" in raw_argv and len(raw_argv) == 1:
         gui_client = main_gui()
         return gui_client
-    elif query_text.lower() in ("notch", "voice"):
+
+    # Parse and extract global flags while preserving subcommand arguments (e.g. -m "msg")
+    tts_enabled = False
+    cleaned_tokens = []
+    i = 0
+    while i < len(raw_argv):
+        arg = raw_argv[i]
+        if arg in ("--tts", "--speak"):
+            tts_enabled = True
+        elif arg == "--cli":
+            pass
+        elif arg == "--workspace" and i + 1 < len(raw_argv):
+            i += 1  # Skip workspace path argument
+        elif arg in ("-h", "--help") and len(raw_argv) == 1:
+            parser = argparse.ArgumentParser(
+                description="AuraAI - Multi-Agent AI Assistant",
+                formatter_class=argparse.RawDescriptionHelpFormatter,
+                epilog="""
+Examples:
+  aura                        # Run Voice Notch / CLI mode
+  aura --doctor               # Run diagnostics
+  aura --verify               # Run CI verification pipeline
+  aura git status             # Check repository status
+  aura git commit -m "msg"    # Commit staged changes
+  aura push git               # Push commits to remote
+                """,
+            )
+            parser.print_help()
+            sys.exit(0)
+        else:
+            cleaned_tokens.append(arg)
+        i += 1
+
+    query_text = subprocess.list2cmdline(cleaned_tokens).strip() if cleaned_tokens else ""
+
+    if query_text.lower() in ("notch", "voice"):
         import run_voice_notch
         return run_voice_notch.main()
+    elif query_text.lower() == "gui":
+        gui_client = main_gui()
+        return gui_client
     else:
         # CLI mode (interactive or one-shot query)
-        asyncio.run(main_cli(query_text, tts_enabled=args.tts))
+        asyncio.run(main_cli(query_text, tts_enabled=tts_enabled))
         return None
 
 

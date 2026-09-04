@@ -26,6 +26,7 @@ class JobState(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    SUSPENDED = "suspended"
     RECOVERY_REQUIRED = "recovery_required"
 
 

@@ -53,8 +53,9 @@ def test_chat_overlay_fifo_pruning_settles_at_max_cards(qapp):
         assert isinstance(widget, ChatOverlayMessageCard)
         # Find the body QLabel inside the card
         body_labels = widget.findChildren(QLabel)
-        # Message text is the last QLabel in the card
-        msg_text = body_labels[-1].text()
+        # Message text is the last QLabel in the card (strip HTML div styling)
+        import re
+        msg_text = re.sub(r"<[^>]+>", "", body_labels[-1].text()).strip()
         card_texts.append(msg_text)
 
     # 1. Assert exactly 10 cards exist

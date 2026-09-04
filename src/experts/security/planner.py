@@ -186,13 +186,13 @@ class CybersecurityExpertPlanner(DomainExpertPlanner):
             causal_context=dict(assessment.causal_context),
         )
 
-        # Stage 1: Parallel Secrets & Attack Surface Discovery (Read-only)
+        # Stage 1: Parallel Secrets & Attack Surface Discovery (Observational)
         plan.add_node(
             PlanNode(
                 node_id="sec_cred_scan_01",
                 capability="security.credential_scan",
                 description="Scan workspace files and configuration files for exposed secrets and tokens.",
-                risk_level=ActionRisk.LOW,
+                risk_level=ActionRisk.HIGH,
             )
         )
         plan.add_node(

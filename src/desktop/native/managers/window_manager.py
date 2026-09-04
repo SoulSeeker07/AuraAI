@@ -208,6 +208,17 @@ class WindowManager(BaseNativeManager):
         "whatsapp",
         "antigravity",
         "start_menu",
+        "instagram",
+        "youtube",
+        "gmail",
+        "twitter",
+        "x",
+        "reddit",
+        "github",
+        "linkedin",
+        "facebook",
+        "netflix",
+        "chatgpt",
     ]
 
     FAST_PATH_ALIASES = {
@@ -241,6 +252,12 @@ class WindowManager(BaseNativeManager):
         "anti gravity": "antigravity",
         "anti-gravity": "antigravity",
         "anti gravity ide": "antigravity",
+        "intagram": "instagram",
+        "insta": "instagram",
+        "ig": "instagram",
+        "yt": "youtube",
+        "fb": "facebook",
+        "mail": "gmail",
     }
 
     WEB_FALLBACK_MAP = {
@@ -254,7 +271,104 @@ class WindowManager(BaseNativeManager):
         "reddit": "https://reddit.com",
         "github": "https://github.com",
         "linkedin": "https://linkedin.com",
+        "facebook": "https://www.facebook.com",
+        "netflix": "https://www.netflix.com",
+        "chatgpt": "https://chatgpt.com",
     }
+
+    def _resolve_drive_or_volume(self, clean_target: str, app_clean: str) -> str | None:
+        """
+        Dynamically discover and match Windows drives, drive letters, and volume labels.
+        Supports inputs such as:
+        - 'c:', 'd:', 'c drive', 'drive d', 'c', 'd'
+        - 'new volume', 'new volume d', 'new volumd', 'new volume (d:)', 'volume d', 'volumd'
+        - 'windows-ssd', 'windows ssd'
+        """
+        import difflib
+        import os
+        import re
+
+        target_str = clean_target or app_clean
+        if not target_str:
+            return None
+
+        # Direct letter matching: e.g. "c", "c:", "c:\"
+        m = re.match(r"^([a-zA-Z]):?\\?$", target_str)
+        if m:
+            drive_root = f"{m.group(1).upper()}:\\"
+            if os.path.exists(drive_root):
+                return drive_root
+
+        # Keyword drive letter matching: e.g. "c drive", "drive c", "volume d", "volumd", "new volumd", "new volume d"
+        m = re.search(r"\b(?:drive|disk|volume|volum)\s*([a-zA-Z])\b", target_str)
+        if not m:
+            m = re.search(r"\b([a-zA-Z])\s*(?:drive|disk|volume|volum)\b", target_str)
+        if m:
+            drive_root = f"{m.group(1).upper()}:\\"
+            if os.path.exists(drive_root):
+                return drive_root
+
+        # Query all logical drives on the system
+        discovered_drives: list[tuple[str, str, str]] = []
+        try:
+            import win32api
+            raw_drives = [d for d in win32api.GetLogicalDriveStrings().split("\x00") if d]
+        except Exception:
+            raw_drives = [f"{chr(c)}:\\" for c in range(ord("A"), ord("Z") + 1) if os.path.exists(f"{chr(c)}:\\")]
+
+        for d in raw_drives:
+            letter = d[0].upper()
+            vol_name = ""
+            try:
+                import win32api
+                vol_name = win32api.GetVolumeInformation(d)[0] or ""
+            except Exception:
+                pass
+            discovered_drives.append((letter, d, vol_name))
+
+        norm_target = re.sub(r"[^a-z0-9]", "", target_str)
+        if not norm_target:
+            return None
+
+        best_match = None
+        best_ratio = 0.0
+
+        for letter, path, vol in discovered_drives:
+            if norm_target == letter.lower():
+                return path
+
+            candidates = [
+                f"{letter.lower()}drive",
+                f"drive{letter.lower()}",
+                f"localdisk{letter.lower()}",
+                f"volume{letter.lower()}",
+                f"volum{letter.lower()}",
+            ]
+            if vol:
+                vol_clean = vol.lower()
+                candidates.extend([
+                    vol_clean,
+                    f"{vol_clean} {letter.lower()}",
+                    f"{vol_clean}{letter.lower()}",
+                    f"{vol_clean} ({letter.lower()}:)",
+                    f"{vol_clean} {letter.lower()} drive",
+                ])
+
+            for cand in candidates:
+                norm_cand = re.sub(r"[^a-z0-9]", "", cand)
+                if not norm_cand:
+                    continue
+                if norm_target == norm_cand:
+                    return path
+                ratio = difflib.SequenceMatcher(None, norm_target, norm_cand).ratio()
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_match = path
+
+        if best_ratio >= 0.82 and best_match:
+            return best_match
+
+        return None
 
     def _resolve_app_executable(self, app_name: str) -> tuple[str, str | None]:
         """
@@ -269,7 +383,7 @@ class WindowManager(BaseNativeManager):
         import shutil
         import winreg
 
-        app_clean = (app_name or "").lower().strip()
+        app_clean = (app_name or "").lower().strip().rstrip(".?!,;:")
         if not app_clean:
             return ("exe", "notepad.exe")
 
@@ -301,10 +415,10 @@ class WindowManager(BaseNativeManager):
             std_path = Path.home() / fname
             return ("folder", str(std_path))
 
-        if clean_target in ("c drive", "c:", "c:\\", "c"):
-            return ("folder", "C:\\")
-        if clean_target in ("d drive", "d:", "d:\\", "d"):
-            return ("folder", "D:\\")
+        # Check drives and volumes (dynamic OS discovery for C:, D:, New Volume, New VolumD, etc.)
+        drive_path = self._resolve_drive_or_volume(clean_target, app_clean)
+        if drive_path:
+            return ("folder", drive_path)
         if clean_target in ("explorer", "file explorer", "this pc", "my computer", "files"):
             return ("exe", "explorer.exe")
         if os.path.isdir(app_clean):
@@ -323,8 +437,9 @@ class WindowManager(BaseNativeManager):
             else:
                 resolved_name = app_clean
 
-        # Check direct web app keywords
-        if resolved_name in self.WEB_FALLBACK_MAP and resolved_name in ("instagram", "youtube", "gmail", "twitter", "x", "reddit", "github", "linkedin"):
+        # Check direct web app keywords (apps that run primarily in browser)
+        web_only_apps = ("instagram", "youtube", "gmail", "twitter", "x", "reddit", "github", "linkedin", "facebook", "netflix", "chatgpt")
+        if resolved_name in self.WEB_FALLBACK_MAP and (resolved_name in web_only_apps or resolved_name not in ("spotify", "whatsapp")):
             return ("url", self.WEB_FALLBACK_MAP[resolved_name])
 
         # Executable mapping for known desktop apps

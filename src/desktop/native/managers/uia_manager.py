@@ -85,6 +85,7 @@ class UIAManager(BaseNativeManager):
             "uia.wait_for_element",
             # Interaction (HIGH risk, requires_confirmation)
             "uia.click",
+            "uia.double_click",
             "uia.type_text",
             "uia.invoke",
             "uia.select_item",
@@ -159,6 +160,8 @@ class UIAManager(BaseNativeManager):
                 return self._execute_wait_for_element(arguments)
             elif capability == "uia.click":
                 return self._execute_click(arguments)
+            elif capability == "uia.double_click":
+                return self._execute_double_click(arguments)
             elif capability == "uia.type_text":
                 return self._execute_type_text(arguments)
             elif capability == "uia.invoke":
@@ -445,6 +448,29 @@ class UIAManager(BaseNativeManager):
                 "post_value": post_value,
                 "state_changed": state_changed,
                 "verification_passed": state_changed if success else False,
+            },
+        )
+
+    def _execute_double_click(self, args: dict[str, Any]) -> DesktopResult:
+        """Double-click a UI element (opens folders, drives, desktop shortcuts)."""
+        window_title = args.get("window_title", "")
+        if not window_title:
+            return DesktopResult(success=False, error="window_title is required")
+
+        element, err = self._resolve_target_element(args, window_title)
+        if err or not element:
+            return DesktopResult(
+                success=False, error=err or "Target element not found", data={"window_title": window_title}
+            )
+
+        success = self.adapter.double_click_element(element, window_title)
+
+        return DesktopResult(
+            success=success,
+            error=None if success else f"Double-click failed on {element.display_name}",
+            data={
+                "element_name": element.display_name,
+                "double_clicked": True,
             },
         )
 

@@ -59,8 +59,9 @@ class CryptographicApprovalAuthority:
 
     _instance: Optional["CryptographicApprovalAuthority"] = None
     _lock: threading.Lock = threading.Lock()
+    DEFAULT_STORAGE_PATH: Optional[Path] = None
 
-    def __init__(self, use_dpapi_kdf: bool = True) -> None:
+    def __init__(self, use_dpapi_kdf: bool = True, storage_path: Path | None = None) -> None:
         if use_dpapi_kdf:
             try:
                 from .dpapi_key_manager import DPAPIKeyManager
@@ -75,11 +76,18 @@ class CryptographicApprovalAuthority:
         else:
             self._secret_key = secrets.token_bytes(32)
             self._key_meta = None
+        self._storage_path: Path | None = storage_path
         self._tickets: dict[str, ApprovalTicket] = {}
         self._ticket_lock: threading.Lock = threading.Lock()
         self._load_persisted_tickets()
 
     def _get_storage_path(self) -> Path:
+        if self._storage_path is not None:
+            self._storage_path.parent.mkdir(parents=True, exist_ok=True)
+            return self._storage_path
+        if self.DEFAULT_STORAGE_PATH is not None:
+            self.DEFAULT_STORAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            return self.DEFAULT_STORAGE_PATH
         p = Path(__file__).resolve().parents[4] / "storage" / "approval_tickets.json"
         p.parent.mkdir(parents=True, exist_ok=True)
         return p
@@ -128,11 +136,15 @@ class CryptographicApprovalAuthority:
             logger.debug(f"Failed to load persisted tickets: {e}")
 
     @classmethod
-    def get_instance(cls) -> "CryptographicApprovalAuthority":
+    def get_instance(cls, storage_path: Path | None = None) -> "CryptographicApprovalAuthority":
         """Get or create the singleton instance of CryptographicApprovalAuthority."""
         with cls._lock:
             if cls._instance is None:
-                cls._instance = cls()
+                cls._instance = cls(storage_path=storage_path)
+            elif storage_path is not None and cls._instance._storage_path != storage_path:
+                cls._instance._storage_path = storage_path
+                cls._instance._tickets.clear()
+                cls._instance._load_persisted_tickets()
             return cls._instance
 
     @classmethod
@@ -452,16 +464,75 @@ class CryptographicApprovalAuthority:
         except Exception as audit_err:
             logger.warning(f"Audit log failure record error: {audit_err}")
 
+    def _rehydrate_from_state_store(self, ticket_id: str) -> ApprovalTicket | None:
+        """Attempt to restore an active pending ticket from PersonalOSStateStore suspended sessions."""
+        try:
+            from personal_os.state_store import PersonalOSStateStore
+            os_store = PersonalOSStateStore.get_instance()
+            session = os_store.get_suspended_session(ticket_id)
+            if not session:
+                return None
+            if session.get("status") != "PENDING":
+                return None
+            now = time.time()
+            if session.get("expires_at", 0) <= now:
+                return None
+
+            tg = {}
+            try:
+                tg = json.loads(session.get("task_graph_json") or "{}")
+            except Exception:
+                pass
+            subtasks = tg.get("subtasks", {})
+            st_id = session.get("subtask_id")
+            st_data = subtasks.get(st_id, {})
+
+            action_type = st_data.get("capability") or "action"
+            params = st_data.get("parameters") or {}
+            target = params.get("command") or params.get("app_name") or params.get("target") or action_type
+            action_hash = self.compute_action_hash(action_type, target, params)
+
+            ticket = ApprovalTicket(
+                ticket_id=ticket_id,
+                action_type=action_type,
+                target=target,
+                action_hash=action_hash,
+                created_at=now,
+                expires_at=session["expires_at"],
+                is_redeemed=False,
+                description=st_data.get("description", f"{action_type}: {target}"),
+                metadata=params,
+            )
+            self._tickets[ticket_id] = ticket
+            self._persist_tickets()
+            return ticket
+        except Exception as err:
+            logger.debug(f"[CryptographicApprovalAuthority] State store rehydration skipped for {ticket_id}: {err}")
+            return None
+
     def get_ticket(self, ticket_id: str) -> ApprovalTicket | None:
-        """Lookup ticket by ID."""
+        """Lookup ticket by ID, rehydrating from persistent state store if needed."""
         with self._ticket_lock:
             self._load_persisted_tickets()
-            return self._tickets.get(ticket_id)
+            ticket = self._tickets.get(ticket_id)
+            if ticket is None:
+                ticket = self._rehydrate_from_state_store(ticket_id)
+            return ticket
 
     def get_pending_tickets(self) -> list[ApprovalTicket]:
         """Return list of unredeemed, unexpired tickets awaiting approval."""
         with self._ticket_lock:
             self._load_persisted_tickets()
+            try:
+                from personal_os.state_store import PersonalOSStateStore
+                os_store = PersonalOSStateStore.get_instance()
+                for sess in os_store.get_all_pending_suspended_sessions():
+                    t_id = sess.get("ticket_id")
+                    if t_id and t_id not in self._tickets:
+                        self._rehydrate_from_state_store(t_id)
+            except Exception as err:
+                logger.debug(f"[CryptographicApprovalAuthority] State store pending sync skipped: {err}")
+
             now = time.time()
             return [
                 t for t in self._tickets.values()

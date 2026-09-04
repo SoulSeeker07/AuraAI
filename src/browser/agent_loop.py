@@ -35,6 +35,9 @@ DEFAULT_MODEL: Optional[str] = os.getenv("AURA_AGENT_MODEL", None)
 DEFAULT_MAX_STEPS = 15
 
 
+_BROWSER_THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="AuraBrowserWorker")
+
+
 def _safe_thread_runner(fn):
     """
     If the caller is inside an active asyncio event loop (e.g. FastAPI / ConversationEngine async loop),
@@ -49,9 +52,8 @@ def _safe_thread_runner(fn):
             loop = None
 
         if loop is not None:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(fn, *args, **kwargs)
-                return future.result()
+            future = _BROWSER_THREAD_POOL.submit(fn, *args, **kwargs)
+            return future.result()
         return fn(*args, **kwargs)
 
     return wrapper

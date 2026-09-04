@@ -56,7 +56,6 @@ class BrowserSession:
         common_args = [
             "--disable-blink-features=AutomationControlled",
             "--no-sandbox",
-            "--test-type",
             "--window-size=1280,850",
             "--window-position=50,50",
         ]

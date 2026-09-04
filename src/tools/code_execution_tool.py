@@ -52,8 +52,11 @@ class CodeExecutionTool:
 
         # Save code to file
         try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(code)
+            from desktop.native.managers.file_manager import FileManager
+            fm = FileManager(workspace_root=str(self.workspace_root))
+            write_res = fm.execute("file.write", target=str(filepath), arguments={"content": code, "path": str(filepath)})
+            if not write_res.success:
+                raise IOError(str(write_res.error))
             logger.info(f"Saved code to {filepath}")
         except Exception as e:
             error_msg = f"Failed to save code: {e}"

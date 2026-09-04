@@ -530,7 +530,7 @@ class SciFiNavButton(QPushButton):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class HoloMessageCard(SciFiTechCard):
-    """Next-gen Sci-Fi chat message card with metadata tags and execution intent."""
+    """Next-gen Sci-Fi chat message card with metadata tags, execution intent, and interactive diagram rendering."""
 
     def __init__(self, sender: str, text: str, intent_tag: str = "EXECUTION", parent=None):
         is_usr = sender.lower() == "user"
@@ -571,19 +571,67 @@ class HoloMessageCard(SciFiTechCard):
 
         head.addStretch()
 
+        # Copy message button
+        copy_btn = QPushButton("📋 Copy")
+        copy_btn.setFont(QFont("Segoe UI", 7, QFont.Bold))
+        copy_btn.setCursor(Qt.PointingHandCursor)
+        copy_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 4px;
+                color: #94a3b8;
+                padding: 1px 6px;
+            }
+            QPushButton:hover {
+                background: rgba(0, 229, 255, 0.18);
+                border-color: #00e5ff;
+                color: #ffffff;
+            }
+        """)
+        def _do_copy():
+            from PySide6.QtGui import QGuiApplication
+            QGuiApplication.clipboard().setText(text)
+            copy_btn.setText("✓ Copied!")
+            QTimer.singleShot(1800, lambda: copy_btn.setText("📋 Copy"))
+
+        copy_btn.clicked.connect(_do_copy)
+        head.addWidget(copy_btn)
+
         clock_lbl = QLabel(QDateTime.currentDateTime().toString("HH:mm:ss"))
         clock_lbl.setFont(QFont("Consolas", 8))
         clock_lbl.setStyleSheet("color: #627289; background: transparent;")
         head.addWidget(clock_lbl)
         layout.addLayout(head)
 
-        # Message Text
-        body = QLabel(text)
-        body.setWordWrap(True)
-        body.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
-        body.setFont(QFont("Segoe UI", 10))
-        body.setStyleSheet("color: #f3f6fc; background: transparent; line-height: 1.45;")
-        layout.addWidget(body)
+        # Parse message segments: text, code blocks, and diagrams
+        from gui.widgets.message_parser import parse_message_segments, SegmentType
+        from gui.widgets.diagram_viewer import DiagramArtifactWidget
+        from gui.widgets.code_block_widget import CodeBlockWidget
+
+        segments = parse_message_segments(text)
+        for seg in segments:
+            if seg.type == SegmentType.DIAGRAM:
+                diag = DiagramArtifactWidget(seg.content, title=seg.title or "Aura Architecture Flow", parent=self)
+                layout.addWidget(diag)
+            elif seg.type == SegmentType.CODE:
+                code_widget = CodeBlockWidget(seg.content, language=seg.language, parent=self)
+                layout.addWidget(code_widget)
+            else:
+                body = QLabel()
+                body.setWordWrap(True)
+                body.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+                body.setFont(QFont("Segoe UI", 10))
+                # Basic markdown formatting
+                formatted = seg.content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                import re
+                formatted = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", formatted)
+                formatted = re.sub(r"\*(.+?)\*", r"<i>\1</i>", formatted)
+                formatted = re.sub(r"`([^`]+)`", r'<code style="color:#00e5ff; background:rgba(0,229,255,0.1); padding:1px 4px; border-radius:3px; font-family:Consolas;">\1</code>', formatted)
+                formatted = formatted.replace("\n", "<br>")
+                body.setText(f'<div style="color: #f3f6fc; line-height: 1.45;">{formatted}</div>')
+                body.setStyleSheet("background: transparent;")
+                layout.addWidget(body)
 
 
 ORG_NAME = "AuraAI"

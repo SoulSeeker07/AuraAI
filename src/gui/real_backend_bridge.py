@@ -14,6 +14,8 @@ Provides unified real-time querying and updates to genuine AuraAI backends:
 import os
 import sys
 import json
+import time
+import uuid
 import sqlite3
 import subprocess
 import logging
@@ -482,11 +484,22 @@ class RealBackendBridge:
         return data
 
     def record_live_task_start(self, task_id: str, prompt: str, agent: str = "Executive Brain"):
-        """Record live starting task for immediate display in Task Queue."""
+        """Record live starting task for immediate display in Task Queue with idempotency check."""
         if not hasattr(self, "_live_tasks"):
             self._live_tasks = []
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         clean_id = task_id if task_id.startswith("T-") else f"T-{task_id[-4:] if len(task_id) >= 4 else task_id}"
+        
+        # Idempotency check: if clean_id already in _live_tasks, refresh details instead of appending duplicate
+        for existing in self._live_tasks:
+            if existing.get("id") == clean_id:
+                existing["desc"] = prompt
+                existing["agent"] = agent
+                existing["status"] = "● Executing"
+                existing["color"] = "#38bdf8"
+                existing["timestamp"] = now_str
+                return
+
         self._live_tasks.insert(0, {
             "id": clean_id,
             "desc": prompt,
@@ -522,6 +535,340 @@ class RealBackendBridge:
                     t["error"] = response
                     t["is_error"] = True
                 break
+
+    def get_scheduled_jobs(self) -> List[Dict[str, Any]]:
+        """Fetch unified scheduled jobs, interval routines, and cron triggers."""
+        jobs: List[Dict[str, Any]] = []
+
+        # 1. Triggers from PersonalOSStateStore
+        try:
+            from personal_os.state_store import PersonalOSStateStore
+            store = PersonalOSStateStore.get_instance()
+            for trig in store.list_triggers():
+                jobs.append({
+                    "id": trig.trigger_id,
+                    "name": trig.name,
+                    "type": "cron" if "cron" in trig.schedule.lower() else "interval",
+                    "schedule": trig.schedule,
+                    "target": trig.goal_text,
+                    "enabled": trig.enabled,
+                    "source": "Personal OS",
+                })
+        except Exception as e:
+            logger.debug(f"[RealBackendBridge] Triggers fetch notice: {e}")
+
+        # 2. Native SchedulerManager jobs
+        try:
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            registry = NativeManagerRegistry.get_instance()
+            sched_mgr = registry.get_manager("scheduler")
+            if sched_mgr and hasattr(sched_mgr, "_jobs"):
+                for j_id, j in sched_mgr._jobs.items():
+                    jobs.append({
+                        "id": j.job_id,
+                        "name": j.name,
+                        "type": j.job_type,
+                        "schedule": f"interval {int(j.interval_seconds)}s" if j.interval_seconds else "cron",
+                        "target": j.action,
+                        "enabled": not j.is_paused and not j.is_cancelled,
+                        "source": "Native Scheduler",
+                    })
+        except Exception as e:
+            logger.debug(f"[RealBackendBridge] Native scheduler fetch notice: {e}")
+
+        return jobs
+
+    # -------------------------------------------------------------------------
+    # 3.5. SESSION ARTIFACTS
+    # -------------------------------------------------------------------------
+    TEXT_AND_CODE_EXTENSIONS = frozenset({
+        ".md", ".markdown", ".txt", ".log",
+        ".json", ".csv", ".tsv", ".yaml", ".yml", ".xml", ".toml", ".ini", ".cfg",
+        ".html", ".css", ".js", ".ts", ".py", ".svg",
+    })
+
+    IMAGE_AND_DOC_EXTENSIONS = frozenset({
+        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".pdf",
+    })
+
+    SAFE_ARTIFACT_EXTENSIONS = TEXT_AND_CODE_EXTENSIONS | IMAGE_AND_DOC_EXTENSIONS
+
+    PROHIBITED_EXEC_EXTENSIONS = frozenset({
+        ".exe", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".jse",
+        ".wsf", ".wsh", ".msc", ".msi", ".msp", ".scr", ".pif", ".reg",
+        ".com", ".hta", ".cpl", ".jar", ".dll", ".sys",
+    })
+
+    def record_artifact(self, name: str, path: str, artifact_type: str = "file") -> bool:
+        """
+        Register a session-generated artifact in the live bridge.
+        Enforces that the artifact exists on disk, is within PROJECT_ROOT,
+        and does not match dangerous executable extensions.
+        """
+        if not hasattr(self, "_session_artifacts"):
+            self._session_artifacts: List[Dict[str, Any]] = []
+
+        try:
+            p = Path(path).resolve()
+        except Exception as exc:
+            logger.warning(f"[RealBackendBridge] Invalid artifact path '{path}': {exc}")
+            return False
+
+        if not p.exists() or not p.is_file():
+            logger.warning(f"[RealBackendBridge] Rejected registering non-existent artifact: '{p}'")
+            return False
+
+        ext = p.suffix.lower()
+        if ext in self.PROHIBITED_EXEC_EXTENSIONS or ext not in self.SAFE_ARTIFACT_EXTENSIONS:
+            logger.error(f"[Security Violation] Rejected registering prohibited artifact extension '{ext}': '{p}'")
+            return False
+
+        from desktop.native.sandbox.workspace_jail import WorkspaceJail
+        from core.config import PROJECT_ROOT as CFG_PROJECT_ROOT
+        jail = WorkspaceJail(workspace_root=str(CFG_PROJECT_ROOT))
+        if not jail.is_path_inside_workspace(p):
+            logger.error(f"[Security Violation] Rejected registering artifact outside workspace: '{p}'")
+            return False
+
+        # Deduplicate by resolved canonical path
+        canonical_str = str(p)
+        self._session_artifacts = [a for a in self._session_artifacts if a.get("path") != canonical_str]
+
+        try:
+            sz = p.stat().st_size
+            if sz < 1024:
+                size_str = f"{sz} B"
+            elif sz < 1024 * 1024:
+                size_str = f"{sz / 1024:.1f} KB"
+            else:
+                size_str = f"{sz / (1024 * 1024):.1f} MB"
+        except Exception:
+            size_str = "0 B"
+
+        if ext in (".md", ".markdown", ".txt"):
+            icon = "📝"
+        elif ext == ".py":
+            icon = "🐍"
+        elif ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".bmp"):
+            icon = "🖼️"
+        elif ext in (".json", ".csv", ".yaml", ".yml"):
+            icon = "📊"
+        elif ext in (".html", ".css", ".js", ".ts"):
+            icon = "🌐"
+        else:
+            icon = "📄"
+
+        self._session_artifacts.insert(0, {
+            "id": f"art_{uuid.uuid4().hex[:8]}",
+            "name": name or p.name,
+            "path": canonical_str,
+            "type": artifact_type,
+            "extension": ext,
+            "size_str": size_str,
+            "icon": icon,
+            "created_at": datetime.now().strftime("%H:%M:%S"),
+        })
+        self._session_artifacts = self._session_artifacts[:20]
+        return True
+
+    def clear_artifacts(self) -> None:
+        """Clear the in-memory session artifacts buffer."""
+        self._session_artifacts = []
+
+    def get_session_artifacts(self) -> List[Dict[str, Any]]:
+        """Fetch all registered and disk-detected session artifacts."""
+        artifacts: List[Dict[str, Any]] = []
+        if hasattr(self, "_session_artifacts"):
+            artifacts.extend(self._session_artifacts)
+
+        # Also inspect storage/artifacts directory if present
+        art_dir = PROJECT_ROOT / "storage" / "artifacts"
+        if art_dir.exists() and art_dir.is_dir():
+            try:
+                for f in sorted(art_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[:10]:
+                    if not f.is_file():
+                        continue
+                    ext = f.suffix.lower()
+                    if ext in self.PROHIBITED_EXEC_EXTENSIONS or ext not in self.SAFE_ARTIFACT_EXTENSIONS:
+                        continue
+                    resolved_f = f.resolve()
+                    if not any(a.get("path") == str(resolved_f) for a in artifacts):
+                        if ext in (".md", ".markdown", ".txt"):
+                            icon = "📝"
+                        elif ext == ".py":
+                            icon = "🐍"
+                        elif ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".bmp"):
+                            icon = "🖼️"
+                        elif ext in (".json", ".csv", ".yaml", ".yml"):
+                            icon = "📊"
+                        elif ext in (".html", ".css", ".js", ".ts"):
+                            icon = "🌐"
+                        else:
+                            icon = "📄"
+
+                        sz = f.stat().st_size
+                        if sz < 1024:
+                            size_str = f"{sz} B"
+                        elif sz < 1024 * 1024:
+                            size_str = f"{sz / 1024:.1f} KB"
+                        else:
+                            size_str = f"{sz / (1024 * 1024):.1f} MB"
+
+                        artifacts.append({
+                            "id": f"art_disk_{f.name}",
+                            "name": f.name,
+                            "path": str(resolved_f),
+                            "type": "file",
+                            "extension": ext,
+                            "size_str": size_str,
+                            "icon": icon,
+                            "created_at": datetime.fromtimestamp(f.stat().st_mtime).strftime("%H:%M:%S"),
+                        })
+            except Exception as e:
+                logger.debug(f"[RealBackendBridge] Artifacts scan notice: {e}")
+
+        return artifacts
+
+    # -------------------------------------------------------------------------
+    # 3.6. TERMINAL CONSOLE & HMAC GATE
+    # -------------------------------------------------------------------------
+    def get_pending_approval_tickets(self) -> List[Dict[str, Any]]:
+        """Fetch active pending un-redeemed cryptographic approval tickets."""
+        pending: List[Dict[str, Any]] = []
+        try:
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+            auth = CryptographicApprovalAuthority.get_instance()
+            with auth._ticket_lock:
+                now = time.time()
+                for t in auth._tickets.values():
+                    if not t.is_redeemed and t.expires_at > now:
+                        pending.append({
+                            "ticket_id": t.ticket_id,
+                            "action_type": t.action_type,
+                            "target": t.target,
+                            "action_hash": t.action_hash,
+                            "created_at": t.created_at,
+                            "expires_at": t.expires_at,
+                            "expires_in_secs": max(0, int(t.expires_at - now)),
+                            "description": t.description,
+                            "metadata": t.metadata,
+                        })
+        except Exception as e:
+            logger.debug(f"[RealBackendBridge] Pending tickets fetch notice: {e}")
+        return sorted(pending, key=lambda x: x["created_at"], reverse=True)
+
+    def approve_and_execute_ticket(self, ticket_id: str) -> Dict[str, Any]:
+        """
+        Cryptographically signs, verifies, and redeems a pending ticket, then executes it
+        strictly through the single-source-of-truth redemption and jailing path.
+        """
+        from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+        from desktop.native.sandbox.workspace_jail import validate_and_resolve_cwd
+        from core.config import PROJECT_ROOT
+        from gui.signals import app_signals
+
+        auth = CryptographicApprovalAuthority.get_instance()
+        with auth._ticket_lock:
+            ticket = auth._tickets.get(ticket_id)
+            if not ticket:
+                self.append_terminal_log(f"[ERROR] Ticket {ticket_id} not found", level="error")
+                return {"success": False, "error": "Ticket not found"}
+            if ticket.is_redeemed or time.time() > ticket.expires_at:
+                self.append_terminal_log(f"[ERROR] Ticket {ticket_id} already redeemed or expired", level="error")
+                return {"success": False, "error": "Ticket already redeemed or expired"}
+
+        # 1. Sign ticket via single signing authority
+        sig = auth.sign_ticket(ticket_id)
+        if not sig:
+            self.append_terminal_log(f"[ERROR] Failed to generate cryptographic signature for {ticket_id}", level="error")
+            return {"success": False, "error": "Failed to sign ticket"}
+
+        # 2. Verify and redeem
+        if ticket.action_type == "command":
+            raw_cwd = ticket.metadata.get("cwd", str(PROJECT_ROOT))
+            cmd = ticket.metadata.get("command", ticket.target)
+            is_valid, err = auth.verify_and_redeem_command(ticket_id, sig, cmd, raw_cwd)
+            if not is_valid:
+                self.append_terminal_log(f"[SECURITY VIOLATION] Command redemption failed: {err}", level="error")
+                return {"success": False, "error": err}
+
+            # 3. Validate CWD via single-source WorkspaceJail
+            is_jail_ok, resolved_cwd = validate_and_resolve_cwd(raw_cwd)
+            if not is_jail_ok:
+                self.append_terminal_log(f"[SECURITY VIOLATION] Execution blocked outside jail: {resolved_cwd}", level="error")
+                return {"success": False, "error": f"CWD outside workspace jail: {resolved_cwd}"}
+
+            # 4. Execute approved command (LOW, MEDIUM, or HIGH risk) with safety policy
+            self.append_terminal_log(f"$ {cmd}", level="command")
+            from desktop.native.managers.shell_executor import execute_command
+            exec_res = execute_command(cmd, cwd=resolved_cwd)
+            output = (exec_res.stdout or exec_res.stderr or exec_res.error or "").strip()
+            if exec_res.success:
+                self.append_terminal_log(output or "[Process exited with code 0]", level="success")
+            else:
+                self.append_terminal_log(output or f"[Process failed: {exec_res.error}]", level="error")
+
+            app_signals.execution_finished.emit(ticket_id, exec_res.success)
+            return {"success": exec_res.success, "output": output, "error": exec_res.error}
+        else:
+            # General native manager action
+            is_valid, err = auth.verify_and_redeem(
+                ticket_id=ticket_id,
+                signature=sig,
+                action_type=ticket.action_type,
+                target=ticket.target,
+                parameters=ticket.metadata,
+            )
+            if not is_valid:
+                self.append_terminal_log(f"[SECURITY VIOLATION] Action redemption failed: {err}", level="error")
+                return {"success": False, "error": err}
+
+            self.append_terminal_log(f"✦ Executing approved {ticket.action_type}: {ticket.target}", level="command")
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            mgr_name = ticket.action_type.split(".")[0]
+            mgr = NativeManagerRegistry.get_instance().get_manager(mgr_name)
+            if mgr:
+                res = mgr.execute(ticket.action_type, target=ticket.target, arguments=ticket.metadata)
+                output = str(res.data if res.success else res.error)
+                self.append_terminal_log(output, level="success" if res.success else "error")
+                return {"success": res.success, "output": output}
+            else:
+                self.append_terminal_log(f"Action {ticket.action_type} redeemed successfully", level="success")
+                return {"success": True, "output": "Action executed successfully"}
+
+    def deny_ticket(self, ticket_id: str) -> bool:
+        """Explicitly denies/revokes a pending approval ticket."""
+        from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+        auth = CryptographicApprovalAuthority.get_instance()
+        with auth._ticket_lock:
+            ticket = auth._tickets.get(ticket_id)
+            if ticket:
+                ticket.is_redeemed = True
+                auth._persist_tickets()
+                self.append_terminal_log(f"[DENIED] Ticket {ticket_id} revoked by operator.", level="warn")
+                return True
+        return False
+
+    def append_terminal_log(self, text: str, level: str = "info") -> None:
+        """Append an entry to the rolling terminal stream buffer."""
+        if not hasattr(self, "_terminal_logs"):
+            self._terminal_logs: List[Dict[str, str]] = []
+        self._terminal_logs.append({
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+            "text": str(text),
+            "level": level,
+        })
+        self._terminal_logs = self._terminal_logs[-100:]
+
+    def get_terminal_logs(self) -> List[Dict[str, str]]:
+        """Get the recent terminal logs."""
+        if not hasattr(self, "_terminal_logs"):
+            self._terminal_logs = []
+        return list(self._terminal_logs)
+
+    def clear_terminal_logs(self) -> None:
+        """Clear terminal stream logs."""
+        self._terminal_logs = []
 
     # -------------------------------------------------------------------------
     # 4. HARDWARE & SYSTEM STATUS TELEMETRY

@@ -72,6 +72,10 @@ class VectorMemoryEngine:
                 cls._instance._init_vector_table()
             return cls._instance
 
+    def is_model_loaded(self) -> bool:
+        """Check if the embedding model is already loaded in memory without triggering a load."""
+        return self._model is not None
+
     def get_model(self):
         """Public accessor to get the shared SentenceTransformer singleton instance."""
         return self._get_model()

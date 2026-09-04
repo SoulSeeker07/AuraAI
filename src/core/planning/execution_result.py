@@ -28,6 +28,29 @@ class ExecutionResult:
     memory_updates: dict[str, Any] = field(default_factory=dict)
     data: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    error: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.error is None and not self.success:
+            if self.data and isinstance(self.data, dict) and self.data.get("error"):
+                self.error = str(self.data["error"])
+            elif self.observations:
+                for obs in self.observations:
+                    if obs and isinstance(obs, str):
+                        clean_obs = obs.lstrip("❌ ").strip()
+                        if (
+                            "failed" in obs.lower()
+                            or "error" in obs.lower()
+                            or "not found" in obs.lower()
+                            or "exception" in obs.lower()
+                            or "prohibited" in obs.lower()
+                        ):
+                            self.error = clean_obs
+                            break
+                if not self.error and self.observations:
+                    self.error = self.observations[0].lstrip("❌ ").strip()
+            elif self.warnings:
+                self.error = self.warnings[0]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -43,4 +66,5 @@ class ExecutionResult:
             "memory_updates": self.memory_updates,
             "data": self.data,
             "timestamp": self.timestamp,
+            "error": self.error,
         }

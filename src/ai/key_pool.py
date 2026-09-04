@@ -32,12 +32,22 @@ class KeyPool:
     _instance: Optional["KeyPool"] = None
     _lock = threading.Lock()
 
-    def __init__(self, explicit_keys: Optional[Dict[str, List[str]]] = None):
+    def __init__(
+        self,
+        explicit_keys: Optional[Dict[str, List[str]]] = None,
+        persist_cooldowns: Optional[bool] = None,
+    ):
+        from pathlib import Path
+
         self._keys: Dict[str, List[str]] = {}
         self._key_indices: Dict[str, int] = {}
         self._cooldowns: Dict[str, Dict[str, float]] = {}  # service -> {key: expire_timestamp}
         self._groq_clients: Dict[str, Any] = {}
         self._mu = threading.RLock()
+        self._cooldown_file = Path(__file__).resolve().parents[2] / "Data" / "key_cooldowns.json"
+        self._persist_cooldowns = (
+            persist_cooldowns if persist_cooldowns is not None else (explicit_keys is None)
+        )
 
         if explicit_keys:
             for service, keys in explicit_keys.items():
@@ -46,6 +56,48 @@ class KeyPool:
                 self._cooldowns[service] = {}
         else:
             self._discover_keys()
+
+        if self._persist_cooldowns:
+            self._load_cooldowns()
+
+    def _load_cooldowns(self) -> None:
+        """Load unexpired cooldown timestamps from persistent disk file."""
+        import json
+        with self._mu:
+            try:
+                if self._cooldown_file.exists():
+                    data = json.loads(self._cooldown_file.read_text(encoding="utf-8"))
+                    now = time.time()
+                    loaded_count = 0
+                    for service, c_map in data.items():
+                        if isinstance(c_map, dict):
+                            svc_map = self._cooldowns.setdefault(service, {})
+                            for k, exp in c_map.items():
+                                if isinstance(exp, (int, float)) and exp > now:
+                                    svc_map[k] = float(exp)
+                                    loaded_count += 1
+                    if loaded_count > 0:
+                        logger.info(f"[KeyPool] Loaded {loaded_count} active cooldown timer(s) from disk.")
+            except Exception as e:
+                logger.debug(f"[KeyPool] Failed loading cooldowns from disk: {e}")
+
+    def _save_cooldowns(self) -> None:
+        """Persist active cooldown timestamps to disk."""
+        if not self._persist_cooldowns:
+            return
+        import json
+        with self._mu:
+            try:
+                self._cooldown_file.parent.mkdir(parents=True, exist_ok=True)
+                now = time.time()
+                serializable = {}
+                for service, c_map in self._cooldowns.items():
+                    active_entries = {k: exp for k, exp in c_map.items() if exp > now}
+                    if active_entries:
+                        serializable[service] = active_entries
+                self._cooldown_file.write_text(json.dumps(serializable, indent=2), encoding="utf-8")
+            except Exception as e:
+                logger.debug(f"[KeyPool] Failed saving cooldowns to disk: {e}")
 
 
     @classmethod
@@ -187,11 +239,11 @@ class KeyPool:
             return client
 
 
-    def get_active_key(self, service: str = "groq") -> str:
+    def get_active_key(self, service: str = "groq", allow_cooldown: bool = False) -> str:
         """
         Get the currently active, non-cooldown API key for a service.
         Advances round-robin if the current key is in cooldown.
-        Raises RuntimeError if no keys are available.
+        If allow_cooldown is False and all keys are on cooldown, raises KeyPoolExhaustedError immediately.
         """
         with self._mu:
             keys = self._keys.get(service, [])
@@ -206,8 +258,10 @@ class KeyPool:
 
             # Clean expired cooldowns
             expired = [k for k, exp in cooldowns.items() if exp <= now]
-            for k in expired:
-                del cooldowns[k]
+            if expired:
+                for k in expired:
+                    del cooldowns[k]
+                self._save_cooldowns()
 
             # Try finding a non-cooldown key starting from current index
             start_idx = self._key_indices.get(service, 0) % len(keys)
@@ -218,9 +272,16 @@ class KeyPool:
                     self._key_indices[service] = idx
                     return candidate
 
-            # If all keys are in cooldown, pick the one that expires soonest
+            # If all keys are in cooldown:
             soonest_key = min(keys, key=lambda k: cooldowns.get(k, 0))
             wait_time = max(0.0, cooldowns.get(soonest_key, 0) - now)
+            if not allow_cooldown:
+                from ai.exceptions import KeyPoolExhaustedError
+                raise KeyPoolExhaustedError(
+                    f"All {len(keys)} {service} API keys are currently rate-limited. "
+                    f"Earliest key resets in {wait_time:.1f}s."
+                )
+
             logger.warning(
                 f"[KeyPool] All {len(keys)} {service} keys are rate-limited. "
                 f"Using earliest available key (resets in {wait_time:.1f}s)."
@@ -254,8 +315,10 @@ class KeyPool:
         Mark a key as rate-limited and advance rotation to the next key.
         If is_daily_quota is True, skips the key until next day 5:00 AM IST.
         """
-        if is_daily_quota or cooldown_seconds is None:
+        if is_daily_quota:
             cooldown_seconds = self.get_seconds_until_next_5am_ist()
+        elif cooldown_seconds is None:
+            cooldown_seconds = 15.0
 
         with self._mu:
             cooldowns = self._cooldowns.setdefault(service, {})
@@ -266,12 +329,20 @@ class KeyPool:
                 current_idx = self._key_indices.get(service, 0)
                 self._key_indices[service] = (current_idx + 1) % len(keys)
 
+            self._save_cooldowns()
+
             masked = f"{key[:8]}...{key[-4:]}" if len(key) > 12 else "key"
-            hours_left = cooldown_seconds / 3600.0
-            logger.warning(
-                f"[KeyPool] Key '{masked}' hit rate limit. Auto-skipped until next day 05:00 AM IST "
-                f"({hours_left:.1f}h cooldown). Active pool: {len(keys) - len(cooldowns)}/{len(keys)}"
-            )
+            if is_daily_quota or cooldown_seconds >= 3600.0:
+                hours_left = cooldown_seconds / 3600.0
+                logger.warning(
+                    f"[KeyPool] Key '{masked}' hit DAILY quota. Auto-skipped until next day 05:00 AM IST "
+                    f"({hours_left:.1f}h cooldown). Active pool: {len(keys) - len(cooldowns)}/{len(keys)}"
+                )
+            else:
+                logger.warning(
+                    f"[KeyPool] Key '{masked}' hit TPM/RPM burst rate limit. Auto-skipped for {cooldown_seconds:.1f}s. "
+                    f"Active pool: {len(keys) - len(cooldowns)}/{len(keys)}"
+                )
 
     def rotate(self, service: str = "groq") -> str:
         """Force advance to the next available key and return it."""
@@ -279,7 +350,7 @@ class KeyPool:
             keys = self._keys.get(service, [])
             if keys:
                 self._key_indices[service] = (self._key_indices.get(service, 0) + 1) % len(keys)
-            return self.get_active_key(service)
+            return self.get_active_key(service, allow_cooldown=True)
 
     # -------------------------------------------------------------------------
     # Execution Wrapper with Automatic Failover
@@ -294,18 +365,61 @@ class KeyPool:
         """
         Execute an operation callable that receives `api_key: str`.
         Automatically catches 429 RateLimitErrors, marks the exhausted key,
-        rotates to the next key, and retries until all keys have been attempted.
+        rotates to the next key, and retries across available non-cooldown keys.
+        If all keys are already in cooldown, fails fast immediately without wasting network calls.
         """
         keys = self.get_all_keys(service)
         if not keys:
             from ai.exceptions import KeyPoolExhaustedError
             raise KeyPoolExhaustedError(f"No API keys configured for {service}.")
 
+        now = time.time()
+        with self._mu:
+            cooldowns = self._cooldowns.setdefault(service, {})
+            expired = [k for k, exp in cooldowns.items() if exp <= now]
+            if expired:
+                for k in expired:
+                    del cooldowns[k]
+                self._save_cooldowns()
+
+            # Fast check: Are ALL keys currently on cooldown?
+            non_cooldown_keys = [k for k in keys if k not in cooldowns]
+            if not non_cooldown_keys:
+                soonest_key = min(keys, key=lambda k: cooldowns.get(k, 0))
+                wait_time = max(0.0, cooldowns.get(soonest_key, 0) - now)
+                from ai.exceptions import KeyPoolExhaustedError
+                raise KeyPoolExhaustedError(
+                    f"All {len(keys)} {service} API keys are currently rate-limited on cooldown "
+                    f"(earliest key resets in {wait_time:.1f}s)."
+                )
+
         attempts = max_retries or len(keys)
+        tried_keys: set[str] = set()
         last_exception: Optional[Exception] = None
 
         for attempt in range(attempts):
-            key = self.get_active_key(service)
+            # Select next available non-cooldown key that hasn't been tried yet in this invocation
+            key: Optional[str] = None
+            with self._mu:
+                now = time.time()
+                cooldowns = self._cooldowns.setdefault(service, {})
+                for k in [k for k, exp in cooldowns.items() if exp <= now]:
+                    del cooldowns[k]
+
+                start_idx = self._key_indices.get(service, 0) % len(keys)
+                for offset in range(len(keys)):
+                    idx = (start_idx + offset) % len(keys)
+                    cand = keys[idx]
+                    if cand not in cooldowns and cand not in tried_keys:
+                        key = cand
+                        self._key_indices[service] = idx
+                        break
+
+            if key is None:
+                # No more non-cooldown keys available to try
+                break
+
+            tried_keys.add(key)
             try:
                 return operation(key)
             except Exception as exc:
@@ -318,39 +432,50 @@ class KeyPool:
                     or "rate limit" in err_str
                     or "tokens per day" in err_str
                     or "tokens per minute" in err_str
-                    or "limit reached for model" in err_str
+                    or "requests per minute" in err_str
+                    or "requests per day" in err_str
                     or "tpd" in err_str
                     or "tpm" in err_str
                     or "rpd" in err_str
+                    or "rpm" in err_str
                     or "quota" in err_str
                 )
 
                 if is_rate_limit:
                     last_exception = exc
+                    # Precise classification: Daily quota vs TPM/RPM burst limit
                     is_daily = (
-                        "day" in err_str
-                        or "daily" in err_str
+                        "tokens per day" in err_str
+                        or "requests per day" in err_str
                         or "tpd" in err_str
                         or "rpd" in err_str
-                        or "limit reached for model" in err_str
-                        or "quota" in err_str
+                        or ("daily" in err_str and not any(m in err_str for m in ("minute", "tpm", "rpm")))
                     )
 
                     if is_daily:
                         cooldown = self.get_seconds_until_next_5am_ist()
                     else:
-                        cooldown = 180.0
-                        match = re.search(r"try again in (\d+(?:\.\d+)?)\s*s", err_str)
-                        if match:
+                        cooldown = 15.0
+                        # Parse seconds like: "try again in 2.45s" or "try again in 2s"
+                        match_s = re.search(r"try again in (\d+(?:\.\d+)?)\s*s", err_str)
+                        # Parse minutes like: "try again in 1m20s"
+                        match_m = re.search(r"try again in (\d+)\s*m\s*(\d+(?:\.\d+)?)\s*s", err_str)
+                        if match_s:
                             try:
-                                cooldown = float(match.group(1)) + 5.0
+                                cooldown = float(match_s.group(1)) + 2.0  # safe small buffer
+                            except ValueError:
+                                pass
+                        elif match_m:
+                            try:
+                                cooldown = float(match_m.group(1)) * 60.0 + float(match_m.group(2)) + 2.0
                             except ValueError:
                                 pass
 
                     self.mark_rate_limited(key, cooldown_seconds=cooldown, service=service, is_daily_quota=is_daily)
                     logger.warning(
-                        f"[KeyPool] 429 Rate Limit on attempt {attempt+1}/{attempts}. "
-                        f"Failing over to next available {service} key."
+                        f"[KeyPool] 429 Rate Limit on attempt {attempt+1}/{attempts} "
+                        f"({'Daily Quota' if is_daily else f'TPM/RPM wait {cooldown:.1f}s'}). "
+                        f"Auto-skipping to next available {service} key."
                     )
                     continue
                 else:
@@ -359,5 +484,7 @@ class KeyPool:
 
         from ai.exceptions import KeyPoolExhaustedError
         if last_exception:
-            raise KeyPoolExhaustedError(f"All {attempts} {service} keys rate-limited: {last_exception}") from last_exception
-        raise KeyPoolExhaustedError(f"Failed to execute operation across all {attempts} {service} keys.")
+            raise KeyPoolExhaustedError(
+                f"All available {service} keys rate-limited (attempted {len(tried_keys)} keys): {last_exception}"
+            ) from last_exception
+        raise KeyPoolExhaustedError(f"Failed to execute operation across all {len(keys)} {service} keys.")

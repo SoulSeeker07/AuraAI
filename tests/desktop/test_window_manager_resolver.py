@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from desktop.native.managers.window_manager import WindowManager
-from desktop.native.native_result import ResultStatus
+from desktop.native.desktop_result import DesktopStatus
 
 
 def test_tier1_fast_path_aliases():
@@ -98,7 +98,7 @@ def test_handle_app_open_web_fallback(mock_web_open):
     wm = WindowManager()
     result = wm._handle_app_open(app_name="instagram")
 
-    assert result.status == ResultStatus.SUCCESS
+    assert result.status == DesktopStatus.SUCCESS
     assert result.data.get("web_url") == "https://www.instagram.com"
     mock_web_open.assert_called_once_with("https://www.instagram.com")
 
@@ -108,5 +108,29 @@ def test_handle_app_open_ambiguous_fails_with_clarification():
     wm = WindowManager()
     with patch.object(wm, "_resolve_app_executable", return_value=("ambiguous", "Ambiguous app name 'word'. Did you mean 'word' or 'wordpad'?")):
         result = wm._handle_app_open(app_name="word")
-        assert result.status == ResultStatus.FAILURE
+        assert result.status == DesktopStatus.FAILURE
         assert "Ambiguous app name" in result.error
+
+
+@pytest.mark.parametrize("query,expected_url", [
+    ("instagram", "https://www.instagram.com"),
+    ("intagram", "https://www.instagram.com"),
+    ("insta", "https://www.instagram.com"),
+    ("ig", "https://www.instagram.com"),
+    ("youtube", "https://www.youtube.com"),
+    ("yt", "https://www.youtube.com"),
+    ("whatsapp", "https://web.whatsapp.com"),
+    ("spotify", "https://open.spotify.com"),
+    ("netflix", "https://www.netflix.com"),
+    ("chatgpt", "https://chatgpt.com"),
+])
+@patch("webbrowser.open")
+def test_handle_app_open_all_web_aliases(mock_web_open, query, expected_url):
+    """Verify typo and alias variants resolve and launch in the system browser without closing."""
+    wm = WindowManager()
+    res_type, target = wm._resolve_app_executable(query)
+    assert res_type == "url" or (query in ("whatsapp", "spotify") and res_type in ("exe", "protocol", "url"))
+
+    result = wm._handle_app_open(app_name=query)
+    assert result.status == DesktopStatus.SUCCESS
+    assert result.success is True

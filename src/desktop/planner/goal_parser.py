@@ -132,13 +132,15 @@ class GoalParser:
             if "into " in lower or "in " in lower:
                 return ("uia.type_text", params)
 
-        # 4. Click: "click the Save button in Notepad" / "click Save" / "press OK button" / "click on Submit"
+        # 4. Click / Double-Click
         is_keyboard_press = any(
             k in lower for k in ["press enter", "press tab", "press esc", "press escape", "press return", "press space"]
         )
         if not is_keyboard_press:
+            is_double = "double click" in lower or "double-click" in lower
+            target_cap = "uia.double_click" if is_double else "uia.click"
             m_click = re.search(
-                r"^(?:please\s+)?(?:click|tap|invoke)\s+(?:on\s+)?(?:the\s+)?(?P<elem>[a-zA-Z0-9_\-\.\s]+?)(?:\s+(?P<ctype>button|link|menuitem|tab|item))?(?:\s+(?:in|into|on|of)\s+(?P<win>[A-Z0-9][a-zA-Z0-9_\-\.\s]*))?$",
+                r"^(?:please\s+)?(?:double[\s-]click|click|tap|invoke)\s+(?:on\s+)?(?:the\s+)?(?P<elem>[a-zA-Z0-9_\-\.\s]+?)(?:\s+(?P<ctype>button|link|menuitem|tab|item|icon|folder|drive))?(?:\s+(?:in|into|on|of)\s+(?P<win>[A-Z0-9][a-zA-Z0-9_\-\.\s]*))?$",
                 text,
                 re.IGNORECASE,
             )
@@ -147,29 +149,29 @@ class GoalParser:
                 ctype = m_click.group("ctype")
                 win_val = m_click.group("win")
 
-                for drop in ["the", "a", "an", "button", "item", "link"]:
+                for drop in ["the", "a", "an", "button", "item", "link", "icon"]:
                     elem_name = re.sub(rf"\b{drop}\b", "", elem_name, flags=re.IGNORECASE).strip()
 
                 params["name"] = elem_name
                 params["control_type"] = ctype.title() if ctype else "Button"
                 if win_val:
                     params["window_title"] = win_val.strip()
-                return ("uia.click", params)
+                return (target_cap, params)
 
-            if lower.startswith("click ") or lower.startswith("click on "):
+            if lower.startswith(("click ", "click on ", "double click ", "double-click ", "double click on ")):
                 elem_candidate = text
-                for pfx in ["click on the ", "click the ", "click on ", "click "]:
+                for pfx in ["double click on the ", "double click the ", "double click on ", "double click ", "double-click on ", "double-click ", "click on the ", "click the ", "click on ", "click "]:
                     if elem_candidate.lower().startswith(pfx):
                         elem_candidate = elem_candidate[len(pfx) :].strip()
                         break
                 if " in " in elem_candidate:
                     e_parts = elem_candidate.split(" in ", 1)
-                    params["name"] = e_parts[0].replace("button", "").strip()
+                    params["name"] = e_parts[0].replace("button", "").replace("icon", "").strip()
                     params["window_title"] = e_parts[1].strip()
                 else:
-                    params["name"] = elem_candidate.replace("button", "").strip()
+                    params["name"] = elem_candidate.replace("button", "").replace("icon", "").strip()
                 params["control_type"] = "Button"
-                return ("uia.click", params)
+                return (target_cap, params)
 
         # 5. Toggle: "toggle dark mode checkbox in Settings" / "toggle dark mode" / "uncheck box"
         is_toggle = lower.startswith("toggle ") or lower.startswith("uncheck ") or (

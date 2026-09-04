@@ -1140,6 +1140,8 @@ class DesktopEngineBackend(BaseBackendAdapter):
             elif capability.startswith("uia."):
                 if capability == "uia.click":
                     obs_text = f"✓ Clicked UI element: '{(res.data or {}).get('element_name', app_name)}'"
+                elif capability == "uia.double_click":
+                    obs_text = f"✓ Double-clicked UI element: '{(res.data or {}).get('element_name', app_name)}'"
                 elif capability == "uia.type_text":
                     obs_text = f"✓ Typed into UI element: '{(res.data or {}).get('element_name', app_name)}'"
                 elif capability == "uia.toggle":
@@ -1231,6 +1233,7 @@ class DesktopEngineBackend(BaseBackendAdapter):
             observations=[obs_text],
             warnings=all_warnings,
             data={**(res.data or {}), "backend": self.name, "capability": capability},
+            error=v_err if not is_verified else None,
         )
 
     def _generate_document(self, goal: str, args: dict[str, Any]) -> ExecutionResult:

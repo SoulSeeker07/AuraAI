@@ -17,8 +17,10 @@ import difflib
 import hashlib
 import json
 import logging
+import re
 import sqlite3
 import threading
+import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
@@ -517,47 +519,126 @@ class FocusManager:
             conn.commit()
         logger.debug(f"[FocusManager] Enqueued notification for task '{task_id}' (severity={severity})")
 
+    @staticmethod
+    def _is_notification_expired(message: str, created_at: str) -> bool:
+        """
+        Check whether a pending notification should be suppressed as stale or expired.
+        1. If it refers to an approval ticket (tkt_... or AUTH-...), check whether the ticket
+           is still valid and unexpired in CryptographicApprovalAuthority / PersonalOSStateStore.
+        2. If created_at is older than 24 hours, treat as expired.
+        """
+        tkt_match = re.search(
+            r"\b(tkt_[a-f0-9]{6,16}|(?:AUTH|TICK)-[A-F0-9]{4,12})\b",
+            message,
+            re.IGNORECASE,
+        )
+        if tkt_match:
+            ticket_id = tkt_match.group(1)
+            now = time.time()
+            if ticket_id.lower().startswith("tkt_"):
+                try:
+                    from desktop.native.security.approval_authority import (
+                        CryptographicApprovalAuthority,
+                    )
+
+                    auth = CryptographicApprovalAuthority.get_instance()
+                    ticket = auth.get_ticket(ticket_id.lower())
+                    if ticket:
+                        if ticket.is_redeemed or ticket.expires_at <= now:
+                            return True
+                    else:
+                        from personal_os.state_store import PersonalOSStateStore
+
+                        sess = (
+                            PersonalOSStateStore.get_instance().get_suspended_session(
+                                ticket_id.lower()
+                            )
+                        )
+                        if (
+                            not sess
+                            or sess.get("status") != "PENDING"
+                            or sess.get("expires_at", 0) <= now
+                        ):
+                            return True
+                except Exception:
+                    pass
+            elif ticket_id.upper().startswith(("AUTH-", "TICK-")):
+                try:
+                    from browser.paused_session import PausedSessionStore
+
+                    store = PausedSessionStore.get_instance()
+                    if not store.has_pending():
+                        return True
+                except Exception:
+                    pass
+
+        try:
+            dt = datetime.fromisoformat(created_at)
+            if (datetime.now(timezone.utc) - dt).total_seconds() > 86400:
+                return True
+        except Exception:
+            pass
+
+        return False
+
     def drain_pending_notifications(self) -> list[PendingNotification]:
         """
         Return up to MAX_NOTIFICATIONS_PER_TURN undelivered notifications,
         mark them delivered=1. Thread-safe.
+        Filters out stale notifications whose security approval tickets have expired,
+        been cancelled, or been redeemed, and automatically marks them delivered.
         """
+        active_notifications: list[PendingNotification] = []
+        ids_to_mark_delivered: list[str] = []
+
         with self._db_lock, self._get_connection() as conn:
             rows = conn.execute(
                 """
                 SELECT * FROM pending_notifications
                 WHERE delivered=0
                 ORDER BY created_at ASC
-                LIMIT ?;
+                LIMIT 50;
                 """,
-                (MAX_NOTIFICATIONS_PER_TURN,),
             ).fetchall()
 
             if not rows:
                 return []
 
-            ids = [r["notification_id"] for r in rows]
-            placeholders = ",".join("?" * len(ids))
-            conn.execute(
-                f"UPDATE pending_notifications SET delivered=1 WHERE notification_id IN ({placeholders});",
-                ids,
-            )
-            conn.commit()
+            for r in rows:
+                ids_to_mark_delivered.append(r["notification_id"])
+                if self._is_notification_expired(r["message"], r["created_at"]):
+                    logger.debug(
+                        f"[FocusManager] Suppressing expired notification {r['notification_id']}"
+                    )
+                    continue
 
-        result = [
-            PendingNotification(
-                notification_id=r["notification_id"],
-                task_id=r["task_id"],
-                message=r["message"],
-                severity=r["severity"],
-                created_at=r["created_at"],
-                delivered=True,
-                state_hash=r["state_hash"],
-            )
-            for r in rows
-        ]
-        logger.debug(f"[FocusManager] Drained {len(result)} pending notification(s)")
-        return result
+                active_notifications.append(
+                    PendingNotification(
+                        notification_id=r["notification_id"],
+                        task_id=r["task_id"],
+                        message=r["message"],
+                        severity=r["severity"],
+                        created_at=r["created_at"],
+                        delivered=True,
+                        state_hash=r["state_hash"],
+                    )
+                )
+                if len(active_notifications) >= MAX_NOTIFICATIONS_PER_TURN:
+                    break
+
+            if ids_to_mark_delivered:
+                placeholders = ",".join("?" * len(ids_to_mark_delivered))
+                conn.execute(
+                    f"UPDATE pending_notifications SET delivered=1 WHERE notification_id IN ({placeholders});",
+                    ids_to_mark_delivered,
+                )
+                conn.commit()
+
+        logger.debug(
+            f"[FocusManager] Drained {len(active_notifications)} pending notification(s) "
+            f"({len(ids_to_mark_delivered) - len(active_notifications)} stale suppressed)"
+        )
+        return active_notifications
 
     # ── Stale archival ─────────────────────────────────────────────────────────
 

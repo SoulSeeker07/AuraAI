@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -60,8 +61,8 @@ CHAT_LOG_PATH = PROJECT_ROOT / "Data" / "ChatLog.json"
 
 REF_W = 1920
 REF_H = 1080
-MIN_W = 520
-MIN_H = 460
+MIN_W = 540
+MIN_H = 480
 GRIP_SIZE = 18
 
 ORG_NAME = "AuraAI"
@@ -91,7 +92,7 @@ class VoiceTranscribeWorker(QThread):
 
 
 class ChatOverlayMessageCard(QFrame):
-    """Futuristic message card with chamfered styling, metadata badges and timestamps."""
+    """Futuristic message card with chamfered styling, metadata badges, timestamps, and interactive diagram rendering."""
 
     def __init__(self, sender: str, text: str, intent_tag: str = "EXECUTION", timestamp: str = None, parent=None):
         super().__init__(parent)
@@ -103,33 +104,45 @@ class ChatOverlayMessageCard(QFrame):
         self._setup_ui(text)
 
     def _setup_ui(self, text: str):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 10, 14, 12)
-        layout.setSpacing(6)
+        self.setStyleSheet("background: transparent; border: none;")
+        outer_layout = QHBoxLayout(self)
+        outer_layout.setContentsMargins(0, 2, 0, 2)
+        outer_layout.setSpacing(0)
 
+        bubble = QFrame(self)
         if self.is_user:
-            self.setStyleSheet("""
-                ChatOverlayMessageCard {
-                    background: rgba(30, 58, 110, 0.45);
-                    border: 1px solid rgba(80, 170, 255, 0.35);
-                    border-radius: 10px;
+            bubble.setStyleSheet("""
+                QFrame {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #142848, stop:1 #1d3964);
+                    border: 1px solid rgba(56, 189, 248, 0.45);
+                    border-radius: 14px;
+                    border-bottom-right-radius: 3px;
                 }
             """)
+            outer_layout.addStretch(1)
+            outer_layout.addWidget(bubble, 0)
         else:
-            self.setStyleSheet("""
-                ChatOverlayMessageCard {
-                    background: rgba(12, 22, 36, 0.75);
+            bubble.setStyleSheet("""
+                QFrame {
+                    background: #0d1628;
                     border: 1px solid rgba(0, 229, 255, 0.25);
-                    border-radius: 10px;
+                    border-radius: 14px;
+                    border-top-left-radius: 3px;
                 }
             """)
+            outer_layout.addWidget(bubble, 0)
+            outer_layout.addStretch(1)
+
+        layout = QVBoxLayout(bubble)
+        layout.setContentsMargins(14, 10, 14, 12)
+        layout.setSpacing(8)
 
         # Header metadata
         head = QHBoxLayout()
         head.setSpacing(8)
 
-        badge_txt = "OPERATOR // USER" if self.is_user else "AURA // NEURAL COGNITION"
-        badge_col = "#60a5fa" if self.is_user else "#00e5ff"
+        badge_txt = "OPERATOR" if self.is_user else "✦ AURA"
+        badge_col = "#7dd3fc" if self.is_user else "#00e5ff"
 
         tag = QLabel(badge_txt)
         tag.setFont(QFont("Consolas", 8, QFont.Bold))
@@ -150,19 +163,158 @@ class ChatOverlayMessageCard(QFrame):
 
         head.addStretch()
 
+        # Copy message button
+        copy_btn = QPushButton("📋 Copy")
+        copy_btn.setFont(QFont("Segoe UI", 7, QFont.Bold))
+        copy_btn.setCursor(Qt.PointingHandCursor)
+        copy_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 4px;
+                color: #94a3b8;
+                padding: 1px 6px;
+            }
+            QPushButton:hover {
+                background: rgba(0, 229, 255, 0.18);
+                border-color: #00e5ff;
+                color: #ffffff;
+            }
+        """)
+        def _do_copy():
+            from PySide6.QtGui import QGuiApplication
+            QGuiApplication.clipboard().setText(text)
+            copy_btn.setText("✓ Copied!")
+            QTimer.singleShot(1800, lambda: copy_btn.setText("📋 Copy"))
+
+        copy_btn.clicked.connect(_do_copy)
+        head.addWidget(copy_btn)
+
         clock_lbl = QLabel(self.timestamp)
         clock_lbl.setFont(QFont("Consolas", 8))
         clock_lbl.setStyleSheet("color: #627289; background: transparent;")
         head.addWidget(clock_lbl)
         layout.addLayout(head)
 
-        # Message Text
-        body = QLabel(text)
-        body.setWordWrap(True)
-        body.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
-        body.setFont(QFont("Segoe UI", 9))
-        body.setStyleSheet("color: #f1f5f9; background: transparent; line-height: 1.4;")
-        layout.addWidget(body)
+        # Parse content segments: text, code blocks, and diagrams
+        from gui.widgets.message_parser import parse_message_segments, SegmentType
+        from gui.widgets.diagram_viewer import DiagramArtifactWidget
+        from gui.widgets.code_block_widget import CodeBlockWidget
+
+        segments = parse_message_segments(text)
+        for seg in segments:
+            if seg.type == SegmentType.DIAGRAM:
+                diag = DiagramArtifactWidget(seg.content, title=seg.title or "Aura Architecture Flow", parent=self)
+                layout.addWidget(diag)
+            elif seg.type == SegmentType.CODE:
+                code_widget = CodeBlockWidget(seg.content, language=seg.language, parent=self)
+                layout.addWidget(code_widget)
+            else:
+                body = QLabel()
+                body.setWordWrap(True)
+                body.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+                body.setFont(QFont("Segoe UI", 9))
+                # Basic markdown formatting
+                formatted = seg.content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                import re
+                formatted = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", formatted)
+                formatted = re.sub(r"\*(.+?)\*", r"<i>\1</i>", formatted)
+                formatted = re.sub(r"`([^`]+)`", r'<code style="color:#00e5ff; background:rgba(0,229,255,0.1); padding:1px 4px; border-radius:3px; font-family:Consolas;">\1</code>', formatted)
+                formatted = re.sub(r"(?m)^###\s+(.+)$", r'<div style="color:#38bdf8; font-weight:bold; font-size:12px; margin-top:6px; margin-bottom:2px;">\1</div>', formatted)
+                formatted = re.sub(r"(?m)^##\s+(.+)$", r'<div style="color:#00e5ff; font-weight:bold; font-size:13px; margin-top:8px; margin-bottom:4px;">\1</div>', formatted)
+                formatted = re.sub(r"(?m)^[\*\-]\s+(.+)$", r'&nbsp;&nbsp;• \1', formatted)
+                formatted = formatted.replace("\n", "<br>")
+                body.setText(f'<div style="color: #f1f5f9; line-height: 1.45;">{formatted}</div>')
+                body.setStyleSheet("background: transparent;")
+                layout.addWidget(body)
+
+
+class MultilinePromptTextEdit(QPlainTextEdit):
+    """
+    Auto-expanding multiline prompt text editor for chat input.
+    - Shift+Enter inserts newline
+    - Enter submits prompt
+    - Up/Down cycles prompt history
+    """
+    submitted = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.returnPressed = self.submitted  # Backward-compatible alias
+        self._history: List[str] = []
+        self._history_idx = -1
+        self._saved_draft = ""
+        self.setFixedHeight(36)
+        self.setFont(QFont("Segoe UI", 9))
+        self.setPlaceholderText("Ask AuraAI anything or enter a system goal...")
+        self.setStyleSheet("""
+            QPlainTextEdit {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(56, 189, 248, 0.25);
+                border-radius: 6px;
+                color: #ffffff;
+                padding: 6px 10px;
+            }
+            QPlainTextEdit:focus {
+                border: 1px solid #38bdf8;
+                background: rgba(56, 189, 248, 0.08);
+            }
+        """)
+        self.textChanged.connect(self._adjust_height)
+
+    def _adjust_height(self):
+        doc_height = int(self.document().size().height())
+        target_h = max(36, min(doc_height + 12, 110))
+        if target_h != self.height():
+            self.setFixedHeight(target_h)
+
+    def text(self) -> str:
+        return self.toPlainText()
+
+    def setText(self, val: str):
+        self.setPlainText(val)
+
+    def append_history(self, text: str):
+        if text and (not self._history or self._history[-1] != text):
+            self._history.append(text)
+        self._history_idx = -1
+        self._saved_draft = ""
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                super().keyPressEvent(event)
+            else:
+                self.submitted.emit()
+                event.accept()
+            return
+
+        if event.key() == Qt.Key.Key_Up:
+            cursor = self.textCursor()
+            if cursor.blockNumber() == 0 and self._history:
+                if self._history_idx == -1:
+                    self._saved_draft = self.toPlainText()
+                    self._history_idx = len(self._history) - 1
+                elif self._history_idx > 0:
+                    self._history_idx -= 1
+                self.setPlainText(self._history[self._history_idx])
+                self.moveCursor(self.textCursor().MoveOperation.End)
+                event.accept()
+                return
+
+        if event.key() == Qt.Key.Key_Down:
+            if self._history_idx != -1:
+                if self._history_idx < len(self._history) - 1:
+                    self._history_idx += 1
+                    self.setPlainText(self._history[self._history_idx])
+                else:
+                    self._history_idx = -1
+                    self.setPlainText(self._saved_draft)
+                self.moveCursor(self.textCursor().MoveOperation.End)
+                event.accept()
+                return
+
+        super().keyPressEvent(event)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -216,13 +368,13 @@ class ChatWindowOverlay(QWidget):
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Outer Glass Container
+        # Outer Solid Frame Container (Opaque: No Terminal Bleed-Through)
         self._card = QFrame()
         self._card.setObjectName("MainChatCard")
         self._card.setStyleSheet("""
             #MainChatCard {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(10, 14, 24, 0.96), stop:1 rgba(18, 24, 38, 0.97));
-                border: 1px solid rgba(56, 189, 248, 0.35);
+                background: #070b16;
+                border: 1.5px solid rgba(56, 189, 248, 0.35);
                 border-radius: 16px;
             }
         """)
@@ -235,7 +387,7 @@ class ChatWindowOverlay(QWidget):
         header_bar = QFrame()
         header_bar.setStyleSheet("""
             QFrame {
-                background: rgba(10, 14, 24, 0.85);
+                background: #0b1120;
                 border-bottom: 1px solid rgba(56, 189, 248, 0.2);
                 border-top-left-radius: 16px;
                 border-top-right-radius: 16px;
@@ -286,6 +438,22 @@ class ChatWindowOverlay(QWidget):
             padding: 4px 8px;
         """)
         hb_l.addWidget(engine_badge)
+
+        # Left Rail (History) Toggle Action
+        self._toggle_hist_btn = QPushButton("◨ History")
+        self._toggle_hist_btn.setFont(QFont("Consolas", 8))
+        self._toggle_hist_btn.setCursor(Qt.PointingHandCursor)
+        self._toggle_hist_btn.setToolTip("Toggle Conversation History Rail")
+        self._toggle_hist_btn.clicked.connect(self._toggle_history_rail)
+        hb_l.addWidget(self._toggle_hist_btn)
+
+        # Right Rail (Telemetry) Toggle Action
+        self._toggle_ops_btn = QPushButton("◧ Telemetry")
+        self._toggle_ops_btn.setFont(QFont("Consolas", 8))
+        self._toggle_ops_btn.setCursor(Qt.PointingHandCursor)
+        self._toggle_ops_btn.setToolTip("Toggle Operations & Telemetry Rail")
+        self._toggle_ops_btn.clicked.connect(self._toggle_ops_rail)
+        hb_l.addWidget(self._toggle_ops_btn)
 
         # Pin / Always on Top Action
         self._pin_btn = QPushButton("📌 Pin")
@@ -340,12 +508,20 @@ class ChatWindowOverlay(QWidget):
 
         layout.addWidget(header_bar)
 
-        # ── 2. Quick Prompt Chips ──
-        chips_bar = QFrame()
-        chips_bar.setStyleSheet("background: rgba(10, 14, 24, 0.5); border-bottom: 1px solid rgba(255, 255, 255, 0.04);")
+        # ── 2. Quick Prompt Chips (Contained Scroll Area, No Overflow) ──
+        chips_scroll = QScrollArea()
+        chips_scroll.setFixedHeight(44)
+        chips_scroll.setWidgetResizable(True)
+        chips_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        chips_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        chips_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        chips_scroll.setStyleSheet("background: #0b1222; border-bottom: 1px solid rgba(56, 189, 248, 0.12); border-top-left-radius: 12px; border-top-right-radius: 12px;")
+
+        chips_bar = QWidget()
+        chips_bar.setStyleSheet("background: transparent;")
         chips_layout = QHBoxLayout(chips_bar)
-        chips_layout.setContentsMargins(16, 8, 16, 8)
-        chips_layout.setSpacing(8)
+        chips_layout.setContentsMargins(12, 6, 12, 6)
+        chips_layout.setSpacing(6)
 
         prompts = [
             ("🌤️ Weather", "what is the current weather?"),
@@ -362,9 +538,9 @@ class ChatWindowOverlay(QWidget):
                 QPushButton {
                     background: rgba(30, 41, 59, 0.7);
                     border: 1px solid rgba(56, 189, 248, 0.25);
-                    border-radius: 10px;
+                    border-radius: 8px;
                     color: #cbd5e1;
-                    padding: 4px 10px;
+                    padding: 3px 8px;
                 }
                 QPushButton:hover {
                     background: rgba(56, 189, 248, 0.2);
@@ -375,7 +551,7 @@ class ChatWindowOverlay(QWidget):
             btn.clicked.connect(lambda checked, c=cmd: self._send_quick_command(c))
             chips_layout.addWidget(btn)
         chips_layout.addStretch()
-        layout.addWidget(chips_bar)
+        chips_scroll.setWidget(chips_bar)
 
         # ── 3. Scrollable Message Feed ──
         self._scroll_area = QScrollArea()
@@ -391,78 +567,97 @@ class ChatWindowOverlay(QWidget):
         self._messages_layout.addStretch()
 
         self._scroll_area.setWidget(self._messages_container)
-        layout.addWidget(self._scroll_area, 1)
 
         # ── 4. Bottom Input Bar ──
         input_bar = QFrame()
         input_bar.setStyleSheet("""
             QFrame {
-                background: rgba(10, 14, 24, 0.85);
-                border-top: 1px solid rgba(56, 189, 248, 0.2);
-                border-bottom-left-radius: 16px;
-                border-bottom-right-radius: 16px;
+                background: #0b1222;
+                border-top: 1px solid rgba(56, 189, 248, 0.16);
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
             }
         """)
         ib_l = QHBoxLayout(input_bar)
-        ib_l.setContentsMargins(16, 12, 16, 12)
+        ib_l.setContentsMargins(16, 10, 16, 10)
         ib_l.setSpacing(10)
 
         # Live Mic Toggle
         self._mic_btn = QPushButton("🎙️")
         self._mic_btn.setCheckable(True)
-        self._mic_btn.setFixedSize(36, 34)
+        self._mic_btn.setFixedSize(36, 36)
         self._mic_btn.setCursor(Qt.PointingHandCursor)
         self._mic_btn.setToolTip("Toggle Live Voice Input")
         self._update_mic_style(False)
         self._mic_btn.clicked.connect(self._on_mic_toggle)
-        ib_l.addWidget(self._mic_btn)
+        ib_l.addWidget(self._mic_btn, 0, Qt.AlignmentFlag.AlignBottom)
 
-        # Text input
-        self._input_field = QLineEdit()
-        self._input_field.setPlaceholderText("Ask AuraAI anything or enter a system goal...")
-        self._input_field.setFont(QFont("Segoe UI", 9))
-        self._input_field.setStyleSheet("""
-            QLineEdit {
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(56, 189, 248, 0.25);
-                border-radius: 6px;
-                color: #ffffff;
-                padding: 6px 10px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #38bdf8;
-                background: rgba(56, 189, 248, 0.08);
-            }
-            QLineEdit::placeholder {
-                color: #64748b;
-            }
-        """)
-        self._input_field.returnPressed.connect(self._on_submit)
+        # Multiline Text input (Shift+Enter for newline, Enter to submit, Up/Down for history)
+        self._input_field = MultilinePromptTextEdit()
+        self._input_field.submitted.connect(self._on_submit)
         ib_l.addWidget(self._input_field, 1)
 
         # Send Button
         send_btn = QPushButton("SEND ➤")
         send_btn.setFont(QFont("Consolas", 8, QFont.Bold))
-        send_btn.setFixedSize(80, 34)
+        send_btn.setFixedSize(80, 36)
         send_btn.setCursor(Qt.PointingHandCursor)
         send_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #06b6d4);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #00b4d8, stop:1 #00e5ff);
                 border: none;
-                border-radius: 6px;
-                color: #ffffff;
+                border-radius: 8px;
+                color: #04101e;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0369a1, stop:1 #0891b2);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0096c7, stop:1 #00c8e6);
             }
         """)
         send_btn.clicked.connect(self._on_submit)
-        ib_l.addWidget(send_btn)
+        ib_l.addWidget(send_btn, 0, Qt.AlignmentFlag.AlignBottom)
 
-        layout.addWidget(input_bar)
+        # ── 5. Three-Pane Body Container (Distinct Card Modular Layout) ──
+        body_container = QWidget()
+        body_container.setStyleSheet("background: transparent;")
+        body_l = QHBoxLayout(body_container)
+        body_l.setContentsMargins(10, 8, 10, 10)
+        body_l.setSpacing(10)
+
+        # 5a. Left Rail: History Sidebar (Modular Card)
+        from gui.widgets.chat_history_sidebar import ChatHistorySidebar
+        self._history_sidebar = ChatHistorySidebar(self)
+        self._history_sidebar.new_chat_requested.connect(self._start_new_chat)
+        self._history_sidebar.history_item_selected.connect(self._on_history_item_selected)
+        body_l.addWidget(self._history_sidebar)
+
+        # 5b. Center Chat Pane (Modular Rounded Card Container)
+        center_pane = QFrame()
+        center_pane.setObjectName("CenterChatPane")
+        center_pane.setStyleSheet("""
+            #CenterChatPane {
+                background: #080d19;
+                border: 1px solid rgba(56, 189, 248, 0.16);
+                border-radius: 12px;
+            }
+        """)
+        cp_l = QVBoxLayout(center_pane)
+        cp_l.setContentsMargins(0, 0, 0, 0)
+        cp_l.setSpacing(0)
+        cp_l.addWidget(chips_scroll)
+        cp_l.addWidget(self._scroll_area, 1)
+        cp_l.addWidget(input_bar)
+        body_l.addWidget(center_pane, 1)
+
+        # 5c. Right Rail: Operations & Telemetry (Modular Card)
+        from gui.widgets.chat_right_rail import ChatRightRail
+        self._right_rail = ChatRightRail(self)
+        body_l.addWidget(self._right_rail)
+
+        layout.addWidget(body_container, 1)
         root_layout.addWidget(self._card)
 
-        # ── 5. Integrated Hardware Size Grip ──
+        # ── 6. Integrated Hardware Size Grip ──
         from PySide6.QtWidgets import QSizeGrip
         self._size_grip = QSizeGrip(self)
         self._size_grip.setFixedSize(22, 22)
@@ -486,30 +681,33 @@ class ChatWindowOverlay(QWidget):
         app_signals.step_updated.connect(self._on_step_updated)
 
     def _load_initial_history(self):
-        # Auto-load recent history from ChatLog.json if available
-        loaded = False
-        if CHAT_LOG_PATH.exists():
-            try:
-                with open(CHAT_LOG_PATH, "r", encoding="utf-8") as f:
-                    chat_data = json.load(f)
-                if isinstance(chat_data, list) and chat_data:
-                    for entry in chat_data[-8:]:
-                        role = entry.get("role", "user")
-                        content = entry.get("content", "")
-                        if content.strip():
-                            sender = "user" if role == "user" else "agent"
-                            intent = "HISTORY"
-                            self._append_card(sender, content, intent_tag=intent)
-                    loaded = True
-            except Exception as e:
-                logger.debug(f"[ChatWindowOverlay] Error loading ChatLog: {e}")
+        # Defer loading recent history slightly so the window paints instantly (<400ms)
+        def _do_load():
+            loaded = False
+            if CHAT_LOG_PATH.exists():
+                try:
+                    with open(CHAT_LOG_PATH, "r", encoding="utf-8") as f:
+                        chat_data = json.load(f)
+                    if isinstance(chat_data, list) and chat_data:
+                        for entry in chat_data[-6:]:
+                            role = entry.get("role", "user")
+                            content = entry.get("content", "")
+                            if content.strip():
+                                sender = "user" if role == "user" else "agent"
+                                intent = "HISTORY"
+                                self._append_card(sender, content, intent_tag=intent)
+                        loaded = True
+                except Exception as e:
+                    logger.debug(f"[ChatWindowOverlay] Error loading ChatLog: {e}")
 
-        if not loaded:
-            self._append_card(
-                "agent",
-                "✦ AuraAI Holographic Chat HUD online. Ready for multi-agent reasoning, desktop automation, and queries.",
-                intent_tag="INITIALIZE",
-            )
+            if not loaded and self._messages_layout.count() <= 1:
+                self._append_card(
+                    "agent",
+                    "✦ AuraAI Holographic Chat HUD online. Ready for multi-agent reasoning, desktop automation, and queries.",
+                    intent_tag="INITIALIZE",
+                )
+
+        QTimer.singleShot(50, _do_load)
 
     MAX_CARDS: int = 100
 
@@ -525,15 +723,42 @@ class ChatWindowOverlay(QWidget):
             if widget:
                 widget.deleteLater()
 
+        # Persist conversation turn if it is a live user/agent turn
+        if intent_tag not in ("HISTORY", "INITIALIZE", "STANDBY"):
+            try:
+                from datetime import datetime
+                role = "user" if sender == "user" else "assistant"
+                entry = {
+                    "role": role,
+                    "content": text,
+                    "topic": intent_tag.lower(),
+                    "timestamp": datetime.now().isoformat(),
+                }
+                chat_data = []
+                if CHAT_LOG_PATH.exists():
+                    try:
+                        with open(CHAT_LOG_PATH, "r", encoding="utf-8") as f:
+                            chat_data = json.load(f)
+                    except Exception:
+                        chat_data = []
+                chat_data.append(entry)
+                # Keep last 50 entries
+                chat_data = chat_data[-50:]
+                with open(CHAT_LOG_PATH, "w", encoding="utf-8") as f:
+                    json.dump(chat_data, f, indent=2)
+            except Exception as pe:
+                logger.debug(f"[ChatWindowOverlay] Error saving turn to ChatLog: {pe}")
+
         self._scroll_to_bottom()
 
     def _scroll_to_bottom(self):
-        QTimer.singleShot(
-            40,
-            lambda: self._scroll_area.verticalScrollBar().setValue(
-                self._scroll_area.verticalScrollBar().maximum()
-            ),
-        )
+        for delay in (40, 150, 450, 1200):
+            QTimer.singleShot(
+                delay,
+                lambda: self._scroll_area.verticalScrollBar().setValue(
+                    self._scroll_area.verticalScrollBar().maximum()
+                ),
+            )
 
     def _clear_messages(self):
         while self._messages_layout.count() > 1:
@@ -541,25 +766,76 @@ class ChatWindowOverlay(QWidget):
             widget = item.widget()
             if widget:
                 widget.deleteLater()
+
+        # Persistently wipe the stored chat history file
+        try:
+            if CHAT_LOG_PATH.exists():
+                with open(CHAT_LOG_PATH, "w", encoding="utf-8") as f:
+                    json.dump([], f, indent=2)
+                logger.info("[ChatWindowOverlay] Persistent ChatLog.json reset successfully.")
+        except Exception as e:
+            logger.warning(f"[ChatWindowOverlay] Failed to clear ChatLog.json: {e}")
+
+        # Also reset AuraCore conversation history if initialized
+        try:
+            from core.aura_core import AuraCore
+            if AuraCore._instance and hasattr(AuraCore._instance, "conversation_history"):
+                AuraCore._instance.conversation_history.clear()
+        except Exception:
+            pass
+
         self._append_card(
             "agent",
             "Chat feed cleared. Standing by for instructions.",
             intent_tag="STANDBY",
         )
 
+    def _start_new_chat(self):
+        """Clear the visual chat buffer to begin a fresh neural turn without deleting ChatLog.json."""
+        while self._messages_layout.count() > 1:
+            item = self._messages_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self._append_card(
+            "agent",
+            "✦ New neural session initiated. Ready for instructions, system diagnostics, and multi-agent workflows.",
+            intent_tag="INITIALIZE",
+        )
+
+    def _on_history_item_selected(self, prompt: str, response: str):
+        """Populate the message feed with a past conversation session."""
+        while self._messages_layout.count() > 1:
+            item = self._messages_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self._append_card("user", prompt, intent_tag="HISTORY")
+        if response:
+            self._append_card("agent", response, intent_tag="HISTORY")
+
     def _send_quick_command(self, cmd: str):
         self._input_field.setText(cmd)
         self._on_submit()
 
     def _on_submit(self):
+        # If user pressed enter or submitted while mic was active, stop & transcribe first
+        if self._mic_active:
+            self._on_mic_toggle()
+            return
+
         text = self._input_field.text().strip()
         if not text:
             return
 
+        self._input_field.append_history(text)
         self._append_card("user", text)
         self._input_field.clear()
         self.command_submitted.emit(text)
         app_signals.message_received.emit("user", text, True)
+
+        if hasattr(self, "_history_sidebar"):
+            QTimer.singleShot(400, self._history_sidebar.reload_history)
 
     def _on_message_received(self, sender: str, content: str, is_user: bool):
         if not is_user:
@@ -577,24 +853,36 @@ class ChatWindowOverlay(QWidget):
         self._status_dot.setStyleSheet(f"color: {col}; background: transparent;")
 
     def _on_step_updated(self, step: ExecutionStep):
-        if step.description and step.status.name == "RUNNING":
-            pass
+        if step and step.description:
+            status_str = step.status.name if hasattr(step.status, "name") else str(step.status)
+            if status_str == "RUNNING":
+                self._status_dot.setText("◐")
+                self._status_dot.setStyleSheet("color: #fbbf24; background: transparent;")
+            elif status_str in ("COMPLETED", "FINISHED"):
+                self._status_dot.setText("●")
+                self._status_dot.setStyleSheet("color: #10b981; background: transparent;")
+            elif status_str in ("FAILED", "ERROR"):
+                self._status_dot.setText("●")
+                self._status_dot.setStyleSheet("color: #f43f5e; background: transparent;")
 
     def _update_mic_style(self, active: bool):
         if active:
+            self._mic_btn.setText("🔴")
             self._mic_btn.setStyleSheet("""
                 QPushButton {
-                    background: rgba(244, 63, 94, 0.25);
+                    background: rgba(244, 63, 94, 0.35);
                     border: 1.5px solid #f43f5e;
                     border-radius: 6px;
                     color: #ff4d6d;
-                    font-size: 13px;
+                    font-size: 14px;
+                    font-weight: bold;
                 }
                 QPushButton:hover {
-                    background: rgba(244, 63, 94, 0.4);
+                    background: rgba(244, 63, 94, 0.55);
                 }
             """)
         else:
+            self._mic_btn.setText("🎙️")
             self._mic_btn.setStyleSheet("""
                 QPushButton {
                     background: rgba(255, 255, 255, 0.05);
@@ -619,23 +907,33 @@ class ChatWindowOverlay(QWidget):
         if self._mic_active:
             # 1. Started Listening
             self._recorder.start_recording()
-            self._input_field.setPlaceholderText("🎙️ Listening... (Speak now, click mic to stop & send)")
+            self._input_field.setPlaceholderText("🔴 RECORDING... Speak now (Click mic or press Enter to submit)")
         else:
             # 2. Stopped Listening -> Transcribe & Submit
-            self._input_field.setPlaceholderText("⏳ Transcribing speech...")
+            self._input_field.setPlaceholderText("⏳ Transcribing speech via Groq Whisper...")
             audio_bytes = self._recorder.stop_recording()
-            if audio_bytes and len(audio_bytes) > 4000:
+            if audio_bytes and len(audio_bytes) > 3000:
                 self._transcribe_worker = VoiceTranscribeWorker(audio_bytes, self)
                 self._transcribe_worker.transcription_ready.connect(self._on_transcription_ready)
                 self._transcribe_worker.start()
             else:
-                self._input_field.setPlaceholderText("Enter command or query (e.g. 'what is the weather?', 'inspect memory')...")
+                self._input_field.setPlaceholderText("⚠️ No audio detected. Click mic to try again...")
+                QTimer.singleShot(2200, lambda: self._input_field.setPlaceholderText(
+                    "Enter command or query (e.g. 'what is the weather?', 'inspect memory')..."
+                ))
 
     def _on_transcription_ready(self, text: str):
         self._input_field.setPlaceholderText("Enter command or query (e.g. 'what is the weather?', 'inspect memory')...")
         if text.strip():
-            self._input_field.setText(text.strip())
-            self._on_submit()
+            # Append user card and emit as voice event to trigger spoken TTS reply
+            self._append_card("user", text.strip())
+            self.command_submitted.emit(text.strip())
+            app_signals.message_received.emit("voice", text.strip(), True)
+        else:
+            self._input_field.setPlaceholderText("⚠️ No speech recognized. Speak closer to the microphone.")
+            QTimer.singleShot(2500, lambda: self._input_field.setPlaceholderText(
+                "Enter command or query (e.g. 'what is the weather?', 'inspect memory')..."
+            ))
 
     def _on_voice_status_changed(self, active: bool):
         self._mic_active = active
@@ -671,6 +969,88 @@ class ChatWindowOverlay(QWidget):
         self._update_pin_style()
         self._apply_window_flags()
         self.show()
+
+    def _toggle_history_rail(self):
+        if not hasattr(self, "_history_sidebar"):
+            return
+        visible = not self._history_sidebar.isVisible()
+        self._history_sidebar.setVisible(visible)
+        self._settings.setValue("left_rail_visible", visible)
+        self._update_rail_button_styles()
+
+    def _toggle_ops_rail(self):
+        if not hasattr(self, "_right_rail"):
+            return
+        visible = not self._right_rail.isVisible()
+        self._right_rail.setVisible(visible)
+        self._settings.setValue("right_rail_visible", visible)
+        self._update_rail_button_styles()
+
+    def _update_rail_button_styles(self):
+        hist_active = hasattr(self, "_history_sidebar") and self._history_sidebar.isVisible()
+        ops_active = hasattr(self, "_right_rail") and self._right_rail.isVisible()
+
+        if hasattr(self, "_toggle_hist_btn"):
+            if hist_active:
+                self._toggle_hist_btn.setStyleSheet("""
+                    QPushButton {
+                        background: rgba(56, 189, 248, 0.22);
+                        border: 1px solid #38bdf8;
+                        border-radius: 6px;
+                        color: #38bdf8;
+                        font-weight: bold;
+                        padding: 4px 8px;
+                    }
+                    QPushButton:hover {
+                        background: rgba(56, 189, 248, 0.35);
+                    }
+                """)
+            else:
+                self._toggle_hist_btn.setStyleSheet("""
+                    QPushButton {
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.12);
+                        border-radius: 6px;
+                        color: #94a3b8;
+                        padding: 4px 8px;
+                    }
+                    QPushButton:hover {
+                        background: rgba(56, 189, 248, 0.15);
+                        border: 1px solid #38bdf8;
+                        color: #38bdf8;
+                    }
+                """)
+
+        if hasattr(self, "_toggle_ops_btn"):
+            if ops_active:
+                self._toggle_ops_btn.setStyleSheet("""
+                    QPushButton {
+                        background: rgba(56, 189, 248, 0.22);
+                        border: 1px solid #38bdf8;
+                        border-radius: 6px;
+                        color: #38bdf8;
+                        font-weight: bold;
+                        padding: 4px 8px;
+                    }
+                    QPushButton:hover {
+                        background: rgba(56, 189, 248, 0.35);
+                    }
+                """)
+            else:
+                self._toggle_ops_btn.setStyleSheet("""
+                    QPushButton {
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.12);
+                        border-radius: 6px;
+                        color: #94a3b8;
+                        padding: 4px 8px;
+                    }
+                    QPushButton:hover {
+                        background: rgba(56, 189, 248, 0.15);
+                        border: 1px solid #38bdf8;
+                        color: #38bdf8;
+                    }
+                """)
 
     def _update_pin_style(self):
         if not hasattr(self, "_pin_btn"):
@@ -715,8 +1095,17 @@ class ChatWindowOverlay(QWidget):
         pos = self._settings.value("pos", None)
         size = self._settings.value("size", None)
 
-        target_w = max(MIN_W, min(int(screen.width() * 0.38), 640))
-        target_h = max(MIN_H, min(int(screen.height() * 0.65), 720))
+        # Restore Rail States
+        left_visible = self._settings.value("left_rail_visible", True, type=bool)
+        right_visible = self._settings.value("right_rail_visible", True, type=bool)
+        if hasattr(self, "_history_sidebar"):
+            self._history_sidebar.setVisible(left_visible)
+        if hasattr(self, "_right_rail"):
+            self._right_rail.setVisible(right_visible)
+        self._update_rail_button_styles()
+
+        target_w = max(MIN_W, min(int(screen.width() * 0.65), 1180))
+        target_h = max(MIN_H, min(int(screen.height() * 0.72), 780))
 
         if size is not None:
             try:

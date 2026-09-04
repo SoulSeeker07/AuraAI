@@ -26,6 +26,7 @@ class BatteryDiagnosticsService:
             Dict containing detailed metrics and a formatted markdown table.
         """
         # 1. psutil base sensors
+        has_battery = False
         percent = 100
         power_plugged = True
         secs_left = -2
@@ -34,6 +35,7 @@ class BatteryDiagnosticsService:
             import psutil
             b = psutil.sensors_battery()
             if b is not None:
+                has_battery = True
                 percent = b.percent
                 power_plugged = b.power_plugged
                 secs_left = b.secsleft
@@ -41,8 +43,9 @@ class BatteryDiagnosticsService:
             logger.debug(f"[BatteryService] psutil error: {e}")
 
         # 2. WMI Win32_Battery query via PowerShell
-        battery_name = "Internal Battery (L19M4PC0)"
+        battery_name = "Primary Battery"
         chemistry_name = "Lithium-Ion"
+        wmi_battery_detected = False
         try:
             ps_cmd = (
                 "Get-CimInstance -ClassName Win32_Battery | "
@@ -60,6 +63,8 @@ class BatteryDiagnosticsService:
                 if isinstance(data, list) and len(data) > 0:
                     data = data[0]
                 if isinstance(data, dict):
+                    wmi_battery_detected = True
+                    has_battery = True
                     if data.get("Name"):
                         battery_name = str(data["Name"]).strip()
                     if data.get("EstimatedChargeRemaining") is not None:
@@ -93,7 +98,28 @@ class BatteryDiagnosticsService:
         except Exception as e:
             logger.debug(f"[BatteryService] powercfg query warning: {e}")
 
-        # 4. Compute formatted runtime
+        # 4. If no battery is installed (e.g. desktop workstation)
+        if not has_battery and not wmi_battery_detected:
+            table_md = (
+                f"⚡ **Hardware Power Diagnostics**\n\n"
+                f"| Metric | Telemetry Value |\n"
+                f"| :--- | :--- |\n"
+                f"| **Power Source** | 🔌 **Direct AC Power (No Battery Detected)** |\n"
+                f"| **Active Power Plan** | ⚖️ **{power_plan}** |\n"
+                f"| **System Type** | 🖥️ **Desktop Workstation / AC Powered** |\n"
+            )
+            return {
+                "has_battery": False,
+                "percent": None,
+                "power_plugged": True,
+                "battery_name": "None",
+                "chemistry": "N/A",
+                "power_plan": power_plan,
+                "runtime_str": "Continuous (Direct AC)",
+                "markdown": table_md,
+            }
+
+        # 5. Compute formatted runtime for battery systems
         if power_plugged:
             runtime_str = "⚡ Continuous (Running on AC Power)"
             state_str = "⚡ Plugged In (AC Connected)"
@@ -127,6 +153,7 @@ class BatteryDiagnosticsService:
         )
 
         return {
+            "has_battery": True,
             "percent": percent,
             "power_plugged": power_plugged,
             "battery_name": battery_name,

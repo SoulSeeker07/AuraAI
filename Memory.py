@@ -18,6 +18,23 @@ DATA_DIR = PROJECT_ROOT / "Data"
 MEMORY_DB = PROJECT_ROOT / "Memory.db"
 CHAT_LOG_FILE = DATA_DIR / "ChatLog.json"
 
+# ---------------------------------------------------------------------------
+# Tier 3 single-authority boundary
+# ---------------------------------------------------------------------------
+# Facts in these categories are owned exclusively by ProfileMemory (Tier 3
+# ACID store). upsert_fact/fact_value route to ProfileMemory only and skip
+# the legacy SQLite facts table for these categories.
+TIER3_CATEGORIES: frozenset[str] = frozenset({
+    "profile",
+    "preference",
+    "important",
+    "person",  # legacy schema drift alias
+})
+
+# In-process guard: prevents repeated sentinel reads within a single session
+# when Memory() is instantiated more than once. Reset to False on module reload.
+_LEGACY_MIGRATION_DONE: bool = False
+
 
 class MemoryCategory(Enum):
     """Enum for memory fact categories to avoid string typos."""
@@ -108,6 +125,31 @@ class Memory:
             self.vector_memory = None
 
         self.recover_profile_from_chat_log()
+        self._run_legacy_migration_once()
+
+    # ------------------------------------------------------------------
+    # One-time Tier 3 migration
+    # ------------------------------------------------------------------
+    def _run_legacy_migration_once(self) -> None:
+        """Invoke ProfileMemory.migrate_from_legacy() at most once per process,
+        gated first by an in-process flag (avoids repeated imports within a session)
+        and then by a persisted sentinel row in profile_facts (avoids re-scanning
+        across process restarts after the migration has already run)."""
+        global _LEGACY_MIGRATION_DONE
+        if _LEGACY_MIGRATION_DONE:
+            return
+        try:
+            from src.memory.profile_memory import ProfileMemory
+            pm = ProfileMemory.get_instance()
+            # Sentinel check is inside migrate_from_legacy() itself;
+            # the call is always safe and cheap after first run.
+            pm.migrate_from_legacy(self.db_path)
+        except Exception as exc:
+            logger.warning(f"[Memory] Legacy Tier 3 migration skipped: {exc}")
+        finally:
+            # Set flag regardless of outcome so we don't retry on every
+            # Memory() construction within this process lifetime.
+            _LEGACY_MIGRATION_DONE = True
 
     # ------------------------------------------------------------------
     # Connection handling
@@ -365,8 +407,8 @@ class Memory:
         if not query.strip() or not all_facts:
             return all_facts[:limit]
 
-        # 1. Real Dense Neural Embedding Search
-        if getattr(self, "vector_memory", None) is not None:
+        # 1. Real Dense Neural Embedding Search (if model is already loaded)
+        if getattr(self, "vector_memory", None) is not None and getattr(self.vector_memory, "is_model_loaded", lambda: True)():
             try:
                 vector_results = self.vector_memory.search(
                     query=query, facts=all_facts, top_k=limit, min_similarity=min_score
@@ -692,6 +734,20 @@ class Memory:
         self.upsert_fact(str(MemoryCategory.PREFERENCE.value), preference_type, str(value))
 
     def fact_value(self, category: str, key: str) -> str | None:
+        # --- Tier 3 single-authority read ---
+        # For Tier 3 categories, ProfileMemory is the sole source of truth.
+        # Return immediately without falling through to the legacy SQLite table,
+        # which may contain stale or duplicate rows after migration.
+        if category.strip().lower() in TIER3_CATEGORIES:
+            try:
+                from src.memory.profile_memory import ProfileMemory
+                prof_val = ProfileMemory.get_instance().get_fact(category, key)
+                return str(prof_val) if prof_val is not None else None
+            except Exception as e:
+                logger.warning(f"[Memory] ProfileMemory Tier 3 read failed for [{category}:{key}]: {e}")
+                return None  # Do not fall through for Tier 3 on error.
+
+        # Non-Tier 3: standard SQLite facts read.
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT value FROM facts WHERE category = ? AND key = ? ORDER BY updated_at DESC LIMIT 1",
@@ -723,6 +779,19 @@ class Memory:
         logger.info(
             f"[Memory] upsert_fact called: category={category}, key={key}, value={value}"
         )
+
+        # --- Tier 3 single-authority write ---
+        # Facts in TIER3_CATEGORIES are owned exclusively by ProfileMemory.
+        # Route the write there and return immediately — do NOT also write to
+        # the legacy SQLite facts table, which would create a dual-write split.
+        if category.strip().lower() in TIER3_CATEGORIES:
+            try:
+                from src.memory.profile_memory import ProfileMemory
+                ProfileMemory.get_instance().set_fact(category, key, value)
+                logger.debug(f"[Memory] Tier 3 fact [{category}:{key}] routed to ProfileMemory.")
+            except Exception as e:
+                logger.warning(f"[Memory] ProfileMemory Tier 3 write failed for [{category}:{key}]: {e}")
+            return  # Do not fall through to SQLite facts table.
 
         # Log current memory count before insertion
         current_count = self.count_memories()

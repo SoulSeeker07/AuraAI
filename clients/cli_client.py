@@ -975,7 +975,23 @@ class CLIClient:
             pass
 
         print(f"\nAura is thinking... [Intent: {intent} | Verbosity: {self.verbosity_mode}]")
-        response = await self.aura_core.process_request(user_input)
+        is_expanded = self.verbosity_mode in ("debug", "trace", "developer")
+        emitter = None
+        renderer = None
+        try:
+            from core.progress_events import ProgressEmitter, CLIProgressRenderer
+            emitter = ProgressEmitter()
+            renderer = CLIProgressRenderer(expanded=is_expanded)
+            emitter.subscribe(renderer)
+        except Exception:
+            pass
+
+        response = await self.aura_core.process_request(user_input, emitter=emitter)
+
+        if renderer is not None:
+            renderer.finish()
+            if self.verbosity_mode == "trace":
+                renderer.render_full_trace()
 
         self.aura_core.add_to_conversation("assistant", response)
         print(f"\nAura > {response}")

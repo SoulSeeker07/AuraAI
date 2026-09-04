@@ -25,6 +25,7 @@ VK_SPACE = 0x20
 VK_Q = 0x51
 VK_N = 0x4E
 VK_V = 0x56
+VK_F8 = 0x77
 WM_HOTKEY = 0x0312
 WM_QUIT = 0x0012
 
@@ -32,6 +33,7 @@ HOTKEY_ALT_SPACE = 9001
 HOTKEY_CTRL_Q = 9002
 HOTKEY_ALT_N = 9003
 HOTKEY_ALT_V = 9004
+HOTKEY_F8 = 9005
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -57,66 +59,31 @@ class GlobalHotkeyService:
         return cls._instance
 
     def start(self) -> None:
-        """Starts global keyboard hooks using low-level Windows hook."""
+        """Starts global hotkey listener via native Win32 RegisterHotKey message loop."""
         if self._running:
             return
 
         self._running = True
-        try:
-            import keyboard
-            import time
-
-            def _on_key_event(event):
-                if not self._running:
-                    return
-
-                key_name = (event.name or "").lower()
-                is_target_key = key_name in ("f8", "pause")
-
-                if is_target_key:
-                    if event.event_type == "down":
-                        now = time.time()
-                        if key_name not in self._hold_start:
-                            self._hold_start[key_name] = now
-                        elif (now - self._hold_start[key_name] >= 1.0) and (key_name not in self._hold_triggered):
-                            self._hold_triggered.add(key_name)
-                            logger.info(f"[GlobalHotkeyService] Key '{key_name}' held for 1s -> Triggering Voice Listening!")
-                            try:
-                                from gui.signals import app_signals
-                                app_signals.trigger_voice_listening.emit()
-                            except Exception as e:
-                                logger.debug(f"[GlobalHotkeyService] Signal error: {e}")
-                    elif event.event_type == "up":
-                        self._hold_start.pop(key_name, None)
-                        self._hold_triggered.discard(key_name)
-
-            keyboard.hook(_on_key_event)
-
-            # Register Instant Hotkeys
-            keyboard.add_hotkey("alt+v", self._on_trigger_listening, suppress=False)
-            keyboard.add_hotkey("alt+n", self._on_alt_n, suppress=False)
-            keyboard.add_hotkey("alt+space", self._on_alt_space, suppress=False)
-
-            logger.info("[GlobalHotkeyService] Global keyboard hooks registered successfully.")
-        except Exception as exc:
-            logger.error(f"[GlobalHotkeyService] Failed to initialize keyboard hooks: {exc}")
+        self._thread = threading.Thread(target=self._msg_loop, daemon=True, name="Win32HotkeyThread")
+        self._thread.start()
+        logger.info("[GlobalHotkeyService] Global Win32 hotkeys registered (Alt+Space, Ctrl+Q, Alt+N, Alt+V, F8).")
 
     def stop(self) -> None:
-        """Stops global keyboard hooks."""
+        """Stops global hotkey listener."""
         if not self._running:
             return
 
         self._running = False
-        try:
-            import keyboard
-            keyboard.unhook_all()
-        except Exception:
-            pass
+        if hasattr(self, "_thread_id") and self._thread_id:
+            try:
+                user32.PostThreadMessageW(self._thread_id, WM_QUIT, 0, 0)
+            except Exception:
+                pass
         logger.info("[GlobalHotkeyService] Stopped global hotkey service.")
 
     def _on_trigger_listening(self) -> None:
-        """Triggered on Alt+V globally."""
-        logger.info("[GlobalHotkeyService] Alt+V pressed -> Triggering Voice Listening.")
+        """Triggered on Alt+V or F8 globally."""
+        logger.info("[GlobalHotkeyService] Triggering Voice Listening.")
         try:
             from gui.signals import app_signals
             app_signals.trigger_voice_listening.emit()
@@ -158,12 +125,20 @@ class GlobalHotkeyService:
             VK_N,
         )
 
-        # 4. Register Alt + V (ID 9004) - Voice Toggle
+        # 4. Register Alt + V (ID 9004) - Voice Listening Trigger
         user32.RegisterHotKey(
             None,
             HOTKEY_ALT_V,
             MOD_ALT | MOD_NOREPEAT,
             VK_V,
+        )
+
+        # 5. Register F8 (ID 9005) - Direct Voice Trigger
+        user32.RegisterHotKey(
+            None,
+            HOTKEY_F8,
+            MOD_NOREPEAT,
+            VK_F8,
         )
 
         # Win32 Message Loop
@@ -179,8 +154,10 @@ class GlobalHotkeyService:
                     self._on_alt_space()
                 elif hotkey_id == HOTKEY_CTRL_Q:
                     self._on_ctrl_q()
-                elif hotkey_id in (HOTKEY_ALT_N, HOTKEY_ALT_V):
+                elif hotkey_id == HOTKEY_ALT_N:
                     self._on_alt_n()
+                elif hotkey_id in (HOTKEY_ALT_V, HOTKEY_F8):
+                    self._on_trigger_listening()
 
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
@@ -190,6 +167,7 @@ class GlobalHotkeyService:
         user32.UnregisterHotKey(None, HOTKEY_CTRL_Q)
         user32.UnregisterHotKey(None, HOTKEY_ALT_N)
         user32.UnregisterHotKey(None, HOTKEY_ALT_V)
+        user32.UnregisterHotKey(None, HOTKEY_F8)
 
     def _on_alt_n(self) -> None:
         """Triggered on Alt+N or Alt+V anywhere on Windows."""

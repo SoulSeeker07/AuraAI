@@ -162,22 +162,48 @@ class AutonomyGovernanceEngine:
         return True, "Token valid and authorized"
 
     def classify_risk(self, capability: str, arguments: dict[str, Any] | None = None) -> AutonomyRiskTier:
-        """Classify the autonomy risk tier of a capability and arguments."""
+        """Classify the autonomy risk tier of a capability and arguments monotonically."""
         cap_clean = capability.lower().strip()
 
-        # 1. Check prohibited capabilities
+        # 1. Check explicitly prohibited capabilities
         if cap_clean in self.policy.prohibited_capabilities:
             return AutonomyRiskTier.PROHIBITED
 
-        # 2. Check high risk capabilities
-        if cap_clean in self.policy.high_risk_capabilities:
-            return AutonomyRiskTier.HIGH_RISK_GATE
-
-        # 3. Check destructive arguments (e.g. recursive delete or rm -rf)
+        # 2. Check destructive arguments (e.g. drop table, recursive delete, format)
         args = arguments or {}
         args_str = json.dumps(args, default=str).lower()
         if any(w in args_str for w in ["drop table", "format", "rm -rf", "remove-item -recurse -force"]):
             return AutonomyRiskTier.PROHIBITED
+
+        # 3. Check canonical ActionRisk via classify_action_risk / CapabilityRegistry
+        try:
+            from core.orchestration.autonomy_mode import ActionRisk, classify_action_risk
+            domain = cap_clean.split(".")[0] if "." in cap_clean else "desktop"
+            action_risk = classify_action_risk(
+                engine=domain,
+                action=cap_clean,
+                params=args,
+            )
+
+            # Strict monotonic mapping across all levels:
+            # ActionRisk.CRITICAL -> AutonomyRiskTier.PROHIBITED
+            # ActionRisk.HIGH     -> AutonomyRiskTier.HIGH_RISK_GATE
+            # ActionRisk.MEDIUM   -> AutonomyRiskTier.CONFIRMATION_REQUIRED
+            # ActionRisk.LOW/SAFE -> AutonomyRiskTier.LOW_IMPACT
+            if action_risk == ActionRisk.CRITICAL:
+                return AutonomyRiskTier.PROHIBITED
+            if action_risk == ActionRisk.HIGH:
+                return AutonomyRiskTier.HIGH_RISK_GATE
+            if action_risk == ActionRisk.MEDIUM:
+                return AutonomyRiskTier.CONFIRMATION_REQUIRED
+        except Exception as exc:
+            logger.warning(
+                f"[AutonomyGovernanceEngine] Failed to query canonical classify_action_risk for '{capability}': {exc}"
+            )
+
+        # 4. Check policy high risk capabilities fallback
+        if cap_clean in self.policy.high_risk_capabilities:
+            return AutonomyRiskTier.HIGH_RISK_GATE
 
         return AutonomyRiskTier.LOW_IMPACT
 
@@ -198,10 +224,11 @@ class AutonomyGovernanceEngine:
             logger.error(f"[AutonomyGovernance] {msg}")
             return False, msg, risk_tier
 
-        if risk_tier == AutonomyRiskTier.HIGH_RISK_GATE:
+        if risk_tier in (AutonomyRiskTier.HIGH_RISK_GATE, AutonomyRiskTier.CONFIRMATION_REQUIRED):
             tok = token or job.autonomy_token
             if not tok:
-                msg = f"Capability '{capability}' is HIGH_RISK and requires a pre-authorized token for unattended run."
+                tier_label = "HIGH_RISK" if risk_tier == AutonomyRiskTier.HIGH_RISK_GATE else "CONFIRMATION_REQUIRED"
+                msg = f"Capability '{capability}' is {tier_label} and requires an authorized token or approval ticket for unattended run."
                 logger.warning(f"[AutonomyGovernance] {msg}")
                 return False, msg, risk_tier
 

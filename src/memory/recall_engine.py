@@ -85,8 +85,13 @@ class RecallEngine:
             # 6. Type weight score
             type_score = self.type_weights.get(mem.type, 0.5)
 
-            # Final weighted score
-            total_score = (
+            # 7. Normalized Access Frequency Bonus (Capped logarithmic reinforcement)
+            import math
+            access_count = getattr(mem, "access_count", 0) or 0
+            access_boost = min(0.15, 0.03 * math.log(1.0 + access_count))
+
+            # Base weighted score
+            base_score = (
                 self.w_rel * rel_score
                 + self.w_imp * imp_score
                 + self.w_rec * rec_score
@@ -94,6 +99,16 @@ class RecallEngine:
                 + self.w_proj * proj_score
                 + self.w_type * type_score
             )
+
+            # Combined score with access boost
+            total_score = base_score + access_boost
+
+            # Anti-Popularity Floor/Ceiling: Ensure high-importance items (imp >= 0.9)
+            # maintain a floor that prevents low-importance items (imp <= 0.3) from overtaking them
+            if imp_score >= 0.90:
+                total_score = max(total_score, 0.65)
+            elif imp_score <= 0.30:
+                total_score = min(total_score, 0.60)
 
             scored.append((round(total_score, 4), mem))
 

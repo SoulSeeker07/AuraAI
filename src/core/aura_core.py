@@ -159,6 +159,11 @@ class AuraCore:
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
 
+        # ── 0. Kick off background embedding warmup at t=0 of constructor ──
+        from core.embedding_warmup import EmbeddingModelWarmup
+        self.embedding_warmup = EmbeddingModelWarmup()
+        self.embedding_warmup.start_background_warmup()
+
         try:
             from desktop.native.managers.display_helpers import ensure_dpi_awareness
             ensure_dpi_awareness()
@@ -215,16 +220,21 @@ class AuraCore:
         self.proactive_watcher = None
 
         AuraCore._initialized = True
-        self.groq_model = self.config.get("groq_model", "openai/gpt-oss-120b")
+        self.groq_model = self.config.get("groq_model", "qwen/qwen3.8-27b")
         self.groq_client = None
-        self.llm_enabled = False
-        self._init_llm()
-        self._initialize_components()
-        self._init_executive_brain()
-        self._init_personal_os()
-        self._init_focus_manager()
-        self._init_vision_dictation()
-        self._prewarm_voice_and_models_async()
+        def _timed_init(name: str, fn):
+            import time
+            t_s = time.time()
+            fn()
+            print(f"[AuraCore Init] {name}: {(time.time() - t_s)*1000:.1f}ms")
+
+        _timed_init("1. _init_llm", self._init_llm)
+        _timed_init("2. _initialize_components", self._initialize_components)
+        _timed_init("3. _init_executive_brain", self._init_executive_brain)
+        _timed_init("4. _init_personal_os", self._init_personal_os)
+        _timed_init("5. _init_focus_manager", self._init_focus_manager)
+        _timed_init("6. _init_vision_dictation", self._init_vision_dictation)
+        _timed_init("7. _prewarm_voice_and_models_async", self._prewarm_voice_and_models_async)
 
     def _init_personal_os(self):
         """Initialize Personal OS subsystem, load stored triggers, and warm search index."""
@@ -432,10 +442,15 @@ class AuraCore:
 
             notifications = focus_mgr.drain_pending_notifications()
             if notifications:
+                import re
                 suffix_lines = ["\n\n---"]
                 for notif in notifications:
                     prefix = "⚠️" if notif.severity in ("high", "critical") else "ℹ️"
-                    suffix_lines.append(f"{prefix} **[{notif.severity.upper()}]** {notif.message}")
+                    msg = notif.message
+                    if "Run: aura approve" in msg:
+                        msg = re.sub(r"Ticket:\s*tkt_[a-f0-9]+\.\s*Run:\s*aura\s+approve\s+tkt_[a-f0-9]+", '(Say **"Approve"** or **"Deny"**)', msg)
+                        msg = re.sub(r"Run:\s*aura\s+approve\s+tkt_[a-f0-9]+", '(Say **"Approve"** or **"Deny"**)', msg)
+                    suffix_lines.append(f"{prefix} **[{notif.severity.upper()}]** {msg}")
                 response_text = response_text + "\n".join(suffix_lines)
         except Exception as e:
             logger.debug(f"[AuraCore] Focus postamble skipped: {e}")
@@ -720,18 +735,26 @@ class AuraCore:
                     user_goal, task_id=task_id, current_app=app_context.app_name
                 )
                 if target is not None:
-                    self._narrate_grounding_event(
-                        f"Resolved '{target.label}' (confidence: {target.confidence:.2f}, tier: {target.source_tier}) in {app_context.app_name}",
-                        confidence=target.confidence,
-                    )
-                    augmented_goal = f"{user_goal} [Target: '{target.label}' at coordinates {target.center}, source: {target.source_tier}]"
+                    origin = target.metadata.get("origin_app", "")
+                    if match_type == "cross_app_transfer":
+                        self._narrate_grounding_event(
+                            f"Resolved cross-app referent '{target.label}' from {origin} in {app_context.app_name}",
+                            confidence=target.confidence,
+                        )
+                        augmented_goal = f"{user_goal} [Target: '{target.label}' from {origin} at coordinates {target.center}, source: {target.source_tier}, transfer: cross_app]"
+                    else:
+                        self._narrate_grounding_event(
+                            f"Resolved '{target.label}' (confidence: {target.confidence:.2f}, tier: {target.source_tier}) in {app_context.app_name}",
+                            confidence=target.confidence,
+                        )
+                        augmented_goal = f"{user_goal} [Target: '{target.label}' at coordinates {target.center}, source: {target.source_tier}]"
                     logger.info(f"[AuraCore] Augmented referential goal -> '{augmented_goal}'")
                     return augmented_goal
 
             # 5. Fresh grounding attempt for non-pronoun targeted actions ("open X", "click X")
             # If user_goal is a pure pronoun ("that", "no, the other one"), do NOT ground it literally
             if not is_ref and getattr(self, "grounding_engine", None) is not None and any(
-                w in user_goal.lower() for w in ("open", "click", "select", "press", "launch", "choose")
+                w in user_goal.lower() for w in ("click", "select", "press", "choose", "tap")
             ):
                 words = user_goal.split()
                 ref_candidate = " ".join(words[1:]) if len(words) > 1 else user_goal
@@ -782,10 +805,11 @@ class AuraCore:
 
                 # 2. Pre-warm Piper TTS
                 from voice.tts_manager import TTSManager, TTSSettings, TTSSpeaker
-                tts = TTSManager(TTSSettings(speaker=TTSSpeaker.PIPER))
-                tts.initialize()
+                # 3. Pre-warm SentenceTransformer / Vector Memory Embedder
+                if hasattr(self, "embedding_warmup") and self.embedding_warmup:
+                    self.embedding_warmup.ensure_ready_sync()
 
-                logger.info("[AuraCore] Voice ML models pre-warmed successfully in background")
+                logger.info("[AuraCore] Voice and Embedding ML models pre-warmed successfully in background")
             except Exception as e:
                 logger.debug(f"[AuraCore] Background ML pre-warm info: {e}")
 
@@ -802,19 +826,23 @@ class AuraCore:
             except Exception:
                 pass
 
-            api_key = os.environ.get("GROQ_API_KEY")
+            from ai.key_pool import KeyPool
+            pool = KeyPool.get_instance()
+            pool_keys = pool.get_all_keys("groq")
+            api_key = pool_keys[0] if pool_keys else os.environ.get("GROQ_API_KEY")
+
             if not api_key:
                 raise ValueError(
-                    "GROQ_API_KEY not set. Add it to your environment or a .env file."
+                    "GROQ_API_KEY or GROQ_API_KEYS not set. Add it to your environment or a .env file."
                 )
             if Groq is None:
                 raise ImportError("groq package not installed. Run: pip install groq")
 
 
-            self.groq_client = Groq(api_key=api_key)
+            self.groq_client = pool.get_groq_client(api_key)
             self.llm_enabled = True
-            self.voice_llm_model = os.environ.get("AURA_VOICE_MODEL", "openai/gpt-oss-120b")
-            self.reasoning_llm_model = os.environ.get("AURA_REASONING_MODEL", "openai/gpt-oss-120b")
+            self.voice_llm_model = os.environ.get("AURA_VOICE_MODEL", "qwen/qwen3.8-27b")
+            self.reasoning_llm_model = os.environ.get("AURA_REASONING_MODEL", "qwen/qwen3.8-27b")
             self.llm_model = self.reasoning_llm_model
 
 
@@ -908,11 +936,18 @@ class AuraCore:
 
             if ContinuousVoiceLoop is not None:
                 try:
-                    self.voice_loop = ContinuousVoiceLoop(
-                        coordinator=self.coordinator,
-                        nlu_engine=getattr(self, "nlu_engine", None),
-                    )
-                    self.voice_loop._aura_core = self
+                    active_loop = getattr(ContinuousVoiceLoop, "_active_instance", None)
+                    if active_loop is not None and getattr(active_loop, "_running", False):
+                        self.voice_loop = active_loop
+                        self.voice_loop._aura_core = self
+                        self.voice_loop.coordinator = self.coordinator
+                        logger.info("[AuraCore] Attached to existing active ContinuousVoiceLoop instance.")
+                    else:
+                        self.voice_loop = ContinuousVoiceLoop(
+                            coordinator=self.coordinator,
+                            nlu_engine=getattr(self, "nlu_engine", None),
+                        )
+                        self.voice_loop._aura_core = self
                     ContinuousVoiceLoop.set_global_aura_core(self)
                 except Exception as e:
                     logger.warning(f"Continuous voice loop initialization notice: {e}")
@@ -1060,14 +1095,19 @@ class AuraCore:
             return await self.process_request(user_goal)
 
     def _build_chat_messages(
-        self, user_message: str, max_turns: int = 10
+        self, user_message: str, max_turns: int = 10, emitter: Optional[Any] = None
     ) -> list[dict[str, Any]]:
         """
         Construct multi-turn conversation messages enriched with live ambient system context.
         """
         from core.context.ambient_context_builder import AmbientContextBuilder
 
-        ambient_info = AmbientContextBuilder.build_ambient_context(self, query=user_message)
+        if emitter is not None:
+            from core.progress_events import EventType
+            with emitter.track_step("Stage 0: Ambient Context & Memory Recall", event_type=EventType.INFO):
+                ambient_info = AmbientContextBuilder.build_ambient_context(self, query=user_message)
+        else:
+            ambient_info = AmbientContextBuilder.build_ambient_context(self, query=user_message)
 
         sys_prompt = (
             "You are AuraAI (v17.0), a next-gen holographic autonomous AI OS and desktop assistant running on Windows.\n"
@@ -1077,6 +1117,8 @@ class AuraCore:
             "### Live Ambient Environment & Context:\n"
             f"{ambient_info}\n\n"
             "### Instructions:\n"
+            "- When the user asks to draw an illustration, character, deity, object, or artistic scene, act as a World-Class Master SVG Illustrator: generate a breathtaking, highly detailed, ornate SVG illustration with rich multi-stop gradients, metallic highlights, glow filters, realistic Bezier curves, jewelry/contours, and dark backdrop inside a ```svg ... ``` code block. Never output primitive doodles or toy shapes.\n"
+            "- When the user asks to diagram, map, flowchart, or architect any system, process, or concept, ALWAYS generate complete, fully closed, interactive visual Mermaid.js diagrams directly in your response using ```mermaid (e.g. flowchart LR, graph TD, sequenceDiagram) or clean SVG code blocks. DO NOT write notes or files to the desktop unless explicitly requested.\n"
             "- If the user requests an action or information that can be handled with an available tool, invoke the appropriate tool.\n"
             "- When the user requests multiple actions (e.g. 'Open Chrome, search for X, and create a summary note on my desktop'), execute ALL requested actions using available tools (desktop_launch_app, browser_open_url, desktop_create_note).\n"
             "- Answer questions accurately using the provided ambient context when relevant.\n"
@@ -1101,7 +1143,7 @@ class AuraCore:
         return messages
 
     async def get_ai_response_stream(
-        self, user_message: str, model: str | None = None
+        self, user_message: str, model: str = None, emitter: Optional[Any] = None
     ) -> AsyncGenerator[str, None]:
         """
         Streaming variant of get_ai_response: yields token chunks directly from Groq/provider
@@ -1118,7 +1160,7 @@ class AuraCore:
             from core.tools.aura_tool_registry import AuraToolRegistry
             tools = AuraToolRegistry.get_tool_definitions()
 
-            messages = self._build_chat_messages(user_message)
+            messages = self._build_chat_messages(user_message, emitter=emitter)
             target_model = model or getattr(self, "voice_llm_model", "openai/gpt-oss-120b")
 
             kwargs: dict[str, Any] = {
@@ -1134,27 +1176,46 @@ class AuraCore:
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = "medium"
 
-
             full_response_chunks = []
             completion = self.groq_client.chat.completions.create(**kwargs)
             in_think = False
             for chunk in completion:
-                if (
-                    chunk.choices
-                    and chunk.choices[0].delta
-                    and chunk.choices[0].delta.content
-                ):
-                    token = chunk.choices[0].delta.content
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                if not delta:
+                    continue
+
+                # Stream reasoning tokens from API delta if present
+                if hasattr(delta, "reasoning") and delta.reasoning:
+                    if emitter is not None:
+                        emitter.thinking(delta.reasoning)
+
+                if hasattr(delta, "content") and delta.content:
+                    token = delta.content
                     full_response_chunks.append(token)
                     if "<think>" in token:
                         in_think = True
-                        token = token.split("<think>")[0]
+                        parts = token.split("<think>")
+                        if parts[0] and not in_think:
+                            yield parts[0]
+                        if len(parts) > 1 and parts[1] and emitter is not None:
+                            emitter.thinking(parts[1])
+                        continue
                     if "</think>" in token:
                         in_think = False
-                        token = token.split("</think>")[-1]
-                    if not in_think and token:
-                        yield token
+                        parts = token.split("</think>")
+                        if parts[0] and emitter is not None:
+                            emitter.thinking(parts[0])
+                        if len(parts) > 1 and parts[1]:
+                            yield parts[1]
+                        continue
 
+                    if in_think:
+                        if emitter is not None:
+                            emitter.thinking(token)
+                    else:
+                        yield token
 
             # Record turn in conversation history
             full_text = "".join(full_response_chunks).strip()
@@ -1166,12 +1227,15 @@ class AuraCore:
             import traceback
             traceback.print_exc()
             logger.error(f"get_ai_response_stream error: {e}", exc_info=True)
-            resp = await self.get_ai_response(user_message)
+            resp = await self.get_ai_response(user_message, emitter=emitter)
             yield resp
 
 
     async def get_ai_response(
-        self, user_message: str, enable_tools: bool = True
+        self,
+        user_message: str,
+        enable_tools: bool = True,
+        emitter: Optional[Any] = None,
     ) -> str:
         """
         Send the user's message through the Groq LLM reasoning engine with
@@ -1261,17 +1325,21 @@ class AuraCore:
 
         try:
             import json
-            from core.tools.aura_tool_registry import AuraToolRegistry
+            from core.tools.unified_tool_dispatcher import UnifiedToolDispatcher
 
-            target_model = getattr(self, "reasoning_llm_model", "openai/gpt-oss-120b")
-            messages = self._build_chat_messages(user_message)
-            tools = AuraToolRegistry.get_tool_definitions() if enable_tools else None
+            target_model = getattr(self, "reasoning_llm_model", "qwen/qwen3.8-27b")
+            messages = self._build_chat_messages(user_message, emitter=emitter)
+            msg_low = user_message.lower().strip()
+            is_diagram_query = any(k in msg_low for k in ("draw a diagram", "draw a flowchart", "draw flowchart", "draw architecture", "draw diagram", "flowchart of", "architecture of", "mermaid diagram", "draw an svg", "draw ascii"))
+
+            # Do not inject desktop file tools on pure diagram/drawing queries
+            tools = None if (is_diagram_query or not enable_tools) else UnifiedToolDispatcher.get_tool_definitions()
 
             kwargs: dict[str, Any] = {
                 "model": target_model,
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 1024,
+                "max_tokens": 4096,
             }
             if tools:
                 kwargs["tools"] = tools
@@ -1288,13 +1356,134 @@ class AuraCore:
                 return "low"
 
             dynamic_effort = _get_dynamic_reasoning_effort(user_message)
-            if "gpt-oss-120b" in target_model:
+            if "gpt-oss" in target_model:
                 kwargs["reasoning_effort"] = dynamic_effort
-                logger.info(f"[AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: openai/gpt-oss-120b | Query: '{user_message[:40]}'")
+                logger.info(f"[AuraCore Dynamic Reasoning] Profile: {dynamic_effort.upper()} | Model: {target_model} | Query: '{user_message[:40]}'")
 
             from ai.key_pool import KeyPool
             from groq import Groq
+            from types import SimpleNamespace
             key_pool = KeyPool.get_instance()
+
+            def _call_groq_streaming(call_kwargs: dict[str, Any], model_name: str, on_reasoning=None, on_content=None):
+                kw = dict(call_kwargs)
+                kw["model"] = model_name
+                kw["stream"] = True
+                if "gpt-oss-120b" not in model_name:
+                    kw.pop("reasoning_effort", None)
+
+                def _do_stream(api_key: str):
+                    client = key_pool.get_groq_client(api_key)
+                    t_req_start = time.time()
+                    stream = client.chat.completions.create(**kw)
+                    content_parts = []
+                    tool_calls_dict: dict[int, dict[str, Any]] = {}
+                    role = "assistant"
+                    in_think = False
+                    first_chunk_logged = False
+
+                    for chunk in stream:
+                        if not chunk.choices:
+                            continue
+                        choice = chunk.choices[0]
+                        delta = choice.delta
+                        if not delta:
+                            continue
+
+                        if not first_chunk_logged:
+                            t_first_chunk = time.time()
+                            ttft_ms = (t_first_chunk - t_req_start) * 1000
+                            logger.info(f"[Groq Stream TTFT] Model: {kw.get('model')} | Effort: {kw.get('reasoning_effort')} | TTFT: {ttft_ms:.1f}ms")
+                            first_chunk_logged = True
+
+                        # 1. Direct reasoning delta from reasoning-capable model
+                        if hasattr(delta, "reasoning") and delta.reasoning:
+                            if on_reasoning:
+                                on_reasoning(delta.reasoning)
+
+                        # 2. Content delta and <think> extraction
+                        if hasattr(delta, "content") and delta.content:
+                            c = delta.content
+                            if "<think>" in c:
+                                in_think = True
+                                parts = c.split("<think>")
+                                if parts[0]:
+                                    content_parts.append(parts[0])
+                                    if on_content:
+                                        on_content(parts[0])
+                                if len(parts) > 1 and parts[1] and on_reasoning:
+                                    on_reasoning(parts[1])
+                                continue
+                            if "</think>" in c:
+                                in_think = False
+                                parts = c.split("</think>")
+                                if parts[0] and on_reasoning:
+                                    on_reasoning(parts[0])
+                                if len(parts) > 1 and parts[1]:
+                                    content_parts.append(parts[1])
+                                    if on_content:
+                                        on_content(parts[1])
+                                continue
+
+                            if in_think:
+                                if on_reasoning:
+                                    on_reasoning(c)
+                            else:
+                                content_parts.append(c)
+                                if on_content:
+                                    on_content(c)
+
+                        # 3. Tool call deltas
+                        if hasattr(delta, "tool_calls") and delta.tool_calls:
+                            for tc in delta.tool_calls:
+                                idx = tc.index if tc.index is not None else 0
+                                if idx not in tool_calls_dict:
+                                    tool_calls_dict[idx] = {
+                                        "id": tc.id or "",
+                                        "type": "function",
+                                        "function": {
+                                            "name": (tc.function.name if tc.function and tc.function.name else ""),
+                                            "arguments": (tc.function.arguments if tc.function and tc.function.arguments else ""),
+                                        }
+                                    }
+                                else:
+                                    if tc.id:
+                                        tool_calls_dict[idx]["id"] = tc.id
+                                    if tc.function:
+                                        if tc.function.name:
+                                            tool_calls_dict[idx]["function"]["name"] += tc.function.name
+                                        if tc.function.arguments:
+                                            tool_calls_dict[idx]["function"]["arguments"] += tc.function.arguments
+
+                    constructed_tool_calls = []
+                    for idx in sorted(tool_calls_dict.keys()):
+                        tc_data = tool_calls_dict[idx]
+                        fn_obj = SimpleNamespace(
+                            name=tc_data["function"]["name"],
+                            arguments=tc_data["function"]["arguments"],
+                        )
+                        constructed_tool_calls.append(SimpleNamespace(
+                            id=tc_data["id"],
+                            type="function",
+                            function=fn_obj,
+                        ))
+
+                    full_content = "".join(content_parts)
+                    msg_obj = SimpleNamespace(
+                        role=role,
+                        content=full_content if full_content else None,
+                        tool_calls=constructed_tool_calls if constructed_tool_calls else None,
+                    )
+                    res_choice = SimpleNamespace(message=msg_obj)
+                    return SimpleNamespace(choices=[res_choice])
+
+                try:
+                    return key_pool.execute_with_failover(_do_stream, service="groq")
+                except Exception as ex:
+                    if "qwen3.6-27b" not in model_name:
+                        logger.warning(f"[AuraCore] Groq streaming '{model_name}' failed ({ex}), falling back to qwen/qwen3.6-27b.")
+                        return _call_groq_streaming(call_kwargs, "qwen/qwen3.6-27b", on_reasoning, on_content)
+                    return _call_groq(call_kwargs, model_name)
 
             def _call_groq(call_kwargs: dict[str, Any], model_name: str):
                 kw = dict(call_kwargs)
@@ -1306,11 +1495,9 @@ class AuraCore:
                     client = key_pool.get_groq_client(api_key)
                     return client.chat.completions.create(**kw)
 
-
                 try:
                     return key_pool.execute_with_failover(_do_chat, service="groq")
                 except Exception as ex:
-                    # If all keys exhausted for gpt-oss-120b, failover to qwen/qwen3.6-27b
                     if "qwen3.6-27b" not in model_name:
                         logger.warning(f"[AuraCore] Groq model '{model_name}' exhausted/error ({ex}), falling back to qwen/qwen3.6-27b across key pool.")
                         kw["model"] = "qwen/qwen3.6-27b"
@@ -1319,25 +1506,57 @@ class AuraCore:
                     raise ex
 
             # Iterative ReAct Autonomous Tool Calling Loop (up to 5 turns)
+            import time
             final_text = ""
             for iteration in range(5):
+                turn_label = f"Turn {iteration + 1}: Reasoning"
+                turn_start = time.time()
+                if emitter is not None:
+                    from core.progress_events import EventStatus, EventType, ProgressEvent
+                    emitter.emit(ProgressEvent(label=turn_label, event_type=EventType.REACT_TURN, status=EventStatus.STARTED))
+
+                on_thought = (lambda tok: emitter.thinking(tok)) if emitter is not None else None
+                on_gen = (lambda tok: emitter.generating(tok)) if emitter is not None else None
                 try:
-                    res = await asyncio.to_thread(_call_groq, kwargs, target_model)
+                    res = await asyncio.to_thread(_call_groq_streaming, kwargs, target_model, on_thought, on_gen)
                 except Exception as call_err:
                     err_str = str(call_err)
-                    logger.warning(f"Groq tool error, failing over to qwen/qwen3.6-27b: {call_err}")
+                    logger.warning(f"Groq streaming tool error, falling back to sync: {call_err}")
                     res = await asyncio.to_thread(_call_groq, kwargs, "qwen/qwen3.6-27b")
 
                 if not res or not res.choices or not res.choices[0].message:
                     final_text = "I was unable to generate a response."
+                    if emitter is not None:
+                        from core.progress_events import EventStatus, EventType, ProgressEvent
+                        emitter.emit(ProgressEvent(label=turn_label, event_type=EventType.REACT_TURN, status=EventStatus.ERROR, duration_ms=(time.time() - turn_start) * 1000))
                     break
 
                 response_msg = res.choices[0].message
+                if emitter is not None:
+                    from core.progress_events import EventStatus, EventType, ProgressEvent
+                    emitter.emit(ProgressEvent(label=turn_label, event_type=EventType.REACT_TURN, status=EventStatus.DONE, duration_ms=(time.time() - turn_start) * 1000))
 
                 # Check if model requested tool execution
                 if hasattr(response_msg, "tool_calls") and response_msg.tool_calls:
                     logger.info(f"[AuraCore] ReAct turn {iteration + 1}: Executing {len(response_msg.tool_calls)} tool call(s).")
-                    messages.append(response_msg)
+                    if isinstance(response_msg, dict):
+                        messages.append(response_msg)
+                    else:
+                        messages.append({
+                            "role": "assistant",
+                            "content": getattr(response_msg, "content", None),
+                            "tool_calls": [
+                                {
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments,
+                                    }
+                                }
+                                for tc in response_msg.tool_calls
+                            ]
+                        })
 
                     for tool_call in response_msg.tool_calls:
                         fn_name = tool_call.function.name
@@ -1346,8 +1565,31 @@ class AuraCore:
                         except Exception:
                             fn_args = {}
 
-                        # Execute the tool natively
-                        tool_result = await AuraToolRegistry.execute_tool(fn_name, fn_args, aura_core=self)
+                        tool_label = f"Turn {iteration + 1}: calling {fn_name}"
+                        tool_start = time.time()
+                        if emitter is not None:
+                            from core.progress_events import EventStatus, EventType, ProgressEvent
+                            emitter.emit(ProgressEvent(label=tool_label, event_type=EventType.TOOL_CALL, status=EventStatus.STARTED, detail=json.dumps(fn_args)))
+
+                        try:
+                            from core.orchestration import MasterOrchestrator
+                            from core.orchestration.agent_session import AgentSession
+                            orch = MasterOrchestrator.get_instance()
+                            session = orch._last_session or AgentSession(goal=user_message)
+                            orch._last_session = session
+
+                            # Execute tool with policy and risk gating
+                            tool_result = await UnifiedToolDispatcher.dispatch(
+                                fn_name, fn_args, session=session, aura_core=self, emitter=emitter
+                            )
+                            if emitter is not None:
+                                from core.progress_events import EventStatus, EventType, ProgressEvent
+                                emitter.emit(ProgressEvent(label=f"Turn {iteration + 1}: {fn_name} done", event_type=EventType.TOOL_CALL, status=EventStatus.DONE, duration_ms=(time.time() - tool_start) * 1000))
+                        except Exception as tool_err:
+                            tool_result = {"status": "error", "error": str(tool_err)}
+                            if emitter is not None:
+                                from core.progress_events import EventStatus, EventType, ProgressEvent
+                                emitter.emit(ProgressEvent(label=f"Turn {iteration + 1}: {fn_name} error", event_type=EventType.TOOL_CALL, status=EventStatus.ERROR, detail=str(tool_err), duration_ms=(time.time() - tool_start) * 1000))
 
                         messages.append({
                             "role": "tool",
@@ -1355,6 +1597,14 @@ class AuraCore:
                             "name": fn_name,
                             "content": json.dumps(tool_result, default=str),
                         })
+
+                        # If tool execution requires human confirmation, pause loop and return prompt immediately
+                        if isinstance(tool_result, dict) and tool_result.get("status") == "confirmation_required":
+                            final_text = tool_result.get("prompt", "Action requires human confirmation.")
+                            break
+
+                    if final_text and "requires human confirmation" in final_text:
+                        break
 
                     # Prepare kwargs for next turn in loop
                     kwargs["messages"] = messages
@@ -1378,11 +1628,16 @@ class AuraCore:
             return final_text
 
         except Exception as e:
+            from ai.exceptions import KeyPoolExhaustedError
+            err_str = str(e).lower()
+            if isinstance(e, KeyPoolExhaustedError) or "keypoolexhausted" in type(e).__name__.lower() or "rate-limited on cooldown" in err_str or ("all" in err_str and "keys rate-limited" in err_str):
+                logger.warning(f"[AuraCore] Key pool exhausted: {e}")
+                return "⚠️ All Groq API keys are currently rate-limited or exhausted. Aura is running in offline mode for local system tasks."
             logger.error(f"get_ai_response failed: {e}", exc_info=True)
             return f"✗ Error processing message: {e}"
 
     async def process_request_stream(
-        self, user_goal: str, yield_filler: bool = True
+        self, user_goal: str, yield_filler: bool = True, emitter: Optional[Any] = None
     ) -> AsyncGenerator[str, None]:
         """
         Unified OS Kernel streaming request entry point.
@@ -1546,29 +1801,26 @@ class AuraCore:
             logger.error(f"process_request_stream failed: {e}", exc_info=True)
             yield f"I encountered an error: {e}"
 
-    async def process_request(self, user_goal: str) -> str:
+    async def process_request(self, user_goal: str, emitter: Optional[Any] = None) -> str:
         """
         Unified OS Kernel request entry point.
         Executes all requests through the unified ReAct tool engine (get_ai_response).
         """
         try:
             # ── M32: Focus thread preamble ──────────────────────────────────────
-            # Resolve which focus thread this turn belongs to (zero-latency,
-            # deterministic) before dispatching to the LLM engine.
             focus_ans = self._focus_preamble(user_goal)
             if focus_ans is not None:
                 return focus_ans
 
-            # ── M33: Vision dictation & Contextual action preamble ──────────────
-            # Pure-navigation fast-path and referential pronoun resolution
-            user_goal = self._vision_dictation_preamble(user_goal)
-
-            # 1. Direct Unified ReAct Tool & LLM Engine across CLI, GUI, and Voice
-            if self.llm_enabled and self.groq_client is not None:
-                return await self.get_ai_response(user_goal, enable_tools=True)
-
-            # 2. Local fallback if LLM is disabled
+            # 1. Deterministic Local Intent Fast-Path (< 15ms zero-latency execution)
             conv_engine = getattr(self, "conversation_engine", None)
+            if conv_engine is None and hasattr(self, "_init_brain"):
+                try:
+                    self._init_brain()
+                    conv_engine = getattr(self, "conversation_engine", None)
+                except Exception:
+                    pass
+
             if conv_engine is not None:
                 try:
                     intent = conv_engine.intent_router.detect(user_goal)
@@ -1585,6 +1837,28 @@ class AuraCore:
                         return local_answer
                 except Exception as ce_err:
                     logger.debug(f"[AuraCore.process_request] Local intent fast-path bypassed: {ce_err}")
+
+            # ── M33: Vision dictation & Contextual action preamble ──────────────
+            # Pure-navigation fast-path and referential pronoun resolution
+            user_goal = self._vision_dictation_preamble(user_goal)
+
+            # ── Session-Scoped Confirmation Intercept ───────────────────────────
+            from core.orchestration import MasterOrchestrator
+            orchestrator = MasterOrchestrator.get_instance()
+            pending_conf = orchestrator.check_pending_confirmation()
+            raw = user_goal.strip().lower()
+            if pending_conf is not None and (
+                raw in ["yes", "y", "yeah", "yep", "sure", "ok", "okay", "no", "n", "nope", "nah", "cancel"]
+                or "confirm" in raw
+                or "tkt_" in raw
+            ):
+                resolved_res = orchestrator.resolve_pending_confirmation(user_goal)
+                if resolved_res is not None:
+                    return "\n".join(resolved_res.observations) if resolved_res.observations else "Action confirmed and executed."
+
+            # 2. Direct Unified ReAct Tool & LLM Engine across CLI, GUI, and Voice
+            if self.llm_enabled and self.groq_client is not None:
+                return await self.get_ai_response(user_goal, enable_tools=True, emitter=emitter)
 
             from core.orchestration import MasterOrchestrator
 
@@ -1640,7 +1914,8 @@ class AuraCore:
                             if resolved.action == PolicyAction.CONFIRMED_LAUNCH:
                                 new_goal = f"Open new instance of {resolved.app_name}"
                                 result = await orchestrator.process_request_async(
-                                    new_goal
+                                    new_goal,
+                                    emitter=emitter,
                                 )
                                 return (
                                     "\n".join(result.observations)
@@ -1662,7 +1937,7 @@ class AuraCore:
                         f"ExecutionPolicy confirmation fallback skipped: {exc}"
                     )
 
-            result = await orchestrator.process_request_async(user_goal)
+            result = await orchestrator.process_request_async(user_goal, emitter=emitter)
 
             decision = (
                 result.data.get("decision", {})
@@ -1713,7 +1988,7 @@ class AuraCore:
                         f"- Visible Screen OCR Content:\n{screen_text[:3000] if screen_text else 'No text or application content visible on screen.'}\n\n"
                         f"Please provide a concise, direct, helpful summary of what is currently on the user's screen based on the visual perception data."
                     )
-                    return await self.get_ai_response(prompt)
+                    return await self.get_ai_response(prompt, emitter=emitter)
                 except Exception as vis_exc:
                     logger.warning(f"Vision screen capture failed: {vis_exc}")
                     return f"I tried to inspect your screen, but encountered an error: {vis_exc}"
@@ -1724,7 +1999,7 @@ class AuraCore:
                 and self.llm_enabled
                 and self.groq_client is not None
             ):
-                return await self.get_ai_response(user_goal)
+                return await self.get_ai_response(user_goal, emitter=emitter)
 
             if hasattr(result, "final_output") and getattr(result, "final_output"):
                 return str(getattr(result, "final_output"))
@@ -1752,7 +2027,7 @@ class AuraCore:
                         f"The system performed the action and found this information:\n{obs_text}\n\n"
                         f"Please provide a direct, helpful conversational answer to the user's question based ONLY on these findings."
                     )
-                    return await self.get_ai_response(synth_goal)
+                    return await self.get_ai_response(synth_goal, emitter=emitter)
                 
                 filtered_obs = []
                 for obs in (result.observations or []):
@@ -1761,7 +2036,7 @@ class AuraCore:
                     if "no backend available for capability" in obs.lower():
                         # If a capability failed or was missing, check if the request was generative text / writing
                         if self.llm_enabled and self.groq_client is not None:
-                            return await self.get_ai_response(user_goal)
+                            return await self.get_ai_response(user_goal, emitter=emitter)
                         filtered_obs.append("I don't know how to perform that specific action on your desktop yet.")
                     else:
                         filtered_obs.append(obs)
@@ -1770,12 +2045,12 @@ class AuraCore:
                 elif result.success:
                     return "Action completed successfully."
                 elif self.llm_enabled and self.groq_client is not None:
-                    return await self.get_ai_response(user_goal)
+                    return await self.get_ai_response(user_goal, emitter=emitter)
                 else:
                     return "I was unable to complete that action."
             else:
                 if not result.success and self.llm_enabled and self.groq_client is not None:
-                    return await self.get_ai_response(user_goal)
+                    return await self.get_ai_response(user_goal, emitter=emitter)
                 return f"Action completed successfully." if result.success else "I was unable to complete that action."
         except Exception as e:
             import traceback

@@ -60,11 +60,20 @@ class ProviderManager:
         tools: list[dict],
         model: str | None = None,
         temperature: float = 0.0,
+        tool_choice: str | dict = "auto",
+        timeout: float | None = None,
         provider: str | None = None,
     ) -> Any:
         p = self.get(provider)
         if hasattr(p, "chat_with_tools"):
-            return p.chat_with_tools(messages, tools, model=model, temperature=temperature)
+            return p.chat_with_tools(
+                messages,
+                tools,
+                model=model,
+                temperature=temperature,
+                tool_choice=tool_choice,
+                timeout=timeout,
+            )
         raise NotImplementedError(f"Provider {p} does not support chat_with_tools")
 
     def capabilities(self, provider: str | None = None) -> ProviderCapabilities:

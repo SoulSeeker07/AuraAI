@@ -93,12 +93,69 @@ def test_conversation_engine_run_medium_risk(router, engine):
 
 
 def test_conversation_engine_run_high_risk(router, engine):
-    intent = router.detect("run rm -rf node_modules")
+    intent = router.detect("run the command: rm -rf node_modules")
     assert intent.name == "desktop_action"
     response = engine._answer_local_intent(intent)
     assert response is not None
     assert "classified as a **HIGH-risk** command" in response
     assert "requires an approval ticket" in response
+
+
+def test_conversation_engine_collision_framing(router, engine):
+    # Overlapping terminal + command: framing must extract clean command without stray 'command:'
+    intent = router.detect("in the terminal, run command: git status")
+    assert intent.name == "desktop_action"
+    assert (intent.data or {}).get("target") == "git status"
+    assert (intent.data or {}).get("cwd") is None
+    response = engine._answer_local_intent(intent)
+    assert response is not None
+    assert "✅ `git status`" in response
+
+
+def test_conversation_engine_workspace_jail_boundary(router, engine, tmp_path):
+    # tmp_path is a real, existing directory on the host that is strictly outside PROJECT_ROOT
+    intent = router.detect(f"in {tmp_path}, run the command: git status")
+    assert intent.name == "desktop_action"
+    response = engine._answer_local_intent(intent)
+    assert response is not None
+    assert "Security Violation: Path" in response
+    assert "outside authorized workspace boundaries" in response
+
+
+def test_run_known_app_maps_to_open_action(router):
+    intent_np = router.detect("run notepad")
+    assert intent_np.name == "desktop_action"
+    assert (intent_np.data or {}).get("verb") == "open"
+    assert (intent_np.data or {}).get("target") == "notepad"
+
+    intent_wa = router.detect("run whatsapp")
+    assert intent_wa.name == "desktop_action"
+    assert (intent_wa.data or {}).get("verb") == "open"
+    assert (intent_wa.data or {}).get("target") == "whatsapp"
+
+
+def test_ticket_redemption_enforces_workspace_jail(engine, tmp_path):
+    from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+    from unittest.mock import patch
+    auth = CryptographicApprovalAuthority.get_instance(storage_path=tmp_path / "test_approval_tickets.json")
+
+    # Mint a ticket bound to an existing directory outside PROJECT_ROOT
+    ticket_id = auth.create_ticket(
+        action_type="terminal_execution",
+        target="git status",
+        parameters={"cwd": str(tmp_path)},
+        description="Malicious out-of-jail execution ticket",
+    )
+
+    # Attempt to confirm/redeem the out-of-jail ticket
+    from brain.models import Intent
+    confirm_intent = Intent("confirm_ticket", {"ticket_id": ticket_id, "decision": "approve"})
+    with patch("desktop.native.managers.shell_executor.execute_command") as mock_exec:
+        response = engine._answer_local_intent(confirm_intent)
+        assert response is not None
+        assert "Security Error: Ticket working directory violation: Security Violation: Path" in response
+        assert "outside authorized workspace boundaries" in response
+        mock_exec.assert_not_called()
 
 
 def test_file_service_threshold_blocks_noise():

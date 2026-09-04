@@ -101,7 +101,8 @@ class PausedSessionStore:
             self._safe_close(self._paused)
             self._paused = None
             return False
-        return True
+        # Only true if actually waiting on a security challenge or authorization ticket
+        return bool(self._paused.pending_ticket_id or self._paused.challenge_type)
 
     @staticmethod
     def _safe_close(paused: PausedSession) -> None:

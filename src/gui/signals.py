@@ -123,6 +123,7 @@ class AppSignals(QObject):
     voice_level = Signal(float)  # Audio level 0.0-1.0
     voice_state_name_changed = Signal(str)  # FSM state: IDLE, LISTENING, SPEAKING, etc.
     live_speech_transcribed = Signal(str, bool)  # text, is_final
+    speaker_rejected = Signal(float)  # similarity score of rejected non-owner voice
 
     # ── Screen / Vision ──
     screen_status_changed = Signal(bool, str)  # is_sharing, window_title

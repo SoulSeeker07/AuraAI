@@ -24,14 +24,45 @@ class DailyContextEngine:
     Synthesizes multi-source context into a cohesive, prioritized daily agenda.
     """
 
-    def __init__(self, state_store: PersonalOSStateStore | None = None) -> None:
+    def __init__(
+        self,
+        state_store: PersonalOSStateStore | None = None,
+        memory_engine: Any | None = None,
+    ) -> None:
         self.state_store = state_store or PersonalOSStateStore.get_instance()
+        self.memory_engine = memory_engine
+
+    def _get_memory_engine(self) -> Any | None:
+        """Lazily initialize CognitiveMemoryEngine if not provided."""
+        if self.memory_engine is not None:
+            return self.memory_engine
+        try:
+            from memory.cognitive_memory import CognitiveMemoryEngine
+
+            self.memory_engine = CognitiveMemoryEngine()
+            return self.memory_engine
+        except Exception as e:
+            logger.debug(f"[DailyContextEngine] Cognitive memory init notice: {e}")
+            return None
 
     def get_daily_context(self, target_date: str | None = None) -> DailyContext:
         """
         Generate DailyContext for today (or specified YYYY-MM-DD date).
         """
         today_str = target_date or datetime.now().strftime("%Y-%m-%d")
+
+        mem_engine = self._get_memory_engine()
+        preferences: dict[str, str] = {}
+        if mem_engine and hasattr(mem_engine, "get_active_preferences"):
+            try:
+                active_prefs = mem_engine.get_active_preferences()
+                for p in active_prefs:
+                    cat = p.metadata.get("category", "general")
+                    kw = p.metadata.get("keyword", "")
+                    if cat and kw:
+                        preferences[cat] = kw
+            except Exception as e:
+                logger.debug(f"[DailyContextEngine] Active preference fetch notice: {e}")
 
         meetings = self._fetch_calendar_events(today_str)
         tasks = self._fetch_tasks(today_str)
@@ -42,13 +73,16 @@ class DailyContextEngine:
             meetings=meetings,
             tasks=tasks,
             deadlines=deadlines,
+            preferences=preferences,
         )
         context.summary = context.format_summary()
         return context
 
     def _fetch_calendar_events(self, date_str: str) -> list[CalendarMeeting]:
-        """Fetch meetings for date from CalendarPlugin / Backend if available."""
+        """Fetch meetings for date from CalendarPlugin / Backend if available with deduplication."""
         meetings: list[CalendarMeeting] = []
+        seen_keys: set[str] = set()
+
         try:
             from plugins.calendar.calendar_plugin import CalendarPlugin
 
@@ -58,10 +92,16 @@ class DailyContextEngine:
             res = plugin.execute(capability="calendar.list_events", date=date_str)
             if isinstance(res, dict) and "events" in res:
                 for ev in res["events"]:
+                    title = ev.get("title", "Untitled Meeting").strip()
+                    start_time = ev.get("start_time", "09:00").strip()
+                    dedup_key = f"{start_time}_{title.lower()}"
+                    if dedup_key in seen_keys:
+                        continue
+                    seen_keys.add(dedup_key)
                     meetings.append(
                         CalendarMeeting(
-                            title=ev.get("title", "Untitled Meeting"),
-                            start_time=ev.get("start_time", "09:00"),
+                            title=title,
+                            start_time=start_time,
                             end_time=ev.get("end_time"),
                             location=ev.get("location"),
                             attendees=ev.get("attendees", []),
@@ -75,10 +115,16 @@ class DailyContextEngine:
         if not meetings:
             stored_events = self.state_store.get_preference(f"calendar_events_{date_str}", [])
             for ev in stored_events:
+                title = ev.get("title", "Meeting").strip()
+                start_time = ev.get("start_time", "10:00").strip()
+                dedup_key = f"{start_time}_{title.lower()}"
+                if dedup_key in seen_keys:
+                    continue
+                seen_keys.add(dedup_key)
                 meetings.append(
                     CalendarMeeting(
-                        title=ev.get("title", "Meeting"),
-                        start_time=ev.get("start_time", "10:00"),
+                        title=title,
+                        start_time=start_time,
                         end_time=ev.get("end_time"),
                         location=ev.get("location"),
                     )
@@ -87,17 +133,23 @@ class DailyContextEngine:
         return meetings
 
     def _fetch_tasks(self, date_str: str) -> list[TaskItem]:
-        """Fetch pending tasks from memory and state store."""
+        """Fetch pending tasks from memory, triggers, and state store with deduplication."""
         tasks: list[TaskItem] = []
+        seen_titles: set[str] = set()
 
         # 1. Check stored tasks in PersonalOSStateStore
         cached_tasks = self.state_store.get_preference("tasks_list", [])
         for t in cached_tasks:
             if t.get("status", "PENDING") != "COMPLETED":
+                raw_title = t.get("title", "Task").strip()
+                normalized_title = raw_title.lower()
+                if normalized_title in seen_titles:
+                    continue
+                seen_titles.add(normalized_title)
                 tasks.append(
                     TaskItem(
                         task_id=t.get("task_id", f"task_{len(tasks)+1}"),
-                        title=t.get("title", "Task"),
+                        title=raw_title,
                         priority=t.get("priority", "NORMAL").upper(),
                         status=t.get("status", "PENDING"),
                         due_date=t.get("due_date"),
@@ -115,34 +167,59 @@ class DailyContextEngine:
         for trig in triggers:
             if self._is_trigger_due_on(trig.schedule, target_dt):
                 priority = trig.metadata.get("priority", "NORMAL").upper() if trig.metadata else "NORMAL"
+                routine_title = f"Routine: {trig.name} ({trig.goal_text})".strip()
+                if routine_title.lower() in seen_titles:
+                    continue
+                seen_titles.add(routine_title.lower())
                 tasks.append(
                     TaskItem(
                         task_id=f"routine_{trig.trigger_id}",
-                        title=f"Routine: {trig.name} ({trig.goal_text})",
+                        title=routine_title,
                         priority=priority,
                         category="automation",
                         source="trigger",
                     )
                 )
 
-        # 3. Query Cognitive Memory for recent task memories
-        try:
-            from memory.cognitive_memory import CognitiveMemoryEngine
-
-            mem_engine = CognitiveMemoryEngine()
-            recalled = mem_engine.search_memories(query="tasks todo priorities deadlines today", limit=5)
-            for m in recalled:
-                if "task" in m.content.lower() or "todo" in m.content.lower():
-                    tasks.append(
-                        TaskItem(
-                            task_id=f"mem_{m.memory_id}",
-                            title=m.content[:80],
-                            priority="NORMAL",
-                            source="cognitive_memory",
-                        )
+        # 3. Query Cognitive Memory with recall_ranked and access reinforcement
+        mem_engine = self._get_memory_engine()
+        if mem_engine:
+            try:
+                if hasattr(mem_engine, "recall_ranked"):
+                    recalled = mem_engine.recall_ranked(
+                        "task todo priority deadline milestone today",
+                        limit=10,
+                        record_access_stats=True,
                     )
-        except Exception as e:
-            logger.warning(f"[DailyContextEngine] Cognitive memory recall warning: {e}")
+                else:
+                    recalled = mem_engine.search_memories(query="task todo priority deadline milestone today", limit=10)
+
+                for m in recalled:
+                    content = m.content.strip()
+                    importance = getattr(m, "importance", 0.5)
+                    prio = "HIGH" if importance >= 0.8 else "NORMAL"
+                    norm_content = content[:80].lower()
+                    if norm_content in seen_titles:
+                        continue
+
+                    if (
+                        "task" in content.lower()
+                        or "todo" in content.lower()
+                        or "deadline" in content.lower()
+                        or "milestone" in content.lower()
+                        or importance >= 0.8
+                    ):
+                        seen_titles.add(norm_content)
+                        tasks.append(
+                            TaskItem(
+                                task_id=f"mem_{getattr(m, 'memory_id', 'unknown')}",
+                                title=content[:80],
+                                priority=prio,
+                                source="cognitive_memory",
+                            )
+                        )
+            except Exception as e:
+                logger.warning(f"[DailyContextEngine] Cognitive memory recall warning: {e}")
 
         # If completely empty, provide standard active project awareness tasks
         if not tasks:

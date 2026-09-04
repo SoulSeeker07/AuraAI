@@ -105,6 +105,7 @@ class VoiceManager:
         # Turn state tracking
         self._speech_started_in_turn = False
         self._active_listening_start_time = 0.0
+        self._turn_audio_chunks: list[bytes] = []
 
         logger.info("Voice Manager initialized")
 
@@ -128,7 +129,7 @@ class VoiceManager:
         defaults = {
             "vad_mode": VADMode.BOTH.value,
             "silence_threshold": 0.9,
-            "silence_duration": 0.9,
+            "silence_duration": 0.5,
             "energy_threshold": 0.005,
             "wake_word_provider": WakeWordProvider.AURA.value,
             "wake_word_sensitivity": 0.5,
@@ -340,6 +341,7 @@ class VoiceManager:
 
                 # Process STT if active listening
                 if self.state == ConversationState.ACTIVE_LISTENING:
+                    self._turn_audio_chunks.append(audio_data)
                     self.stt_manager.process_audio(audio_data)
 
                     # Timeout check: if user didn't start speaking for 8.0 seconds after wake word
@@ -408,6 +410,7 @@ class VoiceManager:
             # Reset VAD and STT buffer so wake word audio/silence isn't treated as the command
             self.vad.reset()
             self.stt_manager.reset()
+            self._turn_audio_chunks.clear()
             self._speech_started_in_turn = False
             self._active_listening_start_time = time.time()
 
@@ -450,6 +453,38 @@ class VoiceManager:
     def _finalize_stt(self) -> None:
         """Finalize STT and transition to thinking state."""
         try:
+            # Grab accumulated turn audio for speaker verification
+            turn_audio = b"".join(self._turn_audio_chunks)
+            self._turn_audio_chunks.clear()
+
+            # 1. Speaker Voiceprint Gate (if enrolled)
+            try:
+                from .speaker_verification import SpeakerVerificationEngine, SpeakerMatchResult
+                speaker_engine = SpeakerVerificationEngine.get_instance()
+                if speaker_engine.is_enrolled() and len(turn_audio) >= int(16000 * 0.4):
+                    match_res, sim_score = speaker_engine.verify(turn_audio)
+                    if match_res == SpeakerMatchResult.REJECT:
+                        logger.info(
+                            f"[SpeakerVerification] Utterance rejected during active/follow-up listening "
+                            f"(sim={sim_score:.3f} < {speaker_engine.threshold_low}) — ignoring non-owner voice."
+                        )
+                        try:
+                            from gui.signals import app_signals
+                            if hasattr(app_signals, "speaker_rejected"):
+                                app_signals.speaker_rejected.emit(sim_score)
+                        except Exception:
+                            pass
+                        self.stt_manager.reset()
+                        with self._lock:
+                            self._update_state(ConversationState.IDLE)
+                        return
+                    else:
+                        logger.info(
+                            f"[SpeakerVerification] Utterance verified for owner ({match_res.value.upper()} | sim={sim_score:.3f} >= {speaker_engine.threshold_low}) — proceeding to execution."
+                        )
+            except Exception as se:
+                logger.debug(f"[SpeakerVerification] Active turn speaker verification note: {se}")
+
             # Get final transcript
             transcript = self.stt_manager.finalize()
 

@@ -118,15 +118,36 @@ def test_safety_gate_evaluation():
     assert high_res["allowed"] is False
     assert high_res["risk"] == "HIGH"
     assert high_res["ticket_id"] is not None
-    assert high_res["ticket_id"].startswith("TICK-")
+    assert high_res["ticket_id"].startswith("AUTH-") or high_res["ticket_id"].startswith("tkt_")
 
     # Redeem ticket
     redeemed = gate.redeem_ticket(high_res["ticket_id"])
     assert redeemed is not None
-    assert redeemed["tool"] == "click"
-    assert redeemed["args"] == {"description": "Buy Now button"}
+    assert redeemed["action_type"] == "browser.click"
+    assert redeemed["parameters"]["description"] == "Buy Now button"
 
     logger.info("✅ SafetyGate successfully evaluated risk and redeemed ticket.\n")
+
+
+def test_sensitive_type_argument_redaction():
+    """Test: SafetyGate redacts sensitive passwords and CVVs in ticket metadata and audit ledger."""
+    from browser.safety_gate import SafetyGate
+
+    gate = SafetyGate()
+    raw_args = {"description": "Enter your card CVV and password", "text": "secret_cvv_999", "press_enter": True}
+    res = gate.check("type_text", raw_args, goal="Checkout item")
+
+    assert res["allowed"] is False
+    assert res["risk"] == "HIGH"
+    assert res["ticket_id"] is not None
+
+    redeemed = gate.redeem_ticket(res["ticket_id"])
+    assert redeemed is not None
+    assert redeemed["parameters"]["text"] == "[REDACTED_SECRET]"
+    assert redeemed["parameters"]["description"] == "Enter your card CVV and password"
+    assert "secret_cvv_999" not in str(redeemed["parameters"])
+
+    logger.info("✅ SafetyGate successfully redacted sensitive text from ticket metadata.\n")
 
 
 def test_tier1_shortcuts():

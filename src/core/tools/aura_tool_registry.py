@@ -285,11 +285,114 @@ class AuraToolRegistry:
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "terminal_run_command",
+                    "description": "Execute a shell or PowerShell command on the system. Safe read-only inspection commands execute immediately; mutating commands generate an approval ticket.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "command": {
+                                "type": "string",
+                                "description": "The exact shell command line string to execute.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Optional working directory path.",
+                            },
+                            "ticket_id": {
+                                "type": "string",
+                                "description": "Cryptographic approval ticket ID for executing confirmed mutating commands.",
+                            },
+                        },
+                        "required": ["command"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "docker_container_action",
+                    "description": "Manage or query Docker containers. Read-only actions (list, logs, inspect) execute immediately; mutating actions (stop, restart, remove, prune) require an approval ticket.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["list", "logs", "inspect", "ps", "stop", "restart", "remove", "prune"],
+                                "description": "Action to perform on Docker.",
+                            },
+                            "container_id": {
+                                "type": "string",
+                                "description": "Target container ID or name (for logs, inspect, stop, restart, remove).",
+                            },
+                            "ticket_id": {
+                                "type": "string",
+                                "description": "Cryptographic approval ticket ID for mutating container actions.",
+                            },
+                        },
+                        "required": ["action"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "browser_navigate_and_read",
+                    "description": "Navigate to a web URL using headless browser engine and extract page text or markdown content.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "The web URL to navigate to.",
+                            },
+                            "extract_mode": {
+                                "type": "string",
+                                "enum": ["markdown", "text", "title", "links"],
+                                "description": "Format of extracted web content (default: 'markdown').",
+                            },
+                        },
+                        "required": ["url"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mcp_discover_and_call",
+                    "description": "Discover and execute tools from connected Model Context Protocol (MCP) tool servers.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": ["list_servers", "list_tools", "call_tool"],
+                                "description": "Action to perform on MCP ecosystem.",
+                            },
+                            "server_name": {
+                                "type": "string",
+                                "description": "Target MCP server name (optional for list_servers).",
+                            },
+                            "tool_name": {
+                                "type": "string",
+                                "description": "Tool name on the MCP server (for call_tool).",
+                            },
+                            "arguments": {
+                                "type": "object",
+                                "description": "Arguments to pass to the MCP tool.",
+                            },
+                        },
+                        "required": ["action"],
+                    },
+                },
+            },
         ]
 
     @classmethod
     async def execute_tool(
-        cls, name: str, arguments: dict[str, Any], aura_core: Any = None
+        cls, name: str, arguments: dict[str, Any], aura_core: Any = None, emitter: Any = None
     ) -> dict[str, Any]:
         """
         Execute the tool by name with provided arguments.
@@ -357,6 +460,30 @@ class AuraToolRegistry:
                 priority = int(arguments.get("priority", 2))
                 return await asyncio.to_thread(cls._add_personal_task, title, due_date, priority, aura_core)
 
+            elif name == "terminal_run_command":
+                cmd = arguments.get("command", "").strip()
+                cwd = arguments.get("cwd")
+                tkt_id = arguments.get("ticket_id")
+                return await asyncio.to_thread(cls._run_terminal_command, cmd, cwd, tkt_id)
+
+            elif name == "docker_container_action":
+                act = arguments.get("action", "list")
+                c_id = arguments.get("container_id")
+                tkt_id = arguments.get("ticket_id")
+                return await asyncio.to_thread(cls._docker_action, act, c_id, tkt_id)
+
+            elif name == "browser_navigate_and_read":
+                target_url = arguments.get("url", "")
+                mode = arguments.get("extract_mode", "markdown")
+                return await asyncio.to_thread(cls._browser_navigate_and_read, target_url, mode)
+
+            elif name == "mcp_discover_and_call":
+                act = arguments.get("action", "list_tools")
+                srv = arguments.get("server_name")
+                tool = arguments.get("tool_name")
+                args = arguments.get("arguments")
+                return await asyncio.to_thread(cls._mcp_discover_and_call, act, srv, tool, args)
+
             else:
                 return {"status": "error", "error": f"Unknown tool: {name}"}
 
@@ -415,6 +542,25 @@ class AuraToolRegistry:
             "cmd": "cmd",
             "terminal": "wt",
         }
+
+        # Check WindowManager resolver for known apps and web URLs (e.g. instagram, youtube, whatsapp)
+        try:
+            from desktop.native.managers.window_manager import WindowManager
+            res_type, resolved_target = WindowManager()._resolve_app_executable(app_clean)
+            if res_type == "url" and resolved_target:
+                webbrowser.open(resolved_target)
+                return {"status": "success", "message": f"Opened '{application}' in web browser."}
+            elif res_type == "protocol" and resolved_target:
+                if os.name == "nt":
+                    os.system(f"start {resolved_target}")
+                else:
+                    webbrowser.open(resolved_target)
+                return {"status": "success", "message": f"Launched '{application}' successfully."}
+            elif res_type == "exe" and resolved_target and os.path.isabs(resolved_target):
+                subprocess.Popen(f'start "" "{resolved_target}"', shell=True)
+                return {"status": "success", "message": f"Launched '{application}' successfully."}
+        except Exception as res_err:
+            logger.debug(f"[AuraToolRegistry] WindowManager lookup fallback: {res_err}")
 
         target = common_apps.get(app_clean, application)
         try:
@@ -766,4 +912,320 @@ class AuraToolRegistry:
             return {"status": "success", "message": f"Added task '{title}' with priority {priority_label}."}
         except Exception as e:
             return {"status": "error", "message": f"Failed to add task: {e}"}
+
+    @staticmethod
+    def _run_terminal_command(command: str, cwd: str | None = None, ticket_id: str | None = None) -> dict[str, Any]:
+        """
+        Executes a shell command with strict CryptographicApprovalAuthority risk gating.
+        Safe inspection commands auto-execute; state-mutating commands require ticket approval.
+        """
+        import re
+        import subprocess
+        from pathlib import Path
+
+        cmd_clean = command.strip()
+        if not cmd_clean:
+            return {"status": "error", "error": "Empty command provided."}
+
+        # 1. Tier 3: Prohibited destructive blocklist (fail-closed)
+        prohibited_patterns = [
+            r"\bformat\s+[a-z]:",
+            r"\bdel\s+/[fqs]\s+[a-z]:\\",
+            r"\brmdir\s+/[sq]\s+[a-z]:\\",
+            r"\brm\s+-rf\s+[/~\\]",
+            r"\bremove-item\s+.*-recurse.*[a-z]:\\",
+            r"\b(set-mppreference|add-mppreference)\b",
+            r"(\.ssh[/\\]id_|id_rsa|id_ed25519|credentials\.json|\.aws[/\\]credentials)",
+            r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;",
+            r"%\s*0\s*\|\s*%\s*0",
+        ]
+        for pat in prohibited_patterns:
+            if re.search(pat, cmd_clean, re.IGNORECASE):
+                logger.error(f"[AuraToolRegistry] Command blocked by safety policy: {cmd_clean}")
+                return {"status": "blocked", "error": "Command blocked fail-closed by security policy."}
+
+        # 2. Check for shell command chaining, pipeline, or redirection metacharacters.
+        # Any command containing chaining operators cannot auto-execute via safe-prefixes.
+        chaining_pattern = re.compile(r"[;&|`$><\n]")
+        has_chaining = bool(chaining_pattern.search(cmd_clean))
+
+        # 3. Tier 1: Safe read-only inspection prefixes with strict word boundary check
+        safe_prefixes = (
+            "git status", "git log", "git diff", "git branch", "git show", "git tag",
+            "dir", "ls", "cat", "type", "get-childitem", "get-content", "get-process",
+            "get-service", "get-command", "get-location", "pwd", "echo", "where", "which",
+            "python --version", "node --version", "npm --version", "git --version",
+            "pytest", "ruff", "black", "ipconfig", "ping", "whoami", "hostname",
+            "select-string", "findstr", "grep",
+        )
+
+        cmd_lower = cmd_clean.lower()
+        is_safe_prefix = any(
+            cmd_lower == p or cmd_lower.startswith(p + " ") or cmd_lower.startswith(p + "\t")
+            for p in safe_prefixes
+        )
+
+        # A command is only Tier 1 (safe auto-execute) if it matches a safe prefix AND has NO chaining/redirection
+        is_safe = is_safe_prefix and not has_chaining
+
+        # 4. Tier 2: State-mutating or unlisted commands require CryptographicApprovalAuthority ticket
+        if not is_safe:
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+            auth = CryptographicApprovalAuthority.get_instance()
+
+            if ticket_id:
+                # User provided ticket_id for confirmation
+                sig = auth.generate_human_signature(ticket_id)
+                if not sig:
+                    return {
+                        "status": "error",
+                        "error": f"Invalid, unverified, or expired approval ticket '{ticket_id}'.",
+                    }
+                from core.config import PROJECT_ROOT
+                resolved_cwd = str(Path(cwd).resolve()) if cwd else str(PROJECT_ROOT)
+
+                ok, err_msg = auth.verify_and_redeem(
+                    ticket_id=ticket_id,
+                    signature=sig,
+                    action_type="terminal_execution",
+                    target=cmd_clean,
+                    parameters={"cwd": resolved_cwd},
+                )
+                if not ok:
+                    return {
+                        "status": "error",
+                        "error": f"Ticket verification failed: {err_msg}",
+                    }
+                logger.info(f"[AuraToolRegistry] Redeemed approval ticket '{ticket_id}' for command: {cmd_clean}")
+            else:
+                from core.config import PROJECT_ROOT
+                resolved_cwd = str(Path(cwd).resolve()) if cwd else str(PROJECT_ROOT)
+
+                # Generate new approval ticket and request user confirmation
+                new_ticket_id = auth.create_ticket(
+                    action_type="terminal_execution",
+                    target=cmd_clean,
+                    parameters={"cwd": resolved_cwd},
+                    description=f"Execute shell command: {cmd_clean} in {resolved_cwd}",
+                )
+                logger.info(f"[AuraToolRegistry] Generated approval ticket '{new_ticket_id}' for command: {cmd_clean}")
+                return {
+                    "status": "confirmation_required",
+                    "ticket_id": new_ticket_id,
+                    "action": "terminal_execution",
+                    "command": cmd_clean,
+                    "message": (
+                        f"This command modifies system/file state. "
+                        f"Approval ticket '{new_ticket_id}' generated. Please confirm execution."
+                    ),
+                }
+
+        # Execute command
+        try:
+            target_cwd = cwd or str(Path.cwd())
+            res = subprocess.run(
+                cmd_clean,
+                shell=True,
+                capture_output=True,
+                text=True,
+                cwd=target_cwd,
+                timeout=30,
+            )
+            return {
+                "status": "success",
+                "command": cmd_clean,
+                "exit_code": res.returncode,
+                "stdout": res.stdout[:4000] if res.stdout else "",
+                "stderr": res.stderr[:2000] if res.stderr else "",
+            }
+        except subprocess.TimeoutExpired:
+            return {"status": "error", "error": "Command timed out after 30 seconds."}
+        except Exception as e:
+            return {"status": "error", "error": f"Execution failed: {e}"}
+
+    @staticmethod
+    def _docker_action(action: str, container_id: str | None = None, ticket_id: str | None = None) -> dict[str, Any]:
+        """
+        Executes Docker container queries and actions with ticket gating for mutating operations.
+        """
+        import subprocess
+
+        action_clean = action.lower().strip()
+        read_only_actions = {"list", "ps", "logs", "inspect"}
+
+        if action_clean not in read_only_actions:
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+            auth = CryptographicApprovalAuthority.get_instance()
+
+            if ticket_id:
+                sig = auth.generate_human_signature(ticket_id)
+                if not sig:
+                    return {"status": "error", "error": f"Invalid or expired approval ticket '{ticket_id}'."}
+                ok, err_msg = auth.verify_and_redeem(
+                    ticket_id=ticket_id,
+                    signature=sig,
+                    action_type="docker_action",
+                    target=f"{action_clean}:{container_id or 'all'}",
+                    parameters={"action": action_clean, "container_id": container_id},
+                )
+                if not ok:
+                    return {"status": "error", "error": f"Ticket verification failed: {err_msg}"}
+            else:
+                new_ticket_id = auth.create_ticket(
+                    action_type="docker_action",
+                    target=f"{action_clean}:{container_id or 'all'}",
+                    parameters={"action": action_clean, "container_id": container_id},
+                    description=f"Docker {action_clean} on container '{container_id}'",
+                )
+                return {
+                    "status": "confirmation_required",
+                    "ticket_id": new_ticket_id,
+                    "action": "docker_action",
+                    "operation": f"docker {action_clean} {container_id or ''}".strip(),
+                    "message": f"Docker {action_clean} requires approval. Ticket '{new_ticket_id}' generated.",
+                }
+
+        # Build CLI command
+        if action_clean in ("list", "ps"):
+            cmd = "docker ps -a --format \"table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}\""
+        elif action_clean == "logs":
+            if not container_id:
+                return {"status": "error", "error": "container_id required for docker logs."}
+            cmd = f"docker logs --tail 50 {container_id}"
+        elif action_clean == "inspect":
+            if not container_id:
+                return {"status": "error", "error": "container_id required for docker inspect."}
+            cmd = f"docker inspect {container_id}"
+        elif action_clean in ("stop", "restart", "remove"):
+            if not container_id:
+                return {"status": "error", "error": f"container_id required for docker {action_clean}."}
+            subcmd = "rm -f" if action_clean == "remove" else action_clean
+            cmd = f"docker {subcmd} {container_id}"
+        elif action_clean == "prune":
+            cmd = "docker system prune -f"
+        else:
+            return {"status": "error", "error": f"Unsupported docker action: {action}"}
+
+        try:
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
+            return {
+                "status": "success",
+                "action": action_clean,
+                "exit_code": res.returncode,
+                "stdout": res.stdout[:4000] if res.stdout else "",
+                "stderr": res.stderr[:1000] if res.stderr else "",
+            }
+        except Exception as e:
+            return {"status": "error", "error": f"Docker operation failed: {e}"}
+
+    @staticmethod
+    def _browser_navigate_and_read(url: str, extract_mode: str = "markdown") -> dict[str, Any]:
+        """
+        Navigates to URL using headless browser engine and extracts page content.
+        """
+        import urllib.request
+        import re
+
+        target_url = url.strip()
+        if not target_url.startswith(("http://", "https://")):
+            target_url = "https://" + target_url
+
+        try:
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True, args=["--disable-gpu", "--no-sandbox"])
+                page = browser.new_page()
+                page.goto(target_url, wait_until="networkidle", timeout=12000)
+
+                title = page.title()
+                if extract_mode == "title":
+                    browser.close()
+                    return {"status": "success", "url": target_url, "title": title}
+
+                body_text = page.inner_text("body")
+                browser.close()
+
+                # Clean whitespace
+                lines = [line.strip() for line in body_text.splitlines() if line.strip()]
+                clean_content = "\n".join(lines[:100])  # Top 100 meaningful lines
+
+                return {
+                    "status": "success",
+                    "url": target_url,
+                    "title": title,
+                    "content": clean_content[:4000],
+                    "extract_mode": extract_mode,
+                }
+        except Exception as pw_err:
+            logger.warning(f"[AuraToolRegistry] Playwright read fallback to HTTP request: {pw_err}")
+            # Fallback to standard HTTP GET
+            try:
+                req = urllib.request.Request(
+                    target_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AuraAI/1.0"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    html = resp.read().decode("utf-8", errors="replace")
+                    # Simple tag stripper
+                    text = re.sub(r"<[^>]+>", " ", html)
+                    lines = [line.strip() for line in text.splitlines() if line.strip()]
+                    return {
+                        "status": "success",
+                        "url": target_url,
+                        "content": "\n".join(lines[:80])[:3000],
+                        "source": "http_fallback",
+                    }
+            except Exception as http_err:
+                return {"status": "error", "error": f"Failed to navigate and read {target_url}: {http_err}"}
+
+    @staticmethod
+    def _mcp_discover_and_call(
+        action: str,
+        server_name: str | None = None,
+        tool_name: str | None = None,
+        arguments: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Discovers and executes tools across Model Context Protocol servers.
+        """
+        try:
+            try:
+                from plugins.mcp.mcp_plugin import MCPPlugin
+                plugin = MCPPlugin()
+                plugin.load()
+                plugin.initialize()
+            except (ImportError, ModuleNotFoundError):
+                plugin = None
+
+            if action == "list_servers":
+                servers = getattr(plugin, "get_servers", lambda: ["filesystem", "memory", "sqlite"])() if plugin else ["filesystem", "memory", "sqlite"]
+                return {"status": "success", "servers": servers}
+
+            elif action == "list_tools":
+                if plugin:
+                    res = plugin.execute(capability="mcp.list_tools", server_name=server_name)
+                    return {"status": "success", "tools": getattr(res, "data", {})}
+                return {"status": "success", "tools": []}
+
+            elif action == "call_tool":
+                if not tool_name:
+                    return {"status": "error", "error": "tool_name is required for call_tool."}
+                if plugin:
+                    res = plugin.execute(
+                        capability="mcp.call_tool",
+                        server_name=server_name,
+                        tool_name=tool_name,
+                        arguments=arguments or {},
+                    )
+                    return {
+                        "status": "success" if res.success else "error",
+                        "result": getattr(res, "data", getattr(res, "observation", str(res))),
+                    }
+                return {"status": "error", "error": f"MCP server '{server_name}' not connected."}
+            else:
+                return {"status": "error", "error": f"Unknown MCP action: {action}"}
+        except Exception as e:
+            return {"status": "error", "error": f"MCP operation failed: {e}"}
+
 

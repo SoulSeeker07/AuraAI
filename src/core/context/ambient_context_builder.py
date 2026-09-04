@@ -43,6 +43,8 @@ class AmbientContextBuilder:
 
         # 3. User Profile & Preferences from Memory (Hybrid Semantic Recall)
         if aura_core and hasattr(aura_core, "memory") and aura_core.memory:
+            if hasattr(aura_core, "embedding_warmup") and aura_core.embedding_warmup:
+                aura_core.embedding_warmup.ensure_ready_sync(timeout=0.05)
             user_facts = cls._get_memory_summary(aura_core.memory, query=query)
             if user_facts:
                 context_parts.append(f"👤 **Relevant User Facts & Preferences**:\n{user_facts}")

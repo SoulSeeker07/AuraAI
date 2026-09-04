@@ -19,6 +19,7 @@ dependencies = [
   "groq>=0.9",
   "pywin32>=305; platform_system == 'Windows'",
   "beautifulsoup4>=4.12",
+  "qasync>=0.27.1",
 ]
 
 [project.optional-dependencies]

@@ -224,10 +224,7 @@ class MasterOrchestrator:
                 )
                 backend = self.backend_registry.select_best_backend(plan.capability)
                 if backend:
-                    logger.info(
-                        f"[MasterOrchestrator] Confirmation YES → {new_plan.log_summary()}"
-                    )
-                    initial_res = backend.execute_plan(new_plan)
+                    initial_res = self._dispatch_plan(backend, new_plan, task_id=plan.plan_id)
             except Exception as exc:
                 logger.error(
                     f"[MasterOrchestrator] Confirmed launch failed: {exc}",
@@ -271,10 +268,75 @@ class MasterOrchestrator:
 
         if initial_res and getattr(conf, "remaining_subtasks", None):
             all_obs = list(initial_res.observations or [])
-            for rem_st in conf.remaining_subtasks:
+            rem_list = list(conf.remaining_subtasks)
+            for idx, rem_st in enumerate(rem_list):
                 try:
+                    from core.capabilities.capability_registry import CapabilityRegistry
+                    from .execution_policy import ExecutionPolicy, PolicyAction
+
+                    rem_domain = CapabilityRegistry.get_instance().resolve_domain(rem_st.capability)
+                    policy_decision = ExecutionPolicy.get_instance().evaluate_action(
+                        engine=rem_domain or "desktop",
+                        action=rem_st.capability,
+                        params=rem_st.parameters or {},
+                    )
+                    if policy_decision.action == PolicyAction.ASK_USER:
+                        logger.info(
+                            f"[MasterOrchestrator] Subsequent subtask '{rem_st.task_id}' ({rem_st.capability}) "
+                            f"requires confirmation. Suspending interactive remaining queue."
+                        )
+                        from .confirmation import ActionPlanConfirmation
+                        from ..planning.action_plan import ActionPlan
+
+                        target = (
+                            rem_st.parameters.get("target")
+                            or rem_st.parameters.get("path")
+                            or rem_st.parameters.get("command")
+                            or rem_st.title
+                        )
+                        next_plan = ActionPlan(
+                            action=rem_st.capability,
+                            target=str(target),
+                            goal=rem_st.description,
+                            capability=rem_st.capability,
+                            arguments=rem_st.parameters or {},
+                            reuse_existing=False,
+                            policy_action="ask_user",
+                            session_id=conf.session_id,
+                        )
+                        subsequent_remaining = rem_list[idx + 1 :]
+                        self._last_session.pending_confirmation = ActionPlanConfirmation(
+                            action_plan=next_plan,
+                            session_id=conf.session_id,
+                            prompt=policy_decision.message,
+                            remaining_subtasks=subsequent_remaining,
+                        )
+                        try:
+                            from core.event_bus import EventBus, Events
+                            from .autonomy_mode import classify_action_risk
+                            p_risk = policy_decision.risk or classify_action_risk(
+                                rem_domain or "desktop", rem_st.capability, rem_st.parameters or {}
+                            )
+                            risk_str = p_risk.value.upper() if hasattr(p_risk, "value") else str(p_risk).upper()
+                            EventBus.get_instance().publish(
+                                Events.CONFIRMATION_REQUIRED,
+                                payload={
+                                    "ticket_id": None,
+                                    "action_name": next_plan.action or rem_st.capability,
+                                    "action_params": next_plan.arguments or {},
+                                    "risk": risk_str,
+                                    "is_crypto_ticket": False,
+                                    "prompt": policy_decision.message,
+                                },
+                            )
+                        except Exception as eb_err:
+                            logger.error(f"[MasterOrchestrator] Failed to publish CONFIRMATION_REQUIRED event: {eb_err}", exc_info=True)
+                        all_obs.append(f"Paused before '{rem_st.capability}': confirmation required.")
+                        initial_res.observations = all_obs
+                        return initial_res
+
                     rem_backend = self.backend_registry.select_best_backend(
-                        rem_st.capability
+                        rem_st.capability, domain=rem_domain
                     )
                     if rem_backend:
                         from ..planning.action_plan import ActionPlan
@@ -282,7 +344,7 @@ class MasterOrchestrator:
                         rem_plan = ActionPlan.from_subtask(
                             rem_st, session_id=conf.session_id, context={}
                         )
-                        rem_res = rem_backend.execute_plan(rem_plan)
+                        rem_res = self._dispatch_plan(rem_backend, rem_plan, task_id=rem_st.task_id)
                         all_obs.extend(rem_res.observations or [])
                 except Exception as rem_exc:
                     logger.warning(
@@ -300,13 +362,14 @@ class MasterOrchestrator:
         budget: ExecutionBudget | None = None,
         context: Any = None,
         source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
+        emitter: Any = None,
     ) -> ExecutionResult:
         """
         Synchronous entry point for processing a request.
         Loop-safe: handles execution from threads with or without an active running event loop.
         """
         coro = self.process_request_async(
-            goal_text, preferred_planner, parameters, budget, context, source=source
+            goal_text, preferred_planner, parameters, budget, context, source=source, emitter=emitter
         )
         try:
             loop = asyncio.get_running_loop()
@@ -328,6 +391,7 @@ class MasterOrchestrator:
         precomputed_graph: Any | None = None,
         session: AgentSession | None = None,
         source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
+        emitter: Any = None,
         **kwargs: Any,
     ) -> ExecutionResult:
         """Execute a goal with optional precomputed TaskGraph."""
@@ -336,6 +400,7 @@ class MasterOrchestrator:
             task_graph=precomputed_graph,
             session=session,
             source=source,
+            emitter=emitter,
             **kwargs,
         )
 
@@ -349,6 +414,7 @@ class MasterOrchestrator:
         task_graph: Any | None = None,
         session: AgentSession | None = None,
         source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
+        emitter: Any = None,
     ) -> ExecutionResult:
         """
         Execute full 7-stage cognitive orchestration pipeline using AgentSession.
@@ -383,6 +449,7 @@ class MasterOrchestrator:
                 session=session,
                 source=source,
                 skip_confirmation_intercept=_is_autonomous_source,
+                emitter=emitter,
             )
         finally:
             pass
@@ -398,6 +465,7 @@ class MasterOrchestrator:
         session: AgentSession | None = None,
         source: RequestSource = RequestSource.HUMAN_INTERACTIVE,
         skip_confirmation_intercept: bool = False,
+        emitter: Any = None,
     ) -> ExecutionResult:
         """
         Inner pipeline body. Called from process_request_async after autonomy-floor setup.
@@ -422,13 +490,22 @@ class MasterOrchestrator:
                         return resolved_res
 
         start_t = datetime.now().timestamp()
+        if emitter is None and isinstance(context, dict) and "emitter" in context:
+            emitter = context["emitter"]
+        elif emitter is None and isinstance(parameters, dict) and "emitter" in parameters:
+            emitter = parameters["emitter"]
+
         session = session or AgentSession(goal=goal_text, budget=budget or ExecutionBudget())
+        session.event_sink = self._emit
         if source == RequestSource.HUMAN_INTERACTIVE:
             self._last_session = session  # for session-scoped confirmation resolution
         self._log_pipeline_start(goal_text, session.session_id)
         self._emit(ExecutionStartedEvent(goal=goal_text, session_id=session.session_id))
 
         # Stage 0: Perception (NLU Layer)
+        if emitter is not None:
+            emitter.plan("Analyzing intent & perception", detail=goal_text)
+
         t_nlu = datetime.now().timestamp()
         try:
             from ..nlu.nlu_engine import NLUEngine
@@ -458,6 +535,9 @@ class MasterOrchestrator:
             effective_goal = goal_text
 
         # Stage 1: Memory Recall
+        if emitter is not None:
+            emitter.info("Recalling conversational memory & context")
+
         t0 = datetime.now().timestamp()
         session.memory_context = self._recall_memory(effective_goal)
         session.metrics["memory_recall_ms"] = round(
@@ -741,6 +821,9 @@ class MasterOrchestrator:
             logger.debug(f"Preference resolution skipped: {pref_err}")
 
         # Stage 2: Decision Engine (Reasoning, Risk, Budget, Policy)
+        if emitter is not None:
+            emitter.plan("Evaluating Decision Engine & Autonomy Policy")
+
         t1 = datetime.now().timestamp()
         decision = self.decision_engine.evaluate(
             goal=goal_text,
@@ -925,6 +1008,9 @@ class MasterOrchestrator:
                 task_graph = None
 
         # Stage 3: Task Graph Decomposition
+        if emitter is not None:
+            emitter.plan("Decomposing goal into TaskGraph plan")
+
         t2 = datetime.now().timestamp()
         task_graph = task_graph or self.decomposer.decompose(goal_text, decision=decision)
         if parameters:
@@ -967,12 +1053,17 @@ class MasterOrchestrator:
             nodes=nodes_info,
             execution_order=order_tuple,
         ))
+        session.task_graph = task_graph
+        session.data["task_graph"] = task_graph
 
         # Stage 3.2: Task Graph Validation via Universal Capability Registry
         # Fail-closed only for hard errors (liveness failures, dependency cycles).
         # Unknown-capability errors are soft warnings — the execution backends
         # have their own fallback logic and can handle unrecognised capability
         # strings gracefully.
+        if emitter is not None:
+            emitter.validate("Validating plan graph & capability availability")
+
         from core.capabilities.capability_registry import CapabilityRegistry
         cap_reg = CapabilityRegistry.get_instance()
         plan_caps = [st.capability for st in task_graph.subtasks.values()]
@@ -1057,10 +1148,11 @@ class MasterOrchestrator:
             (datetime.now().timestamp() - t2) * 1000, 2
         )
 
-        completed_ids: set[str] = set()
+        completed_ids: set[str] = set(session.data.get("completed_ids") or [])
         shared_context: dict[str, Any] = {
             "session": session,
             "decision": decision,
+            "emitter": emitter,
             "previous_results": {},
             "world_state": getattr(decision, "world_state", {}),
             "world_diff": getattr(decision, "world_diff", {}),
@@ -1088,28 +1180,90 @@ class MasterOrchestrator:
         task_memory = TaskWorkingMemory(goal=goal_text)
         world_observer = WorldStateObserver.get_instance()
 
-        for level_index, task_level in enumerate(task_graph.execution_order):
+        max_iterations = (
+            getattr(budget, "max_iterations", None)
+            if budget else None
+        ) or max(len(task_graph.subtasks) * 4, 30)
+        iteration = 0
+
+        while iteration < max_iterations:
+            iteration += 1
+
             if pipeline_halted:
-                # Mark remaining tasks as cancelled
-                for t_id in task_level:
-                    task_graph.subtasks[t_id].status = "cancelled"
+                # Mark remaining non-completed tasks as cancelled
+                for t_id, st in task_graph.subtasks.items():
+                    if t_id not in completed_ids and st.status not in ("completed", "failed", "cancelled"):
+                        st.status = "cancelled"
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.CANCELLED,
+                            old_state=NodeState.PENDING,
+                            error="Execution halted due to upstream failure",
+                        ))
+                break
+
+            # Filter out already completed / cancelled tasks in task_graph
+            uncompleted_tuples = [
+                (t_id, st) for t_id, st in task_graph.subtasks.items()
+                if t_id not in completed_ids and st.status not in ("completed", "cancelled")
+            ]
+            if not uncompleted_tuples:
+                logger.info(
+                    f"Session [{session.session_id}] All {len(completed_ids)} subtasks completed; dynamic loop finished."
+                )
+                break
+
+            # Ready tasks: all declared dependencies must be in completed_ids
+            ready_subtasks = [
+                (t_id, st) for t_id, st in uncompleted_tuples
+                if all(dep in completed_ids for dep in (getattr(st, "dependencies", []) or []))
+            ]
+
+            if not ready_subtasks:
+                logger.error(
+                    f"Session [{session.session_id}] Unsatisfied dependencies / deadlock with "
+                    f"{len(uncompleted_tuples)} tasks pending. Halting."
+                )
+                for t_id, st in uncompleted_tuples:
+                    st.status = "cancelled"
                     self._emit(NodeStateChangedEvent(
                         task_id=t_id,
                         new_state=NodeState.CANCELLED,
                         old_state=NodeState.PENDING,
-                        error="Execution halted due to upstream failure",
+                        error="Execution halted due to unsatisfied dependencies",
                     ))
-                continue
+                pipeline_halted = True
+                break
 
+            # Prioritize ready subtasks using execution_order levels if available
+            level_map: dict[str, int] = {}
+            if task_graph.execution_order:
+                for lvl_idx, lvl in enumerate(task_graph.execution_order):
+                    for tid in lvl:
+                        level_map[tid] = lvl_idx
+
+            ready_subtasks.sort(key=lambda item: level_map.get(item[0], 999))
+            lowest_level = level_map.get(ready_subtasks[0][0], 0)
+
+            # Determine batch to execute (parallel vs sequential)
+            if budget and not budget.allow_parallel:
+                batch_to_run = [ready_subtasks[0]]
+            else:
+                batch_to_run = [
+                    item for item in ready_subtasks
+                    if level_map.get(item[0], lowest_level) == lowest_level
+                ]
+
+            uncompleted_task_ids = [t_id for t_id, _ in batch_to_run]
             logger.info(
-                f"Session [{session.session_id}] Level {level_index + 1}/{len(task_graph.execution_order)}: {task_level}"
+                f"Session [{session.session_id}] Dynamic Loop Turn {iteration}: Executing batch {uncompleted_task_ids}"
             )
 
             # ── Input Artifact Validation (Fail-Loud) ──────────────────────
             # Before executing any task in this level, verify that all
             # required input artifacts exist and carry a non-empty payload.
             level_valid = True
-            for t_id in task_level:
+            for t_id in uncompleted_task_ids:
                 subtask = task_graph.subtasks[t_id]
                 for art_id in getattr(subtask, "input_artifacts", []):
                     try:
@@ -1153,12 +1307,12 @@ class MasterOrchestrator:
                 self._execute_level_task(
                     t_id, task_graph.subtasks[t_id], decision, shared_context
                 )
-                for t_id in task_level
+                for t_id in uncompleted_task_ids
             ]
 
             level_results = await asyncio.gather(*coroutines, return_exceptions=True)
 
-            for t_id, res in zip(task_level, level_results):
+            for t_id, res in zip(uncompleted_task_ids, level_results):
                 subtask = task_graph.subtasks[t_id]
                 if isinstance(res, Exception):
                     logger.error(
@@ -1168,200 +1322,345 @@ class MasterOrchestrator:
                         f"  Exception  : {type(res).__name__}: {res}",
                         exc_info=res,
                     )
-                    subtask.status = "failed"
-                    pipeline_halted = True
-                    # Unhandled execution exception: task crashed mid-run, verified=False
-                    self._emit(NodeStateChangedEvent(
-                        task_id=t_id,
-                        new_state=NodeState.FAILED,
-                        old_state=NodeState.RUNNING,
-                        error=f"{type(res).__name__}: {res}",
-                        verified=False,
-                    ))
-                    session.add_observation(
-                        Observation(
-                            obs_type="system",
-                            source="MasterOrchestrator",
-                            confidence=0.0,
-                            content=f"❌ Subtask '{subtask.title}' failed: {type(res).__name__}: {res}",
-                        )
+                    err_msg = f"{type(res).__name__}: {res}"
+                    max_retries = getattr(subtask, "max_retries", 0) or (
+                        subtask.parameters.get("max_retries", 0)
+                        if isinstance(subtask.parameters, dict)
+                        else 0
                     )
-                elif (
-                    isinstance(res, ExecutionResult)
-                    or res.__class__.__name__ == "ExecutionResult"
-                ):
-                    subtask.status = "completed" if res.success else "failed"
-                    subtask.result = res
-                    if res.success:
-                        completed_ids.add(t_id)
-                    else:
-                        pipeline_halted = True
+                    fallback_cap = (
+                        subtask.parameters.pop("fallback_capability", None)
+                        if isinstance(subtask.parameters, dict)
+                        else None
+                    )
 
-                    res_data = res.data if isinstance(res.data, dict) else {}
-
-                    # Infer tri-state verified flag from result / data
-                    # None  = Unverified / no explicit verification report
-                    # True  = Explicit verification passed
-                    # False = Explicit verification failed or task failed
-                    v_passed = None
-                    if getattr(res, "verification_passed", None) is not None:
-                        v_passed = bool(res.verification_passed)
-                    elif hasattr(res, "data") and isinstance(res.data, dict) and "verification_passed" in res.data:
-                        v_passed = bool(res.data["verification_passed"])
-                    elif not res.success and res_data.get("policy_action") != "ask_user":
-                        v_passed = False
-
-                    self._emit(NodeStateChangedEvent(
-                        task_id=t_id,
-                        new_state=NodeState.COMPLETED if res.success else NodeState.FAILED,
-                        old_state=NodeState.RUNNING,
-                        result=res,
-                        error=None if res.success else (res.observations[0] if res.observations else "Subtask failed"),
-                        verified=v_passed,
-                    ))
-                    for obs_text in res.observations:
+                    if subtask.attempt_count < max_retries:
+                        subtask.attempt_count += 1
+                        replan_reason = (
+                            f"Subtask '{t_id}' crashed: {err_msg}. "
+                            f"Triggering self-healing retry (attempt {subtask.attempt_count}/{max_retries})."
+                        )
+                        logger.info(f"[MasterOrchestrator] {replan_reason}")
+                        self._emit(ReplanTriggeredEvent(
+                            reason=replan_reason,
+                            old_goal=subtask.description,
+                            new_goal=subtask.description,
+                        ))
+                        subtask.status = "pending"
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.PENDING,
+                            old_state=NodeState.RUNNING,
+                            error=f"Retry {subtask.attempt_count}/{max_retries}: {err_msg}",
+                        ))
                         session.add_observation(
                             Observation(
-                                obs_type=subtask.required_role.value,
-                                source=res_data.get(
-                                    "backend", getattr(res, "planner", "desktop")
-                                ),
-                                confidence=res.confidence,
-                                content=obs_text,
+                                obs_type="system",
+                                source="MasterOrchestrator",
+                                confidence=0.0,
+                                content=f"⚠️ Subtask '{subtask.title}' failed: {err_msg}. Retrying ({subtask.attempt_count}/{max_retries})...",
                             )
                         )
-
-                    # Update TaskWorkingMemory with real-time perception observation
-                    try:
-                        b_adapter = self.backend_registry.get_backend("browser")
-                        world_snap = await world_observer.observe_async(
-                            domain=subtask.required_role.value,
-                            browser_adapter=b_adapter,
+                    elif isinstance(subtask.parameters, dict) and "fallback_capability" in subtask.parameters:
+                        fallback_cap = subtask.parameters.pop("fallback_capability")
+                        replan_reason = (
+                            f"Subtask '{t_id}' crashed: {err_msg}. "
+                            f"Switching to fallback capability '{fallback_cap}'."
                         )
-                        task_memory.update_world_state(world_snap)
+                        logger.info(f"[MasterOrchestrator] {replan_reason}")
+                        self._emit(ReplanTriggeredEvent(
+                            reason=replan_reason,
+                            old_goal=subtask.capability,
+                            new_goal=fallback_cap,
+                        ))
+                        subtask.capability = fallback_cap
+                        subtask.status = "pending"
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.PENDING,
+                            old_state=NodeState.RUNNING,
+                            error=f"Switched to fallback capability: {fallback_cap}",
+                        ))
+                        session.add_observation(
+                            Observation(
+                                obs_type="system",
+                                source="MasterOrchestrator",
+                                confidence=0.0,
+                                content=f"⚠️ Subtask '{subtask.title}' switched to fallback capability '{fallback_cap}'.",
+                            )
+                        )
+                    else:
+                        subtask.status = "failed"
+                        pipeline_halted = True
+                        # Unhandled execution exception: task crashed mid-run, verified=False
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.FAILED,
+                            old_state=NodeState.RUNNING,
+                            error=err_msg,
+                            verified=False,
+                        ))
+                        session.add_observation(
+                            Observation(
+                                obs_type="system",
+                                source="MasterOrchestrator",
+                                confidence=0.0,
+                                content=f"❌ Subtask '{subtask.title}' failed: {err_msg}",
+                            )
+                        )
+                    try:
                         task_memory.record_step(
                             capability=subtask.capability,
                             target=subtask.title,
                             goal=subtask.description,
-                            success=res.success,
-                            observations=res.observations,
+                            success=False,
+                            observations=[f"Subtask '{subtask.title}' crashed: {err_msg}"],
                         )
                     except Exception as mem_err:
-                        logger.debug(
-                            f"[MasterOrchestrator] TaskWorkingMemory update skipped: {mem_err}"
+                        logger.debug(f"[MasterOrchestrator] TaskWorkingMemory update skipped: {mem_err}")
+                elif (
+                    isinstance(res, ExecutionResult)
+                    or res.__class__.__name__ == "ExecutionResult"
+                ):
+                    res_data = res.data if isinstance(res.data, dict) else {}
+                    subtask.result = res
+
+                    if res.success:
+                        subtask.status = "completed"
+                        completed_ids.add(t_id)
+
+                        v_passed = None
+                        if getattr(res, "verification_passed", None) is not None:
+                            v_passed = bool(res.verification_passed)
+                        elif hasattr(res, "data") and isinstance(res.data, dict) and "verification_passed" in res.data:
+                            v_passed = bool(res.data["verification_passed"])
+
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.COMPLETED,
+                            old_state=NodeState.RUNNING,
+                            result=res,
+                            error=None,
+                            verified=v_passed,
+                        ))
+                    elif res_data.get("policy_action") == "ask_user":
+                        # Interactive policy gate (confirmation required)
+                        subtask.status = "running"
+                        pipeline_halted = True
+                    else:
+                        # Subtask execution failed (res.success is False)
+                        err_msg = res.observations[0] if res.observations else "Subtask failed"
+                        max_retries = getattr(subtask, "max_retries", 0) or (
+                            subtask.parameters.get("max_retries", 0)
+                            if isinstance(subtask.parameters, dict)
+                            else 0
                         )
 
-                    # ── Output Artifact Propagation ────────────────────────
-                    # Extract content from the execution result and store
-                    # payload-carrying Artifacts on the session for downstream
-                    # tasks to consume.
-                    content_payload = self._extract_content_from_result(res)
-                    rich_ids = {
-                        a.artifact_id
-                        for a in res.artifacts or []
-                        if isinstance(a, Artifact)
-                    }
-                    if res.artifacts:
-                        for item in res.artifacts:
-                            if isinstance(item, dict) and "artifact_id" in item:
-                                rich_ids.add(item["artifact_id"])
-
-                    for art_id in getattr(subtask, "output_artifacts", []):
-                        if art_id in rich_ids:
-                            continue  # Skip generic fallback since backend returns a rich artifact for this ID!
-
-                        # Determine checks based on artifact ID and capability
-                        checks = {}
-                        if (
-                            art_id == "art_saved_file"
-                            or "save" in subtask.capability.lower()
-                            or "persist" in subtask.capability.lower()
-                        ):
-                            checks = {"document_saved": True, "file_exists": True}
-                        elif (
-                            "markdown" in art_id
-                            or "document" in subtask.capability.lower()
-                        ):
-                            checks = {"markdown_generated": True, "content_valid": True}
+                        if subtask.attempt_count < max_retries:
+                            subtask.attempt_count += 1
+                            replan_reason = (
+                                f"Subtask '{t_id}' failed: {err_msg}. "
+                                f"Triggering self-healing retry (attempt {subtask.attempt_count}/{max_retries})."
+                            )
+                            logger.info(f"[MasterOrchestrator] {replan_reason}")
+                            self._emit(ReplanTriggeredEvent(
+                                reason=replan_reason,
+                                old_goal=subtask.description,
+                                new_goal=subtask.description,
+                            ))
+                            subtask.status = "pending"
+                            self._emit(NodeStateChangedEvent(
+                                task_id=t_id,
+                                new_state=NodeState.PENDING,
+                                old_state=NodeState.RUNNING,
+                                error=f"Retry {subtask.attempt_count}/{max_retries}: {err_msg}",
+                            ))
+                        elif isinstance(subtask.parameters, dict) and "fallback_capability" in subtask.parameters:
+                            fallback_cap = subtask.parameters.pop("fallback_capability")
+                            replan_reason = (
+                                f"Subtask '{t_id}' failed: {err_msg}. "
+                                f"Switching to fallback capability '{fallback_cap}'."
+                            )
+                            logger.info(f"[MasterOrchestrator] {replan_reason}")
+                            self._emit(ReplanTriggeredEvent(
+                                reason=replan_reason,
+                                old_goal=subtask.capability,
+                                new_goal=fallback_cap,
+                            ))
+                            subtask.capability = fallback_cap
+                            subtask.status = "pending"
+                            self._emit(NodeStateChangedEvent(
+                                task_id=t_id,
+                                new_state=NodeState.PENDING,
+                                old_state=NodeState.RUNNING,
+                                error=f"Switched to fallback capability: {fallback_cap}",
+                            ))
                         else:
-                            checks = {"valid": True}
-
-                        v_report = VerificationReport(
-                            success=res.success,
-                            checks=checks,
-                            confidence=res.confidence if res.confidence is not None else 1.0,
-                            observations=res.observations,
+                            subtask.status = "failed"
+                            pipeline_halted = True
+                            v_passed = False
+                            self._emit(NodeStateChangedEvent(
+                                task_id=t_id,
+                                new_state=NodeState.FAILED,
+                                old_state=NodeState.RUNNING,
+                                result=res,
+                                error=err_msg,
+                                verified=v_passed,
+                            ))
+                    if res_data.get("policy_action") != "ask_user":
+                        subtask_role = (
+                            subtask.required_role.value
+                            if hasattr(subtask.required_role, "value")
+                            else str(subtask.required_role)
                         )
+                        for obs_text in res.observations:
+                            session.add_observation(
+                                Observation(
+                                    obs_type=subtask_role,
+                                    source=res_data.get(
+                                        "backend", getattr(res, "planner", "desktop")
+                                    ),
+                                    confidence=res.confidence,
+                                    content=obs_text,
+                                )
+                            )
 
-                        art = Artifact(
-                            artifact_id=art_id,
-                            artifact_type=self._infer_artifact_type(art_id),
-                            content=content_payload,
-                            creator=res_data.get("backend", res.planner),
-                            session_id=session.session_id,
-                            verification_report=v_report,
-                        )
-                        # If the result produced a file path, record it
-                        if res_data.get("path"):
-                            art = dataclasses.replace(art, location=res_data["path"])
-                        session.add_artifact(art)
-                        logger.info(
-                            f"[MasterOrchestrator] Stored artifact '{art_id}' "
-                            f"(payload={len(content_payload)} chars, verification={v_report.success})"
-                        )
+                        # Update TaskWorkingMemory with real-time perception observation
+                        try:
+                            b_adapter = (
+                                self.backend_registry.get_backend("browser")
+                                if subtask_role == "browser"
+                                else None
+                            )
+                            world_snap = await world_observer.observe_async(
+                                domain=subtask_role,
+                                browser_adapter=b_adapter,
+                            )
+                            task_memory.update_world_state(world_snap)
+                            task_memory.record_step(
+                                capability=subtask.capability,
+                                target=subtask.title,
+                                goal=subtask.description,
+                                success=res.success,
+                                observations=res.observations,
+                            )
+                        except Exception as mem_err:
+                            logger.debug(
+                                f"[MasterOrchestrator] TaskWorkingMemory update skipped: {mem_err}"
+                            )
 
-                    # Also process any explicit artifact dicts/objects from backends
-                    for art_data in res.artifacts or []:
-                        checks = {}
-                        is_art_obj = isinstance(art_data, Artifact)
-                        art_type = (
-                            art_data.artifact_type
-                            if is_art_obj
-                            else art_data.get("artifact_type", "file")
-                        )
-                        if art_type == "research":
-                            checks = {
-                                "sources_reachable": True,
-                                "structured_payload": True,
-                            }
-                        elif art_type == "document":
-                            checks = {
-                                "markdown_generated": True,
-                                "content_valid": True,
-                            }
-                        else:
-                            checks = {"valid": True}
+                    if res_data.get("policy_action") != "ask_user":
+                        # ── Output Artifact Propagation ────────────────────────
+                        # Extract content from the execution result and store
+                        # payload-carrying Artifacts on the session for downstream
+                        # tasks to consume.
+                        content_payload = self._extract_content_from_result(res)
+                        rich_ids = {
+                            a.artifact_id
+                            for a in res.artifacts or []
+                            if isinstance(a, Artifact)
+                        }
+                        if res.artifacts:
+                            for item in res.artifacts:
+                                if isinstance(item, dict) and "artifact_id" in item:
+                                    rich_ids.add(item["artifact_id"])
 
-                        v_report = VerificationReport(
-                            success=res.success,
-                            checks=checks,
-                            confidence=res.confidence if res.confidence is not None else 1.0,
-                            observations=res.observations,
-                        )
+                        for art_id in getattr(subtask, "output_artifacts", []):
+                            if art_id in rich_ids:
+                                continue  # Skip generic fallback since backend returns a rich artifact for this ID!
 
-                        if is_art_obj:
-                            updated_art = dataclasses.replace(
-                                art_data,
+                            # Determine checks based on artifact ID and capability
+                            checks = {}
+                            if (
+                                art_id == "art_saved_file"
+                                or "save" in subtask.capability.lower()
+                                or "persist" in subtask.capability.lower()
+                            ):
+                                checks = {"document_saved": True, "file_exists": True}
+                            elif (
+                                "markdown" in art_id
+                                or "document" in subtask.capability.lower()
+                            ):
+                                checks = {"markdown_generated": True, "content_valid": True}
+                            else:
+                                checks = {"valid": True}
+
+                            v_report = VerificationReport(
+                                success=res.success,
+                                checks=checks,
+                                confidence=res.confidence if res.confidence is not None else 1.0,
+                                observations=res.observations,
+                            )
+
+                            art = Artifact(
+                                artifact_id=art_id,
+                                artifact_type=self._infer_artifact_type(art_id),
+                                content=content_payload,
+                                creator=res_data.get("backend", res.planner),
                                 session_id=session.session_id,
                                 verification_report=v_report,
                             )
-                            session.add_artifact(updated_art)
-                        elif isinstance(art_data, dict):
-                            session.add_artifact(
-                                Artifact(
-                                    artifact_id=art_data.get(
-                                        "artifact_id", f"art_{t_id}"
-                                    ),
-                                    artifact_type=art_data.get("artifact_type", "file"),
-                                    content=art_data.get("content", ""),
-                                    location=art_data.get("location", str(art_data)),
-                                    mime_type=art_data.get("mime_type", "text/plain"),
-                                    creator=res_data.get("backend", res.planner),
+                            # If the result produced a file path, record it
+                            if res_data.get("path"):
+                                art = dataclasses.replace(art, location=res_data["path"])
+                            session.add_artifact(art)
+                            logger.info(
+                                f"[MasterOrchestrator] Stored artifact '{art_id}' "
+                                f"(payload={len(content_payload)} chars, verification={v_report.success})"
+                            )
+
+                        # Also process any explicit artifact dicts/objects from backends
+                        for art_data in res.artifacts or []:
+                            checks = {}
+                            is_art_obj = isinstance(art_data, Artifact)
+                            art_type = (
+                                art_data.artifact_type
+                                if is_art_obj
+                                else art_data.get("artifact_type", "file")
+                            )
+                            if art_type == "research":
+                                checks = {
+                                    "sources_reachable": True,
+                                    "structured_payload": True,
+                                }
+                            elif art_type == "document":
+                                checks = {
+                                    "markdown_generated": True,
+                                    "content_valid": True,
+                                }
+                            else:
+                                checks = {"valid": True}
+
+                            v_report = VerificationReport(
+                                success=res.success,
+                                checks=checks,
+                                confidence=res.confidence if res.confidence is not None else 1.0,
+                                observations=res.observations,
+                            )
+
+                            if is_art_obj:
+                                updated_art = dataclasses.replace(
+                                    art_data,
                                     session_id=session.session_id,
-                                    metadata=art_data.get("metadata", art_data.get("data", {})),
                                     verification_report=v_report,
                                 )
-                            )
+                                session.add_artifact(updated_art)
+                            elif isinstance(art_data, dict):
+                                session.add_artifact(
+                                    Artifact(
+                                        artifact_id=art_data.get(
+                                            "artifact_id", f"art_{t_id}"
+                                        ),
+                                        artifact_type=art_data.get("artifact_type", "file"),
+                                        content=art_data.get("content", ""),
+                                        location=art_data.get("location", str(art_data)),
+                                        mime_type=art_data.get("mime_type", "text/plain"),
+                                        creator=res_data.get("backend", res.planner),
+                                        session_id=session.session_id,
+                                        metadata=art_data.get("metadata", art_data.get("data", {})),
+                                        verification_report=v_report,
+                                    )
+                                )
 
                     shared_context["previous_results"][t_id] = res
 
@@ -1480,9 +1779,10 @@ class MasterOrchestrator:
                                         from ..focus_manager import FocusManager
 
                                     try:
+                                        clean_cap = capability.replace("_", " ").replace(".", " ").title()
                                         FocusManager.get_instance().enqueue_notification(
                                             task_id=f"trigger_{trigger_id}",
-                                            message=f"🔒 Autonomous trigger '{trigger_id}' paused for approval before '{capability}'. Ticket: {ticket_id}. Run: aura approve {ticket_id}",
+                                            message=f"🔒 Permission requested for {capability} ({clean_cap}) [Ticket: {ticket_id}]. (Say **'Approve'** or **'Deny'**)",
                                             severity="MEDIUM",
                                         )
                                     except Exception as fm_err:
@@ -1528,6 +1828,29 @@ class MasterOrchestrator:
                                         for st in remaining_st
                                     ),
                                 ))
+                                try:
+                                    from core.event_bus import EventBus, Events
+                                    from .autonomy_mode import classify_action_risk
+                                    _st_domain = (
+                                        subtask.required_role.value
+                                        if hasattr(subtask.required_role, "value")
+                                        else str(subtask.required_role)
+                                    )
+                                    p_risk = classify_action_risk(_st_domain, capability or "app_open", subtask.parameters or {})
+                                    risk_str = p_risk.value.upper() if hasattr(p_risk, "value") else str(p_risk).upper()
+                                    EventBus.get_instance().publish(
+                                        Events.CONFIRMATION_REQUIRED,
+                                        payload={
+                                            "ticket_id": None,
+                                            "action_name": capability or target,
+                                            "action_params": {"target": target, "capability": capability},
+                                            "risk": risk_str,
+                                            "is_crypto_ticket": False,
+                                            "prompt": prompt_text,
+                                        },
+                                    )
+                                except Exception as eb_err:
+                                    logger.error(f"[MasterOrchestrator] Failed to publish CONFIRMATION_REQUIRED event for subtask: {eb_err}", exc_info=True)
                                 pipeline_halted = True
                                 logger.info(
                                     f"[MasterOrchestrator] Stored pending confirmation on session "
@@ -1536,8 +1859,29 @@ class MasterOrchestrator:
                         except Exception as conf_exc:
                             logger.error(f"[MasterOrchestrator] Confirmation attachment failed: {conf_exc}", exc_info=True)
 
+        if iteration >= max_iterations and not pipeline_halted:
+            uncompleted = [t_id for t_id, st in task_graph.subtasks.items() if t_id not in completed_ids]
+            if uncompleted:
+                logger.warning(
+                    f"Session [{session.session_id}] Execution loop reached max iterations budget ({max_iterations}). "
+                    f"Cancelling remaining uncompleted tasks: {uncompleted}"
+                )
+                for t_id in uncompleted:
+                    st = task_graph.subtasks[t_id]
+                    if st.status not in ("completed", "failed", "cancelled"):
+                        st.status = "cancelled"
+                        self._emit(NodeStateChangedEvent(
+                            task_id=t_id,
+                            new_state=NodeState.CANCELLED,
+                            old_state=NodeState.from_str(st.status) if hasattr(NodeState, "from_str") else NodeState.PENDING,
+                            error="Execution halted: max iterations budget exceeded",
+                        ))
+                pipeline_halted = True
+                session.metrics["iteration_budget_exceeded"] = True
+
+        overall_success = (len(completed_ids) == len(task_graph.subtasks)) and not pipeline_halted
         task_memory.mark_complete(
-            success=(len(completed_ids) == len(task_graph.subtasks))
+            success=overall_success
         )
         session.metrics["task_working_memory"] = task_memory.get_summary()
 
@@ -1553,7 +1897,6 @@ class MasterOrchestrator:
         session.metrics["subtasks_completed"] = len(completed_ids)
         session.metrics["subtasks_total"] = len(task_graph.subtasks)
 
-        overall_success = len(completed_ids) == len(task_graph.subtasks)
         final_result = self.result_merger.merge_session(
             session, success=overall_success
         )
@@ -1615,6 +1958,10 @@ class MasterOrchestrator:
         context: dict[str, Any],
     ) -> ExecutionResult:
         subtask.status = "running"
+        emitter = context.get("emitter") if isinstance(context, dict) else None
+        if emitter is not None:
+            emitter.tool_call(f"Executing: {subtask.title or subtask.capability}", detail=subtask.description)
+
         self._emit(NodeStateChangedEvent(
             task_id=task_id,
             new_state=NodeState.RUNNING,
@@ -1630,7 +1977,16 @@ class MasterOrchestrator:
         # ── Pre-Execution Risk Gating (Safe-By-Construction) ────────────────
         from .execution_policy import ExecutionPolicy, PolicyAction
         session = context.get("session")
-        is_resumed_ticket = session and bool(session.data.get("resumed_ticket_id"))
+        resumed_ticket = session.data.get("resumed_ticket_id") if session else None
+        resumed_subtask = session.data.get("resumed_subtask_id") if session else None
+        # Narrow cryptographic scoping: the ticket only authorizes the EXACT subtask it was issued for
+        is_resumed_ticket = bool(
+            resumed_ticket and (resumed_subtask == task_id or resumed_subtask is None)
+        )
+        if is_resumed_ticket and session:
+            # Single-use authorization: immediately consumed so downstream subtasks must be independently evaluated
+            session.data.pop("resumed_ticket_id", None)
+            session.data.pop("resumed_subtask_id", None)
 
         # Check if pre-authorized via cryptographically signed trigger whitelist
         is_trigger_pre_authorized = False
@@ -1691,7 +2047,25 @@ class MasterOrchestrator:
                 ],
             )
 
-        # Build structured ActionPlan from SubTask
+        return await self._dispatch_to_backend(
+            backend=backend,
+            task_id=task_id,
+            subtask=subtask,
+            context=context,
+        )
+
+    async def _dispatch_to_backend(
+        self,
+        backend: Any,
+        task_id: str,
+        subtask: SubTask,
+        context: dict[str, Any],
+    ) -> ExecutionResult:
+        """
+        Universal dispatch chokepoint: hands an authorized action to the resolved backend adapter.
+        All task executions across all backend types (Desktop, CodeAct, Browser, Research, etc.)
+        pass through this single method once policy checks clear.
+        """
         try:
             from ..planning.action_plan import ActionPlan
 
@@ -1707,7 +2081,12 @@ class MasterOrchestrator:
             if hasattr(backend, "execute_plan_async"):
                 exec_res = await backend.execute_plan_async(action_plan)
             else:
-                exec_res = backend.execute_plan(action_plan)
+                exec_res = self._dispatch_plan(
+                    backend=backend,
+                    action_plan=action_plan,
+                    task_id=task_id,
+                    _from_async_dispatch=True,
+                )
         except Exception as plan_exc:
             # Graceful fallback: if ActionPlan construction fails, use raw execute()
             logger.warning(
@@ -1729,6 +2108,29 @@ class MasterOrchestrator:
                 )
 
         return exec_res
+
+    def _dispatch_plan(
+        self,
+        backend: Any,
+        action_plan: Any,
+        task_id: str = "",
+        _from_async_dispatch: bool = False,
+    ) -> ExecutionResult:
+        """
+        Universal synchronous dispatch chokepoint: hands an authorized action plan to the backend adapter.
+        Every plan execution on any backend—whether via async DAG level execution,
+        interactive confirmation resolution, or remaining subtask queue draining—passes through here.
+        """
+        logger.info(
+            f"Subtask [{task_id or action_plan.capability}] → {action_plan.log_summary()} via backend '{getattr(backend, 'name', str(backend))}'"
+        )
+        if hasattr(backend, "execute_plan"):
+            return backend.execute_plan(action_plan)
+        return backend.execute(
+            capability=action_plan.capability,
+            goal=action_plan.goal,
+            arguments=action_plan.arguments,
+        )
 
     def _recall_memory(self, goal: str, project_id: str = "global") -> dict[str, Any]:
         """Stage 1: Pre-fetch ranked cognitive memory context from persistent store."""
@@ -1755,6 +2157,12 @@ class MasterOrchestrator:
                 try:
                     ranked_memories = mem.cognitive.recall_ranked(query=goal, active_project=project_id, limit=10)
                     ranked_items = [m.to_dict() for m in ranked_memories]
+                    if hasattr(mem.cognitive, "context_formatter"):
+                        formatted_cog = mem.cognitive.context_formatter.format_planning_context(
+                            ranked_memories, active_project=project_id
+                        )
+                        if formatted_cog:
+                            context_str = f"{context_str}\n\n{formatted_cog}" if context_str else formatted_cog
                 except Exception as rank_err:
                     logger.warning(f"Cognitive ranked recall warning: {rank_err}")
 
@@ -1818,6 +2226,16 @@ class MasterOrchestrator:
                     for item in consolidated:
                         mem.cognitive.store_memory(item)
                     logger.info(f"Stage 7 Cognitive Memory: Consolidated {len(consolidated)} verified item(s).")
+
+                    # Stage 7 Adaptive Preference Learning (Async extraction from goal)
+                    if hasattr(mem.cognitive, "learn_preferences_from_text"):
+                        learned_prefs = mem.cognitive.learn_preferences_from_text(
+                            text=session.goal,
+                            session_id=session.session_id,
+                            project_id=project_id,
+                        )
+                        if learned_prefs:
+                            logger.info(f"Stage 7 Cognitive Memory: Learned {len(learned_prefs)} preference item(s).")
                 except Exception as cons_err:
                     logger.warning(f"Cognitive memory consolidation warning: {cons_err}")
 
@@ -2003,15 +2421,25 @@ class MasterOrchestrator:
 
         resume_session = AgentSession(goal=goal_text, session_id=suspended_record["session_id"])
         resume_session.data["resumed_ticket_id"] = ticket_id
+        resume_session.data["resumed_subtask_id"] = suspended_record["subtask_id"]
+        resume_session.data["completed_ids"] = list(saved_data.get("completed_ids", []))
 
         logger.info(
             f"[MasterOrchestrator] Resuming execution for ticket '{ticket_id}' from subtask '{suspended_record['subtask_id']}'"
         )
 
+        orig_source_str = saved_data.get("source")
+        try:
+            resume_source = RequestSource(orig_source_str) if orig_source_str else RequestSource.HUMAN_INTERACTIVE
+        except Exception:
+            resume_source = RequestSource.HUMAN_INTERACTIVE
+
+        resume_params = {"trigger_id": saved_data.get("trigger_id")} if saved_data.get("trigger_id") else None
         return await self._process_request_async_inner(
             goal_text=goal_text,
             task_graph=restored_graph,
             session=resume_session,
-            source=RequestSource.HUMAN_INTERACTIVE,
+            source=resume_source,
+            parameters=resume_params,
             skip_confirmation_intercept=True,
         )

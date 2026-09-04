@@ -194,8 +194,18 @@ class LearningAgent:
             "tags": workflow.tags,
         }
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, default=str)
+        json_content = json.dumps(data, indent=2, default=str)
+        try:
+            from desktop.native.native_manager_registry import NativeManagerRegistry
+            fm = NativeManagerRegistry.get_instance().get_manager("file")
+            if fm:
+                fm.execute("file.write", target=str(file_path), arguments={"content": json_content, "path": str(file_path)})
+            else:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(json_content)
+        except Exception:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(json_content)
 
     def _load_workflows(self):
         """Load workflows from disk."""

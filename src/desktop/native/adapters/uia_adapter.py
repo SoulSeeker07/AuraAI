@@ -311,6 +311,33 @@ class PywinautoUIAAdapter(UIAAdapter):
             return False
 
     @com_thread_safe
+    def double_click_element(self, element: UIAElement, window_title: str) -> bool:
+        """Double-click a UI element (essential for opening folders, drives, and desktop items)."""
+        try:
+            wrapper = self._relocate_element(element, window_title)
+            if wrapper is None:
+                logger.warning(f"UIA: Could not relocate element {element.display_name}")
+                return False
+
+            try:
+                wrapper.double_click_input()
+            except Exception:
+                try:
+                    wrapper.click_input()
+                    import time
+                    time.sleep(0.05)
+                    wrapper.click_input()
+                except Exception as e:
+                    logger.error(f"UIA double click failed: {e}")
+                    return False
+
+            logger.info(f"UIA: Double-clicked {element.display_name}")
+            return True
+        except Exception as e:
+            logger.error(f"UIA double_click_element failed on {element.display_name}: {e}")
+            return False
+
+    @com_thread_safe
     def type_text(self, element: UIAElement, text: str, window_title: str) -> bool:
         """
         Clear existing content and type new text into the element.

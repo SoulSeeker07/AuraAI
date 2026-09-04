@@ -164,6 +164,13 @@ class AutonomyPolicyGate:
         # intent_type -> list of timestamps
         self._rate_trackers: dict[str, list[float]] = {}
         self._lock = threading.Lock()
+        try:
+            from core.capabilities.capability_registry import CapabilityRegistry
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            CapabilityRegistry.get_instance()
+            NativeManagerRegistry.get_instance()
+        except Exception as exc:
+            logger.warning(f"[AutonomyPolicyGate] Capability/Native manager pre-warm failed: {exc}")
 
     def set_autonomy_level(self, level: AutonomyLevel) -> None:
         """Update active autonomy mode."""
@@ -259,21 +266,20 @@ class AutonomyPolicyGate:
             or meta.get("path")
             or ctx_res.get("path")
         )
-        from core.orchestration.autonomy_mode import is_safe_sandbox_path
+        from core.orchestration.autonomy_mode import classify_action_risk, is_safe_sandbox_path
 
         if ("file.delete" in intent_type or intent_type in ("file.remove", "directory.delete")) and (
             (target_path and is_safe_sandbox_path(target_path))
             or (isinstance(assessment.candidate_intent, str) and is_safe_sandbox_path(assessment.candidate_intent))
         ):
             risk_tier = ActionRisk.LOW
-        elif any(h in intent_type for h in HIGH_RISK_INTENT_TYPES):
-            risk_tier = ActionRisk.HIGH
-        elif "diagnose" in intent_type or "inspect" in intent_type or "read" in intent_type or "search" in intent_type:
-            risk_tier = ActionRisk.LOW
-        elif "evaluate" in intent_type or "update" in intent_type or "modify" in intent_type:
-            risk_tier = ActionRisk.MEDIUM
         else:
-            risk_tier = ActionRisk.MEDIUM
+            domain = getattr(assessment, "domain", "desktop") or "desktop"
+            risk_tier = classify_action_risk(
+                engine=domain,
+                action=intent_type,
+                params=candidate_params or {},
+            )
 
         # 5. Evaluate Autonomy Level against Risk Tier
         requires_approval = False

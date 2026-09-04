@@ -28,6 +28,7 @@ except (ModuleNotFoundError, ImportError):
     except Exception:
         class BrowserContext:
             running_browsers = []
+            open_tabs = []
             def to_dict(self):
                 return {}
 
@@ -160,7 +161,7 @@ class WorldSnapshotProvider:
         if is_live:
             logger.debug(
                 f"WorldSnapshot: {len(processes)} processes, "
-                f"{len(browser_ctx.open_tabs)} browser tabs, "
+                f"{len(getattr(browser_ctx, 'open_tabs', []))} browser tabs, "
                 f"focused='{focused[:40]}'"
             )
         else:

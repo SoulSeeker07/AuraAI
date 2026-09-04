@@ -30,7 +30,7 @@ class GroqProvider(Provider):
             default_model=default_model,
             supports_streaming=True,
             supports_vision=True,
-            supports_tools=False,
+            supports_tools=True,
             supports_images=True,
             token_limit=131072,
         )
@@ -154,6 +154,8 @@ class GroqProvider(Provider):
         tools: list[dict],
         model: Optional[str] = None,
         temperature: float = 0.0,
+        tool_choice: str | dict = "auto",
+        timeout: Optional[float] = None,
     ) -> Any:
         """Execute chat completions with function/tool calling through centralized KeyPool failover."""
         has_image = any(
@@ -167,13 +169,16 @@ class GroqProvider(Provider):
 
         def _do_call(key: str):
             client = self._get_client(key)
-            return client.chat.completions.create(
-                model=chosen_model,
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                temperature=temperature,
-            )
+            kwargs: dict[str, Any] = {
+                "model": chosen_model,
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": tool_choice,
+                "temperature": temperature,
+            }
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            return client.chat.completions.create(**kwargs)
 
         try:
             return self._key_pool.execute_with_failover(_do_call, service="groq")
@@ -183,13 +188,16 @@ class GroqProvider(Provider):
             pool_keys = self._key_pool.get_all_keys("groq")
             if fallback_key and fallback_key not in pool_keys:
                 client = self._get_client(fallback_key)
-                return client.chat.completions.create(
-                    model=chosen_model,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto",
-                    temperature=temperature,
-                )
+                kwargs = {
+                    "model": chosen_model,
+                    "messages": messages,
+                    "tools": tools,
+                    "tool_choice": tool_choice,
+                    "temperature": temperature,
+                }
+                if timeout is not None:
+                    kwargs["timeout"] = timeout
+                return client.chat.completions.create(**kwargs)
             raise
 
     def _get_client(self, api_key: Optional[str] = None):

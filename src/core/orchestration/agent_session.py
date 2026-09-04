@@ -37,6 +37,7 @@ class ExecutionBudget:
     allow_parallel: bool = True
     local_only: bool = False
     offline_mode: bool = False
+    max_iterations: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -46,6 +47,7 @@ class ExecutionBudget:
             "allow_parallel": self.allow_parallel,
             "local_only": self.local_only,
             "offline_mode": self.offline_mode,
+            "max_iterations": self.max_iterations,
         }
 
 
@@ -70,14 +72,41 @@ class AgentSession:
     pending_confirmation: "ActionPlanConfirmation | None" = field(
         default=None, repr=False
     )
+    task_graph: Any | None = field(default=None, repr=False)
+    event_sink: Any | None = field(default=None, repr=False)
+
+    def emit_event(self, event: Any) -> None:
+        """Emit an execution event to the session's registered event sink if present."""
+        sink = self.event_sink
+        if sink is not None and callable(sink):
+            try:
+                sink(event)
+            except Exception:
+                pass
 
     def add_observation(self, observation: Observation) -> None:
         """Add an observation to the session."""
         self.observations.append(observation)
 
     def add_artifact(self, artifact: Artifact) -> None:
-        """Add an artifact to the session."""
-        self.artifacts.append(artifact)
+        """
+        Add an artifact to the session with strict deduplication across both
+        artifact_id and physical location, preserving earliest chronological index.
+        """
+        matching_indices: list[int] = []
+        for i, existing in enumerate(self.artifacts):
+            if existing.artifact_id == artifact.artifact_id:
+                matching_indices.append(i)
+            elif artifact.location and existing.location and existing.location == artifact.location:
+                matching_indices.append(i)
+
+        if matching_indices:
+            target_idx = matching_indices[0]
+            self.artifacts[target_idx] = artifact
+            for secondary_idx in reversed(matching_indices[1:]):
+                del self.artifacts[secondary_idx]
+        else:
+            self.artifacts.append(artifact)
 
     def get_artifact(self, artifact_id: str) -> Artifact | None:
         """Retrieve an artifact by its logical ID.

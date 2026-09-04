@@ -16,6 +16,7 @@ Verifies:
 import pytest
 
 from core.capabilities.capability_registry import CapabilityRegistry
+from core.orchestration.autonomy_mode import ActionRisk
 from core.orchestration.planner_registry import PlannerRegistry
 from experts.models import DomainAssessment, PlanDAG
 from experts.router import ExpertDomainRouter
@@ -154,18 +155,25 @@ async def test_cybersecurity_expert_planner_full_lifecycle():
 
 
 @pytest.mark.asyncio
-async def test_cybersecurity_expert_strict_read_only_audit_invariant():
-    """Verify CybersecurityExpertPlanner only schedules read-only audit capabilities during standard planning."""
+async def test_cybersecurity_expert_no_critical_or_remediation_actions():
+    """
+    Verify CybersecurityExpertPlanner only schedules observational audit capabilities during standard planning.
+    
+    Observational audit nodes may include ActionRisk.HIGH (e.g. security.credential_scan which inspects
+    sensitive private keys/tokens and requires human confirmation under ASSISTED autonomy),
+    but must NEVER schedule ActionRisk.CRITICAL operations or mutating 'remediate' capabilities.
+    """
     expert = CybersecurityExpertPlanner()
     goal = "Audit attack surface, open ports, and Windows Defender compliance"
 
     assessment = await expert.assess(goal)
     plan = await expert.generate_plan(goal, assessment)
 
-    # Verify every node in the audit plan is read-only / low risk
+    # Invariant: Every node must be strictly observational (never CRITICAL, never remediation)
     for nid, node in plan.nodes.items():
-        assert node.risk_level.value == "low"
-        assert "remediate" not in node.capability
+        assert node.risk_level in (ActionRisk.LOW, ActionRisk.HIGH), f"Node {nid} has unexpected risk {node.risk_level}"
+        assert node.risk_level != ActionRisk.CRITICAL, f"Node {nid} cannot be CRITICAL in audit plan"
+        assert "remediate" not in node.capability, f"Node {nid} cannot be a remediation action in audit plan"
 
 
 @pytest.mark.asyncio

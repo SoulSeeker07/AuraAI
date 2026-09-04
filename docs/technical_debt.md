@@ -610,6 +610,7 @@ This sequence establishes the scheduled implementation order for ongoing reliabi
 * **Architecture**:
   1. **Fast-Path Command Grammar**: Keep ultra-fast regex matching for unambiguous command prefixes (`aura launch ...`, `aura confirm ...`, `aura resume ...`, `aura browse ...`).
   2. **LLM Fallback**: For free-form natural language queries that contain trigger keywords but don't strictly match command grammar, fall back to lightweight LLM / classifier routing to avoid false-positive command execution.
+  3. **Overlay / Fastpath Regex Brittleness (Backlog Note)**: Matchers like `_asks_for_hud_overlay` currently rely on leading-action-verb checks (`open`, `show`, `toggle`) to disambiguate from coding verbs (`fix`, `test`, `build`, etc.). This causes phrasing like *"fix the hud overlay position"* or *"test the weather widget display"* to be rejected as non-overlay. Moving from manual heuristic exclusion lists to the hybrid IntentClassifier will eliminate this class of regex brittleness.
 
 ### 🏅 Priority 4: Externalized Bot-Challenge Selector Configuration (TD-014)
 * **Goal**: Decouple third-party anti-bot / CAPTCHA selectors from hardcoded source files.
@@ -649,3 +650,37 @@ This sequence establishes the scheduled implementation order for ongoing reliabi
 * **Scheduled Remediation**:
   1. Add a secondary runner-up score tracking check to detect close candidates (`ratio_gap < 0.05`).
   2. Perform path-uniquification or ask for clarification when ambiguous tabs are detected.
+
+---
+
+31. **Desktop Visual Grounding Detector Relies on AGPLv3-Derived ONNX Weights (TD-015 / SPIKE-M31)**
+    - *Severity*: ⚠️ **OPEN / TRACKED**
+    - *Location*: [`docs/research/spike_m31_visual_grounding_findings.md`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/docs/research/spike_m31_visual_grounding_findings.md), `scratch/benchmark_omniparser_onnx.py`
+    - *Context*: During SPIKE-M31, the only functional local UI element detector running in `onnxruntime` was `onnx-community/OmniParser-icon_detect` (11.57 MB). The model weights are derived from Microsoft's `OmniParser` and Ultralytics YOLOv8 architecture, both licensed under GNU Affero General Public License v3 (AGPLv3).
+    - *Initial Search Failure*: Attempts to substitute permissive Apache-2.0 / MIT models failed: `SumeetSuman83/ui_element_detection` is an obsolete TensorFlow 1.x / Keras checkpoint, and `Virasad/yolov5-desktop-icon-detection` (MIT) pickles arbitrary `models.yolo.Model` Python code blocked by PyTorch 2.6+ security guards.
+    - *Risk*: If Aura is ever distributed or open-sourced under a permissive license (e.g. Apache 2.0 / MIT), bundling or linking AGPLv3 model weights imposes legal copyleft uncertainty.
+    - *Remediation*:
+      1. Keep the AGPLv3 ONNX weights isolated for personal internal research use only.
+      2. Export a clean, permissively-licensed detector (e.g., Apache-2.0 RT-DETR or an unencumbered ONNX UI model) before any external release.
+
+---
+
+32. **Hardcoded String Slice Truncation in Legacy GUI Overlays (TD-016)**
+    - *Severity*: ⚠️ **LOW / LOGGED**
+    - *Location*:
+      - [`src/gui/widgets/dag_visualizer.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/gui/widgets/dag_visualizer.py#L143-L242): Lines 143, 232, 242 (`payload_str[:60]`, `title_text[:40]`, `sub_text[:52]`).
+      - [`src/gui/widgets/system_monitor_overlay.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/gui/widgets/system_monitor_overlay.py#L633-L735): Lines 633, 735 (`raw_name[:16]`, `ssid[:18]`).
+      - [`src/gui/widgets/voice_notch_overlay.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/gui/widgets/voice_notch_overlay.py#L565-L1622): Lines 565, 1207, 1622 (`title[:14]`, `text[:30]`, `label[:35]`).
+      - [`src/gui/widgets/tactical_telemetry_widget.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/gui/widgets/tactical_telemetry_widget.py#L291-L386): Lines 291, 386 (`raw_name[:10]`, `ssid[:12]`).
+    - *Context*: Hardcoded character-length slicing (`text[:N]`) was identified during Phase 1 Chat HUD polish as a recurring source of mid-word truncation and layout clipping on proportional fonts.
+    - *Remediation*: Migrate legacy label truncations to reusable `ElidedLabel(QLabel)` using `QFontMetrics.elidedText()` when refactoring or touching these overlays.
+
+---
+
+33. **AutonomyPolicyGate & NativeManagerRegistry Boot Warmup Gap (TD-017)**
+    - *Severity*: ⚠️ **TRACKED / OPEN ARCHITECTURAL GAP**
+    - *Location*: [`src/autonomy/policy_gate.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/autonomy/policy_gate.py#L165-L175), [`src/core/aura_core.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/aura_core.py#L2033-L2054)
+    - *Context*: `AutonomyPolicyGate` (M24 Phase 4) is not currently instantiated during `AuraCore._initialize_components()` boot path; it only exists in unit tests and validation scripts. Additionally, `NativeManagerRegistry` performs lazy discovery of 17 Win32/WMI managers (taking ~3.65s). If `AutonomyPolicyGate` is wired into live event processing on first demand rather than application boot, the first event burst will experience this cold-start delay, causing the sliding-window rate limiter (`rate_limit_window_seconds=2.0`) to evict early events.
+    - *Remediation*: When wiring the live autonomous loop into production runtime, ensure `CapabilityRegistry.get_instance()` and `NativeManagerRegistry.get_instance()` are explicitly called in `AuraCore._initialize_components()` at boot time before any event dispatcher is started.
+
+

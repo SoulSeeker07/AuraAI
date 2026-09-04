@@ -8,6 +8,7 @@ AuraAI — Ultra-Vibrant Colorful Holographic Dynamic Notch HUD (PySide6)
 - Full Live Backend Integration (Transcript, Dynamic Actions, Clickable Sources).
 """
 
+import asyncio
 import datetime
 import logging
 import math
@@ -19,7 +20,7 @@ import threading
 import time
 from enum import Enum, auto
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,14 @@ def get_display_refresh_rate() -> float:
     except Exception:
         pass
     return 120.0
+
+
+def _normalize_ticket_id(raw: Any) -> str | None:
+    """Normalize raw ticket ID, treating None, empty string, or literal 'None' as None."""
+    if raw is None:
+        return None
+    val = str(raw).strip()
+    return val if val and val.lower() != "none" else None
 
 
 def _extract_sources(text: str) -> List[Tuple[str, str, str, str]]:
@@ -428,6 +437,51 @@ class _ExpandedPanel(QWidget):
         header.addWidget(self._close_btn)
         root.addLayout(header)
 
+        # ── Cryptographic Approval Card (HITL Gate) ──
+        self._approval_card = QFrame()
+        self._approval_card.setStyleSheet(
+            "QFrame{background:rgba(25,12,30,0.95); border:1.5px solid #ef4444; border-radius:8px;}"
+        )
+        app_lay = QVBoxLayout(self._approval_card)
+        app_lay.setContentsMargins(8, 6, 8, 6)
+        app_lay.setSpacing(4)
+
+        app_head_row = QHBoxLayout()
+        self._app_title = QLabel("🛡️ ACTION APPROVAL REQUIRED")
+        self._app_title.setStyleSheet(f"color:#f87171; font-family:{FONT_SANS}; font-size:11px; font-weight:800;")
+        app_head_row.addWidget(self._app_title)
+        app_head_row.addStretch()
+
+        self._app_risk_badge = QLabel("HIGH RISK")
+        self._app_risk_badge.setStyleSheet("color:#fff; background:#dc2626; border-radius:4px; font-size:9px; font-weight:700; padding:2px 6px;")
+        app_head_row.addWidget(self._app_risk_badge)
+        app_lay.addLayout(app_head_row)
+
+        self._app_desc = QLabel("Action details here...")
+        self._app_desc.setStyleSheet(f"color:#f1f5f9; font-family:{FONT_SANS}; font-size:10px;")
+        self._app_desc.setWordWrap(True)
+        app_lay.addWidget(self._app_desc)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        self._btn_approve = QPushButton("✓ Approve & Execute")
+        self._btn_approve.setStyleSheet("QPushButton{background:#10b981; color:#fff; font-weight:700; border-radius:5px; padding:4px 10px; font-size:11px;} QPushButton:hover{background:#059669;}")
+        self._btn_approve.clicked.connect(lambda: self._handle_approval_click(True))
+        btn_row.addWidget(self._btn_approve)
+
+        self._btn_deny = QPushButton("✕ Deny")
+        self._btn_deny.setStyleSheet("QPushButton{background:#ef4444; color:#fff; font-weight:700; border-radius:5px; padding:4px 10px; font-size:11px;} QPushButton:hover{background:#dc2626;}")
+        self._btn_deny.clicked.connect(lambda: self._handle_approval_click(False))
+        btn_row.addWidget(self._btn_deny)
+
+        btn_row.addStretch()
+        app_lay.addLayout(btn_row)
+
+        self._approval_card.setVisible(False)
+        self._pending_ticket_id = None
+        root.addWidget(self._approval_card)
+
         # ── 1. Live Transcript Card (Full Width & Maximum Vertical Height) ──
         col1 = QFrame()
         col1.setStyleSheet("QFrame{background:rgba(8,12,24,0.75); border:1px solid rgba(59,130,246,0.25); border-radius:8px;}")
@@ -526,6 +580,43 @@ class _ExpandedPanel(QWidget):
         else:
             self._sources_bar.setVisible(False)
             self._has_sources = False
+
+    def show_approval_card(self, ticket_id: str | None, action_name: str, params: dict, risk_level: str):
+        ticket_clean = _normalize_ticket_id(ticket_id)
+        self._pending_ticket_id = ticket_clean
+        self._is_crypto_ticket = bool(ticket_clean and ticket_clean.startswith("tkt_"))
+        param_desc = f" ({params})" if params else ""
+
+        if self._is_crypto_ticket:
+            self._app_title.setText("🛡️ CRYPTOGRAPHIC APPROVAL REQUIRED")
+            self._app_desc.setText(f"Action: {action_name}{param_desc}\nTicket: {ticket_clean}")
+        else:
+            self._app_title.setText("⚠️ CONFIRMATION REQUIRED")
+            self._app_desc.setText(f"Action: {action_name}{param_desc}")
+
+        risk_up = risk_level.upper()
+        self._app_risk_badge.setText(f"{risk_up} RISK")
+        if risk_up in ("CRITICAL", "HIGH"):
+            self._app_risk_badge.setStyleSheet("color:#fff; background:#dc2626; border-radius:4px; font-size:9px; font-weight:700; padding:2px 6px;")
+        else:
+            self._app_risk_badge.setStyleSheet("color:#fff; background:#d97706; border-radius:4px; font-size:9px; font-weight:700; padding:2px 6px;")
+        self._btn_approve.setEnabled(True)
+        self._btn_deny.setEnabled(True)
+        self._approval_card.setVisible(True)
+
+    def _handle_approval_click(self, approved: bool):
+        # Synchronously disable buttons to prevent double-click / rapid replay
+        self._btn_approve.setEnabled(False)
+        self._btn_deny.setEnabled(False)
+        ticket_id = _normalize_ticket_id(self._pending_ticket_id)
+        is_crypto = getattr(self, "_is_crypto_ticket", False)
+        self._pending_ticket_id = None
+        self._approval_card.setVisible(False)
+        if is_crypto and not ticket_id:
+            logger.warning("[VoiceNotchOverlay] Approval clicked for crypto ticket but pending_ticket_id is None; dropping duplicate event.")
+            return
+        if self._parent_overlay and hasattr(self._parent_overlay, "resolve_confirmation"):
+            self._parent_overlay.resolve_confirmation(ticket_id, approved, is_crypto=is_crypto)
 
     def _tick_step(self, rate_factor: float = 1.0):
         if not self.isVisible():
@@ -656,11 +747,17 @@ class VoiceNotchOverlay(QWidget):
     """
 
     mode_changed = Signal(str)
+    _safe_gui_call = Signal(object)
+    confirmation_requested = Signal(str, str, dict, str)  # ticket_id, action_name, params, risk_level
+    confirmation_resolved = Signal(str, bool)  # ticket_id, approved
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("VoiceNotchOverlay")
         self.setWindowTitle("AuraAI Voice Notch")
+        self._safe_gui_call.connect(lambda fn: fn())
+        self.confirmation_requested.connect(self._on_confirmation_requested)
+        self.confirmation_resolved.connect(self._on_confirmation_resolved)
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -701,6 +798,12 @@ class VoiceNotchOverlay(QWidget):
         self._proc_timeout.setSingleShot(True)
         self._proc_timeout.setInterval(30000)
         self._proc_timeout.timeout.connect(self._on_proc_timeout)
+
+        # Single Reusable 6s Watchdog Timer for LISTENING state (guarantees notch NEVER hangs/freezes)
+        self._listening_timeout = QTimer(self)
+        self._listening_timeout.setSingleShot(True)
+        self._listening_timeout.setInterval(6000)
+        self._listening_timeout.timeout.connect(lambda: self.set_state(NotchState.IDLE) if self._state == NotchState.LISTENING else None)
 
         # Single Master 60 FPS Animation Clock (~16ms) driving all active widgets
         self._hz = get_display_refresh_rate()
@@ -924,14 +1027,14 @@ class VoiceNotchOverlay(QWidget):
                     except Exception:
                         pass
             elif self._state == NotchState.LISTENING:
-                if hasattr(self, "_listen_orb") and self._listen_orb.isVisible():
+                if hasattr(self, "_idle_orb") and self._idle_orb.isVisible():
                     try:
-                        self._listen_orb._tick_step()
+                        self._idle_orb._tick_step()
                     except Exception:
                         pass
-                if hasattr(self, "_rainbow_wave") and self._rainbow_wave.isVisible():
+                if hasattr(self, "_idle_spectrum") and self._idle_spectrum.isVisible():
                     try:
-                        self._rainbow_wave._tick_step()
+                        self._idle_spectrum._tick_step()
                     except Exception:
                         pass
             elif self._state == NotchState.PROCESSING:
@@ -1128,6 +1231,21 @@ class VoiceNotchOverlay(QWidget):
 
         if state == NotchState.IDLE:
             self._proc_timeout.stop()
+            if hasattr(self, "_listening_timeout"):
+                self._listening_timeout.stop()
+            if hasattr(self, "_idle_status"):
+                self._idle_status.setText("STANDBY")
+                self._idle_status.setStyleSheet(f"""
+                    QLabel {{
+                        color: #10b981;
+                        font-family: {FONT_SANS};
+                        font-size: 9px;
+                        font-weight: 800;
+                        letter-spacing: 1px;
+                        background: transparent;
+                        border: none;
+                    }}
+                """)
             target_w, target_h = IDLE_W, IDLE_H
             self._band.setVisible(True)
             self._status_stack.setCurrentIndex(0)
@@ -1137,16 +1255,34 @@ class VoiceNotchOverlay(QWidget):
 
         elif state == NotchState.LISTENING:
             self._proc_timeout.stop()
-            target_w, target_h = LISTENING_W, LISTENING_H
+            if hasattr(self, "_listening_timeout"):
+                self._listening_timeout.start()
+            # Temporarily bypass the heavy expanding listening waveform widget to prevent hangs/freezes:
+            # Keep the notch in its compact IDLE dimensions and subtly update the status chip to LISTENING
+            target_w, target_h = IDLE_W, IDLE_H
             self._band.setVisible(True)
-            self._status_stack.setCurrentIndex(1)
-            self._rainbow_wave.set_active(True)
-            self._listen_text.setText(text if text else "Listening...")
+            self._status_stack.setCurrentIndex(0)
+            if hasattr(self, "_idle_status"):
+                self._idle_status.setText("LISTENING")
+                self._idle_status.setStyleSheet(f"""
+                    QLabel {{
+                        color: #a855f7;
+                        font-family: {FONT_SANS};
+                        font-size: 9px;
+                        font-weight: 800;
+                        letter-spacing: 1px;
+                        background: transparent;
+                        border: none;
+                    }}
+                """)
+            self._rainbow_wave.set_active(False)
             self._expanded_panel.setVisible(False)
             self._result_collapse_timer.stop()
             self._has_last_result = False
 
         elif state == NotchState.PROCESSING:
+            if hasattr(self, "_listening_timeout"):
+                self._listening_timeout.stop()
             target_w, target_h = PROCESSING_W, PROCESSING_H
             if text:
                 self._proc_title.setText(text)
@@ -1159,6 +1295,8 @@ class VoiceNotchOverlay(QWidget):
 
         elif state == NotchState.SUCCESS:
             self._proc_timeout.stop()
+            if hasattr(self, "_listening_timeout"):
+                self._listening_timeout.stop()
             target_w, target_h = SUCCESS_W, SUCCESS_H
             if text:
                 self._succ_query.setText(f'"{text[:30]}"')
@@ -1169,6 +1307,8 @@ class VoiceNotchOverlay(QWidget):
 
         elif state == NotchState.EXPANDED:
             self._proc_timeout.stop()
+            if hasattr(self, "_listening_timeout"):
+                self._listening_timeout.stop()
             target_w, target_h = EXPANDED_W, EXPANDED_H
             self._band.setVisible(False)
             self._expanded_panel.setVisible(True)
@@ -1215,7 +1355,7 @@ class VoiceNotchOverlay(QWidget):
         # Update live Focus Thread badge chip
         try:
             from core.aura_core import AuraCore
-            core = AuraCore.get_instance()
+            core = getattr(AuraCore, "_instance", None) or getattr(self, "_core", None)
             if core and hasattr(core, "focus_manager") and core.focus_manager:
                 curr = core.focus_manager.get_current()
                 task_name = curr.task_id if curr else "Active"
@@ -1236,13 +1376,22 @@ class VoiceNotchOverlay(QWidget):
             self._proc_timeout.setInterval(60000)  # Extended to 60s for autonomous goals
             self._proc_timeout.start()
 
+        # If running within an active asyncio event loop (e.g. qasync), schedule directly
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is not None and loop.is_running():
+            asyncio.create_task(self._process_command_async(text, cancel_event))
+            return
+
         def _run_cmd():
             try:
-                import asyncio
                 core = None
                 try:
                     from core.aura_core import AuraCore
-                    core = AuraCore.get_instance()
+                    core = getattr(AuraCore, "_instance", None) or getattr(self, "_core", None) or AuraCore.get_instance()
                 except Exception:
                     pass
 
@@ -1275,6 +1424,39 @@ class VoiceNotchOverlay(QWidget):
                         pass
         threading.Thread(target=_run_cmd, daemon=True).start()
 
+    async def _process_command_async(self, text: str, cancel_event: threading.Event):
+        try:
+            core = None
+            try:
+                from core.aura_core import AuraCore
+                core = getattr(AuraCore, "_instance", None) or getattr(self, "_core", None) or AuraCore.get_instance()
+            except Exception:
+                pass
+
+            reply_text = ""
+            if core is not None and hasattr(core, "get_ai_response"):
+                reply_text = await core.get_ai_response(text, enable_tools=True)
+            elif core is not None and hasattr(core, "process_request"):
+                reply_text = await core.process_request(text)
+            else:
+                reply_text = "Backend is initializing. Please try again in a moment."
+
+            if cancel_event.is_set():
+                logger.info("[VoiceNotchOverlay] Suppressing late response for canceled in-flight command.")
+                return
+
+            from gui.signals import app_signals
+            final_content = reply_text if reply_text else "Done."
+            app_signals.message_received.emit("AuraAI", final_content, False)
+        except Exception as e:
+            logger.error(f"[VoiceNotchOverlay] Error running command async: {e}")
+            if not cancel_event.is_set():
+                try:
+                    from gui.signals import app_signals
+                    app_signals.message_received.emit("AuraAI", f"Error: {e}", False)
+                except Exception:
+                    pass
+
     def _on_proc_timeout(self):
         """Safety net: recover from stuck PROCESSING state."""
         if self._state == NotchState.PROCESSING:
@@ -1295,15 +1477,22 @@ class VoiceNotchOverlay(QWidget):
             self._show_context_menu(event.globalPosition().toPoint())
             event.accept()
         elif event.button() == Qt.MouseButton.LeftButton:
-            # Clicking the notch triggers active voice listening immediately
-            vl = getattr(self, "_voice_loop", None)
-            if vl and hasattr(vl, "trigger_wake_detected"):
-                vl.trigger_wake_detected()
-            elif getattr(self, "_voice_manager", None):
-                try:
-                    self._voice_manager._start_active_listening()
-                except Exception:
-                    pass
+            # If already in LISTENING state, clicking immediately cancels and returns to IDLE
+            if self._state == NotchState.LISTENING:
+                self.set_state(NotchState.IDLE)
+                event.accept()
+                return
+            # Clicking when IDLE or compact triggers active voice listening immediately
+            # When EXPANDED or PROCESSING, let user interact with panel without auto-triggering listening
+            if self._state not in (NotchState.EXPANDED, NotchState.PROCESSING, NotchState.SUCCESS):
+                vl = getattr(self, "_voice_loop", None)
+                if vl and hasattr(vl, "trigger_wake_detected"):
+                    vl.trigger_wake_detected()
+                elif getattr(self, "_voice_manager", None):
+                    try:
+                        self._voice_manager._start_active_listening()
+                    except Exception:
+                        pass
             event.accept()
         else:
             super().mousePressEvent(event)
@@ -1468,14 +1657,87 @@ class VoiceNotchOverlay(QWidget):
             if hasattr(app_signals, "live_speech_transcribed"):
                 app_signals.live_speech_transcribed.connect(self._on_live_speech_transcribed)
 
+            if hasattr(app_signals, "speaker_rejected"):
+                app_signals.speaker_rejected.connect(self._on_speaker_rejected)
+
             if hasattr(app_signals, "toggle_voice_notch"):
                 app_signals.toggle_voice_notch.connect(self.toggle)
         except ImportError:
             pass
 
+        try:
+            from core.event_bus import EventBus as CoreEventBus, Events
+            bus = CoreEventBus.get_instance()
+
+            def _on_bus_confirmation(event):
+                ticket_id = _normalize_ticket_id(event.payload.get("ticket_id"))
+                action_name = event.payload.get("action_name", event.payload.get("goal", "Action"))
+                params = event.payload.get("action_params", {})
+                risk = event.payload.get("risk", "HIGH")
+                self.confirmation_requested.emit(ticket_id or "", str(action_name), params, str(risk))
+
+            bus.subscribe(Events.CONFIRMATION_REQUIRED, _on_bus_confirmation)
+            self._bus_sub_conf = (Events.CONFIRMATION_REQUIRED, _on_bus_confirmation)
+        except Exception as e:
+            logger.debug(f"[VoiceNotchOverlay] EventBus wire skipped: {e}")
+
+    def _on_confirmation_requested(self, ticket_id: str, action_name: str, params: dict, risk_level: str):
+        self._expanded_panel.show_approval_card(ticket_id, action_name, params, risk_level)
+        self._has_last_result = True
+        self.set_state(NotchState.EXPANDED)
+
+    def _on_confirmation_resolved(self, ticket_id: str, approved: bool):
+        logger.info(f"[VoiceNotchOverlay] Confirmation resolved for ticket '{ticket_id}': approved={approved}")
+
+    def resolve_confirmation(self, ticket_id: str | None, approved: bool, is_crypto: bool = False):
+        ticket_clean = _normalize_ticket_id(ticket_id)
+        if is_crypto or (ticket_clean and ticket_clean.startswith("tkt_")):
+            # Branch 1: Cryptographic Approval Ticket
+            if not ticket_clean:
+                logger.warning("[VoiceNotchOverlay] Crypto ticket resolution invoked without ticket_id; ignoring.")
+                return
+            try:
+                from gui.real_backend_bridge import RealBackendBridge
+                bridge = RealBackendBridge.get_instance()
+                if approved:
+                    res = bridge.approve_and_execute_ticket(ticket_clean)
+                    ok = res.get("success", False) if isinstance(res, dict) else bool(res)
+                    msg = f"🛡️ Cryptographic Ticket {ticket_clean} Approved & Executed." if ok else f"⚠️ Ticket {ticket_clean} execution failed."
+                else:
+                    bridge.deny_ticket(ticket_clean)
+                    msg = f"🛑 Cryptographic Ticket {ticket_clean} Denied & Revoked."
+                self._expanded_panel.add_transcript_msg("AuraAI:", msg, False)
+                self.confirmation_resolved.emit(ticket_clean, approved)
+            except Exception as e:
+                logger.error(f"[VoiceNotchOverlay] Error resolving crypto ticket: {e}")
+        else:
+            # Branch 2: Plain Session Dialogue Confirmation (ActionPlanConfirmation / ASK_USER)
+            try:
+                from core.orchestration import MasterOrchestrator
+                orch = MasterOrchestrator.get_instance()
+                decision = "yes" if approved else "no"
+                res = orch.resolve_pending_confirmation(decision)
+                status_str = "Approved" if approved else "Denied"
+                msg = f"Action {status_str}."
+                if res and res.observations:
+                    msg += "\n" + "\n".join(res.observations)
+                self._expanded_panel.add_transcript_msg("AuraAI:", msg, False)
+                self.confirmation_resolved.emit(ticket_clean or "", approved)
+            except Exception as e:
+                logger.error(f"[VoiceNotchOverlay] Error resolving dialogue confirmation: {e}")
+
+
     def _on_voice_status(self, active: bool):
         if not active and self._state == NotchState.LISTENING:
             self.set_state(NotchState.IDLE)
+
+    def _on_speaker_rejected(self, sim: float):
+        """Subtle visual cue when non-owner voice is rejected during wake or follow-up."""
+        if self._state == NotchState.LISTENING:
+            self._listen_text.setText("Voice not recognized")
+            self._rainbow_wave.set_level(0.0)
+            self.update()
+            QTimer.singleShot(1200, lambda: self.set_state(NotchState.IDLE) if self._state == NotchState.LISTENING else None)
 
     def _on_voice_level(self, level: float):
         self._rainbow_wave.set_level(level)
@@ -1523,10 +1785,8 @@ class VoiceNotchOverlay(QWidget):
             return
         clean_text = text.strip()
         self._current_query = clean_text
-        if self._state in (NotchState.LISTENING, NotchState.IDLE):
-            if self._state != NotchState.LISTENING:
-                self.set_state(NotchState.LISTENING)
-            # Display clean rolling speech transcript in notch
+        # Only render transcription text if HUD is actively in LISTENING state from the state machine
+        if self._state == NotchState.LISTENING:
             display_text = clean_text if len(clean_text) <= 32 else f"...{clean_text[-28:]}"
             self._listen_text.setText(display_text)
             self._rainbow_wave.set_level(0.75)
@@ -1609,7 +1869,7 @@ class VoiceNotchOverlay(QWidget):
                         except Exception:
                             pass
                     
-                    QTimer.singleShot(0, _apply_ui)
+                    self._safe_gui_call.emit(_apply_ui)
             except Exception as e:
                 logger.debug(f"[VoiceNotchOverlay] Overdue check notice: {e}")
 

@@ -203,9 +203,16 @@ class CodingAgent:
                 )
                 changes_made.extend(format_changes)
 
-            # Write refactored code
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(refactored_content)
+            # Write refactored code via FileManager
+            try:
+                from desktop.native.managers.file_manager import FileManager
+                fm = FileManager()
+                write_res = fm.execute("file.write", target=str(path), arguments={"content": refactored_content, "path": str(path)})
+                if not write_res.success:
+                    return TaskOutput(success=False, message="Refactoring write failed", error=str(write_res.error))
+            except Exception:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(refactored_content)
 
             return TaskOutput(
                 success=True,

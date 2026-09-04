@@ -132,3 +132,35 @@ class WorkspaceJail:
                     continue
 
         return True, "All command paths are valid within workspace."
+
+
+def validate_and_resolve_cwd(raw_cwd: str | None = None) -> tuple[bool, str]:
+    """
+    Validates and resolves candidate working directory against dedicated repository WorkspaceJail.
+    Canonicalizes path following symlinks and junctions before evaluating confinement.
+
+    Returns:
+        (is_valid, resolved_path_or_error_message)
+    """
+    from core.config import PROJECT_ROOT
+
+    if not raw_cwd:
+        return True, str(PROJECT_ROOT)
+
+    try:
+        candidate = Path(raw_cwd).resolve()
+    except Exception as exc:
+        logger.warning(f"[Security] Failed to resolve candidate working directory '{raw_cwd}': {exc}")
+        return False, f"Invalid working directory path format: {exc}"
+
+    if not candidate.exists():
+        return False, f"Specified working directory does not exist: `{raw_cwd}`"
+    if not candidate.is_dir():
+        return False, f"Specified path is a file, not a directory: `{raw_cwd}`"
+
+    terminal_jail = WorkspaceJail(workspace_root=str(PROJECT_ROOT))
+    if not terminal_jail.is_path_inside_workspace(candidate):
+        logger.warning(f"[Security Violation] Attempted terminal execution outside PROJECT_ROOT: '{candidate}'")
+        return False, f"Security Violation: Path `{candidate}` is outside authorized workspace boundaries."
+
+    return True, str(candidate)

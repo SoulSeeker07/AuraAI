@@ -94,7 +94,10 @@ async def _async_test_commands():
     print("=" * 80)
 
     # Shutdown
-    await aura_core.shutdown()
+    if asyncio.iscoroutinefunction(aura_core.shutdown):
+        await aura_core.shutdown()
+    else:
+        aura_core.shutdown()
 
 
 def test_commands():

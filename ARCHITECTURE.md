@@ -121,3 +121,7 @@ graph TD
    - Wake Word Auto-Saver: Vocal alignment, audio normalization, and 0.5s post-trigger tail retention auto-saving triggered wake phrases directly into positive training datasets.
 9. **Single Coordinator**: Only `ExecutionCoordinator` invokes execution engines via `EngineRegistry` & `EngineAdapters`.
 10. **Shared Blackboard**: All stages read from and write to `Blackboard` (`CognitiveState`).
+11. **M36 Unified Architectural Execution Governance, Cognitive Memory 2.0 & PersonalOS Ambient Briefings**:
+    - `ExecutionPolicy` & `CryptographicApprovalAuthority`: All backend executions across CLI/Daemon, Desktop, Browser, and TriggerScheduler route through unified policy gating and single-use HMAC-SHA256 tickets (`tkt_` / `AUTH-`). Direct un-gated backend executions outside `MasterOrchestrator` are strictly forbidden and guarded by AST test assertions.
+    - `CognitiveMemory 2.0`: `PreferenceLearner` with provisional (0.50) vs confirmed ($\ge 0.90$) classification, multi-hit promotion ($N \ge 2$), superseding conflict lineage, sentence-level predicate proximity binding, negative bug context filtering, and anti-popularity bounded recall ranking (logarithmic boost with 0.65 floor).
+    - `PersonalOS Proactive Ambient Briefings`: `DailyContextEngine` integrates ranked memory recall with atomic SQLite access reinforcement, dynamic formatting adaptation (`concise` high-density bullet lists vs `standard` detailed overviews), active environment badges (`[python | pnpm]`), and scheduled trigger routine dispatch.

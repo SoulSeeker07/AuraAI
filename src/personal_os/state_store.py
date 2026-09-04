@@ -468,6 +468,23 @@ class PersonalOSStateStore:
                 return None
             return dict(row)
 
+    def get_all_pending_suspended_sessions(self) -> list[dict[str, Any]]:
+        """
+        Return all unexpired, active suspended sessions across all triggers.
+        Used for ticket rehydration, batch approval, and queue reconciliation.
+        """
+        now = time.time()
+        with self._db_lock, self._get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM personal_os_suspended_sessions
+                WHERE status = 'PENDING' AND expires_at > ?
+                ORDER BY expires_at ASC;
+                """,
+                (now,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def mark_suspended_session_status(self, ticket_id: str, status: str) -> None:
         """Update status of a suspended session (e.g. 'REDEEMED', 'EXPIRED_ABORTED', 'CANCELLED')."""
         with self._db_lock, self._get_connection() as conn:

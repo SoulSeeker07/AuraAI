@@ -64,6 +64,7 @@ class ContinuousVoiceLoop:
     """
 
     _global_aura_core: Any | None = None
+    _active_instance: Any | None = None
 
     @classmethod
     def set_global_aura_core(cls, aura_core: Any) -> None:
@@ -77,6 +78,7 @@ class ContinuousVoiceLoop:
         nlu_engine: Any | None = None,
         aura_core: Any | None = None,
     ):
+        ContinuousVoiceLoop._active_instance = self
         self.voice_manager = voice_manager or VoiceManager()
         self.coordinator = coordinator
         self.nlu_engine = nlu_engine
@@ -223,6 +225,8 @@ class ContinuousVoiceLoop:
                 self._command_timeout = None
 
         self.voice_manager.stop()
+        if ContinuousVoiceLoop._active_instance is self:
+            ContinuousVoiceLoop._active_instance = None
         logger.info("[VOICE] Shutdown: PASS")
         logger.info("[MIC] Stream released: PASS")
         logger.info("[ContinuousVoiceLoop] State: STOPPED")
@@ -693,7 +697,7 @@ class ContinuousVoiceLoop:
                 import subprocess
                 import os
                 from pathlib import Path
-                time.sleep(1.2)  # Allow speech playback to reach audio output
+                time.sleep(1.0)  # Allow speech playback to reach audio output
                 root = Path(__file__).resolve().parents[2]
                 py = sys.executable or str(root / ".venv" / "Scripts" / "python.exe")
                 script = str(root / "run_voice_notch.py")
@@ -704,16 +708,11 @@ class ContinuousVoiceLoop:
                     [str(py), script],
                     cwd=str(root),
                     creationflags=flags,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                     close_fds=True,
                 )
-                self.stop()
-                try:
-                    from PySide6.QtWidgets import QApplication
-                    app = QApplication.instance()
-                    if app:
-                        app.quit()
-                except Exception:
-                    pass
                 os._exit(0)
 
             threading.Thread(target=_do_restart, daemon=True, name="AuraRestartThread").start()
@@ -738,15 +737,7 @@ class ContinuousVoiceLoop:
             def _do_exit():
                 import time
                 import os
-                time.sleep(1.5)  # Allow farewell speech to finish
-                self.stop()
-                try:
-                    from PySide6.QtWidgets import QApplication
-                    app = QApplication.instance()
-                    if app:
-                        app.quit()
-                except Exception:
-                    pass
+                time.sleep(1.2)  # Allow farewell speech to finish
                 os._exit(0)
 
             threading.Thread(target=_do_exit, daemon=True, name="AuraExitThread").start()
@@ -908,24 +899,20 @@ class ContinuousVoiceLoop:
                 # Async token generator from AuraCore or ConversationEngine
                 if aura_core is not None:
                     from unittest.mock import Mock, MagicMock
+                    has_real_process = hasattr(aura_core, "process_request") and not isinstance(getattr(aura_core, "process_request", None), (MagicMock, Mock))
                     has_real_stream = hasattr(aura_core, "process_request_stream") and not isinstance(getattr(aura_core, "process_request_stream", None), (MagicMock, Mock))
-                    has_real_resp = hasattr(aura_core, "get_ai_response") and not isinstance(getattr(aura_core, "get_ai_response", None), (MagicMock, Mock))
 
-                    if has_real_resp:
-                        async def _core_ai_gen():
-                            resp = await aura_core.get_ai_response(transcript, enable_tools=True)
-                            yield resp
-                        token_gen = _core_ai_gen()
-                    elif has_real_stream:
-                        token_gen = aura_core.process_request_stream(transcript)
-                    elif hasattr(aura_core, "process_request"):
-                        async def _fallback_core_gen():
+                    if has_real_process:
+                        # Use process_request which runs local intent fast-path FIRST
+                        # (volume, brightness, open app, etc → < 50ms, no LLM needed)
+                        async def _core_process_gen():
                             resp = await aura_core.process_request(transcript)
-                            if inspect.isisinstance and False: pass
                             if asyncio.iscoroutine(resp):
                                 resp = await resp
-                            yield resp
-                        token_gen = _fallback_core_gen()
+                            yield resp if resp else "Done."
+                        token_gen = _core_process_gen()
+                    elif has_real_stream:
+                        token_gen = aura_core.process_request_stream(transcript)
                     else:
                         async def _plain_gen():
                             yield "I heard your request, but reasoning engine is unavailable."

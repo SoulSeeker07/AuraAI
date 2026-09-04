@@ -219,7 +219,12 @@ class LocalAgreementStabilizer:
             n += 1
         return n
 
-DESKTOP_VOCABULARY_PROMPT: str = "Aura desktop assistant."
+DESKTOP_VOCABULARY_PROMPT: str = (
+    "Aura desktop assistant. Commands: open volume D, open local disk C, "
+    "open drive D, set volume to fifty percent, mute audio, open Notepad, "
+    "open Chrome, open Spotify, what's the weather, battery status, "
+    "open downloads, open documents, close window, minimize window."
+)
 
 
 class FasterWhisperSTTEngine(STTEngine):

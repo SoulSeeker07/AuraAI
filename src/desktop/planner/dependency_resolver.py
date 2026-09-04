@@ -43,6 +43,42 @@ class DependencyResolver:
         graph = self.registry.get_capability_graph(capability_name)
 
         # 1. Preparation Steps (Requires)
+        # Check cross-app coordination and chain window activation if needed
+        try:
+            from routing.app_context_router import AppContextRouter
+            router = AppContextRouter.get_instance()
+            curr_app = ""
+            if self.context and hasattr(self.context, "active_window"):
+                curr_app = getattr(self.context.active_window, "app_name", "") or ""
+
+            target_app = (goal.parameters or {}).get("target_app")
+            tgt = target_app
+            if not tgt and goal.goal:
+                _, _, detected_tgt = router.detect_cross_app_intent(goal.goal, current_app=curr_app)
+                tgt = detected_tgt
+
+            if tgt and (not curr_app or curr_app.lower() != tgt.lower()):
+                plan.add_step(
+                    DesktopStep(
+                        step_id=f"step_{len(plan.steps)+1}_prep",
+                        capability="window.switch_to",
+                        description=f"Switch to {tgt}",
+                        step_type=StepType.PREPARATION,
+                        arguments={"title": tgt, "app_name": tgt},
+                    )
+                )
+                plan.add_step(
+                    DesktopStep(
+                        step_id=f"step_{len(plan.steps)+1}_prep",
+                        capability="screen.wait_for_change",
+                        description=f"Wait for {tgt} to focus and stabilize",
+                        step_type=StepType.PREPARATION,
+                        arguments={"timeout": 0.5},
+                    )
+                )
+        except Exception:
+            pass
+
         for req_cap in graph.get("requires", []):
             req_desc = self.registry.get(req_cap)
             step_desc = req_desc.description if req_desc else f"Prepare {req_cap}"

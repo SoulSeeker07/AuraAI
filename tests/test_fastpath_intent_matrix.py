@@ -34,6 +34,9 @@ FASTPATH_INTENT_ROUTING_CASES = [
     ("set screen brightness to 50%", "brightness_control"),
     ("dim screen brightness", "brightness_control"),
     ("mute audio", "audio_control"),
+    ("mute the volume", "audio_control"),
+    ("turn volume up", "audio_control"),
+    ("turn down volume", "audio_control"),
     ("set volume to 80%", "audio_control"),
     ("what is my battery percentage", "battery_status"),
     ("charging status", "battery_status"),
@@ -72,11 +75,31 @@ FASTPATH_INTENT_ROUTING_CASES = [
     ("check my resume for skills", "rag_query"),
     ("create a folder called test on desktop", "folder_creation"),
     ("open notepad", "desktop_action"),
+    ("open instagram", "desktop_action"),
+    ("open intagram", "desktop_action"),
+    ("open insta", "desktop_action"),
+    ("open youtube", "desktop_action"),
+    ("open spotify", "desktop_action"),
+    ("open chrome", "desktop_action"),
+    ("open volume d", "desktop_action"),
+    ("open volume D.", "desktop_action"),
+    ("open new volume d", "desktop_action"),
+    ("open drive d", "desktop_action"),
+    ("open local disk d", "desktop_action"),
+    ("open youtube and play music", "autonomous_browser"),
     ("minimize window", "desktop_action"),
     ("search amazon for mechanical keyboard", "autonomous_browser"),
     ("find cheapest flight to tokyo", "autonomous_browser"),
-    ("implement a new weather widget component", "autonomous_engineering"),
-    ("fix bug in main.py", "autonomous_engineering"),
+    ("implement a new weather widget component", "provider_chat"),
+    ("fix bug in main.py", "provider_chat"),
+    ("full system diagnostics", "system_status"),
+    ("run full system diagnostics", "system_status"),
+    ("system diagnostics", "system_status"),
+    ("run system diagnostics", "system_status"),
+    ("diagnostics", "system_status"),
+    ("run diagnostics", "system_status"),
+    ("hardware diagnostics", "system_status"),
+    ("run hardware diagnostics", "system_status"),
 ]
 
 @pytest.mark.parametrize("query,expected_intent", FASTPATH_INTENT_ROUTING_CASES)
@@ -156,6 +179,22 @@ def test_fastpath_execution_matrix(
     # 9. Smart Home Bulb Turn On
     ans = engine._answer_local_intent(Intent("smarthome_control", {"raw": "turn on smart light", "normalized": "turn on smart light"}))
     assert ans is not None and ("Smart Bulb" in ans or "Light" in ans or "bulb" in ans.lower())
+
+    # 10. Bluetooth Status
+    ans = engine._answer_local_intent(Intent("bluetooth_status"))
+    assert ans is not None and "Bluetooth" in ans
+
+    # 11. Wi-Fi Status
+    ans = engine._answer_local_intent(Intent("wifi_status"))
+    assert ans is not None and ("Wi-Fi" in ans or "wifi" in ans.lower())
+
+    # 12. Network / IP Status
+    ans = engine._answer_local_intent(Intent("network_status"))
+    assert ans is not None and ("Network" in ans or "Adapter" in ans)
+
+    # 13. System / Hardware Telemetry
+    ans = engine._answer_local_intent(Intent("system_status"))
+    assert ans is not None and ("System" in ans or "CPU" in ans)
 
     # 10. HUD Overlay
     ans = engine._answer_local_intent(Intent("hud_overlay", {"overlay_type": "weather_overlay", "raw": "open weather hud", "query": "open weather hud"}))

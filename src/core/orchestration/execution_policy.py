@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from .autonomy_mode import AutonomyLevel
+from .autonomy_mode import ActionRisk, AutonomyLevel
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ _autonomy_level_ctx: ContextVar[AutonomyLevel] = ContextVar(
 )
 
 
-class PolicyAction(Enum):
+class PolicyAction(str, Enum):
     """What the execution policy decided to do."""
 
     REUSE_EXISTING = "reuse_existing"
@@ -61,6 +61,7 @@ class PolicyDecision:
     window_count: int = 0
     confirmation_key: str = ""
     hwnd: int | None = None
+    risk: ActionRisk | None = None
 
 
 @dataclass
@@ -159,12 +160,14 @@ class ExecutionPolicy:
                 message=msg,
                 app_name=f"{engine}.{action}",
                 confirmation_key=key,
+                risk=risk,
             )
 
         return PolicyDecision(
             action=PolicyAction.LAUNCH_NEW,
             message=f"Action [{engine}] '{action}' approved under {autonomy_level.value.upper()} autonomy.",
             app_name=f"{engine}.{action}",
+            risk=risk,
         )
 
     # ── Public API ──────────────────────────────────────────────────────────

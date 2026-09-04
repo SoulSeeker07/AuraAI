@@ -222,7 +222,6 @@ def main():
         from tools.hotkey_service import GlobalHotkeyService
         hotkey_svc = GlobalHotkeyService()
         hotkey_svc.start()
-        app_signals.toggle_voice_notch.connect(notch.toggle)
         app_signals.trigger_voice_listening.connect(
             lambda: notch._voice_loop.trigger_wake_detected()
             if getattr(notch, "_voice_loop", None)
@@ -268,11 +267,22 @@ def main():
     notch.destroyed.connect(app.quit)
     app.aboutToQuit.connect(_cleanup)
     try:
-        ret = app.exec()
+        import asyncio
+        import qasync
+
+        loop = qasync.QEventLoop(app)
+        asyncio.set_event_loop(loop)
+        with loop:
+            loop.run_forever()
+        ret = 0
     except KeyboardInterrupt:
         _cleanup()
         ret = 0
-    _cleanup()
+    except Exception as e:
+        _safe_print(f"  [qasync fallback] Running app.exec() due to: {e}", flush=True)
+        ret = app.exec()
+    finally:
+        _cleanup()
     sys.exit(ret)
 
 

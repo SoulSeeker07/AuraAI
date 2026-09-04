@@ -9,6 +9,7 @@ governance enforcement, and graceful shutdown.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import threading
 import time
@@ -201,17 +202,74 @@ class DaemonRuntime:
         )
         if not authorized:
             logger.error(f"[DaemonRuntime] Job '{job.job_id}' blocked by AutonomyGovernance: {reason}")
-            # Record failed authorization execution
+            # Record failed authorization or create approval ticket if HIGH/MEDIUM risk
             exec_rec = self.state_store.claim_execution(job.job_id, idempotency_key, now_iso)
             if exec_rec:
-                self.state_store.record_execution_finish(
-                    run_id=exec_rec.run_id,
-                    status=JobState.FAILED,
-                    finished_at=now_iso,
-                    error=f"GOVERNANCE_BLOCKED: {reason}",
-                )
-                exec_rec.status = JobState.FAILED
-                exec_rec.error = f"GOVERNANCE_BLOCKED: {reason}"
+                if risk_tier in (AutonomyRiskTier.HIGH_RISK_GATE, AutonomyRiskTier.CONFIRMATION_REQUIRED):
+                    from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+                    from personal_os.state_store import PersonalOSStateStore
+                    from core.focus_manager import FocusManager
+
+                    auth_inst = CryptographicApprovalAuthority.get_instance()
+                    ticket_id = auth_inst.create_ticket(
+                        action_type=job.capability,
+                        target=job.name,
+                        parameters=job.parameters,
+                        ttl_seconds=3600,
+                    )
+                    ticket = auth_inst.get_ticket(ticket_id)
+                    expires_at = ticket.expires_at if ticket else (time.time() + 3600)
+                    task_graph_json = json.dumps({
+                        "goal_text": job.goal,
+                        "completed_ids": [],
+                        "subtasks": {
+                            job.job_id: {
+                                "task_id": job.job_id,
+                                "title": job.name,
+                                "required_role": "desktop",
+                                "capability": job.capability,
+                                "description": job.goal,
+                                "parameters": job.parameters,
+                                "dependencies": [],
+                            }
+                        },
+                    })
+                    os_store = PersonalOSStateStore.get_instance()
+                    os_store.save_suspended_session(
+                        ticket_id=ticket_id,
+                        trigger_id=job.job_id,
+                        session_id=job.job_id,
+                        task_graph_json=task_graph_json,
+                        subtask_id=job.job_id,
+                        expires_at=expires_at,
+                    )
+                    try:
+                        clean_cap = job.capability.replace("_", " ").replace(".", " ").title()
+                        FocusManager.get_instance().enqueue_notification(
+                            task_id=f"daemon_{job.job_id}",
+                            message=f"🔒 Background job **{job.name}** requests permission for **{clean_cap}**. (Say **'Approve'** or **'Deny'**)",
+                            severity="MEDIUM",
+                        )
+                    except Exception as fm_err:
+                        logger.warning(f"[DaemonRuntime] FocusManager notification failed: {fm_err}")
+                    self.state_store.record_execution_finish(
+                        run_id=exec_rec.run_id,
+                        status=JobState.SUSPENDED,
+                        finished_at=now_iso,
+                        error=f"AWAITING_APPROVAL: Suspended awaiting ticket '{ticket_id}'",
+                    )
+                    exec_rec.status = JobState.SUSPENDED
+                    exec_rec.error = f"AWAITING_APPROVAL: Suspended awaiting ticket '{ticket_id}'"
+                    exec_rec.result = {"is_suspended": True, "ticket_id": ticket_id}
+                else:
+                    self.state_store.record_execution_finish(
+                        run_id=exec_rec.run_id,
+                        status=JobState.FAILED,
+                        finished_at=now_iso,
+                        error=f"GOVERNANCE_BLOCKED: {reason}",
+                    )
+                    exec_rec.status = JobState.FAILED
+                    exec_rec.error = f"GOVERNANCE_BLOCKED: {reason}"
             return exec_rec
 
         # 2. Atomic Idempotent Claim
@@ -243,7 +301,7 @@ class DaemonRuntime:
         cancel_token: CancellationToken,
     ) -> None:
         """
-        Worker thread function executing capability through BackendRegistry with lifecycle recording.
+        Worker thread function executing capability through MasterOrchestrator with lifecycle recording.
         """
         start_iso = datetime.now(timezone.utc).isoformat()
         self.state_store.record_execution_start(record.run_id, start_iso)
@@ -260,30 +318,64 @@ class DaemonRuntime:
                 final_state = JobState.CANCELLED
                 error_msg = f"Cancelled before start: {cancel_token.reason}"
             else:
-                # Dispatch through canonical BackendRegistry
+                # 1. Verify backend registration before orchestrator dispatch
                 backend_reg = BackendRegistry.get_instance()
-                backend = backend_reg.select_best_backend(job.capability)
-
-                if not backend:
-                    # Fallback lookup directly
-                    backend = backend_reg.get_backend(job.capability)
-
+                backend = backend_reg.select_best_backend(job.capability) or backend_reg.get_backend(job.capability)
                 if not backend:
                     final_state = JobState.FAILED
                     error_msg = f"No backend registered supporting capability '{job.capability}'"
+                elif cancel_token.is_cancelled:
+                    final_state = JobState.CANCELLED
+                    error_msg = f"Cancelled before dispatch: {cancel_token.reason}"
                 else:
-                    # Check cancellation during execution
+                    # 2. Dispatch through canonical MasterOrchestrator with RequestSource.DAEMON_BACKGROUND
+                    from core.orchestration.master_orchestrator import MasterOrchestrator
+                    from core.orchestration.request_source import RequestSource
+                    from core.orchestration.task_decomposer import TaskGraph, SubTask, PlannerRole
+
+                    orchestrator = MasterOrchestrator()
+                    graph = TaskGraph(goal=job.goal)
+                    st = SubTask(
+                        task_id=f"daemon_{job.job_id}",
+                        title=job.name,
+                        required_role=PlannerRole.DESKTOP,
+                        capability=job.capability,
+                        description=job.goal,
+                        parameters=job.parameters,
+                    )
+                    graph.add_task(st)
+
                     if cancel_token.is_cancelled:
                         final_state = JobState.CANCELLED
                         error_msg = f"Cancelled during run: {cancel_token.reason}"
                     else:
-                        exec_res = backend.execute(
-                            capability=job.capability,
-                            goal=job.goal,
-                            arguments=job.parameters,
-                        )
+                        loop = asyncio.new_event_loop()
+                        try:
+                            asyncio.set_event_loop(loop)
+                            exec_res = loop.run_until_complete(
+                                orchestrator.process_request_async(
+                                    goal_text=job.goal,
+                                    task_graph=graph,
+                                    source=RequestSource.DAEMON_BACKGROUND,
+                                    parameters={
+                                        "trigger_id": job.job_id,
+                                        "autonomy_token": job.autonomy_token,
+                                    },
+                                )
+                            )
+                        finally:
+                            loop.close()
 
-                        if exec_res.success:
+                        if exec_res.data and exec_res.data.get("is_suspended"):
+                            final_state = JobState.SUSPENDED
+                            ticket_id = exec_res.data.get("suspended_ticket_id")
+                            error_msg = f"AWAITING_APPROVAL: Suspended awaiting ticket '{ticket_id}'"
+                            result_payload = {
+                                "is_suspended": True,
+                                "ticket_id": ticket_id,
+                                "observations": exec_res.observations,
+                            }
+                        elif exec_res.success:
                             final_state = JobState.COMPLETED
                             result_payload = {
                                 "observations": exec_res.observations,

@@ -45,6 +45,23 @@ class SubTask:
     output_artifacts: list[str] = field(default_factory=list)
     status: str = "pending"
     result: Any = None
+    max_retries: int = 0
+    attempt_count: int = 0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.required_role, PlannerRole):
+            if isinstance(self.required_role, str):
+                try:
+                    self.required_role = PlannerRole(self.required_role.lower())
+                except ValueError:
+                    valid_roles = [r.value for r in PlannerRole]
+                    raise ValueError(
+                        f"Invalid required_role '{self.required_role}'. Expected one of: {valid_roles}"
+                    )
+            else:
+                raise TypeError(
+                    f"required_role must be a PlannerRole or valid role string, got {type(self.required_role).__name__}: {self.required_role}"
+                )
 
 
 @dataclass

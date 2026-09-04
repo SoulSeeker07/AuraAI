@@ -1536,6 +1536,27 @@ class CapabilityRegistry:
 
         self.register(
             CapabilityDescriptor(
+                name="uia.double_click",
+                description="Double-click a UI element (opens folders, files, drives, desktop shortcuts)",
+                manager="uia",
+                category="uia",
+                permission=PermissionRequired.WRITE,
+                permission_label="Write",
+                risk_level=RiskLevel.HIGH,
+                is_destructive=True,
+                requires_confirmation=True,
+                supports_undo=False,
+                requires=["uia.find_element"],
+                tags=["uia", "accessibility", "double_click", "open", "interaction"],
+                usage_examples=[
+                    "Double click the drive icon",
+                    "Open the folder by double clicking",
+                ],
+            )
+        )
+
+        self.register(
+            CapabilityDescriptor(
                 name="uia.type_text",
                 description="Clear existing content and type new text into a UI element (clear-then-type, not append)",
                 manager="uia",
