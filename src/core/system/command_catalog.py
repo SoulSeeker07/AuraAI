@@ -167,14 +167,30 @@ class CommandCatalog:
             # NativeManagerRegistry stores managers in _managers dict
             managers_dict: dict[str, Any] = getattr(registry, "_managers", {})
             for manager_name, manager_obj in managers_dict.items():
-                # Extract public method names as "actions"
-                actions = [
-                    m
-                    for m in dir(manager_obj)
-                    if not m.startswith("_")
-                    and callable(getattr(manager_obj, m, None))
-                    and m not in ("register", "unregister", "health_check", "describe")
-                ]
+                # Extract actions from capabilities property or public callables
+                if hasattr(manager_obj, "capabilities"):
+                    try:
+                        actions = list(manager_obj.capabilities)
+                    except Exception:
+                        actions = []
+                else:
+                    actions = []
+                    for m in dir(manager_obj):
+                        if m.startswith("_") or m in (
+                            "register",
+                            "unregister",
+                            "health_check",
+                            "describe",
+                            "rollback_functions",
+                            "verification_layer",
+                        ):
+                            continue
+                        try:
+                            val = getattr(manager_obj, m, None)
+                            if callable(val):
+                                actions.append(m)
+                        except Exception:
+                            continue
                 description = getattr(manager_obj, "__doc__", "") or ""
                 # Take first line of docstring
                 description = description.strip().split("\n")[0] if description else ""

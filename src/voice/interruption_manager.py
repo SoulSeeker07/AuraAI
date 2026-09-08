@@ -22,6 +22,7 @@ class InterruptionReason(Enum):
     NEW_REQUEST = "new_request"  # New request detected
     TIME_LIMIT = "time_limit"  # Conversation timeout
     ERROR = "error"  # Error occurred
+    STEER = "steer"  # Response steering redirection
 
 
 class InterruptionState(Enum):
@@ -29,7 +30,9 @@ class InterruptionState(Enum):
 
     IDLE = "idle"  # Not interrupted
     INTERRUPTED = "interrupted"  # Currently interrupted
-    RESUMING = "resuming"  # Resuming from interruption
+    PAUSED = "paused"  # Active turn paused by user
+    STEERING = "steering"  # Mid-flight response steering
+    RESUMING = "resuming"  # Resuming from pause/interruption
     COMPLETE = "complete"  # Interruption complete
 
 
@@ -74,6 +77,7 @@ class InterruptionManager:
         self.on_interrupt_detected: Callable[[str], None] | None = (
             None  # User speech detected
         )
+        self.on_steer_requested: Callable[[str], None] | None = None  # Steering directive
 
         # Statistics
         self.total_interrupt_time = 0.0  # Total time Aura was interrupted

@@ -236,8 +236,9 @@ class ToolRegistry:
                     importlib.import_module(module_name), inspect.isclass
                 ):
                     if (
-                        issubclass(obj, ToolInterface)
-                        and obj is not ToolInterface
+                        isinstance(obj, type)
+                        and any(base.__name__ == "ToolInterface" for base in obj.__mro__)
+                        and obj.__name__ != "ToolInterface"
                         and obj.__module__ == module_name
                     ):
                         try:

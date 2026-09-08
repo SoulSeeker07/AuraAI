@@ -77,19 +77,26 @@ class NativeManagerRegistry:
         Returns:
             List of registered manager names.
         """
-        if package_name.startswith("src."):
-            package_name = package_name.replace("src.", "", 1)
-
         logger.info(f"Starting native manager discovery in package: '{package_name}'")
         discovered_classes: list[type[BaseNativeManager]] = []
 
+        package = None
         try:
             package = importlib.import_module(package_name)
-        except ImportError as e:
-            logger.warning(
-                f"Could not import package '{package_name}' for discovery: {e}"
+        except ImportError as e1:
+            alt_pkg_name = (
+                package_name.replace("src.", "", 1)
+                if package_name.startswith("src.")
+                else f"src.{package_name}"
             )
-            return []
+            try:
+                package = importlib.import_module(alt_pkg_name)
+                package_name = alt_pkg_name
+            except ImportError as e2:
+                logger.warning(
+                    f"Could not import package '{package_name}' (or alternate '{alt_pkg_name}') for discovery: {e1} / {e2}"
+                )
+                return []
 
         package_path = getattr(package, "__path__", None)
         if not package_path:
@@ -104,11 +111,19 @@ class NativeManagerRegistry:
             try:
                 module = importlib.import_module(module_name)
                 for name, obj in inspect.getmembers(module, inspect.isclass):
-                    if (
-                        issubclass(obj, BaseNativeManager)
+                    is_mgr = (
+                        (
+                            issubclass(obj, BaseNativeManager)
+                            or any(
+                                b.__name__ == "BaseNativeManager"
+                                for b in getattr(obj, "__mro__", [])
+                            )
+                        )
                         and obj is not BaseNativeManager
+                        and getattr(obj, "__name__", "") != "BaseNativeManager"
                         and not inspect.isabstract(obj)
-                    ):
+                    )
+                    if is_mgr:
                         if obj not in discovered_classes:
                             discovered_classes.append(obj)
             except Exception as e:

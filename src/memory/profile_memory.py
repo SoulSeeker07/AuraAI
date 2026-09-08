@@ -136,6 +136,16 @@ class ProfileMemory:
         """Store or update a deterministic profile fact."""
         cat_clean = category.strip().lower()
         key_clean = key.strip().lower()
+
+        # Reject tautological junk (e.g. key='programming_language', value='programming language')
+        try:
+            from src.memory.canonical_keys import is_tautological_fact
+            if is_tautological_fact(key_clean, str(value)):
+                logger.info(f"[ProfileMemory] Dropped tautological fact [{cat_clean}:{key_clean}]='{value}'")
+                return
+        except Exception as e:
+            logger.debug(f"[ProfileMemory] Tautology check note: {e}")
+
         val_str, val_type = self._serialize_value(value)
         now = datetime.now().isoformat()
 

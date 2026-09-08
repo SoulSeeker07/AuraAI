@@ -67,6 +67,52 @@ def isolate_approval_tickets(tmp_path):
         pass
 
 
+@pytest.fixture(autouse=True)
+def isolate_memory_databases(tmp_path, monkeypatch):
+    """
+    Ensure Memory and ProfileMemory default paths are strictly isolated to a temporary
+    sandbox database during test runs, preventing any test suite from ever reading or
+    writing to production Memory.db or Data/profile.db.
+    """
+    sandbox_memory_db = str(tmp_path / "sandbox_Memory.db")
+    sandbox_profile_db = tmp_path / "sandbox_profile.db"
+
+    # Patch Memory.__init__ default db_path
+    from Memory import Memory, MEMORY_DB
+    orig_memory_init = Memory.__init__
+
+    def sandboxed_memory_init(self, db_path="Memory.db", **kwargs):
+        if db_path in ("Memory.db", None) or os.path.basename(str(db_path)) == "Memory.db":
+            db_path = sandbox_memory_db
+        return orig_memory_init(self, db_path=db_path, **kwargs)
+
+    monkeypatch.setattr(Memory, "__init__", sandboxed_memory_init)
+
+    # Patch ProfileMemory default path and reset instance
+    try:
+        from core.memory.profile_memory import ProfileMemory
+        ProfileMemory.reset_instance()
+        orig_get_instance = ProfileMemory.get_instance
+
+        @classmethod
+        def sandboxed_profile_get_instance(cls, db_path=None):
+            if db_path is None or str(db_path).endswith("profile.db"):
+                db_path = sandbox_profile_db
+            return orig_get_instance(db_path=db_path)
+
+        monkeypatch.setattr(ProfileMemory, "get_instance", sandboxed_profile_get_instance)
+    except ImportError:
+        pass
+
+    yield
+
+    try:
+        from core.memory.profile_memory import ProfileMemory
+        ProfileMemory.reset_instance()
+    except ImportError:
+        pass
+
+
 @pytest.fixture
 def universal_dispatch_spy(monkeypatch):
     """
@@ -104,5 +150,88 @@ def universal_dispatch_spy(monkeypatch):
     monkeypatch.setattr(MasterOrchestrator, "_dispatch_to_backend", spied_dispatch_async)
     monkeypatch.setattr(MasterOrchestrator, "_dispatch_plan", spied_dispatch_plan)
     return spy
+
+
+@pytest.fixture(autouse=True)
+def guard_live_browser_and_external_apis(monkeypatch, request):
+    """
+    Prevent any unit test from accidentally launching real Playwright browser
+    instances or making live external network/API calls.
+    Tests that specifically test live browser integration can mark @pytest.mark.live_browser.
+    """
+    if "live_browser" in request.keywords:
+        yield
+        return
+
+    try:
+        import browser.run_browser_goal as rbg
+
+        def fake_run_browser_goal(goal: str, max_steps: int = 20):
+            return {
+                "status": "SUCCESS",
+                "summary": f"[MOCK TEST BROWSER] Completed: {goal}",
+                "screenshot_path": None,
+                "steps": [
+                    {
+                        "step": 0,
+                        "tool": "navigate",
+                        "args": {"url": "https://example.com"},
+                        "result": "Navigated to https://example.com",
+                    },
+                    {
+                        "step": 1,
+                        "tool": "extract_text",
+                        "args": {"description": "page body"},
+                        "result": f"Sample mock text for {goal}",
+                    },
+                    {
+                        "step": 2,
+                        "tool": "done",
+                        "args": {"summary": f"[MOCK TEST BROWSER] Completed: {goal}"},
+                        "result": f"[MOCK TEST BROWSER] Completed: {goal}",
+                    },
+                ],
+            }
+
+        monkeypatch.setattr(rbg, "run_browser_goal", fake_run_browser_goal)
+    except (ImportError, AttributeError):
+        pass
+
+    try:
+        import browser.agent_loop as bal
+
+        def fake_run_goal(goal: str, max_steps: int = 15, **kwargs):
+            return {
+                "status": "SUCCESS",
+                "summary": f"[MOCK TEST BROWSER] Completed: {goal}",
+                "screenshot_path": None,
+                "steps": [
+                    {
+                        "step": 0,
+                        "tool": "navigate",
+                        "args": {"url": "https://example.com"},
+                        "result": "Navigated to https://example.com",
+                    },
+                    {
+                        "step": 1,
+                        "tool": "extract_text",
+                        "args": {"description": "page body"},
+                        "result": f"Sample mock text for {goal}",
+                    },
+                    {
+                        "step": 2,
+                        "tool": "done",
+                        "args": {"summary": f"[MOCK TEST BROWSER] Completed: {goal}"},
+                        "result": f"[MOCK TEST BROWSER] Completed: {goal}",
+                    },
+                ],
+            }
+
+        monkeypatch.setattr(bal, "run_goal", fake_run_goal)
+    except (ImportError, AttributeError):
+        pass
+
+    yield
+
 
 

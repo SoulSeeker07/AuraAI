@@ -9,6 +9,8 @@ Distinguishes physically operational backends (is_live=True) from scaffolded one
 
 from __future__ import annotations
 
+import os
+
 from core.capabilities.models import Capability
 from core.capabilities.provider import ICapabilityProvider
 from core.orchestration.autonomy_mode import ActionRisk
@@ -205,11 +207,42 @@ class CodingCapabilityProvider(ICapabilityProvider):
                 availability="online",
                 tags=["coding", "general", "catch_all"],
             ),
+            # 9. Dynamic CodeAct Artifact Synthesis (Live)
+            # Canonical risk is ActionRisk.MEDIUM (parity with TaskDecomposer).
+            # When AURA_PROVISIONAL_ARTIFACT_CONFIRM == "1", dynamically elevated to ActionRisk.HIGH.
+            # When retired (unset or "0"), gracefully returns canonical ActionRisk.MEDIUM.
+            Capability(
+                name="codeact.synthesize",
+                domain=self.DOMAIN,
+                description="Dynamic CodeAct sandboxed Python script execution and file artifact synthesis.",
+                category="synthesis",
+                input_schema={
+                    "type": "object",
+                    "required": ["code", "output_filename"],
+                    "properties": {
+                        "code": {"type": "string"},
+                        "output_filename": {"type": "string"},
+                    },
+                },
+                output_schema={"type": "object", "properties": {"status": {"type": "string"}, "artifact_path": {"type": "string"}}},
+                risk_level=ActionRisk.MEDIUM,
+                requires_confirmation=False,
+                permissions=["filesystem:write"],
+                execution_backend="codeact_backend",
+                is_live=True,
+                availability="online",
+                tags=["codeact", "synthesis", "artifact"],
+            ),
         ]
         return {cap.name: cap for cap in caps}
 
     def list_capabilities(self) -> list[Capability]:
-        return list(self._capabilities.values())
+        return [self.get_capability(name) for name in self._capabilities if self.get_capability(name) is not None]
 
     def get_capability(self, name: str) -> Capability | None:
-        return self._capabilities.get(name)
+        cap = self._capabilities.get(name)
+        if cap and name == "codeact.synthesize":
+            import dataclasses
+            if os.environ.get("AURA_PROVISIONAL_ARTIFACT_CONFIRM") == "1":
+                return dataclasses.replace(cap, risk_level=ActionRisk.HIGH, requires_confirmation=True)
+        return cap

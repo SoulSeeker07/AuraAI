@@ -169,6 +169,9 @@ class CapabilityRegistry:
         # Security & privacy
         self._register_security_capabilities()
 
+        # Background subagents (isolated background workers)
+        self._register_subagent_capabilities()
+
 
     def _register_window_capabilities(self) -> None:
         """Register window management capabilities"""
@@ -1798,6 +1801,9 @@ class CapabilityRegistry:
             )
 
         ext_write = [
+            ("file.create", "Create an empty file or new file", RiskLevel.LOW, True, False),
+            ("create_file", "Create a new file in workspace", RiskLevel.LOW, True, False),
+            ("write_file", "Write content to a file", RiskLevel.LOW, True, False),
             ("file.write", "Write or overwrite content to a file", RiskLevel.LOW, True, False),
             ("file.delete", "Delete a file", RiskLevel.HIGH, False, True),
             ("file.move", "Move or rename a file or directory", RiskLevel.LOW, True, False),
@@ -2088,6 +2094,49 @@ class CapabilityRegistry:
                     tags=["security", "privacy"],
                 )
             )
+
+    def _register_subagent_capabilities(self) -> None:
+        """Register isolated background subagent capabilities."""
+        self.register(
+            CapabilityDescriptor(
+                name="subagent.dispatch",
+                description="Dispatch an isolated, non-blocking background subagent task",
+                manager="orchestration",
+                category="orchestration",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                supports_undo=True,
+                rollback_capabilities=["subagent.cancel"],
+                tags=["subagent", "background", "worker", "orchestration"],
+            )
+        )
+        self.register(
+            CapabilityDescriptor(
+                name="subagent.status",
+                description="Query status and telemetry of running background subagents",
+                manager="orchestration",
+                category="orchestration",
+                permission=PermissionRequired.READ,
+                permission_label="Read",
+                risk_level=RiskLevel.SAFE,
+                supports_undo=False,
+                tags=["subagent", "status", "telemetry"],
+            )
+        )
+        self.register(
+            CapabilityDescriptor(
+                name="subagent.cancel",
+                description="Cancel an active background subagent task",
+                manager="orchestration",
+                category="orchestration",
+                permission=PermissionRequired.CONTROL,
+                permission_label="Control",
+                risk_level=RiskLevel.LOW,
+                supports_undo=False,
+                tags=["subagent", "cancel"],
+            )
+        )
 
     def register(self, descriptor: CapabilityDescriptor) -> None:
 

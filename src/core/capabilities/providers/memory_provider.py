@@ -140,6 +140,20 @@ class MemoryCapabilityProvider(ICapabilityProvider):
                 availability="online",
                 tags=["memory", "read", "recall"],
             ),
+            Capability(
+                name="memory.inspect",
+                domain=self.DOMAIN,
+                description="Inspect and dump stored user profile facts, active working memory, or system memory vault.",
+                category="inspection",
+                input_schema={"type": "object", "properties": {"category": {"type": "string"}}},
+                output_schema={"type": "object", "properties": {"facts": {"type": "array"}, "formatted": {"type": "string"}}},
+                risk_level=ActionRisk.LOW,
+                permissions=["memory:read"],
+                execution_backend="memory_engine",
+                is_live=True,
+                availability="online",
+                tags=["memory", "inspect", "facts", "profile"],
+            ),
         ]
         return {cap.name: cap for cap in caps}
 

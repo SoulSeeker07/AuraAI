@@ -334,6 +334,21 @@ class TriggerScheduler:
                 for trigger in triggers:
                     if trigger.trigger_type == TriggerType.SCHEDULED and trigger.state in [TriggerState.ARMED, TriggerState.REGISTERED]:
                         await self.fire_trigger(trigger)
+
+                # Periodic reaping of orphaned browser sessions
+                import time
+                now = time.time()
+                if now - getattr(self, "_last_reap_time", 0.0) >= 30.0:
+                    self._last_reap_time = now
+                    try:
+                        from browser.browser_session_manager import BrowserSessionManager
+                        g_store = getattr(self, "_goal_store", None)
+                        if g_store is None and self.orchestrator:
+                            g_store = getattr(self.orchestrator, "goal_store", None)
+                        BrowserSessionManager.get_instance().reap_idle_sessions(g_store, max_idle_seconds=900.0)
+                    except Exception as reap_err:
+                        logger.debug(f"[TriggerScheduler] Idle session reap pass: {reap_err}")
+
                 await asyncio.sleep(self.poll_interval_seconds)
             except asyncio.CancelledError:
                 break

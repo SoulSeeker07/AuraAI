@@ -84,6 +84,22 @@ class ContextBuilder:
             messages.append(
                 ChatMessage("system", f"Known user memory:\n{memory_context}")
             )
+
+        # Inject Gated Cognitive Memory (Cognitive Memory 2.0 via MemoryRetrievalGate)
+        if self.memory and getattr(self.memory, "cognitive", None) is not None:
+            try:
+                gate_factory = getattr(self.memory.cognitive, "get_retrieval_gate", None)
+                if callable(gate_factory):
+                    retrieval_gate = gate_factory()
+                    mem_ctx = retrieval_gate.get_context(user_input)
+                    prompt_frag = mem_ctx.to_prompt_fragment()
+                    if prompt_frag:
+                        messages.append(
+                            ChatMessage("system", f"Recalled Contextual Memory:\n{prompt_frag}")
+                        )
+            except Exception as e:
+                logger.debug(f"[ContextBuilder] Cognitive memory retrieval skipped: {e}")
+
         if web_results:
             messages.append(
                 ChatMessage("system", self._format_web_results(web_results))
@@ -249,7 +265,8 @@ class ContextBuilder:
                     "1. **Concise & Direct Responses**: Give straightforward, helpful, and natural answers without conversational filler, boilerplate, or robotic commentary.\n"
                     "2. **Speech & Translation Directness**: When asked to translate, speak, or say a phrase in any language (such as Hindi, Kannada, etc.), output ONLY the direct, natural translation/phrase in that language. Do NOT add pronunciation guides, phonetic brackets, or meta-explanations (like 'feed this into a TTS engine') unless explicitly asked.\n"
                     "3. **Localization & Regional E-Commerce (India / INR / Amazon.in)**: The user is located in India. Always default to Indian market prices in Indian Rupees (INR / ₹) and Indian regional platforms (e.g. Amazon.in, Flipkart) for product, pricing, and shopping queries unless the user specifically specifies another country or currency (such as US, UK, or dollars).\n"
-                    "4. **Truthfulness & Telemetry Honesty**: NEVER fabricate, hallucinate, or make up device statuses, connected peripherals, hardware battery levels, or system telemetry that have not been provided in your system context. If live system information is not available, state honestly that the live telemetry is not available."
+                    "4. **Truthfulness & Telemetry Honesty**: NEVER fabricate, hallucinate, or make up device statuses, connected peripherals, hardware battery levels, or system telemetry that have not been provided in your system context. If live system information is not available, state honestly that the live telemetry is not available.\n"
+                    "5. **High-Fidelity Diagrams, Engineering Cross-Sections & Technical Sketches**: When asked to create, diagram, or convert any mechanical system, engineering cross-section, or technical concept into a diagram or pencil sketch (e.g. turbofan, engine, circuit, blueprint), ALWAYS generate complete, high-fidelity vector illustrations inside a ```svg ... ``` code block. Always include an explicit solid background canvas rect (<rect width='100%' height='100%' fill='...'/>) as the very first element (e.g. drafting vellum paper fill='#fcfbf7' for pencil sketches with graphite/black lines, #0c2340 for blueprints with white/cyan lines, #090d16 for UI mockups) so the drawing has flawless contrast. Preserve genuine mechanical geometry (all stages, stators, combustors, concentric shafts, nozzles). Use realistic technical drafting standards: mechanical section cross-hatch patterns (45°/135° hatching), graphite stroke weights, bearing details, leader lines, and clean callout badges. NEVER output crude placeholder shapes or primitive circles in place of real machinery."
                 ),
             ),
             ChatMessage("system", f"Current local time: {now} (IST, India)."),

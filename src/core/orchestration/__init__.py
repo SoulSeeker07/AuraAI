@@ -10,6 +10,10 @@ from .decision_engine import DecisionEngine, DecisionOutcome, IntentType
 from .execution_policy import ExecutionPolicy, PolicyAction, PolicyDecision
 from .master_orchestrator import MasterOrchestrator
 from .observation import Observation
+from .goal_state import Goal, GoalStatus, Step, StepStatus
+from .goal_store import GoalStore
+from .agent_loop import AgentLoop, is_agent_loop_enabled
+from .orchestration_store import OrchestrationStore
 from .pipeline_error import ArtifactPayloadMissing, PipelineStageFailure
 from .planner_registry import PlannerRegistry
 from .reasoning_engine import ReasoningDecision, ReasoningEngine
@@ -41,4 +45,11 @@ __all__ = [
     "Artifact",
     "ArtifactPayloadMissing",
     "PipelineStageFailure",
+    "Goal",
+    "GoalStatus",
+    "Step",
+    "StepStatus",
+    "GoalStore",
+    "AgentLoop",
+    "OrchestrationStore",
 ]

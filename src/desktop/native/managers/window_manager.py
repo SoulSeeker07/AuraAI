@@ -622,27 +622,29 @@ class WindowManager(BaseNativeManager):
             )
 
         if res_type == "not_found":
-            # Check if user asked to open a document/file (e.g. Sreekanta_resume, resume, document)
+            # Attempt document/file search fallback via FileService (protected by DANGEROUS_EXECUTABLE_EXTENSIONS)
             try:
                 from tools.file_service import FileService
-                ok, msg, matched_path = FileService.get_instance().find_and_open(app)
+                fs = FileService()
+                ok, msg, matched_path = fs.find_and_open(app)
                 if ok and matched_path:
                     return DesktopResult.create_success(
                         goal=goal,
                         capability="app_open",
                         manager=self.name,
-                        data={"file_path": str(matched_path), "file_name": matched_path.name, "reused": False, "app_name": matched_path.name},
-                        events=["file_opened"],
+                        data={"app_name": app, "document_opened": str(matched_path), "reused": False},
+                        events=["document_opened"],
                     )
-            except Exception:
-                pass
+            except Exception as doc_err:
+                logger.debug(f"[WindowManager] Document fallback failed for {app}: {doc_err}")
 
             return DesktopResult.create_failure(
                 goal=goal,
                 capability="app_open",
                 manager=self.name,
-                error=target,
+                error=target or f"Application '{app}' not found on system.",
             )
+
 
         if res_type == "url":
             try:

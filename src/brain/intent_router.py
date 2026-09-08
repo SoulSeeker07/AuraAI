@@ -5,6 +5,7 @@ import re
 
 from brain.models import ConversationAttachment, Intent
 from brain.research_decision import ResearchDecision, SearchMode
+from core.orchestration import is_agent_loop_enabled
 from Memory import Memory, MemoryFact
 
 
@@ -53,6 +54,9 @@ class IntentRouter:
         return bool(cls.DISK_VOLUME_PATTERN.search(text))
 
     def _detect_shell_command(self, user_input: str, normalized: str) -> Intent | None:
+        if is_agent_loop_enabled():
+            return None
+
         clean_raw = user_input.strip()
 
         m_dir = self.PATTERN_DIR_CMD.match(clean_raw)
@@ -765,6 +769,9 @@ class IntentRouter:
         return folder_name, loc
 
     def _asks_for_autonomous_browser(self, normalized: str) -> bool:
+        if is_agent_loop_enabled():
+            return False
+
         if os.environ.get("AURA_AUTONOMOUS_BROWSER_ENABLED", "1") == "0":
             return False
 
@@ -838,13 +845,13 @@ class IntentRouter:
 
     def _asks_for_hud_overlay(self, normalized: str) -> bool:
         clean = re.sub(r"^aura\s+", "", normalized).strip()
-        if re.search(r"\b(?:implement|build|create|write|code|develop|make|fix|repair|refactor|debug|compile|test)\b", clean):
+        if re.search(r"\b(?:delete|remove|clear|purge|erase|drop|truncate|implement|build|create|write|code|develop|make|fix|repair|refactor|debug|compile|test)\b", clean):
             if not any(clean.startswith(a) for a in ("open ", "show ", "toggle ", "launch ", "display ", "hide ", "close ", "bring up ")):
                 return False
         log_triggers = (
             "show logs", "show log", "show task logs", "task logs", "view logs",
             "system logs", "open logs", "logs overlay", "logs widget", "live logs",
-            "open task logs", "aura logs", "display logs", "logs"
+            "open task logs", "aura logs", "display logs"
         )
         if any(lt in clean for lt in log_triggers) or clean in ("logs", "show logs", "open logs", "view logs"):
             return True
@@ -885,6 +892,9 @@ class IntentRouter:
         return "main_hud"
 
     def _asks_for_desktop_action(self, normalized: str) -> bool:
+        if is_agent_loop_enabled():
+            return False
+
         if self._asks_for_voice_control(normalized):
             return False
 

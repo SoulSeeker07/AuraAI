@@ -92,6 +92,7 @@ class MemoryItem:
     last_accessed: str = field(default_factory=lambda: dt.datetime.now().isoformat(timespec="seconds"))
     expires_at: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    embedding: bytes | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {

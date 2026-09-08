@@ -5,6 +5,59 @@ All notable changes to Aura AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4-interactive-diagram-visualizer-and-pencil-sketch-engine] - 2026-09-09
+
+### Added & Enhanced
+- **Interactive Diagram & Vector Art Visualizer (`src/gui/widgets/diagram_viewer.py`)**:
+  - **Intelligent Auto-Canvas Injection**: Built `is_sketch_or_dark_line_svg` and `inject_canvas_background` to detect pencil sketches, CAD drawings, and dark graphite strokes lacking solid backgrounds. Auto-injects an architectural drafting paper canvas (`<rect id="aura-auto-canvas" ... fill="#fcfbf7" rx="8" />`) bound to the SVG `viewBox`, eliminating dark-on-dark contrast loss.
+  - **Interactive 4-Theme Canvas Switcher**: Added canvas toggle button (`📜 Canvas` / `📜 Paper`) to the Diagram Inspector header and the floating webview controls bar. Enables 1-click dynamic cycling between Drafting Paper (`#fcfbf7`), CAD Blueprint (`#091e3a` with luminous `#67e8f9` cyan strokes), Dark Slate (`#080d18` with `#00e5ff` neon strokes), and Pure White (`#ffffff`).
+  - **Compact Header Ribbon**: Refactored `DiagramInspectDialog` header into a sleek 44px ribbon. Scoped Qt stylesheets to `QFrame#inspectHeader` to resolve `QLabel` inheritance box artifacts, added pill-sized badges (`[PENCIL SKETCH]`, `[CAD BLUEPRINT]`), and maximized viewport space for drawings.
+  - **Typography Scoping**: Scoped Mermaid text rules (`.mermaid text`) to prevent global style pollution over native SVG typography.
+- **Default AI Provider Routing for Technical Drawings & SVGs**:
+  - **Gemini Default Routing (`src/ai/provider_manager.py`, `src/ai/fast_client.py`)**: Designated Gemini 2.5 Flash as the default engine for `diagram`, `svg`, `art`, and `sketch` roles (with Groq fallback).
+  - **Zero Thinking Budget & Expanded Token Output (`src/ai/gemini_provider.py`, `src/ai/registry.py`)**: Configured `thinking_budget=0` to eliminate non-SVG reasoning delays and raised default output tokens to 16,384 to prevent mid-code SVG truncations on complex cross-sections.
+  - **System Prompt Canvas Mandate (`src/brain/context_builder.py`, `src/ai/fast_client.py`)**: Mandated explicit background canvas definitions (`#fcfbf7` for sketches, `#0c2340` for blueprints, `#090d16` for dashboards) across all model instructions.
+- **Comprehensive Test Coverage (`tests/test_diagram_viewer.py`)**:
+  - Added unit test suite `test_pencil_sketch_detection_and_auto_canvas` verifying dark line detection, canvas injection bounds, neon HUD exemption, diagram type categorization, and canvas mode switcher markup (9/9 tests passing).
+
+---
+
+## [1.4.3-interactive-execution-governance-and-safety-hardening] - 2026-09-07
+
+### Added & Hardened
+- **Interactive Execution Reachability Audit & Forensic Inventory (TD-020)**:
+  - Documented the reachability divergence where `AuraCore.process_request()` line 2177 early-returns to `get_ai_response()` on interactive requests whenever `llm_enabled=True`, bypassing `MasterOrchestrator` and `BackendRegistry`.
+  - Identified and classified the four execution paths: Path A (`BackendRegistry` adapters — dormant on interactive LLM path), Path B (`ExecutiveBrain` / ACA — dead), Path C (`UnifiedToolDispatcher` $\rightarrow$ `AuraToolRegistry` — the sole live interactive surface), and Path D (`AmbientContextBuilder` — passive prompt-injection perception).
+  - Classified all 26 `BackendRegistry` adapters: 22 dormant for interactive requests, 2 daemon-active (`Scheduler`, `daemon_engine`), 1 dedicated external daemon process (`voice_engine`), and 4 shadow-live bypasses (`Browser`, `CodeAct`, `Memory`, `Terminal`).
+- **Interactive Tool Safety Gating & Dynamic Action Resolution (TD-021)**:
+  - **Dynamic Window Control Risk Gating**: Patched `UnifiedToolDispatcher._map_tool_to_risk` to inspect `arguments["action"]`, dynamically mapping `action="close"` to canonical `close_window` (`ActionRisk.HIGH`, `requires_confirmation=True`). Prevents ungated window termination via `PostMessage(WM_CLOSE)` and strictly requires M15 `CryptographicApprovalAuthority` HMAC tickets.
+  - **Nomenclature Synchronization Across All 15 Tools**: Replaced disparate ad-hoc action names (`window.focus`, `command.execute`, `search`, `open_app`) with canonical `CapabilityRegistry` keys (`close_window`, `terminal.execute`, `terminal.get_output`, `browser.submit`, `app_open`, `codeact.synthesize`, etc.), ensuring zero silent lookup failures in `CapabilityRegistry.get()`.
+  - **Ticket Double-Redemption Resolved**: Patched `AuraToolRegistry._run_terminal_command` to inspect `auth.get_ticket(ticket_id).is_redeemed`, preventing downstream re-verification failures on tickets already redeemed upstream by `UnifiedToolDispatcher`.
+  - **Exhaustive Mapping Test Suite**: Added `test_all_15_tools_mapped_to_canonical_capabilities`, `test_window_close_requires_confirmation_high_risk`, and `test_window_focus_auto_approved_low_risk` to `tests/core/tools/test_unified_tool_dispatcher.py` (18/18 passing).
+- **Single Source of Truth Restoration for Artifact Synthesis**:
+  - Registered `codeact.synthesize` as a canonical capability in `CodingCapabilityProvider` (`src/core/capabilities/providers/coding_provider.py`) with baseline `ActionRisk.MEDIUM` (parity with `TaskDecomposer`).
+  - Removed duplicate ad-hoc `AURA_PROVISIONAL_ARTIFACT_CONFIRM` override block from `UnifiedToolDispatcher.dispatch()`, ensuring all risk evaluation derives exclusively from `CapabilityRegistry` $\rightarrow$ `classify_action_risk()` $\rightarrow$ `ExecutionPolicy`.
+  - Handled provisional elevation dynamically in `CodingCapabilityProvider.get_capability()`: documented as the sole intentional runtime exception to static capability registration, allowing live toggle between `ActionRisk.HIGH` and `ActionRisk.MEDIUM` without application restart.
+
+---
+
+## [1.4.2-document-synthesis-routing-and-codeact-hardening] - 2026-09-05
+
+### Added & Fixed
+- **Layer 0 Routing: Native Document Artifact Synthesis (`src/core/tools/unified_tool_dispatcher.py`)**:
+  - Registered `create_file_artifact` as Tool #15 in `UnifiedToolDispatcher.get_tool_definitions()`, resolving the upstream routing failure where document/spreadsheet creation requests ("generate shopping list excel for me") lacked a tool schema entry and fell through to `terminal_run_command`.
+  - Extracted public `resolve_artifact_synthesis()` and `ArtifactSynthesisSpec` in `src/core/orchestration/task_decomposer.py`, establishing a single authoritative resolver for document and spreadsheet intent, keyword synonyms, and library constraints across both `TaskDecomposer` and `UnifiedToolDispatcher`.
+  - Enforced fail-closed sandboxing: unclassified file extensions evaluate to `allowed_libraries=[]`, preventing unvetted third-party imports prior to sandbox execution.
+  - Hardened AST static checking (`src/codeact/static_checker.py`), verified against hostile adversarial imports (`requests`, `socket`, `subprocess`, `os.system`, `eval`).
+  - Added in-process pre-flight probe intercept for `python -c "import pkg"` in `AuraToolRegistry._run_terminal_command()`, preventing broken subprocess shell execution when PATH lacks `python.exe`.
+  - Connected `CodeActBackendAdapter` to sandboxed `DynamicCodeActExecutor` with automatic destination-aware copying and `OfficePlugin` in-process fallback.
+- **Provisional Day-1 Safety Override (`src/core/tools/unified_tool_dispatcher.py`)**:
+  - **Tracking Note / Planned Retirement**: Added `AURA_PROVISIONAL_ARTIFACT_CONFIRM` (default: `"1"`), which temporarily bumps `create_file_artifact` from canonical `ActionRisk.MEDIUM` to `ActionRisk.HIGH` within `UnifiedToolDispatcher.dispatch()`.
+  - This guarantees explicit human confirmation via `CryptographicApprovalAuthority` tickets during the initial live rollout.
+  - **Retirement Criteria**: Once `create_file_artifact` has survived live interactive validation under multi-turn user flows, retire the temporary override block in `UnifiedToolDispatcher.dispatch()` and drop `AURA_PROVISIONAL_ARTIFACT_CONFIRM`, returning `create_file_artifact` to its canonical `MEDIUM` risk level identical to `TaskDecomposer`.
+
+---
+
 ## [1.4.1-multi-app-vision-grounding-and-vlm-hardening] - 2026-09-01
 
 ### Added & Hardened

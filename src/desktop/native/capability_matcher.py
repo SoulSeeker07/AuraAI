@@ -161,7 +161,11 @@ class CapabilityDiscoveryMatcher:
             "write clipboard",
             "copy to clipboard",
         ],
-        "clipboard.clear": ["clear clipboard", "empty clipboard"],
+        "clipboard.clear": [
+            "clear clipboard",
+            "clear desktop clipboard",
+            "empty clipboard",
+        ],
         "clipboard.read_image": ["read clipboard image", "get clipboard image"],
         "clipboard.write_image": [
             "write clipboard image",

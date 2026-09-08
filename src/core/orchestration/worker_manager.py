@@ -14,10 +14,16 @@ Allows deterministic zero-LLM status queries ("status?", "show active workers",
 """
 
 import logging
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
+
+# TD-002: Pre-empt dual package root split-brain (core.X vs src.core.X)
+if __name__ in sys.modules:
+    sys.modules.setdefault("core.orchestration.worker_manager", sys.modules[__name__])
+    sys.modules.setdefault("src.core.orchestration.worker_manager", sys.modules[__name__])
 
 from .engineering_session import EngineeringSession
 
@@ -40,11 +46,12 @@ class DomainWorker:
     pause_cb: Callable[[], None] | None = None
     resume_cb: Callable[[], None] | None = None
     cancel_cb: Callable[[], None] | None = None
+    result: Any = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "worker_id": self.worker_id,
             "name": self.name,
             "domain": self.domain,
@@ -54,6 +61,9 @@ class DomainWorker:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+        if self.result is not None:
+            d["result"] = self.result.to_dict() if hasattr(self.result, "to_dict") else self.result
+        return d
 
 
 class WorkerManager:
@@ -69,6 +79,12 @@ class WorkerManager:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        if cls._instance is not None:
+            cls._instance._workers.clear()
+        cls._instance = None
 
     def __init__(self):
         self._workers: dict[str, DomainWorker] = {}
@@ -91,6 +107,10 @@ class WorkerManager:
         if worker_id in self._workers:
             del self._workers[worker_id]
             logger.info(f"WorkerManager: Unregistered worker [{worker_id}]")
+
+    def get_worker(self, worker_id: str) -> DomainWorker | None:
+        """Get a registered worker by ID."""
+        return self._workers.get(worker_id)
 
     def register_engineering_session(self, session: EngineeringSession) -> None:
         """Register an EngineeringSession as a tracked session."""

@@ -22,6 +22,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+import uuid
 
 try:
     from ..backends.backend_registry import BackendRegistry
@@ -41,6 +42,7 @@ from .planner_registry import PlannerRegistry
 from .result_merger import ResultMerger
 from .supervisor_agent import SupervisorAgent
 from .task_decomposer import SubTask, TaskDecomposer
+from .orchestration_store import OrchestrationStore
 from .execution_events import (
     NodeState,
     ExecutionEvent,
@@ -73,6 +75,7 @@ class MasterOrchestrator:
         result_merger: ResultMerger | None = None,
         memory_db_path: Path | str | None = None,
         expert_routing_enabled: bool = False,
+        orchestration_store: Any | None = None,
     ):
         self.planner_registry = planner_registry or PlannerRegistry.get_instance()
         self.backend_registry = backend_registry or BackendRegistry.get_instance()
@@ -82,6 +85,7 @@ class MasterOrchestrator:
         self.result_merger = result_merger or ResultMerger()
         self.memory_db_path = memory_db_path
         self.expert_routing_enabled = expert_routing_enabled
+        self.store = orchestration_store or OrchestrationStore(db_path=self.memory_db_path)
         self._last_result: Any = None
         self._last_session: Any = (
             None  # AgentSession — used for session-scoped confirmation
@@ -91,6 +95,7 @@ class MasterOrchestrator:
 
         self._prompt_builder: PromptBuilder | None = None
         self._identity_context: str | None = None
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
         logger.info(
             f"MasterOrchestrator initialized (Cognitive Orchestration Layer v17.0, expert_routing={self.expert_routing_enabled})"
@@ -354,6 +359,351 @@ class MasterOrchestrator:
 
         return initial_res
 
+    def dispatch_background_subagent(
+        self,
+        task_description: str,
+        profile: Any | str | None = None,
+        parameters: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+        coordinator_callback: Any | None = None,
+        on_complete: Any | None = None,
+        custom_worker_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Non-blocking dispatch of an isolated background subagent worker.
+        Schedules execution detached via asyncio.create_task() and returns immediately (<50ms).
+
+        Returns:
+            Dictionary with worker_id, status='DISPATCHED', worker_name, domain, message, task
+        """
+        from .task_worker import (
+            TaskWorker,
+            WorkerProfile,
+            WorkerResult,
+            CodingProfile,
+            ResearchProfile,
+            TestProfile,
+            BrowserProfile,
+            sanitize_worker_output,
+        )
+        from .worker_manager import WorkerManager, DomainWorker
+
+        worker_id = custom_worker_id or f"subagent_{uuid.uuid4().hex[:8]}"
+
+        # Resolve profile
+        resolved_profile: WorkerProfile
+        domain: str = "engineering"
+
+        if isinstance(profile, WorkerProfile):
+            resolved_profile = profile
+            domain = getattr(profile, "domain", "engineering")
+        elif isinstance(profile, str):
+            prof_lower = profile.lower().strip()
+            if "research" in prof_lower:
+                resolved_profile = ResearchProfile
+                domain = "research"
+            elif "test" in prof_lower:
+                resolved_profile = TestProfile
+                domain = "test"
+            elif "browser" in prof_lower:
+                resolved_profile = BrowserProfile
+                domain = "browser"
+            else:
+                resolved_profile = CodingProfile
+                domain = "engineering"
+        else:
+            task_lower = task_description.lower()
+            if any(k in task_lower for k in ["research", "search", "lookup", "query web"]):
+                resolved_profile = ResearchProfile
+                domain = "research"
+            elif any(k in task_lower for k in ["test", "pytest", "unittest", "verify code"]):
+                resolved_profile = TestProfile
+                domain = "test"
+            elif any(k in task_lower for k in ["browser", "navigate", "webpage", "scrape"]):
+                resolved_profile = BrowserProfile
+                domain = "browser"
+            else:
+                resolved_profile = CodingProfile
+                domain = "engineering"
+
+        # ── Enforce ExecutionPolicy risk gating ─────────────────────────────────
+        # A background subagent must NEVER bypass user confirmation on HIGH or CRITICAL operations.
+        from .autonomy_mode import classify_action_risk, should_require_confirmation
+        from .execution_policy import ExecutionPolicy
+
+        policy = ExecutionPolicy.get_instance()
+        autonomy_level = policy.get_autonomy_level()
+
+        target_action = (context or {}).get("tool") or task_description
+        task_risk = classify_action_risk(domain, target_action, (context or {}).get("params"))
+
+        if should_require_confirmation(autonomy_level, task_risk):
+            warning_msg = (
+                f"Cannot dispatch background subagent for '{task_description}': "
+                f"Action carries {task_risk.value.upper()} risk and requires user confirmation. "
+                f"Background subagents cannot execute confirmation-gated operations autonomously."
+            )
+            logger.warning(f"[MasterOrchestrator] {warning_msg}")
+            return {
+                "worker_id": worker_id,
+                "status": "REJECTED_POLICY",
+                "worker_name": f"Subagent ({task_description[:30]})",
+                "domain": domain,
+                "profile": resolved_profile.profile_name,
+                "message": warning_msg,
+                "task": None,
+                "error": warning_msg,
+            }
+
+        # Instantiate scoped worker
+        worker = TaskWorker(
+            worker_name=worker_id,
+            profile=resolved_profile,
+        )
+
+        # Register immediately with WorkerManager
+        worker_manager = WorkerManager.get_instance()
+        worker_title = f"Subagent ({task_description[:30]})"
+        domain_worker = DomainWorker(
+            worker_id=worker_id,
+            name=worker_title,
+            domain=domain,
+            status="RUNNING",
+            progress=0,
+            current_action=f"Dispatched task: {task_description[:50]}",
+            session_ref=worker,
+        )
+        worker_manager.register_worker(domain_worker)
+
+        # Publish dispatch event
+        try:
+            from core.event_bus import EventBus, Events
+
+            EventBus.get_instance().publish(
+                Events.SUBAGENT_DISPATCHED,
+                {
+                    "worker_id": worker_id,
+                    "worker_name": worker_title,
+                    "domain": domain,
+                    "profile": resolved_profile.profile_name,
+                    "task": sanitize_worker_output(task_description),
+                    "risk": task_risk.value,
+                },
+            )
+        except Exception as eb_err:
+            logger.debug(f"[MasterOrchestrator] Failed to publish SUBAGENT_DISPATCHED: {eb_err}")
+
+        # Detached background execution coroutine
+        async def _run_subagent_coroutine() -> WorkerResult:
+            domain_worker.current_action = f"Executing task: {task_description[:50]}"
+            domain_worker.progress = 20
+            domain_worker.updated_at = datetime.now().isoformat()
+            try:
+                res: WorkerResult = await asyncio.to_thread(
+                    worker.execute_task,
+                    task=task_description,
+                    context=context,
+                    coordinator_callback=coordinator_callback,
+                )
+                domain_worker.status = "COMPLETED" if res.status == "SUCCESS" else "FAILED"
+                domain_worker.progress = 100
+                domain_worker.current_action = f"Finished: {res.status}"
+                domain_worker.updated_at = datetime.now().isoformat()
+                domain_worker.result = sanitize_worker_output(res)
+
+                self._notify_subagent_completion(
+                    domain_worker=domain_worker,
+                    res=domain_worker.result,
+                    task_risk=task_risk,
+                    profile=resolved_profile,
+                    domain=domain,
+                )
+
+                if on_complete:
+                    try:
+                        if asyncio.iscoroutinefunction(on_complete):
+                            await on_complete(domain_worker.result)
+                        else:
+                            on_complete(domain_worker.result)
+                    except Exception as cb_err:
+                        logger.warning(
+                            f"Subagent on_complete callback failed for {worker_id}: {cb_err}"
+                        )
+
+                return domain_worker.result
+            except asyncio.CancelledError:
+                domain_worker.status = "CANCELLED"
+                domain_worker.current_action = "Worker cancelled"
+                domain_worker.updated_at = datetime.now().isoformat()
+                res = WorkerResult(
+                    worker_name=worker_id,
+                    status="CANCELLED",
+                    task=task_description,
+                    errors=["Execution was cancelled."],
+                )
+                domain_worker.result = sanitize_worker_output(res)
+                self._notify_subagent_completion(
+                    domain_worker=domain_worker,
+                    res=domain_worker.result,
+                    task_risk=task_risk,
+                    profile=resolved_profile,
+                    domain=domain,
+                )
+                raise
+            except Exception as exc:
+                domain_worker.status = "FAILED"
+                domain_worker.current_action = f"Error: {exc}"
+                domain_worker.updated_at = datetime.now().isoformat()
+                logger.error(
+                    f"Background subagent {worker_id} crashed: {exc}", exc_info=True
+                )
+                res = WorkerResult(
+                    worker_name=worker_id,
+                    status="FAILED",
+                    task=task_description,
+                    errors=[str(exc)],
+                )
+                domain_worker.result = sanitize_worker_output(res)
+                self._notify_subagent_completion(
+                    domain_worker=domain_worker,
+                    res=domain_worker.result,
+                    task_risk=task_risk,
+                    profile=resolved_profile,
+                    domain=domain,
+                )
+                return domain_worker.result
+
+        # Schedule onto running asyncio event loop (or fallback to persistent AsyncRuntime)
+        task_handle: Any = None
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_closed():
+                raise RuntimeError("Current running loop is closed.")
+            task_handle = loop.create_task(_run_subagent_coroutine())
+            self._background_tasks.add(task_handle)
+            task_handle.add_done_callback(self._background_tasks.discard)
+            domain_worker.cancel_cb = lambda: task_handle.cancel() if task_handle and not task_handle.done() else None
+        except RuntimeError:
+            try:
+                from core.async_runtime import AsyncRuntime
+                runtime_loop = AsyncRuntime.get_instance().loop
+                task_handle = asyncio.run_coroutine_threadsafe(_run_subagent_coroutine(), runtime_loop)
+                domain_worker.cancel_cb = lambda: task_handle.cancel() if task_handle and not task_handle.done() else None
+                logger.info(
+                    f"[MasterOrchestrator] Dispatched background subagent {worker_id} onto persistent AsyncRuntime loop."
+                )
+            except Exception as rt_err:
+                logger.warning(
+                    f"[MasterOrchestrator] No active event loop and AsyncRuntime fallback failed for subagent {worker_id}: {rt_err}"
+                )
+
+        return {
+            "worker_id": worker_id,
+            "status": "DISPATCHED",
+            "worker_name": worker_title,
+            "domain": domain,
+            "profile": resolved_profile.profile_name,
+            "message": (
+                f"I have dispatched worker '{worker_title}' in the background "
+                f"to handle '{task_description}'. You can continue chatting or ask me anything else while it runs."
+            ),
+            "task": task_handle,
+        }
+
+    def _notify_subagent_completion(
+        self,
+        domain_worker: Any,
+        res: Any,
+        task_risk: Any,
+        profile: Any,
+        domain: str,
+    ) -> None:
+        """
+        Piece 2: Subagent completion notification pipeline.
+        Publishes sanitized event to EventBus and enqueues formatted notification into FocusManager.
+        Severity maps strictly to ActionRisk taxonomy.
+        """
+        from .autonomy_mode import ActionRisk
+        from .task_worker import sanitize_worker_output
+
+        # 1. Severity mapping
+        if res.status == "SUCCESS":
+            severity = getattr(task_risk, "value", "low").lower()
+        else:
+            severity = (
+                ActionRisk.HIGH.value
+                if task_risk in (ActionRisk.HIGH, ActionRisk.CRITICAL)
+                else ActionRisk.MEDIUM.value
+            )
+
+        # 2. Sanitization
+        sanitized_res = sanitize_worker_output(res)
+        sanitized_dict = sanitized_res.to_dict() if hasattr(sanitized_res, "to_dict") else sanitized_res
+
+        # 3. Notification card
+        if res.status == "SUCCESS":
+            obs_snippet = ""
+            if getattr(sanitized_res, "observations", None):
+                obs_snippet = f"\nObservation: {sanitized_res.observations[-1][:120]}"
+            card = (
+                f"✅ Subagent **{domain_worker.name}** finished successfully ({getattr(sanitized_res, 'duration', 0.0):.2f}s)."
+                f"\nTask: {getattr(sanitized_res, 'task', '')[:100]}"
+                f"{obs_snippet}"
+            )
+        elif res.status == "CANCELLED":
+            card = f"⚠️ Subagent **{domain_worker.name}** was cancelled."
+        else:
+            errors = getattr(sanitized_res, "errors", [])
+            err_msg = "; ".join(errors)[:120] if errors else "Execution failed."
+            card = (
+                f"❌ Subagent **{domain_worker.name}** failed ({getattr(sanitized_res, 'duration', 0.0):.2f}s)."
+                f"\nTask: {getattr(sanitized_res, 'task', '')[:100]}"
+                f"\nError: {err_msg}"
+            )
+        card = sanitize_worker_output(card)
+
+        # 4. Enqueue into FocusManager
+        try:
+            from core.focus_manager import FocusManager
+
+            FocusManager.get_instance().enqueue_notification(
+                task_id=domain_worker.worker_id,
+                message=card,
+                severity=severity,
+            )
+        except Exception as fm_err:
+            logger.warning(
+                f"[MasterOrchestrator] FocusManager notification failed for subagent {domain_worker.worker_id}: {fm_err}"
+            )
+
+        # 5. Publish on EventBus
+        try:
+            from core.event_bus import EventBus, Events
+
+            event_name = (
+                Events.SUBAGENT_COMPLETED
+                if res.status == "SUCCESS"
+                else Events.SUBAGENT_FAILED
+            )
+            profile_name = getattr(profile, "profile_name", str(profile))
+            EventBus.get_instance().publish(
+                event_name,
+                {
+                    "worker_id": domain_worker.worker_id,
+                    "worker_name": domain_worker.name,
+                    "domain": domain,
+                    "profile": profile_name,
+                    "status": res.status,
+                    "severity": severity,
+                    "result": sanitized_dict,
+                    "notification": card,
+                },
+            )
+        except Exception as eb_err:
+            logger.warning(
+                f"[MasterOrchestrator] EventBus notification failed for subagent {domain_worker.worker_id}: {eb_err}"
+            )
+
     def process_request(
         self,
         goal_text: str,
@@ -437,6 +787,43 @@ class MasterOrchestrator:
             RequestSource.TRIGGER_AUTONOMOUS,
             RequestSource.DAEMON_BACKGROUND,
         )
+
+        # ── Fast-path: Explicit background subagent dispatch ───────────────────
+        is_bg = False
+        if parameters and parameters.get("background"):
+            is_bg = True
+        elif any(
+            goal_text.strip().lower().startswith(pfx)
+            for pfx in ("/background", "run in background:", "dispatch subagent:")
+        ):
+            is_bg = True
+
+        if is_bg:
+            clean_goal = goal_text
+            for pfx in ("/background", "run in background:", "dispatch subagent:"):
+                if clean_goal.strip().lower().startswith(pfx):
+                    clean_goal = clean_goal.strip()[len(pfx) :].strip()
+                    break
+
+            t_disp_start = time.perf_counter()
+            ack = self.dispatch_background_subagent(
+                task_description=clean_goal,
+                profile=parameters.get("profile") if parameters else None,
+                parameters=parameters,
+                context=context if isinstance(context, dict) else None,
+            )
+            disp_elapsed = time.perf_counter() - t_disp_start
+
+            is_ok = ack.get("status") != "REJECTED_POLICY"
+            return ExecutionResult(
+                success=is_ok,
+                planner="subagent_dispatcher",
+                goal=goal_text,
+                execution_time_seconds=disp_elapsed,
+                observations=[ack["message"]],
+                data=ack,
+                error=ack.get("error") if not is_ok else None,
+            )
 
         try:
             return await self._process_request_async_inner(
@@ -1056,6 +1443,18 @@ class MasterOrchestrator:
         session.task_graph = task_graph
         session.data["task_graph"] = task_graph
 
+        # Persist session and initial task decomposition to OrchestrationStore
+        try:
+            self.store.register_session(
+                session.session_id,
+                goal=goal_text,
+                budget=budget,
+                metadata={"source": getattr(source, "value", str(source)), "parameters": parameters},
+            )
+            self.store.register_initial_tasks(session.session_id, task_graph.subtasks.values())
+        except Exception as store_err:
+            logger.warning(f"[MasterOrchestrator] Failed to register session in store: {store_err}")
+
         # Stage 3.2: Task Graph Validation via Universal Capability Registry
         # Fail-closed only for hard errors (liveness failures, dependency cycles).
         # Unknown-capability errors are soft warnings — the execution backends
@@ -1258,6 +1657,11 @@ class MasterOrchestrator:
             logger.info(
                 f"Session [{session.session_id}] Dynamic Loop Turn {iteration}: Executing batch {uncompleted_task_ids}"
             )
+            for t_id in uncompleted_task_ids:
+                try:
+                    self.store.update_task_status(session.session_id, t_id, status="dispatched")
+                except Exception:
+                    pass
 
             # ── Input Artifact Validation (Fail-Loud) ──────────────────────
             # Before executing any task in this level, verify that all
@@ -1428,6 +1832,12 @@ class MasterOrchestrator:
                     if res.success:
                         subtask.status = "completed"
                         completed_ids.add(t_id)
+                        try:
+                            self.store.update_task_status(
+                                session.session_id, t_id, status="completed", result=res_data
+                            )
+                        except Exception as store_err:
+                            logger.warning(f"[MasterOrchestrator] Store task completed update failed: {store_err}")
 
                         v_passed = None
                         if getattr(res, "verification_passed", None) is not None:
@@ -1498,6 +1908,12 @@ class MasterOrchestrator:
                         else:
                             subtask.status = "failed"
                             pipeline_halted = True
+                            try:
+                                self.store.update_task_status(
+                                    session.session_id, t_id, status="failed", error=err_msg
+                                )
+                            except Exception as store_err:
+                                logger.warning(f"[MasterOrchestrator] Store task failed update failed: {store_err}")
                             v_passed = False
                             self._emit(NodeStateChangedEvent(
                                 task_id=t_id,
@@ -1936,6 +2352,21 @@ class MasterOrchestrator:
         for k, v in session.data.items():
             final_result.data[k] = v
 
+        # Update session status in OrchestrationStore
+        session_status = (
+            "completed"
+            if final_result.success
+            else ("suspended" if session.data.get("is_suspended") else "failed")
+        )
+        try:
+            self.store.update_session_status(
+                session.session_id,
+                status=session_status,
+                error=None if final_result.success else str(final_result.data.get("error") or "Execution failed"),
+            )
+        except Exception as store_err:
+            logger.warning(f"[MasterOrchestrator] Store session update failed: {store_err}")
+
         # Stage 7: Memory Write
         self._write_memory(session, final_result)
         self._last_result = final_result
@@ -1958,6 +2389,14 @@ class MasterOrchestrator:
         context: dict[str, Any],
     ) -> ExecutionResult:
         subtask.status = "running"
+        session_obj = context.get("session") if isinstance(context, dict) else None
+        if session_obj:
+            try:
+                self.store.update_task_status(
+                    session_obj.session_id, task_id, status="executing", increment_attempt=True
+                )
+            except Exception as store_err:
+                logger.warning(f"[MasterOrchestrator] Store task executing update failed: {store_err}")
         emitter = context.get("emitter") if isinstance(context, dict) else None
         if emitter is not None:
             emitter.tool_call(f"Executing: {subtask.title or subtask.capability}", detail=subtask.description)
@@ -2007,6 +2446,7 @@ class MasterOrchestrator:
             )
             is_trigger_pre_authorized = is_valid_sig
 
+        policy_decision = None
         if not is_resumed_ticket and not is_trigger_pre_authorized:
             policy_decision = ExecutionPolicy.get_instance().evaluate_action(
                 engine=resolved_domain or "desktop",
@@ -2046,6 +2486,27 @@ class MasterOrchestrator:
                     f"Successfully executed capability '{subtask.capability}'"
                 ],
             )
+
+        # -- Capability Usage Tracking (M19 instrumentation) -----------------
+        try:
+            from core.capabilities.capability_usage_tracker import get_tracker as _get_cap_tracker
+            _risk_str = getattr(getattr(policy_decision, "risk", None), "value", None)
+            if not _risk_str:
+                _risk_str = getattr(subtask, "risk_tier", None)
+            if not _risk_str:
+                _cap_obj = CapabilityRegistry.get_instance().get(subtask.capability)
+                _risk_str = getattr(getattr(_cap_obj, "risk_level", None), "value", None)
+            if _risk_str:
+                _risk_str = str(_risk_str).lower()
+            _session_obj = context.get("session") if isinstance(context, dict) else None
+            _src = getattr(_session_obj, "session_id", None) or "orchestrator"
+            _get_cap_tracker().record_usage(
+                capability_id=subtask.capability,
+                risk_level=_risk_str,
+                source=_src,
+            )
+        except Exception as _track_err:
+            logger.debug(f"[CapabilityTracker] record_usage skipped: {_track_err}")
 
         return await self._dispatch_to_backend(
             backend=backend,
@@ -2158,8 +2619,14 @@ class MasterOrchestrator:
                     ranked_memories = mem.cognitive.recall_ranked(query=goal, active_project=project_id, limit=10)
                     ranked_items = [m.to_dict() for m in ranked_memories]
                     if hasattr(mem.cognitive, "context_formatter"):
+                        anti_patterns = []
+                        if hasattr(mem.cognitive, "failure_ledger"):
+                            try:
+                                anti_patterns = [r.anti_pattern for r in mem.cognitive.failure_ledger.get_anti_patterns(limit=5)]
+                            except Exception:
+                                pass
                         formatted_cog = mem.cognitive.context_formatter.format_planning_context(
-                            ranked_memories, active_project=project_id
+                            ranked_memories, active_project=project_id, anti_patterns=anti_patterns
                         )
                         if formatted_cog:
                             context_str = f"{context_str}\n\n{formatted_cog}" if context_str else formatted_cog
@@ -2236,6 +2703,23 @@ class MasterOrchestrator:
                         )
                         if learned_prefs:
                             logger.info(f"Stage 7 Cognitive Memory: Learned {len(learned_prefs)} preference item(s).")
+
+                    # Stage 7 Procedural Failure Ledger (Segregated anti-pattern learning)
+                    if hasattr(mem.cognitive, "failure_ledger"):
+                        tool_hint = getattr(result, "planner", None) or "orchestrator"
+                        if not result.success:
+                            err_obs = "; ".join(result.observations[:2]) if result.observations else "Execution failed"
+                            mem.cognitive.failure_ledger.record_failure(
+                                tool_name=tool_hint,
+                                error=err_obs,
+                                session_id=session.session_id,
+                            )
+                        else:
+                            mem.cognitive.failure_ledger.record_resolution(
+                                tool_name=tool_hint,
+                                countermeasure=f"Verified execution of goal '{session.goal[:40]}'",
+                                session_id=session.session_id,
+                            )
                 except Exception as cons_err:
                     logger.warning(f"Cognitive memory consolidation warning: {cons_err}")
 
@@ -2442,4 +2926,139 @@ class MasterOrchestrator:
             source=resume_source,
             parameters=resume_params,
             skip_confirmation_intercept=True,
+        )
+
+    async def resume_session(
+        self,
+        session_id: str,
+        context: dict[str, Any] | None = None,
+    ) -> ExecutionResult:
+        """
+        Resumes an existing persisted session from OrchestrationStore.
+
+        Enforces crash-recovery idempotency and fail-safe gating:
+        - Completed subtasks are pruned from execution (completed_ids populated).
+        - Pending/dispatched subtasks remain in the ready queue.
+        - Executing subtasks with LOW risk are reset to 'pending' (safe re-dispatch).
+        - Executing subtasks with MEDIUM, HIGH, or CRITICAL risk:
+            FAIL CLOSED: Marked 'interrupted', session marked 'suspended',
+            and halts with a confirmation prompt/ticket rather than blind re-dispatch.
+        """
+        from .confirmation import ActionPlanConfirmation
+        from .task_decomposer import TaskGraph, SubTask
+        from ..planning.action_plan import ActionPlan
+        from core.event_bus import EventBus, Events
+
+        session_row, all_subtasks, completed_ids, interrupted_high_risk = (
+            self.store.prepare_session_for_resume(session_id)
+        )
+
+        goal_text = session_row["goal"]
+
+        if interrupted_high_risk:
+            # FAIL CLOSED: Do not re-dispatch. Suspend and request confirmation.
+            first_int = interrupted_high_risk[0]
+            int_titles = ", ".join(
+                f"'{st.title}' ({st.capability}, risk={st.risk_tier})"
+                for st in interrupted_high_risk
+            )
+            prompt_text = (
+                f"Execution of task(s) {int_titles} was interrupted mid-flight. "
+                f"To prevent non-idempotent double-execution side effects, confirmation is required. "
+                f"Please confirm whether to retry or mark completed."
+            )
+
+            pending_plan = ActionPlan(
+                plan_id=f"plan_resume_{first_int.task_id}",
+                action=first_int.capability,
+                target=first_int.title,
+                goal=prompt_text,
+                capability=first_int.capability,
+                arguments=first_int.parameters,
+                policy_action="ask_user",
+                session_id=session_id,
+            )
+
+            resume_session = AgentSession(goal=goal_text, session_id=session_id)
+            resume_session.data["is_suspended"] = True
+            resume_session.data["status"] = "suspended"
+            resume_session.data["interrupted_tasks"] = [st.task_id for st in interrupted_high_risk]
+            resume_session.data["completed_ids"] = list(completed_ids)
+
+            conf = ActionPlanConfirmation(
+                session_id=session_id,
+                action_plan=pending_plan,
+                prompt=prompt_text,
+                remaining_subtasks=interrupted_high_risk,
+            )
+            resume_session.pending_confirmation = conf
+            self._last_session = resume_session
+
+            self._emit(ConfirmationRequiredEvent(
+                session_id=session_id,
+                task_id=first_int.task_id,
+                plan_id=pending_plan.plan_id,
+                prompt=prompt_text,
+                target=first_int.capability,
+                capability=first_int.capability,
+                remaining_task_ids=tuple(st.task_id for st in interrupted_high_risk),
+            ))
+
+            try:
+                EventBus.get_instance().publish(
+                    Events.CONFIRMATION_REQUIRED,
+                    payload={
+                        "ticket_id": None,
+                        "session_id": session_id,
+                        "action_name": first_int.capability,
+                        "action_params": first_int.parameters,
+                        "risk": first_int.risk_tier,
+                        "is_crypto_ticket": False,
+                        "prompt": prompt_text,
+                    },
+                )
+            except Exception as eb_err:
+                logger.warning(f"[MasterOrchestrator] Failed to publish EventBus confirmation for resume: {eb_err}")
+
+            return ExecutionResult(
+                success=False,
+                planner="orchestrator",
+                goal=goal_text,
+                observations=[prompt_text],
+                data={
+                    "is_suspended": True,
+                    "status": "suspended",
+                    "interrupted_tasks": [st.task_id for st in interrupted_high_risk],
+                    "completed_ids": list(completed_ids),
+                    "prompt": prompt_text,
+                },
+            )
+
+        # Safe to resume: all interrupted tasks were either completed or safely reset LOW risk
+        restored_graph = TaskGraph(goal=goal_text)
+        for st in all_subtasks:
+            restored_graph.add_task(st)
+
+        resume_session = AgentSession(goal=goal_text, session_id=session_id)
+        resume_session.data["completed_ids"] = list(completed_ids)
+
+        metadata = json.loads(session_row.get("metadata_json") or "{}")
+        orig_source_str = metadata.get("source")
+        try:
+            resume_source = RequestSource(orig_source_str) if orig_source_str else RequestSource.HUMAN_INTERACTIVE
+        except Exception:
+            resume_source = RequestSource.HUMAN_INTERACTIVE
+
+        logger.info(
+            f"[MasterOrchestrator] Resuming session [{session_id}] with {len(completed_ids)} completed and "
+            f"{len(all_subtasks) - len(completed_ids)} pending tasks."
+        )
+
+        return await self._process_request_async_inner(
+            goal_text=goal_text,
+            task_graph=restored_graph,
+            session=resume_session,
+            source=resume_source,
+            parameters=metadata.get("parameters"),
+            context=context,
         )

@@ -26,6 +26,8 @@ class EventType(Enum):
     WINDOW_MINIMIZED = "window_minimized"
     WINDOW_MAXIMIZED = "window_maximized"
     WINDOW_RESTORED = "window_restored"
+    WINDOW_UPDATED = "window_updated"
+    WINDOWS_UPDATED = "windows_updated"
 
     # Clipboard events
     CLIPBOARD_CHANGED = "clipboard_changed"

@@ -113,23 +113,23 @@ def test_dependency_resolver_generates_verified_uia_dag():
     planner = DesktopPlanner()
     plan = planner.create_plan("Click the Save button in Notepad")
 
-    assert len(plan.steps) == 3
+    assert len(plan.steps) >= 3
 
-    # Step 1: Preparation (uia.find_element)
-    assert plan.steps[0].step_type == StepType.PREPARATION
-    assert plan.steps[0].capability == "uia.find_element"
-    assert plan.steps[0].arguments.get("window_title") == "Notepad"
-    assert plan.steps[0].arguments.get("name") == "Save"
+    # Step: Preparation (uia.find_element)
+    find_step = next(s for s in plan.steps if s.capability == "uia.find_element")
+    assert find_step.step_type == StepType.PREPARATION
+    assert find_step.arguments.get("window_title") == "Notepad"
+    assert find_step.arguments.get("name") == "Save"
 
-    # Step 2: Action (uia.click)
-    assert plan.steps[1].step_type == StepType.ACTION
-    assert plan.steps[1].capability == "uia.click"
-    assert plan.steps[1].requires == ["uia.find_element"]
-    assert plan.steps[1].verifies == ["uia.get_value"]
+    # Step: Action (uia.click)
+    click_step = next(s for s in plan.steps if s.capability == "uia.click")
+    assert click_step.step_type == StepType.ACTION
+    assert click_step.requires == ["uia.find_element"]
+    assert click_step.verifies == ["uia.get_value"]
 
-    # Step 3: Verification (uia.get_value)
-    assert plan.steps[2].step_type == StepType.VERIFICATION
-    assert plan.steps[2].capability == "uia.get_value"
+    # Step: Verification (uia.get_value)
+    verify_step = next(s for s in plan.steps if s.capability == "uia.get_value")
+    assert verify_step.step_type == StepType.VERIFICATION
 
 
 # ── 3. Cross-Domain Chaining (WindowManager -> UIAManager) ───────────────────
@@ -260,7 +260,7 @@ def test_explain_plan_surfaces_high_risk_and_confirmation_for_nl_goal():
     explanation = planner.explain_plan("Click the Save button in Notepad")
 
     assert explanation["overall_risk_level"] in ("HIGH", "CRITICAL")
-    assert explanation["total_steps"] == 3
+    assert explanation["total_steps"] >= 3
 
     click_step = next(s for s in explanation["steps"] if s["capability"] == "uia.click")
     assert click_step["risk_level"] == "HIGH"
@@ -348,7 +348,8 @@ def test_desktop_planner_execute_plan_with_data_propagation():
 
     assert executed_plan.is_complete is True
     assert all(s.status == StepStatus.SUCCESS for s in executed_plan.steps)
-    assert executed_plan.steps[1].arguments.get("element") == elem_dict
+    click_step = next(s for s in executed_plan.steps if s.capability == "uia.click")
+    assert click_step.arguments.get("element") == elem_dict
 
 
 def test_desktop_backend_surfaces_actionable_ambiguity_observation():

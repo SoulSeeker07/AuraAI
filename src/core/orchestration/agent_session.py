@@ -59,6 +59,7 @@ class AgentSession:
 
     session_id: str = field(default_factory=lambda: f"sess_{uuid.uuid4().hex[:10]}")
     goal: str = ""
+    goal_id: str | None = None
     budget: ExecutionBudget = field(default_factory=ExecutionBudget)
     memory_context: dict[str, Any] = field(default_factory=dict)
     observations: list[Observation] = field(default_factory=list)

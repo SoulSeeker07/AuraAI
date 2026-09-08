@@ -124,8 +124,10 @@ class PluginRegistry:
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
 
-                if isinstance(attr, type) and issubclass(attr, PluginBase):
-                    if attr is PluginBase:
+                if isinstance(attr, type) and any(
+                    base.__name__ == "PluginBase" for base in attr.__mro__
+                ):
+                    if attr.__name__ == "PluginBase":
                         continue
 
                     plugin = attr()

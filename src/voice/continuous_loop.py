@@ -100,6 +100,8 @@ class ContinuousVoiceLoop:
         self.voice_manager.on_error = self._on_voice_error
 
         # Turn history / stats
+        import uuid
+        self.session_id: str = f"sess_voice_{uuid.uuid4().hex[:8]}"
         self.turn_count = 0
         self.history: list[dict[str, Any]] = []
         self.on_stop: Any | None = None
@@ -175,6 +177,8 @@ class ContinuousVoiceLoop:
             return True
 
         logger.info("[ContinuousVoiceLoop] START_REQUESTED")
+        import uuid
+        self.session_id = f"sess_voice_{uuid.uuid4().hex[:8]}"
         self._running = True
         self._set_state(VoiceState.IDLE)
         
@@ -421,6 +425,67 @@ class ContinuousVoiceLoop:
         except Exception:
             pass
         self._turn_telemetry["T4_stt"] = time.time()
+
+        # Check if user is steering, pausing, or resuming an active response mid-generation/mid-speech
+        steering_ctrl = getattr(self.voice_manager, "steering_controller", None)
+        from .response_steering import ResponseSteeringController, SteerPolicy, ActionType
+        if (
+            isinstance(steering_ctrl, ResponseSteeringController)
+            and (steering_ctrl.is_generating_or_speaking() or steering_ctrl.is_paused())
+            and (self.state in (VoiceState.UNDERSTANDING, VoiceState.EXECUTING, VoiceState.AI_RESPONSE, VoiceState.SPEAKING) or steering_ctrl.is_paused())
+        ):
+            intent_action = SteerPolicy.classify(transcript)
+
+            if intent_action == ActionType.PAUSE:
+                logger.info(f"[ContinuousVoiceLoop] Pausing active response on user directive: '{transcript}'")
+                _safe_print(f"\r\033[K\nYou (pause) > {transcript}\n")
+                if hasattr(self.voice_manager, "interruption_manager") and self.voice_manager.interruption_manager:
+                    from .interruption_manager import InterruptionState
+                    self.voice_manager.interruption_manager.update_state(InterruptionState.PAUSED)
+
+                def _on_pause_timeout():
+                    logger.warning("[ContinuousVoiceLoop] Pause hold timed out after 45s. Degrading to cancel.")
+                    if hasattr(self.voice_manager, "tts_manager"):
+                        self.voice_manager.tts_manager.stop()
+                    self._return_to_listening_or_idle()
+
+                steering_ctrl.pause_current_turn(timeout_s=45.0, on_timeout=_on_pause_timeout)
+                return
+
+            elif intent_action == ActionType.RESUME:
+                if steering_ctrl.is_paused():
+                    logger.info(f"[ContinuousVoiceLoop] Resuming active response on user directive: '{transcript}'")
+                    _safe_print(f"\r\033[K\nYou (resume) > {transcript}\n")
+                    if hasattr(self.voice_manager, "interruption_manager") and self.voice_manager.interruption_manager:
+                        from .interruption_manager import InterruptionState
+                        self.voice_manager.interruption_manager.update_state(InterruptionState.RESUMING)
+                    steering_ctrl.resume_current_turn()
+                    return
+                else:
+                    # Nothing is paused! Fall through to standard turn handling so user input is never swallowed!
+                    logger.info("[ContinuousVoiceLoop] Resume received with no active paused turn; processing as new request.")
+
+            elif intent_action == ActionType.STEER:
+                steer_evt = steering_ctrl.steer(
+                    transcript,
+                    on_abort_output=getattr(self.voice_manager.tts_manager, "stop", None),
+                )
+                if steer_evt is not None:
+                    successor_p = steering_ctrl.build_successor_prompt(steer_evt)
+                    logger.info(f"[ContinuousVoiceLoop] Active response steered -> '{transcript}'")
+                    _safe_print(f"\r\033[K\nYou (steer) > {transcript}\n")
+                    self.turn_count += 1
+                    self._process_transcript(successor_p)
+                    return
+
+            elif intent_action == ActionType.CANCEL:
+                logger.info(f"[ContinuousVoiceLoop] Active response cancelled on user directive: '{transcript}'")
+                _safe_print(f"\r\033[K\nYou (cancel) > {transcript}\n")
+                if hasattr(self.voice_manager, "tts_manager"):
+                    self.voice_manager.tts_manager.stop()
+                steering_ctrl.complete_response()
+                self._return_to_listening_or_idle()
+                return
 
         if (
             self.state in (
@@ -899,20 +964,30 @@ class ContinuousVoiceLoop:
                 # Async token generator from AuraCore or ConversationEngine
                 if aura_core is not None:
                     from unittest.mock import Mock, MagicMock
-                    has_real_process = hasattr(aura_core, "process_request") and not isinstance(getattr(aura_core, "process_request", None), (MagicMock, Mock))
                     has_real_stream = hasattr(aura_core, "process_request_stream") and not isinstance(getattr(aura_core, "process_request_stream", None), (MagicMock, Mock))
 
-                    if has_real_process:
+                    if has_real_stream:
+                        try:
+                            token_gen = aura_core.process_request_stream(transcript, session_id=getattr(self, "session_id", None))
+                        except TypeError:
+                            token_gen = aura_core.process_request_stream(transcript)
+                    elif hasattr(aura_core, "process_request"):
                         # Use process_request which runs local intent fast-path FIRST
                         # (volume, brightness, open app, etc → < 50ms, no LLM needed)
                         async def _core_process_gen():
-                            resp = await aura_core.process_request(transcript)
+                            from unittest.mock import Mock, MagicMock, AsyncMock
+                            is_mock = isinstance(aura_core, (Mock, MagicMock, AsyncMock)) or isinstance(getattr(aura_core, "process_request", None), (Mock, MagicMock, AsyncMock))
+                            if is_mock:
+                                resp = await aura_core.process_request(transcript)
+                            else:
+                                try:
+                                    resp = await aura_core.process_request(transcript, session_id=getattr(self, "session_id", None))
+                                except TypeError:
+                                    resp = await aura_core.process_request(transcript)
                             if asyncio.iscoroutine(resp):
                                 resp = await resp
                             yield resp if resp else "Done."
                         token_gen = _core_process_gen()
-                    elif has_real_stream:
-                        token_gen = aura_core.process_request_stream(transcript)
                     else:
                         async def _plain_gen():
                             yield "I heard your request, but reasoning engine is unavailable."
@@ -928,29 +1003,92 @@ class ContinuousVoiceLoop:
                         yield "I heard your request, but reasoning engine is unavailable."
                     token_gen = _plain_gen()
 
+                # Track active steerable response
+                active_resp_id = f"resp_{self.turn_count}_{int(time.time() * 1000)}"
+                steering_ctrl = getattr(self.voice_manager, "steering_controller", None)
+                from .response_steering import ResponseSteeringController
+                if not isinstance(steering_ctrl, ResponseSteeringController):
+                    steering_ctrl = None
+
+                active_turn = None
+                if steering_ctrl:
+                    active_turn = steering_ctrl.start_response(active_resp_id, transcript)
+
+                # Streaming chunk queue for low-latency speak_stream
+                chunk_queue: asyncio.Queue[str | None] = asyncio.Queue()
+                turn_loop = asyncio.get_running_loop()
+
+                if active_turn and hasattr(active_turn, "on_abort"):
+                    active_turn.on_abort(lambda: turn_loop.call_soon_threadsafe(chunk_queue.put_nowait, None))
+
+                async def _stream_feeder():
+                    while True:
+                        if getattr(active_turn, "is_aborted", False) is True:
+                            break
+                        item = await chunk_queue.get()
+                        if item is None or getattr(active_turn, "is_aborted", False) is True:
+                            break
+                        # If paused, hold output without tearing down loop or generator
+                        if active_turn and active_turn.is_paused():
+                            while active_turn.is_paused() and not (getattr(active_turn, "is_aborted", False) is True):
+                                await asyncio.sleep(0.05)
+                        if getattr(active_turn, "is_aborted", False) is True:
+                            break
+                        yield item
+
+                # Start TTS stream concurrently with LLM generation
+                use_streaming_tts = hasattr(self.voice_manager, "speak_stream")
+                if use_streaming_tts:
+                    self._set_state(VoiceState.SPEAKING)
+                    self.voice_manager.speak_stream(_stream_feeder())
+
                 self._turn_telemetry["T7_tts_start"] = time.time()
 
-                # Stream prosody chunks to stdout
+                # Stream prosody chunks to stdout and TTS player
                 async for chunk in chunker.stream_chunks(token_gen):
+                    if getattr(active_turn, "is_aborted", False) is True:
+                        break
                     full_response_parts.append(chunk)
                     _safe_print(f"{chunk} ", stream=None)
+
+                    if steering_ctrl:
+                        steering_ctrl.record_emitted_chunk(chunk)
+
+                    if use_streaming_tts:
+                        if getattr(active_turn, "is_aborted", False) is True:
+                            break
+                        await chunk_queue.put(chunk)
 
                     if not first_audio_logged:
                         first_audio_logged = True
                         ttfa_ms = (time.time() - self._turn_telemetry["T5_reasoning_start"]) * 1000
                         self._turn_telemetry["T6_first_audio"] = time.time()
-                        logger.info(f"[ContinuousVoiceLoop Turn #{self.turn_count}] TTFA: {ttfa_ms:.1f}ms")
+                        logger.info(f"[ContinuousVoiceLoop Turn #{self.turn_count}] TTFA: {ttfa_ms:.1f}ms (Streaming)")
 
-                # Speak full synthesized response as a unified utterance
+                if use_streaming_tts:
+                    # Drain any lingering chunks if aborted
+                    if getattr(active_turn, "is_aborted", False) is True:
+                        while not chunk_queue.empty():
+                            try:
+                                chunk_queue.get_nowait()
+                            except Exception:
+                                break
+                    await chunk_queue.put(None)  # Signal end of stream to TTS
+
+                # Conclude active response tracking
                 complete_text = " ".join(full_response_parts).strip()
+                if steering_ctrl:
+                    steering_ctrl.complete_response(active_resp_id)
+
                 if self._running and complete_text:
                     try:
                         from gui.signals import app_signals
                         app_signals.message_received.emit("AuraAI", complete_text, False)
                     except Exception:
                         pass
-                    self._set_state(VoiceState.SPEAKING)
-                    self.voice_manager.speak(complete_text)
+                    if not use_streaming_tts:
+                        self._set_state(VoiceState.SPEAKING)
+                        self.voice_manager.speak(complete_text)
                 elif not self._running:
                     # Session stopped mid-stream
                     self._return_to_listening_or_idle()

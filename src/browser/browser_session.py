@@ -136,6 +136,10 @@ class BrowserSession:
                 pass
         return self.page
 
+    def close(self) -> None:
+        """Explicitly shut down the browser context and Playwright instance."""
+        self.__exit__(None, None, None)
+
     def __exit__(self, exc_type, exc, tb) -> None:
         try:
             if self._context:
@@ -147,3 +151,6 @@ class BrowserSession:
                 self._playwright.stop()
         except Exception:
             pass
+        self.page = None
+        self._context = None
+        self._playwright = None

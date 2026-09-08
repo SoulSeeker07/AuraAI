@@ -66,8 +66,9 @@ class EmailPlugin(Plugin):
 
         if not user or not pwd:
             return {
-                "status": "mock_sent",
-                "message": f"Email credentials not set. Simulated send to {to_addr}",
+                "status": "error",
+                "error_code": "MISSING_CREDENTIALS_ERROR",
+                "message": f"Email credentials not configured in environment (.env). Cannot send email to {to_addr}.",
                 "to": to_addr,
                 "subject": subject,
             }
@@ -93,10 +94,9 @@ class EmailPlugin(Plugin):
         if not user or not pwd:
             return [
                 {
-                    "from": "notifications@github.com",
-                    "subject": "AuraAI Repo Update",
-                    "date": "Today",
-                    "snippet": "New automated build completed successfully.",
+                    "status": "error",
+                    "error_code": "MISSING_CREDENTIALS_ERROR",
+                    "message": "Email credentials not configured in environment (.env). Cannot read inbox.",
                 }
             ]
 

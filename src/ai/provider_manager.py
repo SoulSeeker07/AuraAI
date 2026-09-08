@@ -15,6 +15,10 @@ class ProviderManager:
         self.default_provider = default_provider
         self.role_mappings: dict[str, str] = {
             "code_generation": "gemini",
+            "diagram": "gemini",
+            "svg": "gemini",
+            "art": "gemini",
+            "sketch": "gemini",
         }
 
     def register(self, name: str, provider: Provider) -> None:
@@ -39,15 +43,63 @@ class ProviderManager:
         self.get(name)
         self.default_provider = name
 
+    def resolve_provider(
+        self, request: ChatRequest | None = None, provider: str | None = None
+    ) -> str:
+        if provider:
+            return self.role_mappings.get(provider, provider)
+
+        # Dynamic routing if provider is not explicitly passed:
+        if request and request.messages:
+            # 1. Token threshold: >= 5000 tokens goes directly to Gemini
+            total_chars = sum(len(str(getattr(m, "content", "") or "")) for m in request.messages)
+            est_tokens = total_chars // 4
+            if est_tokens >= 5000 and "gemini" in self.providers:
+                return "gemini"
+
+            # 2. Inspect latest user message for specialized domain keywords
+            user_content = ""
+            for m in reversed(request.messages):
+                role = getattr(m, "role", "")
+                if role == "user":
+                    user_content = str(getattr(m, "content", "") or "").lower()
+                    break
+
+            if user_content and "gemini" in self.providers:
+                diagram_kw = (
+                    "flowchart", "diagram", "schematic", "mermaid", "system architecture",
+                    "sequence diagram", "state machine", "process map", "entity relationship",
+                    "er diagram", "data flow diagram", "architecture of"
+                )
+                svg_kw = (
+                    "svg", "mockup", "wireframe", "ui design", "screen design", "layout design",
+                    "screen layout", "interface screen", "visual layout", "draw an svg",
+                    "svg graphic", "svg illustration"
+                )
+                code_kw = (
+                    "frontend", "backend", "fullstack", "react", "vue", "angular", "svelte",
+                    "nextjs", "next.js", "html", "css", "tailwind", "javascript", "typescript",
+                    "fastapi", "flask", "django", "express", "node.js", "nodejs", "api endpoint",
+                    "rest api", "graphql", "database schema", "write code", "write a function",
+                    "write a script", "refactor code", "refactor this", "code for", "implement class",
+                    "coding"
+                )
+                if any(k in user_content for k in diagram_kw + svg_kw + code_kw):
+                    return "gemini"
+
+        return self.default_provider
+
     def chat(
         self, request: ChatRequest, provider: str | None = None
     ) -> ProviderResponse:
-        return self.get(provider).chat(request)
+        resolved = self.resolve_provider(request, provider)
+        return self.get(resolved).chat(request)
 
     def stream(
         self, request: ChatRequest, provider: str | None = None
     ) -> Iterable[str]:
-        return self.get(provider).stream(request)
+        resolved = self.resolve_provider(request, provider)
+        return self.get(resolved).stream(request)
 
     def vision(
         self, request: VisionRequest, provider: str | None = None
@@ -64,7 +116,13 @@ class ProviderManager:
         timeout: float | None = None,
         provider: str | None = None,
     ) -> Any:
-        p = self.get(provider)
+        target = provider
+        if target is None:
+            total_chars = sum(len(str(m.get("content", ""))) for m in messages if isinstance(m, dict))
+            est_tokens = total_chars // 4
+            if est_tokens >= 5000 and "gemini" in self.providers:
+                target = "gemini"
+        p = self.get(target)
         if hasattr(p, "chat_with_tools"):
             return p.chat_with_tools(
                 messages,

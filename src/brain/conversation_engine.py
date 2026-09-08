@@ -94,9 +94,6 @@ class ConversationEngine:
         self.orchestrator = orchestrator
 
         # Log the aura_core reference
-        import logging
-
-        logger = logging.getLogger(__name__)
         if self.aura_core:
             logger.info(
                 f"[ConversationEngine.__init__] aura_core set correctly, research_enabled={self.aura_core.research_enabled}, research_integration is None={self.aura_core.research_integration is None}"
@@ -148,9 +145,6 @@ class ConversationEngine:
 
         if intent.name == "remember_fact":
             facts = list(intent.data.get("facts", []))
-            import logging
-
-            logger = logging.getLogger(__name__)
             logger.info(
                 f"[ConversationEngine] remember_fact intent detected with {len(facts)} facts"
             )
@@ -411,9 +405,6 @@ class ConversationEngine:
         if self.settings.get("web_search_enabled", True) is False:
             return []
 
-        import logging
-        logger = logging.getLogger(__name__)
-
         # Localize shopping/pricing queries to India / INR unless user specifies another region
         search_query = user_input
         lower_q = user_input.lower()
@@ -523,9 +514,6 @@ class ConversationEngine:
 
     def _gather_screen_perception(self) -> tuple[ConversationAttachment | None, dict[str, Any]]:
         """Capture screenshot and gather real desktop window / OCR visual perception data without process guesswork."""
-        import re
-        from pathlib import Path
-
         screenshot_path = None
         ocr_text = ""
         active_window = ""
@@ -780,13 +768,19 @@ class ConversationEngine:
     def _try_resolve_media_in_foreground(self, goal: str, target: str) -> ForegroundMatch | None:
         if self.aura_core is None:
             return None
-        app_context = self.aura_core.app_context_router.detect_current_app()
+        router = getattr(self.aura_core, "app_context_router", None)
+        if router is None:
+            return None
+        app_context = router.detect_current_app()
         if app_context is None or not getattr(app_context, "is_browser", False):
             return None
         if not any(v in goal.lower() for v in MEDIA_VERBS):
             return None
 
-        grounded = self.aura_core.grounding_engine.resolve(target, app_context=app_context)
+        grounding = getattr(self.aura_core, "grounding_engine", None)
+        if grounding is None:
+            return None
+        grounded = grounding.resolve(target, app_context=app_context)
         if grounded is None:
             return None
 
@@ -864,8 +858,7 @@ class ConversationEngine:
                     f"• UV Index: {w['uv']}"
                 )
             except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Live weather lookup failed: {e}")
+                logger.warning(f"Live weather lookup failed: {e}")
 
         if intent.name == "play_music":
             query = (intent.data or {}).get("query", "").strip()
@@ -910,8 +903,23 @@ class ConversationEngine:
                 if enable == "toggle":
                     cur_st = BluetoothDiagnosticsService.get_radio_state()
                     enable = (cur_st != "On")
-                res = BluetoothDiagnosticsService.set_radio_state(bool(enable))
-                return res.get("message", "🔵 Bluetooth command processed.")
+                enable_bool = bool(enable)
+                action_str = "enable" if enable_bool else "disable"
+
+                from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+                auth = CryptographicApprovalAuthority.get_instance()
+                ticket_id = auth.create_ticket(
+                    action_type="bluetooth_control",
+                    target=action_str,
+                    parameters={"enable": enable_bool},
+                    description=f"Change Bluetooth radio state to {action_str.upper()}",
+                )
+                return (
+                    f"⚠️ Changing Bluetooth radio state to **{action_str.upper()}** requires confirmation.\n\n"
+                    f"• **Action:** Bluetooth `{action_str}`\n\n"
+                    f"Proceed with changing Bluetooth state? (yes/no)\n\n"
+                    f"*(Approval ticket: `{ticket_id}`)*"
+                )
             except Exception as e:
                 return f"🔵 Bluetooth control error: {e}"
 
@@ -931,8 +939,23 @@ class ConversationEngine:
                 if enable == "toggle":
                     cur_st = NetworkDiagnosticsService.get_wifi_radio_state()
                     enable = (cur_st != "On")
-                res = NetworkDiagnosticsService.set_wifi_state(bool(enable))
-                return res.get("message", "📶 Wi-Fi command processed.")
+                enable_bool = bool(enable)
+                action_str = "enable" if enable_bool else "disable"
+
+                from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+                auth = CryptographicApprovalAuthority.get_instance()
+                ticket_id = auth.create_ticket(
+                    action_type="wifi_control",
+                    target=action_str,
+                    parameters={"enable": enable_bool},
+                    description=f"Change Wi-Fi adapter state to {action_str.upper()}",
+                )
+                return (
+                    f"⚠️ Changing Wi-Fi radio state to **{action_str.upper()}** requires confirmation.\n\n"
+                    f"• **Action:** Wi-Fi `{action_str}`\n\n"
+                    f"Proceed with changing Wi-Fi state? (yes/no)\n\n"
+                    f"*(Approval ticket: `{ticket_id}`)*"
+                )
             except Exception as e:
                 return f"📶 Wi-Fi control error: {e}"
 
@@ -995,8 +1018,6 @@ class ConversationEngine:
                         arguments=cap_args,
                     )
                     return orchestrator._dispatch_plan(adapter, plan, task_id=plan.plan_id)
-
-                import re
 
                 # Extract brightness level if specified (numeric or semantic keywords like max, full, min, half)
                 level = None
@@ -1142,7 +1163,6 @@ class ConversationEngine:
                     elif "min" in raw_input or "lowest" in raw_input or "minimum" in raw_input:
                         target_lvl = 10
                     else:
-                        import re
                         nums = re.findall(r"\b\d+\b", raw_input)
                         if nums:
                             target_lvl = max(0, min(100, int(nums[0])))
@@ -1170,7 +1190,6 @@ class ConversationEngine:
                     ok = adapter.set_mute(True)
                     return "🔇 **System Master Audio Muted.**" if ok else "⚠️ Failed to mute audio."
                 elif any(w in raw_input for w in ["set", "change", "turn", "increase", "decrease", "max", "min", "%", "volume", "sound"]):
-                    import re
                     nums = re.findall(r"\b\d+\b", raw_input)
                     if nums:
                         target_lvl = float(max(0, min(100, int(nums[0]))))
@@ -1382,6 +1401,56 @@ class ConversationEngine:
                             result = execute_command(cmd_to_run, cwd=resolved_cwd)
                             return result.format_response()
 
+                        if target_ticket.action_type == "restart_aura":
+                            params = getattr(target_ticket, "parameters", None) or getattr(target_ticket, "metadata", None) or {}
+                            delay = params.get("delay_seconds", 1.2)
+                            valid_sig, auth_err = auth_inst.verify_and_redeem(
+                                ticket_id=t_id,
+                                signature=sig,
+                                action_type=target_ticket.action_type,
+                                target=target_ticket.target,
+                                parameters=params,
+                            )
+                            if not valid_sig:
+                                return f"❌ Security Error: Ticket authorization failed ({auth_err}). Restart aborted."
+                            from tools.restart_manager import RestartManager
+                            RestartManager.restart_aura(delay_seconds=delay)
+                            return "🔄 **Restarting Aura...** Process reload initiated."
+
+                        if target_ticket.action_type == "bluetooth_control":
+                            params = getattr(target_ticket, "parameters", None) or getattr(target_ticket, "metadata", None) or {}
+                            enable_bool = params.get("enable", True)
+                            valid_sig, auth_err = auth_inst.verify_and_redeem(
+                                ticket_id=t_id,
+                                signature=sig,
+                                action_type=target_ticket.action_type,
+                                target=target_ticket.target,
+                                parameters=params,
+                            )
+                            if not valid_sig:
+                                return f"❌ Security Error: Ticket authorization failed ({auth_err}). Bluetooth change aborted."
+                            from tools.bluetooth_service import BluetoothDiagnosticsService
+                            res = BluetoothDiagnosticsService.set_radio_state(bool(enable_bool))
+                            msg = res.get("message", "🔵 Bluetooth radio state updated.")
+                            return f"✅ **Approved:** {msg}"
+
+                        if target_ticket.action_type == "wifi_control":
+                            params = getattr(target_ticket, "parameters", None) or getattr(target_ticket, "metadata", None) or {}
+                            enable_bool = params.get("enable", True)
+                            valid_sig, auth_err = auth_inst.verify_and_redeem(
+                                ticket_id=t_id,
+                                signature=sig,
+                                action_type=target_ticket.action_type,
+                                target=target_ticket.target,
+                                parameters=params,
+                            )
+                            if not valid_sig:
+                                return f"❌ Security Error: Ticket authorization failed ({auth_err}). Wi-Fi change aborted."
+                            from tools.network_service import NetworkDiagnosticsService
+                            res = NetworkDiagnosticsService.set_wifi_state(bool(enable_bool))
+                            msg = res.get("message", "📶 Wi-Fi adapter state updated.")
+                            return f"✅ **Approved:** {msg}"
+
                         suspended = os_store.get_suspended_session(t_id)
                         if suspended:
                             import asyncio
@@ -1472,6 +1541,7 @@ class ConversationEngine:
                     )
                 from browser.run_browser_goal import run_browser_goal, format_for_chat
                 res = run_browser_goal(goal)
+                self._last_browser_result = res
                 return format_for_chat(res, goal=goal)
             except Exception as e:
                 return f"⚠️ Autonomous browser notice: {e}"
@@ -1776,8 +1846,6 @@ class ConversationEngine:
 
                         # Launch Dedicated Log Viewer Overlay on screen
                         try:
-                            import subprocess
-                            from pathlib import Path
                             root = Path(__file__).resolve().parents[2]
                             py = root / ".venv" / "Scripts" / "python.exe"
                             launcher = root / "run_log_viewer.py"
@@ -1799,8 +1867,6 @@ class ConversationEngine:
 
                         # Launch Agent Task Status HUD
                         try:
-                            import subprocess
-                            from pathlib import Path
                             root = Path(__file__).resolve().parents[2]
                             py = root / ".venv" / "Scripts" / "python.exe"
                             launcher = root / "run_task_status_hud.py"
@@ -1843,8 +1909,20 @@ class ConversationEngine:
 
         if intent.name == "restart_aura":
             try:
-                from tools.restart_manager import RestartManager
-                return RestartManager.restart_aura(delay_seconds=1.2)
+                from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+                auth = CryptographicApprovalAuthority.get_instance()
+                ticket_id = auth.create_ticket(
+                    action_type="restart_aura",
+                    target="aura",
+                    parameters={"delay_seconds": 1.2},
+                    description="Restart Aura AI application process",
+                )
+                return (
+                    f"⚠️ Restarting Aura process will terminate active operations and reload the assistant.\n\n"
+                    f"• **Action:** Restart Aura AI\n\n"
+                    f"Proceed with restart? (yes/no)\n\n"
+                    f"*(Approval ticket: `{ticket_id}`)*"
+                )
             except Exception as e:
                 return f"⚠️ Restart error: {e}"
 

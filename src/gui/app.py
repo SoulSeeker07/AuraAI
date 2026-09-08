@@ -30,10 +30,11 @@ class CommandWorker(QThread):
     error_signal = Signal(str, str)  # task_id, error_message
     step_signal = Signal(object)  # ExecutionStep
 
-    def __init__(self, aura_core, command: str, parent=None):
+    def __init__(self, aura_core, command: str, session_id: Optional[str] = None, parent=None):
         super().__init__(parent)
         self.aura_core = aura_core
         self.command = command
+        self.session_id = session_id
 
     def run(self):
         task_id = f"task_{int(time.time())}"
@@ -50,9 +51,8 @@ class CommandWorker(QThread):
             )
             self.step_signal.emit(step1)
 
-            # Create event loop for async AuraCore execution
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            from core.async_runtime import AsyncRuntime
+            runtime = AsyncRuntime.get_instance()
 
             step1.status = StepStatus.COMPLETED
             self.step_signal.emit(step1)
@@ -75,19 +75,17 @@ class CommandWorker(QThread):
                     logger.error(f"CommandWorker failed to load AuraCore: {e}")
 
             if self.aura_core and hasattr(self.aura_core, "process_request"):
-                response_text = loop.run_until_complete(
-                    self.aura_core.process_request(self.command)
+                response_text = runtime.run_coroutine_sync(
+                    self.aura_core.process_request(self.command, session_id=self.session_id)
                 )
             elif self.aura_core and hasattr(
                 self.aura_core, "process_via_executive_brain"
             ):
-                response_text = loop.run_until_complete(
+                response_text = runtime.run_coroutine_sync(
                     self.aura_core.process_via_executive_brain(self.command)
                 )
             else:
                 response_text = f"Aura Core received: {self.command}"
-
-            loop.close()
 
             step2.status = StepStatus.COMPLETED
             self.step_signal.emit(step2)

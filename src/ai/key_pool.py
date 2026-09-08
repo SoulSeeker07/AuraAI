@@ -425,6 +425,22 @@ class KeyPool:
             except Exception as exc:
                 err_str = str(exc).lower()
                 status_code = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
+
+                # Special Case: Payload exceeds single-turn model TPM limit (HTTP 413)
+                # This is a model parameter issue, NOT an exhausted key.
+                # Do NOT burn the key or other keys in the pool on cooldown.
+                is_request_too_large = (
+                    status_code == 413
+                    or "request too large" in err_str
+                    or "reduce your message size" in err_str
+                )
+                if is_request_too_large:
+                    logger.warning(
+                        f"[KeyPool] Request payload exceeded model single-turn capacity ({exc}). "
+                        "Bypassing key pool rotation to avoid burning healthy keys."
+                    )
+                    raise exc
+
                 is_rate_limit = (
                     status_code == 429
                     or "429" in err_str

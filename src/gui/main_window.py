@@ -15,6 +15,7 @@ import sys
 import os
 import math
 import time
+import uuid
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -109,9 +110,10 @@ class CommandWorker(QThread):
     error_signal = Signal(str, str)  # task_id, error_message
     step_signal = Signal(object)  # ExecutionStep
 
-    def __init__(self, command: str, parent=None):
+    def __init__(self, command: str, session_id: Optional[str] = None, parent=None):
         super().__init__(parent)
         self.command = command
+        self.session_id = session_id
 
     def run(self):
         import asyncio
@@ -132,11 +134,11 @@ class CommandWorker(QThread):
         )
         self.step_signal.emit(step0)
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
+            from core.async_runtime import AsyncRuntime
             from core.aura_core import AuraCore
 
+            runtime = AsyncRuntime.get_instance()
             core = AuraCore.get_instance()
             step0.duration_ms = max(4.2, round((time.perf_counter() - t0) * 1000, 1))
             step0.status = StepStatus.COMPLETED
@@ -176,9 +178,9 @@ class CommandWorker(QThread):
             is_error = False
 
             if hasattr(core, "get_ai_response"):
-                response_text = loop.run_until_complete(core.get_ai_response(self.command, enable_tools=True))
+                response_text = runtime.run_coroutine_sync(core.get_ai_response(self.command, enable_tools=True, session_id=self.session_id))
             elif hasattr(core, "process_request"):
-                response_text = loop.run_until_complete(core.process_request(self.command))
+                response_text = runtime.run_coroutine_sync(core.process_request(self.command, session_id=self.session_id))
 
             resp_str = str(response_text).strip()
             if not resp_str or resp_str.startswith("❌") or resp_str.startswith("✗") or "Error processing message" in resp_str or "Error code:" in resp_str or "tool_use_failed" in resp_str:
@@ -237,8 +239,6 @@ class CommandWorker(QThread):
         except Exception as e:
             logger.error(f"Command execution error: {e}", exc_info=True)
             self.error_signal.emit(task_id, str(e))
-        finally:
-            loop.close()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -604,15 +604,20 @@ class HoloMessageCard(SciFiTechCard):
         head.addWidget(clock_lbl)
         layout.addLayout(head)
 
-        # Parse message segments: text, code blocks, and diagrams
+        # Parse message segments: text, code blocks, diagrams, and thoughts
         from gui.widgets.message_parser import parse_message_segments, SegmentType
         from gui.widgets.diagram_viewer import DiagramArtifactWidget
         from gui.widgets.code_block_widget import CodeBlockWidget
+        from gui.widgets.thought_block_widget import ThoughtBlockWidget
 
         segments = parse_message_segments(text)
         for seg in segments:
-            if seg.type == SegmentType.DIAGRAM:
-                diag = DiagramArtifactWidget(seg.content, title=seg.title or "Aura Architecture Flow", parent=self)
+            if seg.type == SegmentType.THOUGHT:
+                thought_widget = ThoughtBlockWidget(seg.content, title=seg.title or "Thought Process", parent=self)
+                layout.addWidget(thought_widget)
+            elif seg.type == SegmentType.DIAGRAM:
+                default_title = "Aura Interface Screen" if "<svg" in seg.content.lower() else "Aura Architecture Flow"
+                diag = DiagramArtifactWidget(seg.content, title=seg.title or default_title, parent=self)
                 layout.addWidget(diag)
             elif seg.type == SegmentType.CODE:
                 code_widget = CodeBlockWidget(seg.content, language=seg.language, parent=self)
@@ -663,6 +668,15 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(build_global_stylesheet() + main_window_stylesheet())
 
         self._settings = QSettings(ORG_NAME, APP_NAME)
+        self.session_id: str = f"sess_gui_{uuid.uuid4().hex[:8]}"
+
+    def reset_session(self) -> None:
+        """Rotates session_id for a new conversation session and clears in-memory history."""
+        self.session_id = f"sess_gui_{uuid.uuid4().hex[:8]}"
+        from core.aura_core import AuraCore
+        core = AuraCore.get_instance()
+        if core and hasattr(core, "reset_session"):
+            core.reset_session()
 
         # Drag & resize state
         self._drag_pos = None
@@ -1394,7 +1408,7 @@ class MainWindow(QMainWindow):
             self._active_worker.quit()
             self._active_worker.wait(400)
 
-        self._active_worker = CommandWorker(text, parent=self)
+        self._active_worker = CommandWorker(text, session_id=self.session_id, parent=self)
         self._active_worker.step_signal.connect(self._on_step_updated)
         self._active_worker.finished_signal.connect(self._on_worker_finished)
         self._active_worker.error_signal.connect(self._on_worker_error)

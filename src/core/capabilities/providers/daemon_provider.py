@@ -146,4 +146,62 @@ class DaemonCapabilityProvider(ICapabilityProvider):
                 },
                 output_schema={"type": "object"},
             ),
+            Capability(
+                name="subagent.dispatch",
+                domain="daemon",
+                description="Dispatch an isolated, non-blocking background subagent task",
+                risk_level=ActionRisk.LOW,
+                permissions=["daemon.execute", "subagent.dispatch"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "task_description": {"type": "string"},
+                        "profile": {"type": "string"},
+                        "context": {"type": "object"},
+                    },
+                    "required": ["task_description"],
+                },
+                output_schema={
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"},
+                        "worker_name": {"type": "string"},
+                        "status": {"type": "string"},
+                    },
+                },
+            ),
+            Capability(
+                name="subagent.status",
+                domain="daemon",
+                description="Query status and telemetry of running background subagents",
+                risk_level=ActionRisk.LOW,
+                permissions=["daemon.read"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "worker_name": {"type": "string"},
+                    },
+                },
+                output_schema={
+                    "type": "object",
+                    "properties": {
+                        "workers": {"type": "array"},
+                    },
+                },
+            ),
+            Capability(
+                name="subagent.cancel",
+                domain="daemon",
+                description="Cancel an active background subagent task",
+                risk_level=ActionRisk.MEDIUM,
+                permissions=["daemon.manage"],
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "worker_name": {"type": "string"},
+                    },
+                    "required": ["worker_name"],
+                },
+                output_schema={"type": "object"},
+            ),
         ]

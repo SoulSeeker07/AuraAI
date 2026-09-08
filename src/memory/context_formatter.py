@@ -27,19 +27,21 @@ class MemoryContextFormatter:
         recalled_memories: List[MemoryItem],
         active_project: str = "global",
         include_provisional: bool = False,
+        anti_patterns: Optional[List[str]] = None,
     ) -> str:
         """
         Format recalled memories into structured <user_preferences>, <project_directives>,
-        and <procedural_memory> blocks. Excludes SUPERSEDED and PROVISIONAL (unless explicitly requested).
+        <verified_procedures>, and <procedural_anti_patterns> blocks.
+        Excludes SUPERSEDED and PROVISIONAL (unless explicitly requested).
         """
-        if not recalled_memories:
+        if not recalled_memories and not anti_patterns:
             return ""
 
         confirmed_preferences: List[str] = []
         project_directives: List[str] = []
         procedural_insights: List[str] = []
 
-        for mem in recalled_memories:
+        for mem in (recalled_memories or []):
             status = mem.metadata.get("status", "CONFIRMED")
             if status == "SUPERSEDED":
                 continue
@@ -66,6 +68,11 @@ class MemoryContextFormatter:
         if procedural_insights:
             proc_block = "\n".join(procedural_insights[:3])
             sections.append(f"<verified_procedures>\n{proc_block}\n</verified_procedures>")
+
+        if anti_patterns:
+            anti_lines = [p if p.strip().startswith("- ") else f"- {p.strip()}" for p in anti_patterns[:5]]
+            anti_block = "\n".join(anti_lines)
+            sections.append(f"<procedural_anti_patterns>\n{anti_block}\n</procedural_anti_patterns>")
 
         if not sections:
             return ""

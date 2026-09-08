@@ -683,4 +683,180 @@ This sequence establishes the scheduled implementation order for ongoing reliabi
     - *Context*: `AutonomyPolicyGate` (M24 Phase 4) is not currently instantiated during `AuraCore._initialize_components()` boot path; it only exists in unit tests and validation scripts. Additionally, `NativeManagerRegistry` performs lazy discovery of 17 Win32/WMI managers (taking ~3.65s). If `AutonomyPolicyGate` is wired into live event processing on first demand rather than application boot, the first event burst will experience this cold-start delay, causing the sliding-window rate limiter (`rate_limit_window_seconds=2.0`) to evict early events.
     - *Remediation*: When wiring the live autonomous loop into production runtime, ensure `CapabilityRegistry.get_instance()` and `NativeManagerRegistry.get_instance()` are explicitly called in `AuraCore._initialize_components()` at boot time before any event dispatcher is started.
 
+---
 
+34. **`execution.PermissionManager` Has No Working Grant Path — Permanent Deny Stub (TD-018)**
+    - *Severity*: 🟡 **DORMANT / FUNCTIONALITY GAP** — zero current impact; becomes P0 blocker before `BrainIntegration` is wired into the live agent loop
+    - *Location*: [`src/execution/permission_manager.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/execution/permission_manager.py#L63-L255), [`src/brain/brain_integration.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/brain/brain_integration.py#L98-L100)
+    - *Context*: `execution.PermissionManager.__init__` populates `_global_permissions` as `{level: set() for level in PermissionLevel}` — all empty sets. Nothing in `src/` ever calls `set_global_permission()` to populate them (the only caller is `tests/test_execution_engine.py:473`). As a result:
+      - `has_permission()` always returns `False` (empty set → `action.value not in required_permissions`)
+      - `check_permission()` always raises `PermissionDeniedError` — the `if allow_confirmation: pass` branch at line 244 is a **literal no-op stub** with the comment `"In production, this would prompt the user via the UI"`
+      - `request_permission()` always returns `False`
+      - The only escape is `allow_all=True`, which is never set on the live boot path
+
+      **Current impact: zero.** `BrainIntegration` (which constructs `ExecutionEngine`) is never imported or instantiated from any file in `src/`. It is disconnected scaffolding — confirmed by: no `brain_integration` import anywhere in `src/`; no `init_execution_engine()` call outside `brain_integration.py` itself; `AuraBrain.__init__` does not reference `BrainIntegration`.
+
+      **Future impact: P0 blocker.** If `BrainIntegration` is wired into the live agent loop without fixing this, every non-SAFE tool execution through `ExecutionEngine` will silently, permanently fail with `PermissionDeniedError` — indistinguishable from a real permission denial.
+    - *Remediation* (required before wiring `BrainIntegration` into the live path):
+      1. Replace the `pass` stub in `check_permission()` with a real approval dispatch — pluggable confirmation handler or event-bus round-trip to the notch/overlay.
+      2. Seed `_global_permissions` at `ExecutionEngine` construction with a default allow-set per `PermissionLevel`, or redesign to deny-by-default per action with explicit opt-in grants.
+      3. Verify with a live end-to-end test: `BrainIntegration` → `ExecutionEngine.execute()` on a MEDIUM-risk tool reaches the tool body rather than raising.
+    - *Not tracked elsewhere*: the M15 milestone doc marks the permission system COMPLETE based on `src/agents/permission_manager.py`. `src/execution/permission_manager.py`'s stub state was not previously logged.
+
+---
+
+35. **Three Independent `PermissionManager` Implementations with Divergent Default-Safety Semantics (TD-019)**
+    - *Severity*: ⚠️ **ARCHITECTURAL PREREQUISITE** — must be resolved or explicitly documented before any new destructive capability is added to any layer
+    - *Location*:
+      - [`src/agents/permission_manager.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/agents/permission_manager.py) — used by `ProcessManager` / `DesktopAgent`. Default: blocking `input()` prompt, now guarded by `isatty()` + `EOFError` catch (fixed 2026-09-07). No-handler-injected = fail-closed in non-interactive context.
+      - [`src/execution/permission_manager.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/execution/permission_manager.py) — used by `ExecutionEngine`. No `input()`. No grant path (see TD-018). Always deny.
+      - [`src/desktop/permission_manager.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/desktop/permission_manager.py) — used by `NativeManager` / Win32 layer. No `input()`. SAFE → auto-approve, MODERATE → auto-approve (no handler), DANGEROUS → auto-deny (no handler).
+    - *Risk*: A developer adding a new destructive capability and wiring it through the wrong gate silently gets a different safety contract. `desktop.PermissionManager`'s MODERATE auto-approve means any capability misclassified as MODERATE (when it should be DANGEROUS) bypasses confirmation entirely when no handler is present. The `DEFAULT_CAPABILITY_RISK` table in `src/desktop/permission_manager.py:40–84` is the sole classification source for the entire Win32 layer and has not had an independent audit pass.
+    - *Remediation*:
+      1. Audit `DEFAULT_CAPABILITY_RISK` against all capabilities registered in `NativeManagerRegistry` — verify no DANGEROUS-class capability is classified MODERATE.
+      2. Consolidate to a shared base class with a single default-safety contract, or publish an explicit routing document mapping every destructive capability to exactly one gate owner with its default behavior.
+      3. Add a test asserting any capability with `ActionRisk.HIGH` or `requires_confirmation=True` in `capability_registry.py` has a DANGEROUS (not MODERATE/SAFE) entry in `DEFAULT_CAPABILITY_RISK`.
+
+---
+
+36. **`MasterOrchestrator`/`BackendRegistry` Dispatch Pipeline Orphaned from Interactive Requests — Pre-LLM Architecture Dead Branch (TD-020)**
+    - *Severity*: ✅ **RESOLVED (TD-020)** — `UnifiedToolDispatcher` expanded from 15 to 21 discrete tools, providing first-class interactive tool parity with underlying domain adapters (`SmartHomeBackendAdapter`, `EmailBackendAdapter`, `CalendarBackendAdapter`) and governed desktop primitives (`desktop_clipboard`, `desktop_set_volume`, `desktop_set_brightness`).
+    - *Remediation Applied*:
+      1. Added 6 first-class tool schemas to `UnifiedToolDispatcher.get_tool_definitions()`: `desktop_clipboard`, `desktop_set_volume`, `desktop_set_brightness`, `smarthome_control`, `email_action`, and `calendar_action`.
+      2. Mapped risk via `_map_tool_to_risk` and `classify_action_risk`: `email_action(action="send")`, `calendar_action(action="delete_event")`, and `smarthome_control(action="lock"|"unlock")` are strictly classified as `ActionRisk.HIGH` and gated by `CryptographicApprovalAuthority` HMAC tickets.
+      3. Routed execution cleanly to `AuraToolRegistry` (delegating to `NativeManagerRegistry` from TD-021), `SmartHomeBackendAdapter`, `EmailBackendAdapter`, and `CalendarBackendAdapter`.
+      4. Hardened root plugin discovery in `src/plugins/__init__.py` and backend adapters to bridge namespace packages.
+      5. Verified 23/23 tests passing in `tests/core/tools/test_unified_tool_dispatcher.py` and 18/18 in `tests/core/tools/test_aura_tool_registry_delegation.py`.
+    - *Location*:
+      - Hard early-return: [`src/core/aura_core.py:2177`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/aura_core.py#L2177-L2180)
+      - Dead branch entry: [`src/core/aura_core.py:2182`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/aura_core.py#L2182-L2259) (MasterOrchestrator path)
+      - Registry: [`src/core/backends/backend_registry.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/backend_registry.py)
+      - Dispatch: [`src/core/orchestration/master_orchestrator.py`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/orchestration/master_orchestrator.py)
+      - All 26 adapter files: [`src/core/backends/adapters/`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/backends/adapters/)
+    - *Root cause*: `AuraCore.process_request()` contains a hard early return at line 2177:
+      ```python
+      if self.llm_enabled and self.groq_client is not None:
+          return await self.get_ai_response(user_goal, enable_tools=True, ...)
+      ```
+      `llm_enabled = True` is set whenever `GROQ_API_KEY` / `GROQ_API_KEYS` is present in the environment (line 944). This is true in every realistic deployment (doctor confirms 5 keys configured and in rotation). `llm_enabled = False` occurs only on: (1) missing Groq API key — fresh install or CI; (2) `groq` package not installed; (3) `KeyPool.get_groq_client()` exception. **In no normal user deployment does the `MasterOrchestrator`/`BackendRegistry` interactive path execute.**
+
+      The `get_ai_response` path routes exclusively through `UnifiedToolDispatcher` (14 tools) → `AuraToolRegistry` → direct OS/engine calls. `UnifiedToolDispatcher` and `AuraToolRegistry` have **zero imports of or references to `BackendRegistry`** (confirmed by full-repo grep).
+    - *Full scope — all 26 registered backends classified*:
+
+      | Backend | Interactive Live? | Reason |
+      |---|---|---|
+      | `desktop_engine` (277 caps) | ❌ Dead (adapter & engine bypassed) | `BackendRegistry` path dead. Executive-brain wiring exists (`register_engine("desktop", ...)`) but `process_via_executive_brain` has zero callers in `src/`. **Crucially, interactive desktop actions DO NOT use `DesktopExecutionEngine` or `NativeManagerRegistry`**: `AuraToolRegistry` implements its own lightweight, direct OS primitives (`win32gui` for windows, `pycaw` for volume, `sbc` for brightness, `win32clipboard` for clipboard) and `AmbientContextBuilder` reads clipboard via raw `win32clipboard`. The 17 Win32 native managers are completely bypassed on the interactive LLM path. |
+      | `Native Desktop Engine` (14 caps) | ❌ Dead | Thin wrapper over `desktop_engine` via registry. |
+      | `research_engine` (5 caps) | ❌ Dead | Same executive-brain wiring dead-end as above. |
+      | `Gemini Research Engine` (3 caps) | ❌ Dead | `BackendRegistry` path dead. |
+      | `Coding Backend` (14 caps) | ❌ Dead | `BackendRegistry` path dead. |
+      | `browser` / Playwright (49 caps) | ❌ Dead (adapter) | *Live* Playwright is reached via `UnifiedToolDispatcher`→`browser_navigate_and_read` directly — the `PlaywrightBrowserAdapter` class itself is bypassed. |
+      | `MemoryBackend` (7 caps) | ❌ Dead (adapter) | Memory reached via `AuraCore.memory` attribute directly. `MemoryBackend` adapter bypassed. |
+      | `Terminal Engine` (14 caps) | ❌ Dead (adapter) | `terminal_run_command` in `UnifiedToolDispatcher` calls `subprocess` directly. |
+      | `Input Simulation Engine` (17 caps) | ❌ Dead | Bypassed by `AuraToolRegistry` direct primitives. |
+      | `Notification Engine` (16 caps) | ❌ Dead | Bypassed on interactive path. |
+      | `Scheduler Engine` (13 caps) | ⚠️ **Daemon-live only** | `daemon_runtime.py` calls `BackendRegistry.select_best_backend(job.capability)` for background jobs. |
+      | `Screen Action Engine` (11 caps) | ❌ Dead | Bypassed on interactive path. |
+      | `vision_engine` (6 caps) | ❌ Dead (adapter) | Live vision uses `VisionManager()` directly in `aura_core.py`. |
+      | `voice_engine` (5 caps) | ⚠️ **Notch-process live only** | `VoiceBackendAdapter` is dead on the interactive text/CLI request path. The underlying TTS/voice engine (`ContinuousVoiceLoop`/`TTSManager`) is live, but runs in the separate `run_voice_notch.py` process, completely independent of `process_request` tool dispatch. |
+      | `daemon_engine` (9 caps) | ⚠️ **Daemon-live only** | `daemon_runtime.py` routes through `BackendRegistry` for job dispatch. |
+      | `Personal OS Engine` (10 caps) | ❌ Dead (adapter) | Agenda tool calls `AuraCore` attributes directly. |
+      | `Email Engine` (13 caps) | ❌ Dead | Not in `UnifiedToolDispatcher`. LLM has no email tool. |
+      | `Calendar Engine` (14 caps) | ❌ Dead | |
+      | `Office Engine` (16 caps) | ❌ Dead | |
+      | `CodeAct Engine` (8 caps) | ❌ Dead (adapter) | `create_file_artifact` tool calls `DynamicCodeActExecutor` directly. `CodeActBackendAdapter` bypassed. |
+      | `Docker Engine` (13 caps) | ❌ Dead | |
+      | `MCP Engine` (9 caps) | ❌ Dead | |
+      | `Settings Engine` (14 caps) | ❌ Dead | |
+      | `Software Engine` (11 caps) | ❌ Dead | |
+      | `Security Engine` (15 caps) | ❌ Dead | |
+      | `SmartHome Engine` (29 caps) | ❌ Dead | |
+
+      **Net**: 22 backends dead for interactive text/CLI requests. 2 reachable only for daemon/scheduled jobs (`Scheduler`, `daemon_engine`). 1 live only in a separate dedicated daemon process (`voice_engine` via `run_voice_notch.py`). 4 have shadow live implementations where the underlying engine is live but the BackendRegistry adapter is bypassed (Browser via Playwright, CodeAct via `DynamicCodeActExecutor`, Memory via direct attribute, Terminal via `subprocess`).
+
+    - *Case Forensics: How Axis-3 Test #1 ("read clipboard") Actually Executed*:
+      In the live verification test of `core.process_request('read clipboard')`:
+      1. Request entered `AuraCore.process_request()` line 2177 and branched to `get_ai_response()`.
+      2. `_build_chat_messages()` invoked `AmbientContextBuilder.build_ambient_context(self, query='read clipboard')`.
+      3. `AmbientContextBuilder._get_fresh_clipboard_preview()` detected `"clipboard"` in the query, bypassed freshness gating, opened raw `win32clipboard`, read the active text buffer, and injected it into the LLM system prompt under `📋 **Clipboard Buffer**`.
+      4. The LLM saw the text directly in its ambient perception context and synthesized the answer (`"Your current clipboard contains: > Agreed on TD-018/019..."`) **without dispatching any tool call whatsoever**.
+      5. Even if a tool call had been generated (`desktop_clipboard`), `AuraToolRegistry._handle_clipboard` ALSO invokes raw `win32clipboard` directly.
+      6. **Conclusion**: At no point did the execution touch `ClipboardManager`, `NativeManagerRegistry`, or `DesktopExecutionEngine`. The session's P0 fix (restoring 17 native managers via MRO discovery) hardens `AuraDoctor` health checks and the offline planner/ACA fallback, but is entirely shadowed on the interactive LLM path by `AuraToolRegistry` and `AmbientContextBuilder`.
+
+    - *Impact on earlier audit work*: The session-level security/functionality fixes applied to `EmailBackendAdapter`, `DefaultGeminiResearchAdapter`, and `agents.PermissionManager` (which is downstream of `AgentOrchestrator`, also orphaned — `multi_agent_orchestrator` stored at line 2892 of `aura_core.py` with zero reads outside the initializer) are **correct fixes for when those paths execute** but have zero live safety impact in current interactive deployments. They are hardened for daemon and LLM-disabled modes.
+
+    - *Live dispatch path for reference* (interactive requests, Groq configured):
+      1. `AuraCore.process_request()` line 2177 → early return to `get_ai_response()`
+      2. `get_ai_response()` → Groq function-calling with `UnifiedToolDispatcher.get_tool_definitions()` (14 tools: `read_file`, `edit_file`, `run_tests`, `terminal_run_command`, `system_get_telemetry`, `vision_inspect_screen`, `browser_navigate_and_read`, `browser_interact`, `desktop_launch_app`, `desktop_control_window`, `memory_save_fact`, `memory_query_facts`, `personal_os_agenda`, `task_plan_update`, `create_file_artifact`)
+      3. `UnifiedToolDispatcher.dispatch()` → M15 `CryptographicApprovalAuthority` gate → `AuraToolRegistry` / direct OS/engine calls
+      4. `BackendRegistry` is **never consulted** on this path.
+
+    - *Remediation options* (decision required before roadmap action):
+      1. **Wire it in as a pre-LLM capability layer**: Before calling `get_ai_response`, run intent detection; for intents the LLM has no tool for (Email, Calendar, SmartHome, Office, Docker, MCP), dispatch to `MasterOrchestrator.process_request_async()` directly rather than letting the LLM decline. Requires capability-to-intent routing table.
+      2. **Extend `UnifiedToolDispatcher`'s 14 tools**: Add `email.send`, `calendar.*`, `smarthome.*` etc. as first-class Groq function-calling tools, implemented directly (not via adapter classes). Adapters become redundant.
+      3. **Delete the dead adapters**: Accept that `BackendRegistry`'s role is daemon/background job dispatch only. Document this explicitly and delete or archive the 20 dead interactive-path adapters (Email, Calendar, Office, Docker, MCP, Settings, Software, Security, SmartHome, Input, Notification, Scheduler, Screen, Vision, Voice, Coding, Gemini Research, CodeAct, PersonalOS adapters). Keep `desktop_engine` and `browser` adapters since their underlying engines are live via shadow paths.
+      4. **Status quo (lowest risk)**: Leave the dead branch in place; it activates automatically if Groq is ever disabled or unavailable, functioning as a non-LLM fallback. Document it as intentional offline-mode architecture.
+
+    - *Prerequisite for `roadmap.md` correction*: Several milestones graded as "Live Reality" (notably Calendar, Security, Settings engines, SmartHome, MCP) were verified against `BackendRegistry` registration alone, not against `UnifiedToolDispatcher` reachability. Those grades should be updated to reflect that registration ≠ interactive reachability. The `AuraDoctor` backend count and health metrics report `BackendRegistry` state (all 26 healthy), which remains accurate — but the displayed count creates the impression of 26 live interactive capabilities when 22 of them are daemon/offline-fallback only.
+
+---
+
+37. **`AuraToolRegistry` Raw Win32 Shadow Implementation & Gating Bypass Hazard (TD-021)**
+    - *Severity*: ⚠️ **PARTIALLY RESOLVED / ARCHITECTURAL CONSOLIDATION OPEN**
+    - *Status*:
+      - ✅ **Safety Risk-Gating Vulnerability RESOLVED**: `UnifiedToolDispatcher._map_tool_to_risk` patched to dynamically inspect arguments. Destructive window termination (`action="close"`), mutating terminal execution, dangerous system app launches, and form submissions are now strictly mapped to canonical high-risk capabilities (`close_window`, `terminal.execute`, `browser.submit`) and gated by M15 `CryptographicApprovalAuthority` tickets. Verified live with end-to-end unit tests (18/18 passing).
+      - ✅ **Architectural Duplication RESOLVED (TD-021)**: `AuraToolRegistry` consolidated to delegate desktop primitives directly to `NativeManagerRegistry` (`WindowManager`, `ClipboardManager`, `AudioManager`, `DisplayManager`) with verified fallback compatibility.
+    - *Location*:
+      - Central Risk Mapper: [`src/core/tools/unified_tool_dispatcher.py:317-351`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/tools/unified_tool_dispatcher.py#L317-L351)
+      - Desktop Primitives Delegation: [`src/core/tools/aura_tool_registry.py:528-760`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/tools/aura_tool_registry.py#L528-L760)
+      - Passive Perception: [`src/core/context/ambient_context_builder.py:164-205`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/context/ambient_context_builder.py#L164-L205)
+    - *Context*:
+      `AuraToolRegistry` is the **only live execution surface** for interactive user requests (CLI, GUI, Voice text turns) across desktop automation. It now delegates all desktop primitives through the governed, audited `NativeManagerRegistry` stack while preserving 100% backward-compatible fallbacks.
+    - *Concrete Risk-Gating Audit Findings & Resolution*:
+      1. **Blinded Window Control Risk Mapping (Fixed)**:
+         [`UnifiedToolDispatcher._map_tool_to_risk`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/tools/unified_tool_dispatcher.py#L338-L339) previously hardcoded:
+         ```python
+         elif name == "desktop_control_window":
+             return ("desktop", "window.focus", arguments)
+         ```
+         Regardless of whether `arguments["action"]` was `"close"`, `"minimize"`, or `"focus"`, it evaluated to `window.focus` (`ActionRisk.LOW`, auto-approved). An LLM calling `desktop_control_window(action="close")` killed windows immediately with zero confirmation.
+         *Resolution*: Patched `_map_tool_to_risk` to dynamically inspect `arguments["action"]`. When `action == "close"`, it maps to canonical `close_window` (`ActionRisk.HIGH`, `requires_confirmation=True`). Gated live by M15 `CryptographicApprovalAuthority` tickets.
+      2. **Systemic Capability Registry Desynchronization (Fixed)**:
+         Central `UnifiedToolDispatcher._map_tool_to_risk` previously used ad-hoc action names (`command.execute`, `window.focus`, `search`, `open_app`) that were absent from `CapabilityRegistry` (which defines 337 canonical capabilities). Consequently, `classify_action_risk` fell through to generic keyword matching.
+         *Resolution*: Mapped all tool actions to canonical `CapabilityRegistry` keys:
+         - `terminal_run_command`: Safe inspection commands map to `terminal.get_output` (auto-approved `LOW`); mutating/chaining commands map to `terminal.execute` (`ActionRisk.HIGH`, ticket-gated).
+         - `desktop_launch_app`: Launching dangerous system binaries or shells (`cmd`, `powershell`, `pwsh`, `regedit`, `format`, `rundll32`) maps to `terminal.execute` (`ActionRisk.HIGH`, ticket-gated); benign apps map to `app_open` (`MEDIUM`, auto-approved).
+         - `browser_interact`: Form submission (`submit`, `form.submit`) maps to `browser.submit` (`ActionRisk.HIGH`, ticket-gated).
+      3. **Ticket Double-Redemption Resolved**:
+         `AuraToolRegistry._run_terminal_command` previously attempted to re-sign and re-verify tickets already redeemed upstream by `UnifiedToolDispatcher`. Updated `_run_terminal_command` to inspect `auth.get_ticket(ticket_id).is_redeemed`, avoiding secondary signature failure.
+      4. **Clipboard Mechanism Duality (Documented)**:
+         - *Passive Perception*: `AmbientContextBuilder._get_fresh_clipboard_preview` reads raw `win32clipboard` and injects buffer text directly into the LLM system prompt. The model can answer clipboard queries without invoking any tool.
+         - *Active Tool*: `AuraToolRegistry._handle_clipboard` provides an active tool with a 3-attempt retry loop that delegates to `ClipboardManager` before falling back to raw `win32clipboard` and session cache.
+      5. **`desktop_launch_app` Blocklist Incompleteness Residual Risk**:
+         The dangerous binary filter (`powershell`, `cmd`, `regedit`, `rundll32`, `wscript`, etc.) in `_map_tool_to_risk` is an explicit denylist. Arbitrary executables or scripting runtimes not enumerated on that list (e.g., custom batch files, unlisted interpreters like `python.exe` invoked directly, third-party administrative utilities) will default to `app_open` (`ActionRisk.MEDIUM`, auto-approved in ASSISTED mode). True structural safety requires either an allowlist of recognized application aliases or delegating executable resolution to `DesktopExecutionEngine`'s policy gate.
+       6. **`create_file_artifact` / `codeact.synthesize` Canonical Capability Registration & Dispatcher Parity**:
+          `codeact.synthesize` was previously missing from `CapabilityRegistry` entirely, relying on a hardcoded provisional environment variable check `AURA_PROVISIONAL_ARTIFACT_CONFIRM` (default `"1"`) inside `UnifiedToolDispatcher.dispatch()`. This represented a dual source of truth and an architectural bypass of `CapabilityRegistry`.
+          - *Fix Applied*:
+            1. Registered `codeact.synthesize` as a canonical capability in `CodingCapabilityProvider` ([`coding_provider.py:213-243`](file:///d:/Sreekanta/VS%20Code%20Project/Desktop%20AI/AuraAI/src/core/capabilities/providers/coding_provider.py#L213-L243)) with baseline `ActionRisk.MEDIUM` (parity with `TaskDecomposer`).
+            2. Fully removed the hardcoded `AURA_PROVISIONAL_ARTIFACT_CONFIRM` override block from `UnifiedToolDispatcher.dispatch()`. The dispatcher now derives risk strictly through `classify_action_risk(domain, action_verb, risk_params)`.
+            3. Dynamic provisional elevation is handled in `CodingCapabilityProvider.get_capability()`: when `AURA_PROVISIONAL_ARTIFACT_CONFIRM == "1"`, it dynamically elevates the capability to `ActionRisk.HIGH` (`requires_confirmation=True`). When unset or `"0"`, it cleanly falls back to canonical `ActionRisk.MEDIUM` with zero dispatcher code modifications. Single source of truth is fully restored.
+          - *Architectural Note on Lifecycle Exception*:
+            In `CapabilityRegistry`, capabilities are designed to be static, immutable contracts registered once at system boot. `codeact.synthesize` is currently the **sole intentional exception** across the entire registry that dynamically re-reads `os.environ` per lookup in `get_capability()`. All other capabilities remain strictly fixed at registration time. This deliberate exception allows the provisional safety gate to be toggled or retired at runtime without requiring an application restart or `CapabilityRegistry.reset_instance()`. Once `AURA_PROVISIONAL_ARTIFACT_CONFIRM` is formally retired in a future release, this dynamic branch will be pruned and `codeact.synthesize` will revert to the standard static registration pattern.
+       7. **Dual Tool-Registry Elimination & Legacy Schema Deprecation**:
+          - *Finding*: `AuraToolRegistry` maintained an unmaintained 17-tool schema (`get_tool_definitions()`) and un-gated legacy dispatcher (`execute_tool()`) alongside `UnifiedToolDispatcher` (15 tools). The 17-tool schema defined unmapped prototypes (`desktop_set_volume`, `desktop_set_brightness`, `docker_container_action`, `mcp_discover_and_call`), with `_docker_action` even retaining an auto-signing bypass (`auth.generate_human_signature(ticket_id)`).
+          - *Streaming Drift Resolved*: `AuraCore.get_ai_response_stream:1263` previously passed `AuraToolRegistry.get_tool_definitions()` into Groq streaming kwargs. Because the streaming text loop has no tool execution handler, any model attempt to invoke tools yielded 0 tokens and resulted in silent failure.
+          - *Fix Applied*:
+            1. Updated `AuraCore.get_ai_response_stream()` to default `enable_tools=False`, ensuring conversational streaming streams text tokens cleanly without provoking unhandled tool-call drops.
+            2. Formally deprecated `AuraToolRegistry.get_tool_definitions()` and `AuraToolRegistry.execute_tool()`, establishing `UnifiedToolDispatcher` as the sole production source of truth.
+            3. Scheduled `AuraToolRegistry` dispatcher methods for complete removal during the upcoming `NativePrimitivesAdapter` architectural consolidation.
+       8. **Desktop Primitives Delegation to NativeManagerRegistry (TD-021 RESOLVED)**:
+          - *Resolution*:
+            1. **`_launch_app`**: Queries `NativeManagerRegistry.get_instance().get_manager("window")` and executes `"app_open"`, leveraging window reuse and path resolution. Falls back gracefully to `common_apps` dictionary and `subprocess.Popen(target, shell=True)` if unresolved or on failure.
+            2. **`_control_window`**: Maps actions (`focus`, `minimize`, `maximize`, `restore`, `close`) to canonical `WindowManager` capabilities (`window.activate`, `window.minimize`, `window.maximize`, `window.restore`, `window.close`), ensuring target window existence verification and `SafetyPolicy` enforcement. Falls back to direct `win32gui` enumeration if manager unavailable.
+            3. **`_set_volume`**: Delegates level and mute controls to `AudioManager` (`audio.set_volume`, `audio.toggle_mute`), falling back to direct `pycaw`.
+            4. **`_set_brightness`**: Delegates brightness setting to `DisplayManager` (`display.set_brightness`), falling back to direct `screen_brightness_control`.
+            5. **`_handle_clipboard`**: Delegates text read/write to `ClipboardManager` (`clipboard.read_text`, `clipboard.write_text`), falling back to `win32clipboard`, `pyperclip`, and session cache.
+          - *Regression Verification*:
+            - `tests/core/tools/test_aura_tool_registry_delegation.py`: **16/16 passed** (7.52s)
+            - `tests/core/tools/test_unified_tool_dispatcher.py`: **18/18 passed** (32.32s)
+            - Desktop Native Managers Suite: **45/45 passed** (84.11s)

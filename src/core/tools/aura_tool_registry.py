@@ -28,7 +28,10 @@ class AuraToolRegistry:
     @classmethod
     def get_tool_definitions(cls) -> list[dict[str, Any]]:
         """
-        Return the list of OpenAI/Groq function calling tool definitions.
+        [LEGACY / DEPRECATED] Legacy 17-tool definition schema.
+        NOTICE: UnifiedToolDispatcher.get_tool_definitions() (15 tools) is the sole authoritative
+        production schema. This method is preserved only for legacy test harness fixtures
+        (e.g., test_bridged_backend_tools.py) pending consolidation (TD-021 §7).
         """
         return [
             {
@@ -395,7 +398,10 @@ class AuraToolRegistry:
         cls, name: str, arguments: dict[str, Any], aura_core: Any = None, emitter: Any = None
     ) -> dict[str, Any]:
         """
-        Execute the tool by name with provided arguments.
+        [LEGACY / DEPRECATED] Un-gated legacy execution entry point.
+        NOTICE: UnifiedToolDispatcher.dispatch() is the sole authoritative, gated dispatcher
+        in production. This method has zero callers in src/ and is preserved only for
+        legacy test fixtures pending consolidation (TD-021 §7).
         """
         logger.info(f"[AuraToolRegistry] Executing tool '{name}' with args: {arguments}")
 
@@ -522,6 +528,25 @@ class AuraToolRegistry:
     @staticmethod
     def _launch_app(application: str) -> dict[str, Any]:
         app_clean = application.lower().strip()
+
+        # 1. Primary: Delegate through NativeManagerRegistry WindowManager
+        try:
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            win_mgr = NativeManagerRegistry.get_instance().get_manager("window")
+            if win_mgr is not None:
+                res = win_mgr.execute("app_open", app_name=app_clean, goal=f"launch {application}")
+                if res.success:
+                    reused = (res.data or {}).get("reused", False)
+                    msg = (
+                        f"Switched to existing window for '{application}'."
+                        if reused
+                        else f"Launched '{application}' successfully."
+                    )
+                    return {"status": "success", "message": msg}
+        except Exception as win_err:
+            logger.debug(f"[AuraToolRegistry] WindowManager execution fallback: {win_err}")
+
+        # 2. Fallback: Local known dictionary and direct shell/protocol invocation
         common_apps = {
             "spotify": "spotify:",
             "calculator": "calc",
@@ -543,25 +568,6 @@ class AuraToolRegistry:
             "terminal": "wt",
         }
 
-        # Check WindowManager resolver for known apps and web URLs (e.g. instagram, youtube, whatsapp)
-        try:
-            from desktop.native.managers.window_manager import WindowManager
-            res_type, resolved_target = WindowManager()._resolve_app_executable(app_clean)
-            if res_type == "url" and resolved_target:
-                webbrowser.open(resolved_target)
-                return {"status": "success", "message": f"Opened '{application}' in web browser."}
-            elif res_type == "protocol" and resolved_target:
-                if os.name == "nt":
-                    os.system(f"start {resolved_target}")
-                else:
-                    webbrowser.open(resolved_target)
-                return {"status": "success", "message": f"Launched '{application}' successfully."}
-            elif res_type == "exe" and resolved_target and os.path.isabs(resolved_target):
-                subprocess.Popen(f'start "" "{resolved_target}"', shell=True)
-                return {"status": "success", "message": f"Launched '{application}' successfully."}
-        except Exception as res_err:
-            logger.debug(f"[AuraToolRegistry] WindowManager lookup fallback: {res_err}")
-
         target = common_apps.get(app_clean, application)
         try:
             if target.endswith(":"):
@@ -574,6 +580,44 @@ class AuraToolRegistry:
 
     @staticmethod
     def _control_window(window_title: str, action: str) -> dict[str, Any]:
+        action_clean = action.lower().strip()
+        action_map = {
+            "focus": "window.activate",
+            "close": "window.close",
+            "minimize": "window.minimize",
+            "maximize": "window.maximize",
+            "restore": "window.restore",
+        }
+        cap = action_map.get(action_clean)
+        if not cap:
+            return {"status": "error", "message": f"Unknown window action: {action}"}
+
+        # 1. Primary: Delegate through NativeManagerRegistry WindowManager
+        try:
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            win_mgr = NativeManagerRegistry.get_instance().get_manager("window")
+            if win_mgr is not None:
+                matched_hwnd = win_mgr._find_window(window_title) if hasattr(win_mgr, "_find_window") else None
+                if not matched_hwnd:
+                    return {"status": "error", "message": f"No active window found matching '{window_title}'."}
+
+                res = win_mgr.execute(cap, window_title=window_title, window_handle=matched_hwnd, goal=f"{action} {window_title}")
+                if res.success:
+                    title = (res.data or {}).get("window_title") or window_title
+                    verbs = {
+                        "focus": f"Brought window '{title}' to the foreground.",
+                        "minimize": f"Minimized window '{title}'.",
+                        "maximize": f"Maximized window '{title}'.",
+                        "restore": f"Restored window '{title}'.",
+                        "close": f"Closed window '{title}'.",
+                    }
+                    return {"status": "success", "message": verbs.get(action_clean, f"Window action '{action}' performed successfully.")}
+                else:
+                    return {"status": "error", "message": res.error or f"Failed to {action} window '{window_title}'."}
+        except Exception as win_err:
+            logger.debug(f"[AuraToolRegistry] WindowManager delegation fallback: {win_err}")
+
+        # 2. Fallback: Direct win32gui enumeration
         try:
             import win32gui
             import win32con
@@ -594,20 +638,20 @@ class AuraToolRegistry:
             if not matched_hwnd:
                 return {"status": "error", "message": f"No active window found matching '{window_title}'."}
 
-            if action == "focus":
+            if action_clean == "focus":
                 win32gui.ShowWindow(matched_hwnd, win32con.SW_RESTORE)
                 win32gui.SetForegroundWindow(matched_hwnd)
                 return {"status": "success", "message": f"Brought window '{found_title}' to the foreground."}
-            elif action == "minimize":
+            elif action_clean == "minimize":
                 win32gui.ShowWindow(matched_hwnd, win32con.SW_MINIMIZE)
                 return {"status": "success", "message": f"Minimized window '{found_title}'."}
-            elif action == "maximize":
+            elif action_clean == "maximize":
                 win32gui.ShowWindow(matched_hwnd, win32con.SW_MAXIMIZE)
                 return {"status": "success", "message": f"Maximized window '{found_title}'."}
-            elif action == "restore":
+            elif action_clean == "restore":
                 win32gui.ShowWindow(matched_hwnd, win32con.SW_RESTORE)
                 return {"status": "success", "message": f"Restored window '{found_title}'."}
-            elif action == "close":
+            elif action_clean == "close":
                 win32gui.PostMessage(matched_hwnd, win32con.WM_CLOSE, 0, 0)
                 return {"status": "success", "message": f"Closed window '{found_title}'."}
             else:
@@ -617,6 +661,37 @@ class AuraToolRegistry:
 
     @staticmethod
     def _set_volume(level: int | None, mute: bool | None) -> dict[str, Any]:
+        msg_parts = []
+        pending_mute = mute
+        pending_level = level
+
+        # 1. Primary: Delegate through NativeManagerRegistry AudioManager
+        try:
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            audio_mgr = NativeManagerRegistry.get_instance().get_manager("audio")
+            if audio_mgr is not None:
+                if pending_mute is not None:
+                    res_mute = audio_mgr.execute("audio.toggle_mute", goal="toggle mute", arguments={"mute": pending_mute})
+                    if res_mute.success:
+                        msg_parts.append("muted" if pending_mute else "unmuted")
+                        pending_mute = None
+                    else:
+                        logger.debug(f"[AuraToolRegistry] audio.toggle_mute delegation failed: {res_mute.error}")
+
+                if pending_level is not None:
+                    res_vol = audio_mgr.execute("audio.set_volume", goal="set volume", arguments={"level": pending_level})
+                    if res_vol.success:
+                        msg_parts.append(f"volume set to {pending_level}%")
+                        pending_level = None
+                    else:
+                        logger.debug(f"[AuraToolRegistry] audio.set_volume delegation failed: {res_vol.error}")
+
+                if pending_mute is None and pending_level is None and msg_parts:
+                    return {"status": "success", "message": "Audio " + ", ".join(msg_parts)}
+        except Exception as audio_err:
+            logger.debug(f"[AuraToolRegistry] AudioManager delegation fallback: {audio_err}")
+
+        # 2. Fallback: Direct pycaw for any unapplied operations
         try:
             from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
             from ctypes import cast, POINTER
@@ -629,22 +704,51 @@ class AuraToolRegistry:
                 interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
                 volume = cast(interface, POINTER(IAudioEndpointVolume))
 
-            msg_parts = []
-            if mute is not None:
-                volume.SetMute(1 if mute else 0, None)
-                msg_parts.append("muted" if mute else "unmuted")
+            err_parts = []
+            if pending_mute is not None:
+                try:
+                    volume.SetMute(1 if pending_mute else 0, None)
+                    msg_parts.append("muted" if pending_mute else "unmuted")
+                    pending_mute = None
+                except Exception as me:
+                    err_parts.append(f"failed to set mute: {me}")
 
-            if level is not None:
-                scalar = max(0.0, min(1.0, float(level) / 100.0))
-                volume.SetMasterVolumeLevelScalar(scalar, None)
-                msg_parts.append(f"volume set to {level}%")
+            if pending_level is not None:
+                try:
+                    scalar = max(0.0, min(1.0, float(pending_level) / 100.0))
+                    volume.SetMasterVolumeLevelScalar(scalar, None)
+                    msg_parts.append(f"volume set to {pending_level}%")
+                    pending_level = None
+                except Exception as ve:
+                    err_parts.append(f"failed to set volume: {ve}")
 
-            return {"status": "success", "message": "Audio " + ", ".join(msg_parts)}
+            if pending_mute is None and pending_level is None and msg_parts:
+                return {"status": "success", "message": "Audio " + ", ".join(msg_parts)}
+            elif msg_parts:
+                return {"status": "error", "message": f"Audio {', '.join(msg_parts)}, but {'; '.join(err_parts)}"}
+            else:
+                return {"status": "error", "message": f"Volume adjustment failed: {'; '.join(err_parts)}"}
         except Exception as e:
+            if msg_parts:
+                return {"status": "error", "message": f"Audio {', '.join(msg_parts)}, but remaining adjustments failed: {e}"}
             return {"status": "error", "message": f"Volume adjustment failed: {e}"}
 
     @staticmethod
     def _set_brightness(level: int) -> dict[str, Any]:
+        # 1. Primary: Delegate through NativeManagerRegistry DisplayManager
+        try:
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            disp_mgr = NativeManagerRegistry.get_instance().get_manager("display")
+            if disp_mgr is not None:
+                res = disp_mgr.execute("display.set_brightness", goal="set brightness", arguments={"level": level})
+                if res.success:
+                    return {"status": "success", "message": f"Display brightness set to {level}%."}
+                elif res.error:
+                    return {"status": "error", "message": f"Brightness adjustment failed: {res.error}"}
+        except Exception as disp_err:
+            logger.debug(f"[AuraToolRegistry] DisplayManager delegation fallback: {disp_err}")
+
+        # 2. Fallback: Direct screen_brightness_control
         try:
             import screen_brightness_control as sbc
             sbc.set_brightness(level)
@@ -656,6 +760,30 @@ class AuraToolRegistry:
 
     @classmethod
     def _handle_clipboard(cls, action: str, text: str = "") -> dict[str, Any]:
+        action_clean = action.lower().strip()
+        if action_clean not in ("read", "write"):
+            return {"status": "error", "message": f"Invalid clipboard action: {action}"}
+
+        # 1. Primary: Delegate through NativeManagerRegistry ClipboardManager
+        try:
+            from desktop.native.managers.native_manager_registry import NativeManagerRegistry
+            cb_mgr = NativeManagerRegistry.get_instance().get_manager("clipboard")
+            if cb_mgr is not None:
+                if action_clean == "read":
+                    res = cb_mgr.execute("clipboard.read_text", goal="read clipboard", arguments={})
+                    if res.success and res.data:
+                        content = res.data.get("text", "")
+                        cls._clipboard_cache = content
+                        return {"status": "success", "content": content, "text": content}
+                elif action_clean == "write":
+                    res = cb_mgr.execute("clipboard.write_text", goal="write clipboard", arguments={"text": text})
+                    if res.success:
+                        cls._clipboard_cache = text
+                        return {"status": "success", "message": "Copied text to clipboard."}
+        except Exception as cb_err:
+            logger.debug(f"[AuraToolRegistry] ClipboardManager delegation fallback: {cb_err}")
+
+        # 2. Fallback: Direct win32clipboard / pyperclip / in-process cache
         import time
         # Retry up to 3 times for physical Windows clipboard
         for _ in range(3):
@@ -663,15 +791,15 @@ class AuraToolRegistry:
                 import win32clipboard
                 import win32con
 
-                if action == "read":
+                if action_clean == "read":
                     win32clipboard.OpenClipboard()
                     try:
                         data = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
                         cls._clipboard_cache = str(data)
-                        return {"status": "success", "content": str(data)}
+                        return {"status": "success", "content": str(data), "text": str(data)}
                     finally:
                         win32clipboard.CloseClipboard()
-                elif action == "write":
+                elif action_clean == "write":
                     win32clipboard.OpenClipboard()
                     try:
                         win32clipboard.EmptyClipboard()
@@ -686,12 +814,12 @@ class AuraToolRegistry:
         # Fallback to pyperclip
         try:
             import pyperclip
-            if action == "read":
+            if action_clean == "read":
                 content = pyperclip.paste()
                 if content:
                     cls._clipboard_cache = content
-                    return {"status": "success", "content": content}
-            elif action == "write":
+                    return {"status": "success", "content": content, "text": content}
+            elif action_clean == "write":
                 pyperclip.copy(text)
                 cls._clipboard_cache = text
                 return {"status": "success", "message": "Copied text to clipboard."}
@@ -699,9 +827,9 @@ class AuraToolRegistry:
             pass
 
         # In-process clipboard cache fallback (when OS session isolates background token)
-        if action == "read":
-            return {"status": "success", "content": cls._clipboard_cache, "source": "in_process_cache"}
-        elif action == "write":
+        if action_clean == "read":
+            return {"status": "success", "content": cls._clipboard_cache, "text": cls._clipboard_cache, "source": "in_process_cache"}
+        elif action_clean == "write":
             cls._clipboard_cache = text
             return {"status": "success", "message": "Copied text to clipboard (session cache)."}
 
@@ -835,7 +963,13 @@ class AuraToolRegistry:
     def _save_memory_fact(category: str, key: str, value: str, aura_core: Any) -> dict[str, Any]:
         try:
             if aura_core and hasattr(aura_core, "memory") and aura_core.memory:
-                aura_core.memory.add_fact(category, key, value)
+                mem = aura_core.memory
+                if hasattr(mem, "add_fact"):
+                    mem.add_fact(category, key, value)
+                elif hasattr(mem, "upsert_fact"):
+                    mem.upsert_fact(category, key, value)
+                else:
+                    return {"status": "error", "message": "Memory store does not support adding facts."}
                 return {"status": "success", "message": f"Saved fact [{category}] {key} = '{value}' to persistent memory."}
             return {"status": "error", "message": "Memory store not accessible."}
         except Exception as e:
@@ -845,14 +979,27 @@ class AuraToolRegistry:
     def _query_memory_facts(category: str | None, key: str | None, aura_core: Any) -> dict[str, Any]:
         try:
             if aura_core and hasattr(aura_core, "memory") and aura_core.memory:
+                mem = aura_core.memory
                 if category and key:
-                    val = aura_core.memory.fact_value(category, key)
+                    val = mem.fact_value(category, key) if hasattr(mem, "fact_value") else None
                     return {"status": "success", "facts": [{category: {key: val}}]} if val else {"status": "success", "facts": []}
                 elif category:
-                    facts = aura_core.memory.all_facts(category)
+                    if hasattr(mem, "all_facts"):
+                        facts = mem.all_facts(category)
+                    elif hasattr(mem, "find"):
+                        facts = mem.find(category)
+                    elif hasattr(mem, "facts"):
+                        facts = [f for f in mem.facts() if getattr(f, "category", "").lower() == str(category).lower()]
+                    else:
+                        facts = []
                     return {"status": "success", "facts": [{f.category: {f.key: f.value}} for f in facts]}
                 else:
-                    facts = aura_core.memory.all_facts()
+                    if hasattr(mem, "all_facts"):
+                        facts = mem.all_facts()
+                    elif hasattr(mem, "facts"):
+                        facts = mem.facts()
+                    else:
+                        facts = []
                     return {"status": "success", "facts": [{f.category: {f.key: f.value}} for f in facts[:20]]}
             return {"status": "error", "message": "Memory store not accessible."}
         except Exception as e:
@@ -914,7 +1061,7 @@ class AuraToolRegistry:
             return {"status": "error", "message": f"Failed to add task: {e}"}
 
     @staticmethod
-    def _run_terminal_command(command: str, cwd: str | None = None, ticket_id: str | None = None) -> dict[str, Any]:
+    def _run_terminal_command(command: str, cwd: str | None = None, ticket_id: str | None = None, _upstream_verified: bool = False) -> dict[str, Any]:
         """
         Executes a shell command with strict CryptographicApprovalAuthority risk gating.
         Safe inspection commands auto-execute; state-mutating commands require ticket approval.
@@ -949,6 +1096,40 @@ class AuraToolRegistry:
         chaining_pattern = re.compile(r"[;&|`$><\n]")
         has_chaining = bool(chaining_pattern.search(cmd_clean))
 
+        # 2a. In-process intercept: `python -c "import <pkg>[; print(...)]"` dependency probes.
+        #
+        # Spawning a subprocess to check package availability is the wrong approach:
+        #   - The bare string "python" is NOT guaranteed to be on PATH on Windows (common when
+        #     only the `py` launcher exists, or when AuraAI runs from a venv/conda env that is
+        #     not the shell's active env). "python" != sys.executable.
+        #   - We are already running Python. The correct check is in-process via importlib.
+        #
+        # This intercept matches the pattern the LLM emits for pre-flight checks and short-circuits
+        # the entire subprocess path, returning a structured result the caller can act on.
+        _py_c_probe = re.match(
+            r"""^(?:python3?|py)\s+-c\s+["']?\s*import\s+([\w]+).*["']?$""",
+            cmd_clean,
+            re.IGNORECASE,
+        )
+        if _py_c_probe:
+            import importlib.util as _importlib_util
+            pkg_name = _py_c_probe.group(1).strip()
+            available = _importlib_util.find_spec(pkg_name) is not None
+            logger.info(
+                "[AuraToolRegistry] Intercepted python -c import probe for '%s': %s "
+                "(in-process importlib check — no subprocess, no PATH dependency)",
+                pkg_name,
+                "available" if available else "NOT available",
+            )
+            return {
+                "status": "success" if available else "error",
+                "command": cmd_clean,
+                "exit_code": 0 if available else 1,
+                "stdout": "ok\n" if available else "",
+                "stderr": "" if available else f"ModuleNotFoundError: No module named '{pkg_name}'",
+                "note": "Resolved in-process via importlib.util.find_spec — no subprocess required.",
+            }
+
         # 3. Tier 1: Safe read-only inspection prefixes with strict word boundary check
         safe_prefixes = (
             "git status", "git log", "git diff", "git branch", "git show", "git tag",
@@ -973,8 +1154,16 @@ class AuraToolRegistry:
             from desktop.native.security.approval_authority import CryptographicApprovalAuthority
             auth = CryptographicApprovalAuthority.get_instance()
 
-            if ticket_id:
-                # User provided ticket_id for confirmation
+            if ticket_id and _upstream_verified:
+                logger.info(f"[AuraToolRegistry] Ticket '{ticket_id}' verified upstream by UnifiedToolDispatcher.")
+            elif ticket_id:
+                # User provided ticket_id for confirmation (direct/legacy call)
+                ticket = auth.get_ticket(ticket_id)
+                if not ticket or ticket.is_redeemed:
+                    return {
+                        "status": "error",
+                        "error": f"Invalid, unverified, or expired approval ticket '{ticket_id}'.",
+                    }
                 sig = auth.generate_human_signature(ticket_id)
                 if not sig:
                     return {
@@ -994,7 +1183,7 @@ class AuraToolRegistry:
                 if not ok:
                     return {
                         "status": "error",
-                        "error": f"Ticket verification failed: {err_msg}",
+                        "error": f"Invalid, unverified, or expired approval ticket '{ticket_id}'.",
                     }
                 logger.info(f"[AuraToolRegistry] Redeemed approval ticket '{ticket_id}' for command: {cmd_clean}")
             else:
@@ -1020,17 +1209,49 @@ class AuraToolRegistry:
                     ),
                 }
 
-        # Execute command
+        # Execute command.
+        # Always rewrite bare "python" / "python3" / "py" to sys.executable so the command runs
+        # in the same interpreter/venv that AuraAI itself is using, regardless of PATH state.
+        # On Windows it is common for "python" to be absent from PATH while sys.executable
+        # (the venv interpreter) is perfectly reachable.
+        import sys as _sys
+        _resolved_cmd = re.sub(
+            r"^(?:python3?|py)(?=\s|$)",
+            lambda m: f'"{_sys.executable}"' if " " in _sys.executable else _sys.executable,
+            cmd_clean,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if _resolved_cmd != cmd_clean:
+            logger.info(
+                "[AuraToolRegistry] Rewrote bare python to sys.executable: %r → %r",
+                cmd_clean,
+                _resolved_cmd,
+            )
+
         try:
             target_cwd = cwd or str(Path.cwd())
             res = subprocess.run(
-                cmd_clean,
+                _resolved_cmd,
                 shell=True,
                 capture_output=True,
                 text=True,
                 cwd=target_cwd,
                 timeout=30,
             )
+            # Propagate non-zero exit codes as a proper "error" status.
+            # Previously this always returned "success" even when the command itself failed
+            # (e.g. returncode=1 with stderr "'python' is not recognized"), which caused the
+            # caller to surface raw stderr as the final answer with no retry.
+            if res.returncode != 0:
+                return {
+                    "status": "error",
+                    "command": cmd_clean,
+                    "exit_code": res.returncode,
+                    "stdout": res.stdout[:4000] if res.stdout else "",
+                    "stderr": res.stderr[:2000] if res.stderr else "",
+                    "error": f"Command exited with code {res.returncode}.",
+                }
             return {
                 "status": "success",
                 "command": cmd_clean,

@@ -108,6 +108,8 @@ markers = [
 
     "slow: marks tests as slow (integration tests that run EngineeringManager on the full workspace). Run with: pytest -m slow",
     "live: marks tests as requiring live external network connectivity (e.g. live research APIs).",
+    "live_os: marks tests that interact with live OS GUI window manager or processes.",
+    "live_desktop: marks tests that interact with live desktop environment.",
 ]
 
 [build-system]

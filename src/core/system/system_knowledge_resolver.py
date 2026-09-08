@@ -213,16 +213,32 @@ class SystemKnowledgeResolver:
             except Exception as e:
                 logger.warning(f"Error scanning workspace: {e}")
 
-        # 9. Live Task Memory & Personal OS
-        if any(w in q for w in ["inspect memory", "task memory", "personal os", "active tasks"]):
+        # 9. Live Task Memory, Profile Facts & Personal OS
+        if any(w in q for w in ["inspect memory", "task memory", "personal os", "active tasks", "working memory", "memory vault", "facts", "stored facts"]):
             try:
+                # 1. Profile and Stored Facts
+                fact_lines = []
+                try:
+                    from Memory import Memory
+                    mem = Memory()
+                    facts = mem.all_facts()
+                    for f in facts[:15]:
+                        fact_lines.append(f"    - [{f.category}] {f.key}: {f.value}")
+                except Exception as mem_err:
+                    logger.debug(f"Memory all_facts read note: {mem_err}")
+
+                facts_str = "\n".join(fact_lines) if fact_lines else "    - No stored facts in vault"
+
+                # 2. Tasks from Personal OS
                 from gui.real_backend_bridge import RealBackendBridge
                 pos = RealBackendBridge.get_instance().get_personal_os_data()
                 tasks = pos.get("tasks", [])
                 t_lines = [f"    - [{t.get('status', 'pending').upper()}] {t.get('title', '')} ({t.get('category', 'General')})" for t in tasks[:6]]
                 t_str = "\n".join(t_lines) if t_lines else "    - No overdue tasks in queue"
+
                 return (
                     f"🧠 Live Personal OS & Memory Vault:\n\n"
+                    f"  • Stored User Facts & Preferences:\n{facts_str}\n\n"
                     f"  • Active Tasks Queue:\n{t_str}\n\n"
                     f"  • Memory Stats: {pos.get('stats', {}).get('tasks_completed', 0)} completed, {pos.get('stats', {}).get('pending', 0)} pending\n"
                     f"  • Vector Vault: ChromaDB Local Vector Store Online"

@@ -221,8 +221,11 @@ class ClipboardManager(BaseNativeManager):
         """Get list of capabilities supported by ClipboardManager."""
         return [
             "clipboard.read_text",
+            "read_clipboard",
             "clipboard.write_text",
+            "write_clipboard",
             "clipboard.clear",
+            "clear_clipboard",
             "clipboard.read_image",
             "clipboard.write_image",
             "clipboard.read_files",
@@ -421,8 +424,11 @@ class ClipboardManager(BaseNativeManager):
         """Get the handler function for a capability."""
         handlers = {
             "clipboard.read_text": self._handle_read_text,
+            "read_clipboard": self._handle_read_text,
             "clipboard.write_text": self._handle_write_text,
+            "write_clipboard": self._handle_write_text,
             "clipboard.clear": self._handle_clear,
+            "clear_clipboard": self._handle_clear,
             "clipboard.read_image": self._handle_read_image,
             "clipboard.write_image": self._handle_write_image,
             "clipboard.read_files": self._handle_read_files,

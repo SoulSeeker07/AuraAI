@@ -19,8 +19,7 @@ def build_provider_manager(
         "gemini",
         GeminiProvider(
             api_key=env.get("GEMINI_API_KEY", ""),
-            default_model=env.get("AURA_GEMINI_MODEL", "gemini-3.6-flash"),
+            default_model=env.get("AURA_GEMINI_MODEL", "gemini-2.5-flash"),
         ),
     )
     return manager
-

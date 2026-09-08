@@ -40,8 +40,13 @@ class DesktopAgent:
         self._safety_layer = safety_layer
         self._permissions: dict[str, bool] = {}
 
-        # Initialize process manager for process management tasks
-        self.process_manager = ProcessManager()
+        # Initialize process manager for process management tasks (no background monitor needed)
+        self.process_manager = ProcessManager(enable_background_monitor=False)
+
+    def cleanup(self) -> None:
+        """Cleanup agent resources and background processes."""
+        if hasattr(self, "process_manager") and self.process_manager:
+            self.process_manager.cleanup()
 
     def _require_confirmation(self, action: str, details: str) -> bool:
         """

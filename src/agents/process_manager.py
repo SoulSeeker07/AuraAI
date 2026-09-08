@@ -185,6 +185,7 @@ class ProcessManager:
         self,
         event_bus: EventBus | None = None,
         permission_manager: PermissionManager | None = None,
+        enable_background_monitor: bool = True,
     ):
         """
         Initialize the process manager.
@@ -192,6 +193,7 @@ class ProcessManager:
         Args:
             event_bus: Optional EventBus instance for event-driven notifications
             permission_manager: Optional PermissionManager instance for confirmation
+            enable_background_monitor: Whether to spawn a background polling thread (default True)
         """
         self.logger = logging.getLogger(__name__)
         self._cache: dict[int, ProcessInfo] = {}
@@ -223,8 +225,9 @@ class ProcessManager:
         # before __init__ returns, eliminating the race for get_process_state().
         self._scan_and_detect_changes()
 
-        # Start background monitor
-        self._start_background_monitor()
+        # Start background monitor if enabled
+        if enable_background_monitor:
+            self._start_background_monitor()
 
     def get_process_info(self, pid: int) -> ProcessInfo | None:
         """

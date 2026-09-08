@@ -48,6 +48,8 @@ class DesktopPlugin(Plugin):
         try:
             self.registry = NativeManagerRegistry.get_instance()
             self.registry.discover()
+            if hasattr(self.registry, "_capability_map"):
+                self.manifest.capabilities = sorted(list(self.registry._capability_map.keys()))
             self.state = "initialized"
             return True
         except Exception as e:
@@ -60,7 +62,9 @@ class DesktopPlugin(Plugin):
         return True
 
     def can_handle(self, capability: str) -> bool:
-        return True
+        if self.registry:
+            return self.registry.resolve(capability) is not None
+        return capability in self.manifest.capabilities
 
     def execute(self, capability: str, **kwargs: Any) -> Any:
         if not self.registry:

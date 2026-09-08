@@ -48,6 +48,13 @@ models/
 # Generated test/runtime artifacts
 artifacts/
 .staging/
+.aura_staging/
+Generated_Documents/
+scratch/
+aura_*.svg
+*.bak
+New folder*/
 *.wav
 *.mp3
 *.mp4
+

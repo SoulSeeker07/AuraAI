@@ -76,7 +76,10 @@ def test_watchdog_recovers_silent_stream_and_preserves_negotiated_settings(fresh
 
         # Simulate stream going silent for 1.6s
         mgr._last_chunk_time = time.time() - 2.0
-        time.sleep(0.2)  # Allow monitor thread to run empty queue watchdog
+        for _ in range(30):
+            if mock_stream_cls.call_count >= 2:
+                break
+            time.sleep(0.05)
 
         # Second InputStream should have been created with exact negotiated settings (16000, 1), not device defaults (48000, 2)
         assert mock_stream_cls.call_count == 2

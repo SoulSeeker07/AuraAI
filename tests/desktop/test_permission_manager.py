@@ -8,7 +8,7 @@ sys.path.insert(1, "d:/Sreekanta/VS Code Project/Desktop AI/AuraAI/src")
 
 import time
 
-from agents.permission_manager import PermissionLevel, PermissionManager
+from agents.permission_manager import PermissionLevel, PermissionManager, PermissionRequest
 from agents.process_manager import ProcessManager
 from agents.task_model import Task, TaskInput, TaskType
 
@@ -19,7 +19,7 @@ def test_permission_manager_basic():
     print("TEST 1: Basic Permission Manager")
     print("=" * 70)
 
-    pm = PermissionManager()
+    pm = PermissionManager(default_confirmation_handler=lambda r: True)
 
     # Test safe operation (should not ask)
     print("\nTest 1a: Safe operation should not ask for permission")
@@ -146,7 +146,7 @@ def test_permission_manager_log():
     print("TEST 3: Permission Manager Audit Log")
     print("=" * 70)
 
-    perm_mgr = PermissionManager()
+    perm_mgr = PermissionManager(default_confirmation_handler=lambda req: req.level == PermissionLevel.SAFE)
 
     # Request multiple permissions
     print("\nTest 3a: Request multiple permissions")
@@ -206,7 +206,7 @@ def test_permission_manager_custom_handler():
     print("TEST 4: Custom Permission Handler")
     print("=" * 70)
 
-    def custom_handler(request: PermissionManager.PermissionRequest) -> bool:
+    def custom_handler(request: PermissionRequest) -> bool:
         """Custom handler that always approves after showing details"""
         print("\n  Custom handler received:")
         print(f"    Operation: {request.operation}")
@@ -215,7 +215,7 @@ def test_permission_manager_custom_handler():
         print(f"    Level: {request.level.value}")
         return True
 
-    perm_mgr = PermissionManager(custom_confirmation_handler=custom_handler)
+    perm_mgr = PermissionManager(default_confirmation_handler=custom_handler)
 
     print("\nTest 4a: Request permission with custom handler")
     approved = perm_mgr.request_permission(
@@ -229,7 +229,7 @@ def test_permission_manager_custom_handler():
     print("  ✓ Custom handler works correctly")
 
     # Test that handler can also deny
-    def deny_handler(request: PermissionManager.PermissionRequest) -> bool:
+    def deny_handler(request: PermissionRequest) -> bool:
         """Handler that always denies"""
         print("\n  Deny handler received")
         return False

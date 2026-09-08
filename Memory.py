@@ -113,9 +113,11 @@ class Memory:
         try:
             from memory.cognitive_memory import CognitiveMemoryEngine
             self.cognitive = CognitiveMemoryEngine(db_path=self.db_path)
+            self.failure_ledger = getattr(self.cognitive, "failure_ledger", None)
         except Exception as e:
             logger.warning(f"[Memory] CognitiveMemoryEngine init warning: {e}")
             self.cognitive = None
+            self.failure_ledger = None
 
         try:
             from memory.vector_memory import VectorMemoryEngine
@@ -139,17 +141,47 @@ class Memory:
         if _LEGACY_MIGRATION_DONE:
             return
         try:
-            from src.memory.profile_memory import ProfileMemory
-            pm = ProfileMemory.get_instance()
-            # Sentinel check is inside migrate_from_legacy() itself;
-            # the call is always safe and cheap after first run.
-            pm.migrate_from_legacy(self.db_path)
+            pm = self._get_profile_memory()
+            if pm is not None:
+                # Sentinel check is inside migrate_from_legacy() itself;
+                # the call is always safe and cheap after first run.
+                pm.migrate_from_legacy(self.db_path)
         except Exception as exc:
             logger.warning(f"[Memory] Legacy Tier 3 migration skipped: {exc}")
         finally:
             # Set flag regardless of outcome so we don't retry on every
             # Memory() construction within this process lifetime.
             _LEGACY_MIGRATION_DONE = True
+
+    def _get_profile_memory(self):
+        """
+        Return the appropriate ProfileMemory instance.
+        Uses the process singleton unless this Memory instance was initialized
+        with an isolated/test db_path, in which case it scopes to that directory.
+        """
+        try:
+            from src.memory.profile_memory import ProfileMemory
+            if hasattr(self, "_profile_memory") and self._profile_memory is not None:
+                return self._profile_memory
+
+            singleton = ProfileMemory.get_instance()
+            repo_profile_db = (PROJECT_ROOT / "data" / "profile.db").resolve()
+            repo_profile_db_alt = (PROJECT_ROOT / "Data" / "profile.db").resolve()
+
+            # If Memory is isolated to a custom db_path (e.g. in pytest)
+            # and the singleton is pointing to the global repo profile.db, isolate ProfileMemory too:
+            mem_db_resolved = Path(self.db_path).resolve()
+            if mem_db_resolved != MEMORY_DB.resolve():
+                singleton_db_resolved = Path(singleton.db_path).resolve()
+                if singleton_db_resolved in (repo_profile_db, repo_profile_db_alt):
+                    scoped_db = Path(self.db_path).parent / "profile.db"
+                    self._profile_memory = ProfileMemory(db_path=scoped_db)
+                    return self._profile_memory
+
+            return singleton
+        except Exception as e:
+            logger.warning(f"[Memory] Could not load ProfileMemory: {e}")
+            return None
 
     # ------------------------------------------------------------------
     # Connection handling
@@ -451,23 +483,18 @@ class Memory:
         return combined[:limit]
 
     def search(self, text: str = "") -> list[MemoryFact]:
+        all_facts = self.all_facts()
         if not text.strip():
-            return self.facts()
+            return all_facts
 
-        pattern = f"%{text.strip().lower()}%"
-        with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT category, key, value
-                FROM facts
-                WHERE lower(category) LIKE ?
-                   OR lower(key) LIKE ?
-                   OR lower(value) LIKE ?
-                ORDER BY category, key, value
-                """,
-                (pattern, pattern, pattern),
-            ).fetchall()
-        return [MemoryFact(*row) for row in rows]
+        pattern = text.strip().lower()
+        return [
+            f
+            for f in all_facts
+            if pattern in f.category.lower()
+            or pattern in f.key.lower()
+            or pattern in f.value.lower()
+        ]
 
 
     def record_turn(self, query: str, answer: str, topic: str) -> None:
@@ -636,13 +663,25 @@ class Memory:
             key_name = (
                 f"favorite_{subject}" if not subject.startswith("favorite") else subject
             )
-            facts.append(
-                MemoryFact(
-                    MemoryCategory.PREFERENCE.value,
-                    self._key(key_name),
-                    val,
+            try:
+                from src.memory.canonical_keys import normalize_preference_key, is_tautological_fact
+                canon_key = normalize_preference_key(key_name)
+                if not is_tautological_fact(canon_key, val):
+                    facts.append(
+                        MemoryFact(
+                            MemoryCategory.PREFERENCE.value,
+                            canon_key,
+                            val,
+                        )
+                    )
+            except Exception:
+                facts.append(
+                    MemoryFact(
+                        MemoryCategory.PREFERENCE.value,
+                        self._key(key_name),
+                        val,
+                    )
                 )
-            )
 
         for pattern in (
             r"\bi (?:like|prefer)\s+(.+)",
@@ -670,12 +709,60 @@ class Memory:
 
         return facts
 
-    def facts(self) -> list[MemoryFact]:
+    def all_facts(self, category: MemoryCategory | str | None = None) -> list[MemoryFact]:
+        """
+        Retrieve all facts, optionally filtered by category.
+        Consolidates facts from both the SQLite facts table and Tier 3 ProfileMemory.
+        """
+        cat_str = category.value if isinstance(category, MemoryCategory) else category
+        cat_filter = str(cat_str).strip() if cat_str else None
+
+        facts_map: dict[tuple[str, str], MemoryFact] = {}
+
+        # 1. Base facts from SQLite facts table
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT category, key, value FROM facts ORDER BY category, key, value"
-            ).fetchall()
-        return [MemoryFact(*row) for row in rows]
+            if cat_filter:
+                rows = conn.execute(
+                    "SELECT category, key, value FROM facts WHERE lower(category) = lower(?) ORDER BY updated_at ASC",
+                    (cat_filter,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT category, key, value FROM facts ORDER BY category, key, updated_at ASC"
+                ).fetchall()
+
+            for row in rows:
+                facts_map[(row[0].lower(), row[1].lower())] = MemoryFact(row[0], row[1], str(row[2]))
+
+        # 2. Integrate Tier 3 ProfileMemory (takes precedence for profile, preference, etc.)
+        try:
+            pm = self._get_profile_memory()
+            if pm:
+                pm_facts = pm.list_facts(category=cat_filter)
+                if cat_filter:
+                    for k, v in pm_facts.items():
+                        if not k.startswith("_"):
+                            facts_map[(cat_filter.lower(), k.lower())] = MemoryFact(cat_filter, k, str(v))
+                else:
+                    for cat, sub in pm_facts.items():
+                        if cat.startswith("_"):
+                            continue
+                        if isinstance(sub, dict):
+                            for k, v in sub.items():
+                                if not k.startswith("_"):
+                                    facts_map[(cat.lower(), k.lower())] = MemoryFact(cat, k, str(v))
+        except Exception as e:
+            logger.debug(f"[Memory] ProfileMemory read in all_facts skipped: {e}")
+
+        return sorted(facts_map.values(), key=lambda f: (f.category, f.key))
+
+    def facts(self) -> list[MemoryFact]:
+        """Retrieve all facts across SQLite and ProfileMemory."""
+        return self.all_facts()
+
+    def add_fact(self, category: str, key: str, value: str) -> None:
+        """Alias for upsert_fact to maintain compatibility with standard tool interfaces."""
+        self.upsert_fact(category, key, value)
 
     def find(
         self,
@@ -686,28 +773,17 @@ class Memory:
         Retrieve facts with flexible matching.
 
         Args:
-            category: Memory category to search in (uses enum for type safety)
+            category: Memory category to search in (uses enum or str)
             key: Optional key to filter by
 
         Returns:
             List of matching MemoryFact objects
         """
-        with self._connect() as conn:
-            if key:
-                rows = conn.execute(
-                    "SELECT category, key, value FROM facts "
-                    "WHERE category = ? AND key = ? "
-                    "ORDER BY updated_at DESC",
-                    (str(category), key),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT category, key, value FROM facts "
-                    "WHERE category = ? "
-                    "ORDER BY updated_at DESC",
-                    (str(category),),
-                ).fetchall()
-        return [MemoryFact(*row) for row in rows]
+        cat_str = category.value if isinstance(category, MemoryCategory) else str(category)
+        matched = self.all_facts(category=cat_str)
+        if key:
+            matched = [f for f in matched if f.key.lower() == key.strip().lower()]
+        return matched
 
     def get_preference(self, preference_type: str) -> str | None:
         """
@@ -736,18 +812,22 @@ class Memory:
     def fact_value(self, category: str, key: str) -> str | None:
         # --- Tier 3 single-authority read ---
         # For Tier 3 categories, ProfileMemory is the sole source of truth.
-        # Return immediately without falling through to the legacy SQLite table,
-        # which may contain stale or duplicate rows after migration.
         if category.strip().lower() in TIER3_CATEGORIES:
             try:
-                from src.memory.profile_memory import ProfileMemory
-                prof_val = ProfileMemory.get_instance().get_fact(category, key)
-                return str(prof_val) if prof_val is not None else None
+                pm = self._get_profile_memory()
+                if pm:
+                    prof_val = pm.get_fact(category, key)
+                    if prof_val is not None:
+                        return str(prof_val)
+                    # Support both 'preference' and 'preferences'
+                    alt_cat = "preferences" if category.strip().lower() == "preference" else "preference"
+                    prof_val_alt = pm.get_fact(alt_cat, key)
+                    if prof_val_alt is not None:
+                        return str(prof_val_alt)
             except Exception as e:
                 logger.warning(f"[Memory] ProfileMemory Tier 3 read failed for [{category}:{key}]: {e}")
-                return None  # Do not fall through for Tier 3 on error.
 
-        # Non-Tier 3: standard SQLite facts read.
+        # Non-Tier 3 or fallback: standard SQLite facts read.
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT value FROM facts WHERE category = ? AND key = ? ORDER BY updated_at DESC LIMIT 1",
@@ -780,17 +860,53 @@ class Memory:
             f"[Memory] upsert_fact called: category={category}, key={key}, value={value}"
         )
 
-        # --- Tier 3 single-authority write ---
-        # Facts in TIER3_CATEGORIES are owned exclusively by ProfileMemory.
-        # Route the write there and return immediately — do NOT also write to
-        # the legacy SQLite facts table, which would create a dual-write split.
-        if category.strip().lower() in TIER3_CATEGORIES:
+        # Reject tautological junk facts
+        cat_lower = category.strip().lower()
+        try:
+            from src.memory.canonical_keys import is_tautological_fact
+            if is_tautological_fact(key, value):
+                logger.info(f"[Memory] Dropped tautological fact [{category}:{key}]='{value}'")
+                return
+        except Exception as e:
+            logger.debug(f"[Memory] Tautology check note: {e}")
+
+        # Route Tier 3 write to ProfileMemory
+        if cat_lower in TIER3_CATEGORIES:
             try:
-                from src.memory.profile_memory import ProfileMemory
-                ProfileMemory.get_instance().set_fact(category, key, value)
+                pm = self._get_profile_memory()
+                if pm:
+                    pm.set_fact(category, key, value)
                 logger.debug(f"[Memory] Tier 3 fact [{category}:{key}] routed to ProfileMemory.")
             except Exception as e:
                 logger.warning(f"[Memory] ProfileMemory Tier 3 write failed for [{category}:{key}]: {e}")
+
+            # Sync with Cognitive Memory Engine
+            if getattr(self, "cognitive", None) is not None:
+                try:
+                    from memory.models import MemoryItem, MemoryType, MemoryProvenance, ProvenanceSource
+                    mem_type = MemoryType.PREFERENCE if category in ("preference", "profile") else MemoryType.LONG_TERM
+                    item = MemoryItem(
+                        content=f"{category}: {key} = {value}",
+                        type=mem_type,
+                        importance=0.85 if category in ("preference", "profile", "important") else 0.6,
+                        topic=category,
+                        provenance=MemoryProvenance(
+                            source_type=ProvenanceSource.USER_EXPLICIT,
+                            verified=True,
+                        ),
+                        metadata={"category": category, "key": key, "value": value},
+                    )
+                    self.cognitive.store_memory(item)
+                except Exception as e:
+                    logger.warning(f"[Memory] Cognitive memory sync error: {e}")
+
+            # Index dense vector embedding
+            if getattr(self, "vector_memory", None) is not None:
+                try:
+                    self.vector_memory.index_fact(category, key, value)
+                except Exception as e:
+                    logger.warning(f"[Memory] Vector indexing skipped for [{category}:{key}]: {e}")
+
             return  # Do not fall through to SQLite facts table.
 
         # Log current memory count before insertion

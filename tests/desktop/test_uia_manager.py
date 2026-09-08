@@ -285,7 +285,7 @@ def test_uia_manager_native_structure():
     assert manager.VERSION == "1.0"
     assert manager.PRIORITY == 15
     assert "pywinauto" in manager.DEPENDENCIES
-    assert len(manager.capabilities) == 10
+    assert len(manager.capabilities) == 11
 
     # Ensure zero cross-cutting concerns in code body
     source = inspect.getsource(uia_module)
@@ -544,14 +544,20 @@ def test_uia_live_read_only_smoke():
     assert elem is None or isinstance(elem, UIAElement)
 
 
+@pytest.mark.live_os
 def test_uia_live_winforms_round_trip():
     """
     Real-OS UIA interaction round-trip test against an isolated WinForms test GUI:
     Verifies tree inspection, clear-then-type text replacement, and button click state mutation.
     """
+    import os
     import subprocess
     import time
     from desktop.native.adapters.com_threading import com_scope
+
+    adapter = PywinautoUIAAdapter()
+    if not adapter.is_available():
+        pytest.skip("pywinauto UIA backend is not functional in current session")
 
     ps_code = """
     Add-Type -AssemblyName System.Windows.Forms

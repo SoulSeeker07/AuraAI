@@ -46,7 +46,7 @@ Operational Subsystems (Live on Physical System)
 
 | Metric | Value |
 |:---|:---|
-| **Platform Version** | `v1.0.0` (Production Release) |
+| **Platform Version** | `v1.4.3` (Production Release) |
 
 | **Cold-Start Launch Duration** | `6.48s` (down 69% from `21.6s`) |
 | **Warm LLM Turnaround (TTFT)** | `574ms` (Groq `openai/gpt-oss-120b` persistent pool) |
@@ -62,7 +62,7 @@ Operational Subsystems (Live on Physical System)
 | **Voice Engine** | Continuous Voice Loop FSM, Streaming STT/TTS, Wake Word Audio Auto-Ingest |
 | **AI Resilience** | Multi-Key Rotation Pool, Gemini Structured Output, Multi-Tier Fallback |
 | **Domain Experts** | 4 specialized experts (Cybersecurity, Network, Software, Finance) |
-| **Milestones Complete** | M01–M30 (30/30 complete) |
+| **Milestones Complete** | M01–M35 (35/35 complete) |
 | **Core Regression Suite** | 468+ passing (100% Green) |
 
 
@@ -202,12 +202,30 @@ Cognitive Memory
 
 ---
 
+## 🎨 Next-Gen Interactive Diagram & CAD Vector Visualizer
+
+Aura AI features an interactive diagram and technical vector illustration engine embedded within the desktop chat and modal inspector:
+
+- **Mermaid.js & Native SVG Support**: Live interactive rendering of complex system architectures, flowcharts, state machines, sequence diagrams, and mechanical vector cross-sections.
+- **Intelligent Auto-Canvas Injection**: Automatically detects pencil sketches, mechanical schematics, and dark-ink drawings lacking solid backgrounds. Injects an architectural drafting vellum paper canvas (`#fcfbf7`), preventing dark-on-dark contrast loss against Aura's dark UI.
+- **Interactive 4-Theme Canvas Switcher (`[📜 Canvas]`)**: 1-click toggling between:
+  - 📜 **Drafting Paper** (`#fcfbf7`): Warm architectural vellum with authentic graphite stroke hierarchies.
+  - 📐 **CAD Blueprint** (`#091e3a`): Engineering drafting navy with luminous cyan lines (`#67e8f9`) and crisp white labels (`#f0f9ff`).
+  - 🌌 **Holographic Dark** (`#080d18`): Neon cyan schematic styling (`#00e5ff`) matching Aura's futuristic dark desktop theme.
+  - ⬜ **Pure White** (`#ffffff`): Clean drafting sheet optimal for exporting and printing.
+- **Compact Inspection Ribbon & Export**: Sleek 44px inspector ribbon with smooth pan/zoom (1:1 / fit), dynamic type detection badges (`[PENCIL SKETCH]`, `[CAD BLUEPRINT]`, `[FLOWCHART]`), and one-click SVG export.
+- **Default AI Provider Routing**: Technical drawings, engineering cross-sections, and SVGs are routed by default to Gemini 2.5 Flash with zero-latency streaming (`thinking_budget=0`) and expanded token output (16,384 tokens).
+
+---
+
 ## ⚡ Quick Start
 
 ### 1. Prerequisites
 - **OS**: Windows 10 / 11
 - **Python**: Version 3.11
 - **Virtual Environment**: Recommended `.venv`
+
+> **Note on `pywin32`**: The `pywin32` package is used for Windows desktop integration broadly — not specifically for Office. If you ever use a feature like "automate Outlook" or "control Excel via COM," then Microsoft Office would be needed for that specific action, but the core Aura assistant runs fine without it.
 
 ### 2. Installation
 ```bash
@@ -251,10 +269,16 @@ M25       Professional Expert Systems             ✅
 M26       Personal OS Proactive Automation        ✅
 M27       Autonomous Engineering Platform         ✅
 M28       Dynamic CodeAct & Desktop HUD Overlays  ✅
+M29       Smart Home & Ambient HUDs               ✅
+M30       Holographic Command Center GUI          ✅
+M31       Isolated Background Subagents           ✅
+M32       Multi-Task FocusManager                 ✅
+M33       Natural Interaction & Response Steering ✅
+M34       UI Macro Compilation & Speculative Prewarm ✅
+M35       Multi-App Vision Grounding & Coordinates ✅
 
 ━━━ UPCOMING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M29       Multi-User & Enterprise Governance      PLANNED
-M30       Ambient Voice & Spatial Audio           PLANNED
+Phase 12  Multi-User & Enterprise Governance      PLANNED
 ```
 
 See [docs/roadmap.md](docs/roadmap.md) and [docs/milestones/](docs/milestones/) for detailed specifications.

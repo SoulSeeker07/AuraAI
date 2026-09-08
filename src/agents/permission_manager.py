@@ -88,8 +88,10 @@ class PermissionManager:
         """
         Default confirmation handler.
 
-        In a GUI environment, this would show a dialog with all the details.
-        In a CLI environment, it would prompt the user.
+        In an interactive CLI environment, prompts the user on stdout/stdin.
+        In a non-interactive context (GUI subprocess, piped stdin, closed stdin),
+        stdin.isatty() returns False and the handler returns False immediately
+        (fail-closed) rather than blocking indefinitely.
 
         Args:
             request: The permission request to confirm
@@ -97,6 +99,20 @@ class PermissionManager:
         Returns:
             True if user approved, False if denied
         """
+        import sys
+
+        # Non-interactive guard: if there is no real terminal attached to stdin,
+        # block the operation immediately rather than hanging forever waiting for
+        # input that will never arrive.  EOFError/OSError inside the loop below
+        # provides a second safety net, but this check is cheaper and explicit.
+        if not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
+            logger.warning(
+                "PermissionManager: no interactive stdin — denying '%s' on '%s' (fail-closed)",
+                request.operation,
+                request.target,
+            )
+            return False
+
         print("\n" + "=" * 70)
         print(f"PERMISSION REQUEST: {request.operation.upper()}")
         print("=" * 70)
@@ -117,11 +133,18 @@ class PermissionManager:
             print(f"\nReason: {request.reason}")
 
         while True:
-            response = (
-                input("\nDo you want to approve this operation? (yes/no): ")
-                .strip()
-                .lower()
-            )
+            try:
+                response = (
+                    input("\nDo you want to approve this operation? (yes/no): ")
+                    .strip()
+                    .lower()
+                )
+            except EOFError:
+                logger.warning(
+                    "PermissionManager: stdin closed mid-prompt — denying '%s' (fail-closed)",
+                    request.operation,
+                )
+                return False
             if response in ("yes", "y"):
                 return True
             elif response in ("no", "n"):

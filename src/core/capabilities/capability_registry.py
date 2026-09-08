@@ -130,6 +130,10 @@ class CapabilityRegistry:
 
             return None
 
+    def get_capability(self, name: str, require_live: bool = False) -> Capability | None:
+        """Alias for get() method."""
+        return self.get(name, require_live=require_live)
+
     def resolve_domain(self, name: str) -> str | None:
         """
         Resolve the owning execution domain for a capability string.

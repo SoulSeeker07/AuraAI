@@ -146,26 +146,39 @@ class AuraDoctor:
             return False, f"Backend registry error: {e}"
 
     def check_desktop_managers(self) -> tuple[bool, str]:
-        """Inspect native desktop managers."""
+        """Inspect native desktop managers and verify discovery."""
         try:
-            from desktop.native.managers import (
-                AudioManager,
-                ClipboardManager,
-                DisplayManager,
-                NetworkManager,
-                PowerManager,
-                WindowManager,
+            from desktop.native.managers.native_manager_registry import (
+                NativeManagerRegistry,
             )
 
-            managers = [
-                WindowManager,
-                ClipboardManager,
-                DisplayManager,
-                AudioManager,
-                PowerManager,
-                NetworkManager,
-            ]
-            return True, f"{len(managers)} native managers healthy"
+            reg = NativeManagerRegistry.get_instance()
+            if not reg.list():
+                reg.discover("src.desktop.native.managers")
+                if not reg.list():
+                    reg.discover("desktop.native.managers")
+
+            mgr_list = reg.list()
+            real_count = sum(
+                1
+                for m in mgr_list
+                if "mock" not in m.get("name", "").lower()
+            )
+            mock_caps = sum(
+                1
+                for mgr in reg._capability_map.values()
+                if "mock" in getattr(mgr, "name", "").lower()
+            )
+            real_caps = len(reg._capability_map) - mock_caps
+
+            if real_count >= 15:
+                return (
+                    True,
+                    f"{real_count} real Win32 managers registered ({real_caps} Win32 capabilities, {mock_caps} mock service control stubs)",
+                )
+            elif real_count > 0:
+                return False, f"Degraded: only {real_count}/17 real managers registered"
+            return False, "0 real native managers registered (all falling back to mock)"
         except Exception as e:
             return False, f"Desktop manager error: {e}"
 
@@ -197,12 +210,59 @@ class AuraDoctor:
             return True, "Agent registry ready"
 
     def check_execution_engine(self) -> tuple[bool, str]:
-        """Check execution engine status."""
-        return True, "Ready"
+        """Check execution engine status and manager resolution."""
+        try:
+            from desktop.native.desktop_execution_engine import (
+                DesktopExecutionEngine,
+            )
+
+            engine = DesktopExecutionEngine()
+            reg = engine.manager_registry
+            test_caps = [
+                "window.activate",
+                "activate_window",
+                "clipboard.read_text",
+                "read_clipboard",
+            ]
+            resolved = {}
+            for cap in test_caps:
+                mgr = reg.resolve(cap)
+                resolved[cap] = getattr(mgr, "name", "None") if mgr else "None"
+
+            mock_resolved = [
+                c for c, m in resolved.items() if "mock" in m.lower() or m == "None"
+            ]
+            if mock_resolved:
+                return False, f"ExecutionEngine resolving to mock for: {mock_resolved}"
+
+            mock_caps = sum(
+                1
+                for m in reg._capability_map.values()
+                if "mock" in getattr(m, "name", "").lower()
+            )
+            real_caps = len(reg._capability_map) - mock_caps
+            return (
+                True,
+                f"Online (resolving {real_caps} Win32 capabilities to real native managers, {mock_caps} mock service control stubs)",
+            )
+        except Exception as e:
+            return False, f"Execution engine error: {e}"
 
     def check_desktop_context(self) -> tuple[bool, str]:
         """Check desktop context engine status."""
-        return True, "Active"
+        try:
+            try:
+                from desktop.native.desktop_context import get_desktop_context
+            except ImportError:
+                from src.desktop.native.desktop_context import get_desktop_context
+
+            ctx = get_desktop_context()
+            snap = ctx.get_context_snapshot()
+            if snap and isinstance(snap, dict):
+                return True, f"Active (Snapshot keys: {len(snap)} categories tracked)"
+            return False, "Desktop context snapshot returned empty or invalid data"
+        except Exception as e:
+            return False, f"Desktop context error: {e}"
 
     def check_memory_db(self) -> tuple[bool, str]:
         """Check memory database status."""
@@ -231,14 +291,29 @@ class AuraDoctor:
             return True, "~140 MB (psutil not installed)"
 
     def run_architecture_tests(self) -> tuple[bool, str]:
-        """Run architecture test suite."""
-        cmd = [sys.executable, "-m", "pytest", "tests/browser/", "-q"]
-        res = subprocess.run(
-            cmd, cwd=str(self.project_root), capture_output=True, text=True
-        )
-        if res.returncode == 0:
-            return True, "Passing"
-        return False, "Failed"
+        """Run architecture verification checks."""
+        try:
+            cmd = [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/architecture/test_imports.py",
+                "-q",
+            ]
+            res = subprocess.run(
+                cmd,
+                cwd=str(self.project_root),
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if res.returncode == 0:
+                return True, "Passing (Core module imports clean)"
+            return False, f"Failed: {res.stdout.strip() or res.stderr.strip()}"
+        except subprocess.TimeoutExpired:
+            return False, "Timed out after 15s"
+        except Exception as e:
+            return False, f"Execution error: {e}"
 
     def diagnose(self) -> dict[str, Any]:
         """Run complete doctor diagnostics and print formatted report."""

@@ -99,6 +99,7 @@ class ChatBubble(QWidget):
         from gui.widgets.message_parser import parse_message_segments, SegmentType
         from gui.widgets.diagram_viewer import DiagramArtifactWidget
         from gui.widgets.code_block_widget import CodeBlockWidget
+        from gui.widgets.thought_block_widget import ThoughtBlockWidget
 
         # Clear existing extra widgets
         while self._container_layout.count() > 1:
@@ -107,9 +108,9 @@ class ChatBubble(QWidget):
                 item.widget().deleteLater()
 
         segments = parse_message_segments(self._content)
-        has_diagram = any(s.type in (SegmentType.DIAGRAM, SegmentType.CODE) for s in segments)
+        has_special = any(s.type in (SegmentType.DIAGRAM, SegmentType.CODE, SegmentType.THOUGHT) for s in segments)
 
-        if not has_diagram:
+        if not has_special:
             html = self._markdown_to_html(self._content)
             self._bubble.setText(html)
             self._bubble.show()
@@ -117,8 +118,12 @@ class ChatBubble(QWidget):
             # Multi-segment rendering
             text_acc = []
             for seg in segments:
-                if seg.type == SegmentType.DIAGRAM:
-                    diag = DiagramArtifactWidget(seg.content, title=seg.title or "Aura Architecture Flow", parent=self)
+                if seg.type == SegmentType.THOUGHT:
+                    thought_widget = ThoughtBlockWidget(seg.content, title=seg.title or "Thought Process", parent=self)
+                    self._container_layout.addWidget(thought_widget)
+                elif seg.type == SegmentType.DIAGRAM:
+                    default_title = "Aura Interface Screen" if "<svg" in seg.content.lower() else "Aura Architecture Flow"
+                    diag = DiagramArtifactWidget(seg.content, title=seg.title or default_title, parent=self)
                     self._container_layout.addWidget(diag)
                 elif seg.type == SegmentType.CODE:
                     code_widget = CodeBlockWidget(seg.content, language=seg.language, parent=self)

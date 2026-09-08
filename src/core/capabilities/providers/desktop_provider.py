@@ -478,6 +478,37 @@ class DesktopCapabilityProvider(ICapabilityProvider):
             if ncap.name not in built_in_names:
                 available_caps.append(ncap)
 
+        # Dynamically project any manager capabilities discovered by NativeManagerRegistry
+        if manager_reg._managers:
+            current_names = {c.name for c in available_caps}
+            for mgr_name, mgr in manager_reg._managers.items():
+                caps = getattr(mgr, "capabilities", [])
+                if callable(caps):
+                    caps = caps()
+                mutating = getattr(mgr, "MUTATING_CAPABILITIES", set())
+                for cap_name in caps:
+                    if cap_name not in current_names:
+                        is_mutating = cap_name in mutating
+                        risk = ActionRisk.HIGH if is_mutating else ActionRisk.LOW
+                        available_caps.append(
+                            Capability(
+                                name=cap_name,
+                                domain=self.DOMAIN,
+                                description=f"Execute {cap_name} via native {mgr_name} manager.",
+                                category=mgr_name,
+                                risk_level=risk,
+                                permissions=[f"desktop:{mgr_name}"],
+                                is_destructive=is_mutating,
+                                requires_confirmation=is_mutating,
+                                execution_backend="desktop_native",
+                                is_live=True,
+                                availability="online",
+                                tags=["desktop", mgr_name, cap_name.split(".")[-1] if "." in cap_name else cap_name],
+                                metadata={"manager": mgr_name},
+                            )
+                        )
+                        current_names.add(cap_name)
+
         return available_caps
 
     def get_capability(self, name: str) -> Capability | None:
@@ -507,22 +538,47 @@ class DesktopCapabilityProvider(ICapabilityProvider):
                 tags=["chat", "general"],
             )
 
-        # Check network capabilities
-        for c in self.list_capabilities():
-            if c.name == name:
-                return c
-
+        # Check native registry first (O(1) dictionary lookup)
         desc = self._native_registry.get(name)
         if desc is None and name.startswith("filesystem."):
             alias_name = name.replace("filesystem.", "file.", 1)
             desc = self._native_registry.get(alias_name)
 
-        if desc is None:
-            return None
+        if desc is not None:
+            manager_reg = NativeManagerRegistry.get_instance()
+            if manager_reg._managers and manager_reg.get(desc.manager) is None:
+                return None
+            return self._descriptor_to_capability(desc)
 
+        # Check network & security capabilities only when prefix matches
+        if name.startswith(("network.", "security.")):
+            for c in self.list_capabilities():
+                if c.name == name:
+                    return c
+
+        # Check NativeManagerRegistry for dynamically discovered managers
         manager_reg = NativeManagerRegistry.get_instance()
-        if manager_reg._managers and manager_reg.get(desc.manager) is None:
-            return None
+        resolved_mgr = manager_reg.resolve(name)
+        if resolved_mgr is not None:
+            mgr_name = getattr(resolved_mgr, "NAME", resolved_mgr.__class__.__name__.lower())
+            mutating = getattr(resolved_mgr, "MUTATING_CAPABILITIES", set())
+            is_mutating = name in mutating
+            risk = ActionRisk.HIGH if is_mutating else ActionRisk.LOW
+            return Capability(
+                name=name,
+                domain=self.DOMAIN,
+                description=f"Execute {name} via native {mgr_name} manager.",
+                category=mgr_name,
+                risk_level=risk,
+                permissions=[f"desktop:{mgr_name}"],
+                is_destructive=is_mutating,
+                requires_confirmation=is_mutating,
+                execution_backend="desktop_native",
+                is_live=True,
+                availability="online",
+                tags=["desktop", mgr_name, name.split(".")[-1] if "." in name else name],
+                metadata={"manager": mgr_name},
+            )
 
-        return self._descriptor_to_capability(desc)
+        return None
 

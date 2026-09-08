@@ -25,12 +25,12 @@ class TestGeminiProviderUnit:
 
     @pytest.fixture
     def provider(self):
-        return GeminiProvider(api_key="mock_gemini_key", default_model="gemini-3.6-flash")
+        return GeminiProvider(api_key="mock_gemini_key", default_model="gemini-3.5-flash")
 
     def test_capabilities(self, provider):
         caps = provider.capabilities
         assert caps.name == "gemini"
-        assert caps.default_model == "gemini-3.6-flash"
+        assert caps.default_model == "gemini-3.5-flash"
         assert caps.supports_streaming is True
         assert caps.supports_vision is False
         assert caps.supports_tools is True
@@ -55,7 +55,7 @@ class TestGeminiProviderUnit:
 
         assert resp.text == "def add(a, b): return a + b"
         assert resp.provider == "gemini"
-        assert resp.model == "gemini-3.6-flash"
+        assert resp.model == "gemini-3.5-flash"
 
     @patch("google.genai.Client")
     def test_stream_success(self, mock_client_cls, provider):

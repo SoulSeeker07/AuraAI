@@ -88,6 +88,14 @@ class AudioManager:
         
         self._audio_queue = queue.Queue()
 
+        # Acoustic Echo Suppressor for full-duplex mic/speaker operation
+        try:
+            from .echo_canceller import AcousticEchoSuppressor
+            self._echo_suppressor = AcousticEchoSuppressor(sample_rate=16000)
+        except Exception as e:
+            logger.debug(f"[AudioManager] Echo suppressor init notice: {e}")
+            self._echo_suppressor = None
+
         logger.info("Audio Manager initialized")
         self._initialized = True
 
@@ -440,7 +448,11 @@ class AudioManager:
         self._last_chunk_time = time.time()
         if self._is_recording and self._capture_enabled:
             try:
-                self._audio_queue.put_nowait(indata.tobytes())
+                raw_bytes = indata.tobytes()
+                # Run through Acoustic Echo Suppressor if active
+                if self._echo_suppressor is not None:
+                    raw_bytes = self._echo_suppressor.process_capture_frame(raw_bytes)
+                self._audio_queue.put_nowait(raw_bytes)
             except Exception:
                 pass
 
@@ -461,6 +473,16 @@ class AudioManager:
     def is_capture_enabled(self) -> bool:
         return self._capture_enabled and self._is_recording
 
+    def set_headphone_mode(self, enabled: bool) -> None:
+        """Enable or disable headphone bypass for echo cancellation."""
+        if self._echo_suppressor:
+            self._echo_suppressor.set_headphone_mode(enabled)
+
+    @property
+    def echo_suppressor(self):
+        """Access the AcousticEchoSuppressor instance."""
+        return self._echo_suppressor
+
     def _playback_callback(self, outdata, frames, time_info, status):
         """Callback for audio output stream."""
         if status:
@@ -469,7 +491,11 @@ class AudioManager:
         if self._output_callback and self._is_playing:
             audio_data = self._output_callback(frames)
             if audio_data:
-                outdata[:] = audio_data.tobytes()
+                raw_out = audio_data.tobytes()
+                outdata[:] = raw_out
+                # Feed speaker reference frame to echo suppressor
+                if self._echo_suppressor is not None:
+                    self._echo_suppressor.feed_playback_frame(raw_out)
             else:
                 # Silence
                 outdata[:] = b"\x00" * len(outdata)

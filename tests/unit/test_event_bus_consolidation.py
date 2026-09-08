@@ -59,3 +59,15 @@ def test_brain_aca_event_bus_deprecation_and_delegation(caplog):
     aca_bus.unsubscribe("test.event", legacy_handler)
     aca_bus.publish("test.event", {"status": "second"})
     assert len(received_payloads) == 1
+
+    # Non-dict payload defensive fallback test
+    received_non_dict = []
+    def fallback_handler(data: dict):
+        received_non_dict.append(data)
+
+    aca_bus.subscribe("test.non_dict", fallback_handler)
+    aca_bus.publish("test.non_dict", "not-a-dict")  # type: ignore[arg-type]
+    assert len(received_non_dict) == 1
+    assert received_non_dict[0] == {}
+    aca_bus.unsubscribe("test.non_dict", fallback_handler)
+

@@ -48,7 +48,7 @@ class EventBus:
 
     def publish(self, event_type: str, data: dict[str, Any] | None = None) -> None:
         """Publish an event to all subscribers via the core EventBus."""
-        self._core_bus.publish(event_type, payload=data or {})
+        self._core_bus.publish(event_type, payload=data if isinstance(data, dict) else {})
 
     def unsubscribe(self, event_type: str, handler: Callable) -> None:
         """Unsubscribe a handler from an event type."""

@@ -147,6 +147,12 @@ class CalendarPlugin(Plugin):
                     conn.commit()
                     return {"id": tid, "status": "completed"}
 
+                elif cap == "calendar.delete_event":
+                    eid = kwargs.get("event_id") or kwargs.get("id")
+                    conn.execute("DELETE FROM events WHERE id = ?", (eid,))
+                    conn.commit()
+                    return {"id": eid, "status": "deleted"}
+
                 else:
                     return {"status": "success", "capability": capability, "params": kwargs}
         except Exception as e:

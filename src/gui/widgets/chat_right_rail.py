@@ -968,6 +968,26 @@ class ChatRightRail(QWidget):
 
         self._layout.addWidget(self._term_body)
 
+        # ── 5. Capability Coverage Section ──
+        self._cap_header = AccordionHeader("📊 CAPABILITY COVERAGE", count_badge="--%", is_expanded=False, is_dimmed=False)
+        self._cap_header.toggled.connect(self._toggle_cap_body)
+        self._layout.addWidget(self._cap_header)
+
+        self._cap_body = QFrame()
+        self._cap_body.setVisible(False)
+        self._cap_body_layout = QVBoxLayout(self._cap_body)
+        self._cap_body_layout.setContentsMargins(10, 4, 6, 6)
+        self._cap_body_layout.setSpacing(6)
+
+        try:
+            from gui.widgets.capability_dashboard_widget import CapabilityDashboardWidget
+            self._cap_widget = CapabilityDashboardWidget(parent=self)
+            self._cap_body_layout.addWidget(self._cap_widget)
+        except Exception as exc:
+            logger.debug(f"[ChatRightRail] CapabilityDashboardWidget unavailable: {exc}")
+
+        self._layout.addWidget(self._cap_body)
+
         self._layout.addStretch()
         self._scroll.setWidget(self._container)
         root_layout.addWidget(self._scroll)
@@ -983,6 +1003,9 @@ class ChatRightRail(QWidget):
 
     def _toggle_term_body(self, expanded: bool):
         self._term_body.setVisible(expanded)
+
+    def _toggle_cap_body(self, expanded: bool):
+        self._cap_body.setVisible(expanded)
 
     def _connect_signals(self):
         """Pure observer listener: triggers local redraw on execution events without mutating bridge."""
@@ -1109,6 +1132,16 @@ class ChatRightRail(QWidget):
 
         terminal_logs = self._bridge.get_terminal_logs()
         self._term_stream_widget.set_logs(terminal_logs)
+
+        # 5. Capability Usage & Coverage Badge
+        if hasattr(self, "_cap_header"):
+            try:
+                from core.capabilities.capability_usage_tracker import get_tracker
+                from core.capabilities.capability_registry import CapabilityRegistry
+                _cov = get_tracker().get_coverage(len(CapabilityRegistry.get_instance().list()))
+                self._cap_header.set_badge(f"{_cov.get('coverage_pct', 0.0)}%")
+            except Exception:
+                pass
 
         # Reset indicator if no active execution
         if not active_tasks:

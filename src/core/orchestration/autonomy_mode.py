@@ -137,40 +137,54 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
     engine_lower = (engine or "").lower()
     params = params or {}
 
-    # Check CapabilityRegistry authoritative declaration first
-    try:
-        from core.capabilities.capability_registry import CapabilityRegistry
-        cap = CapabilityRegistry.get_instance().get(action)
-        if cap is not None:
-            if cap.risk_level == ActionRisk.CRITICAL:
-                return ActionRisk.CRITICAL
-            if cap.risk_level == ActionRisk.HIGH or cap.requires_confirmation or getattr(cap, "is_destructive", False):
-                # Allow Scoped Sandbox Auto-Approval for safe disposable paths
-                if action_lower in ("file.delete", "file.remove", "directory.delete"):
-                    extracted_paths = _extract_target_paths(params)
-                    if extracted_paths and all(is_safe_sandbox_path(p) for p in extracted_paths):
-                        return ActionRisk.LOW
-                return ActionRisk.HIGH
-            return cap.risk_level
-        elif "." in action:
-            logger.debug(
-                f"[classify_action_risk] Capability '{action}' not registered in CapabilityRegistry; using heuristic classification."
+    # Check CapabilityRegistry authoritative declaration first (for capability identifiers)
+    if " " not in action_lower:
+        try:
+            from core.capabilities.capability_registry import CapabilityRegistry
+
+            cap = CapabilityRegistry.get_instance().get(action)
+            if cap is not None:
+                if cap.risk_level == ActionRisk.CRITICAL:
+                    return ActionRisk.CRITICAL
+                if (
+                    cap.risk_level == ActionRisk.HIGH
+                    or cap.requires_confirmation
+                    or getattr(cap, "is_destructive", False)
+                ):
+                    # Allow Scoped Sandbox Auto-Approval for safe disposable paths
+                    if action_lower in ("file.delete", "file.remove", "directory.delete"):
+                        extracted_paths = _extract_target_paths(params)
+                        if extracted_paths and all(
+                            is_safe_sandbox_path(p) for p in extracted_paths
+                        ):
+                            return ActionRisk.LOW
+                    return ActionRisk.HIGH
+                return cap.risk_level
+            elif "." in action:
+                logger.debug(
+                    f"[classify_action_risk] Capability '{action}' not registered in CapabilityRegistry; using heuristic classification."
+                )
+        except (ImportError, AttributeError) as err:
+            logger.warning(
+                f"[classify_action_risk] Failed to import/query CapabilityRegistry for '{action}': {err}. Using heuristic fallback."
             )
-    except (ImportError, AttributeError) as err:
-        logger.warning(
-            f"[classify_action_risk] Failed to import/query CapabilityRegistry for '{action}': {err}. Using heuristic fallback."
-        )
-    except Exception as err:
-        logger.warning(
-            f"[classify_action_risk] Unexpected error querying CapabilityRegistry for '{action}': {err}. Using heuristic fallback."
-        )
+        except Exception as err:
+            logger.warning(
+                f"[classify_action_risk] Unexpected error querying CapabilityRegistry for '{action}': {err}. Using heuristic fallback."
+            )
+
+    def _matches_kw(kw: str, text: str) -> bool:
+        if any(sep in kw for sep in ("_", ".", "-", "/", " ")):
+            return kw in text
+        tokens = re.split(r"[\s_.\-:/]+", text)
+        return kw in tokens
 
     # 1. Critical Risk Operations (Financial, destructive auth, credential leaks)
     critical_keywords = [
         "checkout", "purchase", "pay", "buy", "credential", "password",
         "secret", "private_key", "shopping.checkout", "order.place"
     ]
-    if any(kw in action_lower for kw in critical_keywords) or any(kw in str(params).lower() for kw in critical_keywords):
+    if any(_matches_kw(kw, action_lower) for kw in critical_keywords) or any(kw in str(params).lower() for kw in critical_keywords):
         return ActionRisk.CRITICAL
 
     # 2. High Risk Operations (Destructive mutations, form submissions, external posts)
@@ -179,13 +193,22 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
         "bulk_delete", "send_message", "send_email", "post", "publish",
         "rmdir", "destroy", "format", "submit", "form.submit", "form.fill"
     ]
-    if any(kw in action_lower for kw in high_keywords):
+    if any(_matches_kw(kw, action_lower) for kw in high_keywords):
         # Allow Scoped Sandbox Auto-Approval for safe paths
         if action_lower in ("file.delete", "file.remove", "directory.delete", "delete", "remove", "clear", "unlink"):
             extracted_paths = _extract_target_paths(params)
             if extracted_paths and all(is_safe_sandbox_path(p) for p in extracted_paths):
                 return ActionRisk.LOW
         return ActionRisk.HIGH
+
+    # Perimeter security & physical locking controls
+    if engine_lower == "smarthome":
+        if action_lower in ("lock", "unlock") or action_lower.endswith(".lock") or action_lower.endswith(".unlock"):
+            return ActionRisk.HIGH
+        ent = str(params.get("entity_id") or "").lower().strip()
+        ent_domain = ent.split(".")[0] if "." in ent else ""
+        if ent_domain == "lock" or bool(re.search(r"\b(?:door_lock|smart_lock|lock)\b", ent)):
+            return ActionRisk.HIGH
 
     # 2b. High-risk phrasing embedded in the execution parameters
     params_text = str(params).lower()
@@ -208,17 +231,37 @@ def classify_action_risk(engine: str, action: str, params: dict[str, Any] | None
             return ActionRisk.LOW
         return ActionRisk.HIGH
 
-    # 3. Medium Risk Operations (State mutations, cross-app transfers, uploads)
+    # 3. Medium Risk Operations (State mutations, cross-app transfers, uploads, artifact synthesis)
     medium_keywords = [
         "edit", "update", "modify", "write", "create", "launch", "open_app",
         "click", "input_text", "shopping.cart.add", "cart.add", "cart",
-        "transfer", "upload", "transfer_to", "file.upload", "cross_app", "transfer.cross_app"
+        "transfer", "upload", "transfer_to", "file.upload", "cross_app", "transfer.cross_app",
+        "synthesize", "codeact.synthesize", "set", "adjust", "change", "navigate", "switch", "toggle",
+        "turn_on", "turn_off", "dim", "brighten",
     ]
-    if any(kw in action_lower for kw in medium_keywords):
+    if any(_matches_kw(kw, action_lower) for kw in medium_keywords):
         return ActionRisk.MEDIUM
 
-    # 4. Default Low Risk Operations (Reads, Searches, Observations)
-    return ActionRisk.LOW
+    # 4. Safe Read-Only / Telemetry / Observation Operations
+    safe_read_keywords = [
+        "read", "get", "list", "query", "search", "check", "inspect",
+        "status", "fetch", "observe", "lookup", "find", "show", "view",
+        "telemetry", "history", "report", "summary", "summarize", "info",
+        "ocr", "recall", "browse", "scan", "ping", "listen", "measure",
+        "index", "cache", "semantic index", "scrape", "re-index", "analyze", "test",
+    ]
+    if any(_matches_kw(kw, action_lower) for kw in safe_read_keywords):
+        return ActionRisk.LOW
+
+    # 5. Fail-Closed Default for Unknown / Unregistered Operations
+    # Any ambiguous, novel, or unregistered action without an explicit safe pattern
+    # fails closed to HIGH risk to ensure human approval is enforced.
+    logger.warning(
+        f"[classify_action_risk] Unrecognized/unregistered action '{action}' on engine '{engine}' "
+        f"failed-closed to ActionRisk.HIGH."
+    )
+    return ActionRisk.HIGH
+
 
 
 def should_require_confirmation(level: AutonomyLevel | str, risk: ActionRisk | str) -> bool:

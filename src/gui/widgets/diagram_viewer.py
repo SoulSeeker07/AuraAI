@@ -71,7 +71,7 @@ def sanitize_mermaid_code(code: str) -> str:
 
     # 2. Quote unquoted box labels: NodeID[Label with (parentheses) or special chars]
     def _quote_box(m: re.Match) -> str:
-        prefix = m.group(1)
+        prefix = m.group(1) or ""
         node_id = m.group(2)
         label = m.group(3).strip()
         if (label.startswith('"') and label.endswith('"')) or (label.startswith("'") and label.endswith("'")):
@@ -125,6 +125,68 @@ def is_svg_code(code: str) -> bool:
     return "<svg" in c or (c.startswith("<?xml") and "<svg" in c) or ("<path" in c and "</svg>" in c) or ("<ellipse" in c and "</svg>" in c)
 
 
+def is_sketch_or_dark_line_svg(code: str) -> bool:
+    """
+    Detect if an SVG is a pencil sketch, mechanical drafting drawing, or dark-ink schematic
+    that was designed for a light/paper background but lacks its own background element.
+    """
+    c = code.lower()
+    
+    # 1. If it already has an explicit background rect covering the canvas, don't override
+    if re.search(r'<rect[^>]+(?:id=["\'](?:aura-auto-canvas|aura-canvas|canvas|background|bg)["\']|width=["\']100%["\'])[^>]*fill=', c):
+        return False
+    if "background-color:" in c or "background:" in c[:250]:
+        return False
+        
+    # 2. Check for sketch / drafting keywords
+    sketch_keywords = ("sketch", "pencil", "draft", "hand-drawn", "graphite", "charcoal", "cross-section", "schematic")
+    has_sketch_keyword = any(k in c for k in sketch_keywords)
+    
+    # 3. Check for dark stroke / dark text styling
+    dark_strokes = re.findall(r'stroke:\s*(#[0-4][0-9a-f]{2,5}|black|rgb\(0,\s*0,\s*0\))', c)
+    dark_attrs = re.findall(r'stroke=["\'](#[0-4][0-9a-f]{2,5}|black)["\']', c)
+    dark_fills = re.findall(r'fill=["\'](#[0-4][0-9a-f]{2,5}|black)["\']', c)
+    
+    total_dark_elements = len(dark_strokes) + len(dark_attrs) + len(dark_fills)
+    
+    if has_sketch_keyword and total_dark_elements > 0:
+        return True
+        
+    if total_dark_elements >= 3:
+        # Check if neon strokes dominate (e.g. Aura UI cyan/neon orange HUD SVGs)
+        neon_strokes = re.findall(r'stroke:\s*(cyan|#00e5ff|#38bdf8|#f97316|#10b981|#a855f7)', c)
+        if len(neon_strokes) < total_dark_elements:
+            return True
+            
+    return False
+
+
+def inject_canvas_background(svg: str, bg_color: str = "#fcfbf7") -> str:
+    """
+    Inject a high-contrast architectural drafting paper canvas rect behind SVG drawing elements.
+    Calculates precise bounds from the SVG viewBox or width/height attributes.
+    """
+    vb_match = re.search(r'viewBox=["\']\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*["\']', svg, re.IGNORECASE)
+    if vb_match:
+        vx, vy, vw, vh = vb_match.groups()
+        canvas_rect = f'<rect id="aura-auto-canvas" x="{vx}" y="{vy}" width="{vw}" height="{vh}" fill="{bg_color}" rx="8" style="transition: fill 0.25s ease;" />'
+    else:
+        w_match = re.search(r'<svg[^>]+width=["\']([\d.]+)["\']', svg, re.IGNORECASE)
+        h_match = re.search(r'<svg[^>]+height=["\']([\d.]+)["\']', svg, re.IGNORECASE)
+        if w_match and h_match:
+            vw, vh = w_match.group(1), h_match.group(1)
+            canvas_rect = f'<rect id="aura-auto-canvas" x="0" y="0" width="{vw}" height="{vh}" fill="{bg_color}" rx="8" style="transition: fill 0.25s ease;" />'
+        else:
+            canvas_rect = f'<rect id="aura-auto-canvas" x="0" y="0" width="100%" height="100%" fill="{bg_color}" rx="8" style="transition: fill 0.25s ease;" />'
+
+    if "</defs>" in svg:
+        return re.sub(r'(</defs\s*>)', r'\1\n  ' + canvas_rect, svg, count=1, flags=re.IGNORECASE)
+    elif "</style>" in svg:
+        return re.sub(r'(</style\s*>)', r'\1\n  ' + canvas_rect, svg, count=1, flags=re.IGNORECASE)
+    else:
+        return re.sub(r'(<svg\b[^>]*>)', r'\1\n  ' + canvas_rect, svg, count=1, flags=re.IGNORECASE)
+
+
 def extract_svg_content(code: str) -> str:
     """Extract or wrap clean SVG content for direct interactive browser rendering."""
     code = code.strip()
@@ -140,6 +202,16 @@ def extract_svg_content(code: str) -> str:
             clean_inner = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100%" height="100%">\n{clean_inner}'
         svg = clean_inner
 
+    # 1. Sanitize illegal <br> or <br/> tags in SVG (causes text collapse and XML parse breakages)
+    svg = re.sub(r"<br\s*/?>", " ", svg, flags=re.IGNORECASE)
+
+    # 2. Sanitize unescaped ampersands
+    svg = re.sub(r"&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)", "&amp;", svg)
+
+    # 3. Auto-Canvas Injection for Pencil Sketches & Dark Line Drawings
+    if is_sketch_or_dark_line_svg(svg):
+        svg = inject_canvas_background(svg, bg_color="#fcfbf7")
+
     # Ensure id="mermaid-svg" on root <svg> tag for pan/zoom integration
     if 'id="' not in svg[:80]:
         svg = re.sub(r"<svg\b", '<svg id="mermaid-svg" xmlns="http://www.w3.org/2000/svg"', svg, count=1, flags=re.IGNORECASE)
@@ -154,6 +226,7 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
     and native SVG vector illustrations with pan/zoom and export.
     """
     is_svg = is_svg_code(mermaid_code)
+    is_sketch = is_sketch_or_dark_line_svg(mermaid_code) if is_svg else False
     
     if is_svg:
         raw_svg = extract_svg_content(mermaid_code)
@@ -265,8 +338,8 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
             white-space: pre-wrap;
             z-index: 100;
         }}
-        /* Futuristic node glow */
-        .node rect, .node circle, .node polygon, .node path {{
+        /* Futuristic node glow for Mermaid */
+        .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path {{
             stroke-width: 1.5px !important;
             filter: drop-shadow(0 2px 6px rgba(0, 229, 255, 0.15));
         }}
@@ -275,7 +348,7 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
             stroke-width: 1.8px !important;
             filter: drop-shadow(0 1px 4px rgba(56, 189, 248, 0.2));
         }}
-        text, .messageText, .loopText, .noteText, .labelText, .actor > tspan {{
+        .mermaid text, .messageText, .loopText, .noteText, .labelText, .actor > tspan {{
             fill: #f1f5f9 !important;
             font-size: 14px !important;
             font-weight: 500 !important;
@@ -322,6 +395,18 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
             color: #ffffff;
             border-color: #00e5ff;
         }}
+        #controls-bar #btn-canvas-mode {{
+            min-width: 68px;
+            font-size: 11px;
+            padding: 0 6px;
+            color: #38bdf8;
+            background: rgba(30, 58, 90, 0.85);
+        }}
+        #controls-bar #btn-canvas-mode:hover {{
+            color: #ffffff;
+            background: rgba(0, 229, 255, 0.35);
+            border-color: #00e5ff;
+        }}
     </style>
 </head>
 <body>
@@ -329,6 +414,7 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
         <div id="error-overlay"></div>
         {diagram_div}
         <div id="controls-bar">
+            <button id="btn-canvas-mode" onclick="cycleCanvasMode()" title="Toggle Canvas Mode (Drafting Paper / Dark / Blueprint / White)">{'📜 Paper' if is_sketch else '🌌 Dark'}</button>
             <button onclick="zoomIn()" title="Zoom In">+</button>
             <button onclick="zoomOut()" title="Zoom Out">−</button>
             <button onclick="zoomReadable()" title="Readable 100% (1:1)">1:1</button>
@@ -461,6 +547,68 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
             const svg = document.querySelector('#diagram svg');
             return svg ? svg.outerHTML : '';
         }}
+
+        // Canvas Mode Cycling (Drafting Paper / Dark / Blueprint / White)
+        const isPencilSketch = {'true' if is_sketch else 'false'};
+        const canvasModes = [
+            {{ id: 'paper', label: '📜 Paper', canvasBg: '#fcfbf7', containerBg: 'radial-gradient(circle at center, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%)' }},
+            {{ id: 'dark', label: '🌌 Dark', canvasBg: '#080d18', containerBg: 'radial-gradient(circle at center, rgba(14, 34, 56, 0.4) 0%, rgba(8, 13, 24, 0.95) 100%)' }},
+            {{ id: 'blueprint', label: '📐 Blueprint', canvasBg: '#0c2340', containerBg: 'radial-gradient(circle at center, rgba(10, 37, 64, 0.6) 0%, rgba(6, 17, 34, 0.95) 100%)' }},
+            {{ id: 'white', label: '⬜ White', canvasBg: '#ffffff', containerBg: '#1e293b' }}
+        ];
+        let currentModeIdx = isPencilSketch ? 0 : 1;
+
+        function cycleCanvasMode() {{
+            currentModeIdx = (currentModeIdx + 1) % canvasModes.length;
+            applyCanvasMode(canvasModes[currentModeIdx]);
+        }}
+
+        function applyCanvasMode(mode) {{
+            const btn = document.getElementById('btn-canvas-mode');
+            if (btn) btn.innerText = mode.label;
+
+            const container = document.getElementById('container');
+            if (container) container.style.background = mode.containerBg;
+
+            const canvasRect = document.getElementById('aura-auto-canvas');
+            const svgEl = document.getElementById('mermaid-svg');
+
+            if (mode.id === 'blueprint') {{
+                if (canvasRect) canvasRect.setAttribute('fill', '#091e3a');
+                if (svgEl && isPencilSketch) {{
+                    svgEl.style.filter = 'drop-shadow(0 0 1px rgba(56, 189, 248, 0.4))';
+                    document.querySelectorAll('#mermaid-svg path, #mermaid-svg line, #mermaid-svg circle, #mermaid-svg polygon').forEach(el => {{
+                        if (el.id !== 'aura-auto-canvas') el.style.stroke = '#67e8f9';
+                    }});
+                    document.querySelectorAll('#mermaid-svg text').forEach(el => {{
+                        el.style.fill = '#f0f9ff';
+                    }});
+                }}
+            }} else if (mode.id === 'dark') {{
+                if (canvasRect) canvasRect.setAttribute('fill', '#080d18');
+                if (svgEl && isPencilSketch) {{
+                    svgEl.style.filter = 'none';
+                    document.querySelectorAll('#mermaid-svg path, #mermaid-svg line, #mermaid-svg circle, #mermaid-svg polygon').forEach(el => {{
+                        if (el.id !== 'aura-auto-canvas') el.style.stroke = '#00e5ff';
+                    }});
+                    document.querySelectorAll('#mermaid-svg text').forEach(el => {{
+                        el.style.fill = '#f8fafc';
+                    }});
+                }}
+            }} else {{
+                if (canvasRect) canvasRect.setAttribute('fill', mode.canvasBg);
+                if (svgEl) {{
+                    svgEl.style.filter = 'none';
+                    if (!canvasRect) svgEl.style.backgroundColor = mode.canvasBg;
+                }}
+                document.querySelectorAll('#mermaid-svg path, #mermaid-svg line, #mermaid-svg circle, #mermaid-svg polygon').forEach(el => {{
+                    if (el.id !== 'aura-auto-canvas') el.style.stroke = '';
+                }});
+                document.querySelectorAll('#mermaid-svg text').forEach(el => {{
+                    el.style.fill = '';
+                }});
+            }}
+        }}
     </script>
 </body>
 </html>"""
@@ -473,6 +621,13 @@ def build_mermaid_html(mermaid_code: str, theme: str = "dark") -> str:
 def detect_diagram_type(code: str) -> str:
     """Detects the diagram type from the first non-comment line."""
     if is_svg_code(code):
+        code_low = code.lower()
+        if any(k in code_low for k in ("sketch", "pencil", "graphite", "draft", "hand-drawn")):
+            return "PENCIL SKETCH"
+        if any(k in code_low for k in ("blueprint", "cad", "schematic")):
+            return "CAD BLUEPRINT"
+        if any(k in code_low for k in ("mcdu", "cockpit", "interface", "layout", "screen", "wireframe", "mockup", "dashboard")):
+            return "UI INTERFACE LAYOUT"
         return "SVG VECTOR ART"
 
     lines = [line.strip() for line in code.strip().splitlines() if line.strip() and not line.strip().startswith("%%")]
@@ -533,51 +688,56 @@ class DiagramInspectDialog(QDialog):
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
-        # Header bar
+        # Header bar - Compact, sleek ribbon
         header = QFrame()
+        header.setObjectName("inspectHeader")
+        header.setFixedHeight(44)
         header.setStyleSheet("""
-            QFrame {
-                background: rgba(14, 24, 42, 0.85);
+            QFrame#inspectHeader {
+                background: rgba(14, 24, 42, 0.92);
                 border: 1px solid rgba(56, 189, 248, 0.25);
                 border-radius: 8px;
             }
         """)
         h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(12, 8, 12, 8)
+        h_layout.setContentsMargins(12, 4, 12, 4)
         h_layout.setSpacing(10)
 
         dtype = detect_diagram_type(mermaid_code)
         badge = QLabel(f"[{dtype}]")
         badge.setFont(QFont("Consolas", 8, QFont.Bold))
+        badge.setFixedHeight(24)
         badge.setStyleSheet("color: #00e5ff; background: rgba(0, 229, 255, 0.12); border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 4px; padding: 2px 8px;")
         h_layout.addWidget(badge)
 
         title_lbl = QLabel(title)
-        title_lbl.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        title_lbl.setStyleSheet("color: #f8fafc; background: transparent;")
+        title_lbl.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        title_lbl.setStyleSheet("color: #f8fafc; background: transparent; border: none;")
         h_layout.addWidget(title_lbl)
 
         h_layout.addStretch()
 
-        # Zoom Controls
+        # Canvas & Zoom Controls
+        btn_canvas = QPushButton("📜 Canvas")
         btn_zin = QPushButton("🔍+ Zoom In")
         btn_zout = QPushButton("🔍- Zoom Out")
         btn_reset = QPushButton("↺ Fit Screen")
         btn_export = QPushButton("💾 Export SVG")
         btn_close = QPushButton("✕ Close")
 
-        for btn in (btn_zin, btn_zout, btn_reset, btn_export):
+        for btn in (btn_canvas, btn_zin, btn_zout, btn_reset, btn_export):
             btn.setFont(QFont("Segoe UI", 9))
+            btn.setFixedHeight(28)
             btn.setStyleSheet("""
                 QPushButton {
                     background: rgba(30, 58, 90, 0.5);
                     border: 1px solid rgba(56, 189, 248, 0.3);
                     border-radius: 5px;
                     color: #e2e8f0;
-                    padding: 4px 10px;
+                    padding: 3px 10px;
                 }
                 QPushButton:hover {
                     background: rgba(0, 229, 255, 0.2);
@@ -587,13 +747,14 @@ class DiagramInspectDialog(QDialog):
             """)
             h_layout.addWidget(btn)
 
+        btn_close.setFixedHeight(28)
         btn_close.setStyleSheet("""
             QPushButton {
                 background: rgba(239, 68, 68, 0.2);
                 border: 1px solid rgba(239, 68, 68, 0.4);
                 border-radius: 5px;
                 color: #fca5a5;
-                padding: 4px 12px;
+                padding: 3px 12px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -604,7 +765,7 @@ class DiagramInspectDialog(QDialog):
         btn_close.clicked.connect(self.accept)
         h_layout.addWidget(btn_close)
 
-        layout.addWidget(header)
+        layout.addWidget(header, 0)
 
         # WebEngine View for rendering
         self.web_view = QWebEngineView()
@@ -612,9 +773,10 @@ class DiagramInspectDialog(QDialog):
         self.web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
         self.web_view.settings().setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
         self.web_view.setHtml(build_mermaid_html(mermaid_code), QUrl("http://localhost"))
-        layout.addWidget(self.web_view)
+        layout.addWidget(self.web_view, 1)
 
         # Connect actions
+        btn_canvas.clicked.connect(lambda: self.web_view.page().runJavaScript("cycleCanvasMode();"))
         btn_zin.clicked.connect(lambda: self.web_view.page().runJavaScript("zoomIn();"))
         btn_zout.clicked.connect(lambda: self.web_view.page().runJavaScript("zoomOut();"))
         btn_reset.clicked.connect(lambda: self.web_view.page().runJavaScript("resetZoom();"))
@@ -723,6 +885,10 @@ class DiagramArtifactWidget(QFrame):
         self.btn_inspect.setFont(QFont("Segoe UI", 8))
         self.btn_inspect.setToolTip("Open in Fullscreen Zoomable Inspector")
 
+        self.btn_canvas = QPushButton("📜 Canvas")
+        self.btn_canvas.setFont(QFont("Segoe UI", 8))
+        self.btn_canvas.setToolTip("Toggle Canvas Mode (Paper / Dark / Blueprint / White)")
+
         self.btn_copy = QPushButton("📋 Copy")
         self.btn_copy.setFont(QFont("Segoe UI", 8))
         self.btn_copy.setToolTip("Copy Mermaid source code to clipboard")
@@ -750,7 +916,7 @@ class DiagramArtifactWidget(QFrame):
                 color: #00e5ff;
             }
         """
-        for b in (self.btn_diagram, self.btn_code, self.btn_copy, self.btn_inspect, self.btn_export):
+        for b in (self.btn_diagram, self.btn_code, self.btn_canvas, self.btn_copy, self.btn_inspect, self.btn_export):
             b.setStyleSheet(button_style)
             rb_layout.addWidget(b)
 
@@ -788,6 +954,7 @@ class DiagramArtifactWidget(QFrame):
         # ── Connect Button Signals ──
         self.btn_diagram.clicked.connect(self._show_diagram_view)
         self.btn_code.clicked.connect(self._show_code_view)
+        self.btn_canvas.clicked.connect(lambda: self.web_view.page().runJavaScript("cycleCanvasMode();"))
         self.btn_inspect.clicked.connect(self._open_inspector)
         self.btn_copy.clicked.connect(self._copy_code)
         self.btn_export.clicked.connect(self._export_svg)

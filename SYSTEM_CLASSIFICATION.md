@@ -2,7 +2,7 @@
 
 > **Single source of truth for module lifecycle status.**
 > Use this before expanding, refactoring, or wiring any module.
-> Last updated: August 2026 — Foundation Wiring & Truth Pass
+> Last updated: September 2026 — Foundation Wiring, Autonomy & Truth Pass
 
 ---
 
@@ -37,6 +37,9 @@
 | `ResultMerger` | `src/core/orchestration/result_merger.py` | **ACTIVE** | Stage 6. Multi-result fusion. |
 | `ReasoningEngine` | `src/core/orchestration/reasoning_engine.py` | **ACTIVE** | Pre-decomposition heuristic reasoning. |
 | `ExecutionPolicy` | `src/core/orchestration/execution_policy.py` | **ACTIVE** | Safety policy enforcement per action. |
+| `FocusManager` | `src/core/focus_manager.py` | **ACTIVE** | Multi-task context switching, SQLite WAL backing, interrupt routing (M32). |
+| `MacroCompiler` | `src/execution/macro_compiler.py` | **ACTIVE** | Zero-token deterministic UI macro compilation (M34). |
+| `VisualWorkingMemory` | `src/core/visual_memory.py` | **ACTIVE** | Ring buffer visual grounding memory (M33/M35). |
 | `Artifact` | `src/core/orchestration/artifact.py` | **ACTIVE** | Artifact model for output tracking. |
 | `WorldSnapshot` | `src/core/orchestration/world_snapshot.py` | **ACTIVE** | Snapshot of world state per session. |
 | `EventBus` | `src/core/event_bus.py` | **ACTIVE** | Synchronous pub/sub. 47 lines. |
@@ -57,6 +60,10 @@
 | `PlaywrightBrowserAdapter` | `src/core/backends/adapters/browser_backend.py` | **ACTIVE** | Live Playwright & L1/L2 DOM/URL verification & recovery. |
 | `ObservationModels` | `src/core/orchestration/observation_models.py` | **ACTIVE** | Evidence-backed Observation, ExpectedState, VerificationReport models. |
 | `ActivityTraceRenderer` | `src/core/orchestration/activity_trace_renderer.py` | **ACTIVE** | CLI 3-level activity trace presentation layer. |
+| `UnifiedToolDispatcher` | `src/core/tools/unified_tool_dispatcher.py` | **ACTIVE** | Canonical 21-tool discrete execution dispatcher with HMAC ticket gating (TD-020). |
+| `SmartHomeBackendAdapter` | `src/core/backends/adapters/smarthome_backend.py` | **ACTIVE** | Live via `UnifiedToolDispatcher.smarthome_control` & Home Assistant / Tapo. |
+| `EmailBackendAdapter` | `src/core/backends/adapters/email_backend.py` | **ACTIVE** | Live via `UnifiedToolDispatcher.email_action` & EmailPlugin. |
+| `CalendarBackendAdapter` | `src/core/backends/adapters/calendar_backend.py` | **ACTIVE** | Live via `UnifiedToolDispatcher.calendar_action` & CalendarPlugin. |
 
 ---
 
@@ -65,18 +72,49 @@
 | Module | File | Classification | Notes |
 |:---|:---|:---|:---|
 | `EngineeringManager` | `src/engineering/engineering_manager.py` | **ACTIVE** | Wired to CodingBackendAdapter in Truth Pass. |
+| `AutonomousLoop` | `src/engineering/autonomous_loop.py` | **ACTIVE** | Closed-loop bug fixing, test-driven repair, and byte-exact rollback (M27). |
+| `SafetyCeiling` | `src/engineering/safety_ceiling.py` | **ACTIVE** | `PROTECTED_SAFETY_CEILING` boundary enforcement (M27). |
+| `PatchBundleAssembler` | `src/engineering/pr_assembler.py` | **ACTIVE** | Automated Git commit, branch, and PR payload assembly (M27). |
+| `WorkspacePolicy` | `src/engineering/workspace_policy.py` | **ACTIVE** | Single-write gate and boundary enforcement (M27). |
+| `ProjectIndex` | `src/workspace/project_index.py` | **ACTIVE** | Sub-millisecond trigram and AST symbol search (M35). |
+| `DuplicateDetector` | `src/engineering/duplicate_detector.py` | **ACTIVE** | Structural AST duplicate detection and anti-drift validation (M35). |
 | `CodeEditor` | `src/engineering/code_editor.py` | **ACTIVE** | File editing with backup + rollback. Called by backend. |
 | `ASTManager` | `src/engineering/ast_manager.py` | **ACTIVE** | AST analysis. Called by backend. |
-| `BugRepairLoop` | `src/engineering/bug_repair.py` | **SCAFFOLDED** | Real code. Not yet called from backend. M20 target. |
-| `TestEngine` | `src/engineering/test_engine.py` | **SCAFFOLDED** | Real code. Not yet called from backend. M20 target. |
-| `RefactoringEngine` | `src/engineering/refactoring_engine.py` | **SCAFFOLDED** | Real code. Will be used in M20. |
 | `RepositoryManager` | `src/engineering/repository_manager.py` | **ACTIVE** | Optimized file scanning, called by EngineeringManager. |
-| `SymbolGraph` | `src/engineering/symbol_graph.py` | **SCAFFOLDED** | Real code. Will feed M18 World Model. |
-| `DependencyGraph` | `src/engineering/dependency_graph.py` | **SCAFFOLDED** | Real code. Will feed M18 World Model. |
-| `GitIntelligence` | `src/engineering/git_intelligence.py` | **SCAFFOLDED** | Real code. Will be wired in M20. |
-| `EngineeringMemory` | `src/engineering/engineering_memory.py` | **SCAFFOLDED** | Will integrate with M17 Cognitive Memory. |
-| `EngineeringPlanner` | `src/engineering/engineering_planner.py` | **SCAFFOLDED** | Will be used in M20. |
-| `QualityEngine` | `src/engineering/quality_engine.py` | **SCAFFOLDED** | Available via code.report capability. |
+| `BugRepairLoop` | `src/engineering/bug_repair.py` | **SCAFFOLDED** | Real code. Superseded by `autonomous_loop.py` in M27. |
+| `TestEngine` | `src/engineering/test_engine.py` | **SCAFFOLDED** | Real code. |
+| `RefactoringEngine` | `src/engineering/refactoring_engine.py` | **SCAFFOLDED** | Real code. |
+| `SymbolGraph` | `src/engineering/symbol_graph.py` | **ACTIVE** | Feeds M18 World Model and M35 analysis. |
+| `DependencyGraph` | `src/engineering/dependency_graph.py` | **ACTIVE** | Feeds M18 World Model. |
+| `GitIntelligence` | `src/engineering/git_intelligence.py` | **ACTIVE** | Used by `pr_assembler.py` and workspace intelligence. |
+| `EngineeringMemory` | `src/engineering/engineering_memory.py` | **ACTIVE** | Integrated with M17 Cognitive Memory. |
+| `EngineeringPlanner` | `src/engineering/engineering_planner.py` | **ACTIVE** | Used in engineering supervisor planning. |
+| `QualityEngine` | `src/engineering/quality_engine.py` | **ACTIVE** | Available via code.report capability. |
+
+---
+
+## Personal OS Subsystem (M26)
+
+| Module | File | Classification | Notes |
+|:---|:---|:---|:---|
+| `DailyContextEngine` | `src/personal_os/daily_context.py` | **ACTIVE** | Proactive daily agenda synthesis, calendar, tasks, and environment context. |
+| `PersonalOSStateStore` | `src/personal_os/state_store.py` | **ACTIVE** | SQLite-backed persistent state store for user routines and context. |
+| `WorkspaceSearchEngine` | `src/personal_os/workspace_search.py` | **ACTIVE** | Inverted index sub-second fuzzy and prefix searching across project workspaces. |
+| `TriggerScheduler` | `src/autonomy/trigger_scheduler.py` | **ACTIVE** | Autonomous background daemon dispatching cron, interval, and event-based tasks. |
+
+---
+
+## Integrated Aura OS, CodeAct & Desktop HUDs (M28–M30)
+
+| Module | File | Classification | Notes |
+|:---|:---|:---|:---|
+| `DynamicCodeActExecutor` | `src/codeact/executor.py` | **ACTIVE** | Code-as-action execution engine, AST validation, sandbox execution. |
+| `CodeSandbox` | `src/codeact/drafters.py` | **ACTIVE** | Subprocess containment, multiline fence parsing. |
+| `SandboxedPytestRunnerAdapter` | `src/engineering/test_runner.py` | **ACTIVE** | Windows Job Object + `RestrictedUserSandbox` privilege dropping (TD-008). |
+| `PySide6 HUD Overlays` | `src/gui/widgets/` | **ACTIVE** | Frameless widgets: SystemMonitor, Weather, AgentTaskStatus, PersonalOSDashboard, ChatWindow. |
+| `SmartHomeBackendAdapter` | `src/core/backends/adapters/smarthome_backend.py` | **ACTIVE** | Home Assistant WS/REST + local Tapo KLAP AES-CBC-128 crypto driver (M29). |
+| `Holographic AI Core GUI` | `src/gui/main_window.py` | **ACTIVE** | Full Command Center with real-time HUD telemetry, DAG Visualizer, and memory browser (M30). |
+| `RealBackendBridge` | `src/gui/real_backend_bridge.py` | **ACTIVE** | Non-blocking Qt signal telemetry bus bridging core runtime state to HUD overlays. |
 
 ---
 
@@ -129,13 +167,18 @@
 
 | Module | File | Classification | Notes |
 |:---|:---|:---|:---|
-| `VoiceManager` | `src/voice/voice_manager.py` | **SCAFFOLDED** | 9-state machine. Needs live runtime verification. |
+| `VoiceManager` | `src/voice/voice_manager.py` | **ACTIVE** | 9-state machine with streaming TTS handoff and mid-stream steering. |
+| `ContinuousVoiceLoop` | `src/voice/continuous_loop.py` | **ACTIVE** | Live full-duplex loop with streaming TTS, active pause/resume, and mid-stream steering. |
+| `ResponseSteeringController` | `src/voice/response_steering.py` | **ACTIVE** | Turn boundary snapshotting, successor prompt synthesis, fail-safe 45s watchdog. |
+| `ProsodyAwareChunker` | `src/voice/prosody_chunker.py` | **ACTIVE** | Streaming LLM token chunking on natural prosodic boundaries. |
+| `ChunkedStreamPlayer` / `OrderedStreamSynthesizer` | `src/voice/tts_manager.py` | **ACTIVE** | Ordered streaming synthesis and zero-latency audio playback. |
+| `AcousticEchoSuppressor` | `src/voice/echo_canceller.py` | **SCAFFOLDED** | Unit-tested acoustic echo attenuation with headphone bypass; hardware unverified. |
 | `STTManager` | `src/voice/stt_manager.py` | **SCAFFOLDED** | STT engine management. Provider-dependent. |
-| `TTSManager` | `src/voice/tts_manager.py` | **SCAFFOLDED** | TTS engine. Provider-dependent. |
+| `TTSManager` | `src/voice/tts_manager.py` | **ACTIVE** | TTS engine with streaming chunked playback support. |
 | `WakeWordManager` | `src/voice/wake_word.py` | **SCAFFOLDED** | Wake word detection. Sensitivity configured. |
 | `VoiceActivityDetector` | `src/voice/vad.py` | **SCAFFOLDED** | VAD. Threshold configured. |
-| `InterruptionManager` | `src/voice/interruption_manager.py` | **SCAFFOLDED** | Barge-in primitive. Not integration-tested. |
-| `AudioManager` | `src/voice/audio_manager.py` | **SCAFFOLDED** | Microphone arbitration. Not integration-tested. |
+| `InterruptionManager` | `src/voice/interruption_manager.py` | **ACTIVE** | Barge-in and response steering primitive with PAUSED/STEERING states. |
+| `AudioManager` | `src/voice/audio_manager.py` | **ACTIVE** | Microphone arbitration, software gating & AES reference tap. |
 
 ---
 
@@ -168,8 +211,8 @@
 
 ## Recently Completed — No Longer Missing
 
-> **Update (August 18, 2026):** The following items were previously listed as MISSING.
-> They are now implemented and classified above in their respective subsystem sections.
+> **Update (September 08, 2026):** The following items were previously listed as MISSING or in-development.
+> They are now implemented and classified in their respective subsystem sections.
 
 | Module | Status | Milestone |
 |:---|:---|:---|
@@ -183,16 +226,26 @@
 | Event Runtime & Autonomous Intent Execution (AuraEvent, EventRuntime, Interpreter, PolicyGate, Watchers) | **ACTIVE** | M24 ✅ |
 | Security Hardening Track (Phases 1–4, DPAPI, HKDF, Isolated Audit Writer IPC) | **ACTIVE** | Core Security ✅ |
 | Professional Expert Systems (SecurityExpert, NetworkExpert, FinancialExpert, SoftwareExpert, ExpertDomainRouter, PlanDAGCompiler, Stage 2.9 MasterOrchestrator routing) | **ACTIVE** | M25 ✅ |
+| Personal OS (DailyContextEngine, WorkspaceSearchEngine, TriggerScheduler, PersonalOSStateStore) | **ACTIVE** | M26 ✅ |
+| Autonomous Engineering Platform (Closed-loop repair, AST fault localization, safety ceiling, byte-exact rollback, PR assembler) | **ACTIVE** | M27 ✅ |
+| Dynamic CodeAct Runtime, Desktop HUD Overlays & Sandboxed Pytest Runner | **ACTIVE** | M28 ✅ |
+| Smart Home / IoT Integration & Ambient Desktop HUD Overlays | **ACTIVE** | M29 ✅ |
+| Holographic AI Core GUI & Unified Command Center | **ACTIVE** | M30 ✅ |
+| Antigravity-Style Subagents (Isolated Background Workers, AsyncRuntime) | **ACTIVE** | M31 ✅ |
+| Multi-Task FocusManager (Context switching, SQLite WAL backing, interrupt routing) | **ACTIVE** | M32 ✅ |
+| Natural Interaction Layer & Response Steering (Duplex streaming TTS, pause/resume, response.steer) | **ACTIVE** | M33 ✅ |
+| Verified UI Macro Compilation, Speculative Pre-Fetching & Proactive Watcher | **ACTIVE** | M34 ✅ |
+| Multi-App Vision Grounding & Coordinate Architecture (Decoupled 3-stage coordinate pipeline, KeyPool failover) | **ACTIVE** | M35 ✅ |
+| Win32 Desktop Actions Consolidation (AuraToolRegistry delegation to NativeManagerRegistry with fallbacks) | **ACTIVE** | TD-021 ✅ |
 
-## Missing — Future Milestones
+## Missing & Disconnected — Audited Gaps
 
-| Module | Classification | Milestone |
-|:---|:---|:---|
-| Personal OS (Proactive task & schedule management, daily workflows) | **MISSING** | M26 |
-| Autonomous Engineering Platform (End-to-end issue to PR pipeline) | **MISSING** | M27 |
-| Aura OS Runtime (Unified persistent OS environment) | **MISSING** | M28 |
-| Natural Interaction Layer (Full duplex, interruption/barge-in, echo cancellation) | **MISSING** | M29 |
-| Aura GUI Command Center (Complete desktop HUD & system visualization) | **MISSING** | M30 |
+| Module | Classification | Milestone / Status | Notes |
+|:---|:---|:---|:---|
+| Multi-User & Enterprise Policy Governance | **MISSING** | Future Enterprise Phase | RBAC, Active Directory/LDAP auth, remote telemetry sinks (Splunk, Datadog, Azure Sentinel), and multi-PC LAN mesh coordination ("Distributed Aura Nodes"). |
+| `WorkflowEngine` Live Wiring (`src/workflows/`) | **DISCONNECTED** | Architecture Debt | Complete workflow engine exists, but `WorkflowEngineAdapter` in ACA remains an unwired stub returning static dicts; request path does not dispatch here. |
+| Executive Reflection & Learning Persistence (`src/brain/executive/`) | **DISCONNECTED** | Architecture Debt | `ReflectionEngine.reflect()` is uncalled on failure paths; `LearningEngine` captures `LearnedItem` records only in ephemeral RAM, never persisting them to SQLite or prompt injection. |
+| Hardware Acoustic Echo Suppression (AES) (`src/voice/echo_canceller.py`) | **SCAFFOLDED** | Voice Hardware Track | Algorithmic frequency-domain filtering and headphone bypass unit-tested; open-mic loudspeaker room-impulse calibration remains unverified on physical hardware. |
 
 ---
 
@@ -208,5 +261,5 @@ Before expanding any module:
 
 ---
 
-*Last Updated: August 20, 2026*
-*Maintained in sync with [`RUNTIME.md`](RUNTIME.md) and [`roadmap.md`](roadmap.md)*
+*Last Updated: September 08, 2026*
+*Maintained in sync with [`RUNTIME.md`](RUNTIME.md), [`roadmap.md`](roadmap.md), and [`docs/architecture/architecture_status.md`](docs/architecture/architecture_status.md)*

@@ -47,6 +47,7 @@ class SubTask:
     result: Any = None
     max_retries: int = 0
     attempt_count: int = 0
+    risk_tier: str = ""
 
     def __post_init__(self) -> None:
         if not isinstance(self.required_role, PlannerRole):
@@ -63,6 +64,17 @@ class SubTask:
                     f"required_role must be a PlannerRole or valid role string, got {type(self.required_role).__name__}: {self.required_role}"
                 )
 
+        if not self.risk_tier:
+            try:
+                from .autonomy_mode import classify_action_risk
+                role_str = self.required_role.value if hasattr(self.required_role, "value") else str(self.required_role)
+                p_risk = classify_action_risk(role_str, self.capability, self.parameters)
+                self.risk_tier = p_risk.value.upper() if hasattr(p_risk, "value") else str(p_risk).upper()
+            except Exception:
+                self.risk_tier = "LOW"
+        else:
+            self.risk_tier = str(self.risk_tier).upper()
+
 
 @dataclass
 class TaskGraph:
@@ -74,6 +86,103 @@ class TaskGraph:
 
     def add_task(self, subtask: SubTask) -> None:
         self.subtasks[subtask.task_id] = subtask
+
+
+@dataclass
+class ArtifactSynthesisSpec:
+    """Authoritative descriptor for synthesized document/artifact tasks."""
+    target_filename: str
+    capability: str
+    allowed_libraries: list[str]
+    title: str
+
+
+def resolve_artifact_synthesis(
+    goal: str, output_filename: str | None = None
+) -> ArtifactSynthesisSpec | None:
+    """
+    Public authoritative resolver for artifact synthesis goals (presentations,
+    spreadsheets, word documents, format conversions).
+
+    Shared by TaskDecomposer DAG planner and UnifiedToolDispatcher.
+    """
+    import re
+
+    raw = f"{goal} {output_filename or ''}".strip()
+    goal_lower = raw.lower()
+
+    # Extract filename if explicitly mentioned in goal or parameter
+    extracted_file = output_filename
+    if not extracted_file:
+        m_file = re.search(
+            r"\b([a-zA-Z0-9_\-]+\.(?:pptx|docx|xlsx|pdf|csv|json|txt|md|py|png|jpg))\b",
+            raw,
+            re.IGNORECASE,
+        )
+        extracted_file = m_file.group(1).strip("'\" ") if m_file else None
+
+    # 1. PowerPoint / Presentation
+    presentation_keywords = [
+        "presentation", "powerpoint", "slide", "slides", ".pptx", ".ppt", "deck", "slide deck"
+    ]
+    if any(k in goal_lower for k in presentation_keywords):
+        target = extracted_file or "presentation.pptx"
+        if not target.endswith((".pptx", ".ppt")):
+            target += ".pptx"
+        return ArtifactSynthesisSpec(
+            target_filename=target,
+            capability="codeact.synthesize",
+            allowed_libraries=["python-pptx"],
+            title=f"Create Presentation: {target}",
+        )
+
+    # 2. Word / Text Document
+    word_keywords = [
+        "word document", ".docx", ".doc", "create docx", "save as .docx", "docx document",
+        "word doc", "doc listing", "write a document", "create a document", "in word",
+        "as a doc", "leave application letter in word", "status report in word"
+    ]
+    if any(k in goal_lower for k in word_keywords):
+        target = extracted_file or "document.docx"
+        if not target.endswith((".docx", ".doc")):
+            target += ".docx"
+        return ArtifactSynthesisSpec(
+            target_filename=target,
+            capability="codeact.synthesize",
+            allowed_libraries=["python-docx"],
+            title=f"Create Word Document: {target}",
+        )
+
+    # 3. Excel Spreadsheet / Workbook / Table
+    spreadsheet_keywords = [
+        "spreadsheet", "excel", ".xlsx", ".xls", "create sheet", "make a sheet",
+        "grocery sheet", "workbook", "excel sheet", "sheets", "csv", ".csv"
+    ]
+    if any(k in goal_lower for k in spreadsheet_keywords):
+        target = extracted_file or "spreadsheet.xlsx"
+        if not target.endswith((".xlsx", ".xls", ".csv")):
+            target += ".xlsx"
+        is_csv = target.endswith(".csv")
+        return ArtifactSynthesisSpec(
+            target_filename=target,
+            capability="codeact.synthesize",
+            allowed_libraries=[] if is_csv else ["openpyxl"],
+            title=f"Create Spreadsheet: {target}",
+        )
+
+    # 4. Format Conversion
+    if "convert" in goal_lower and any(
+        ext in goal_lower for ext in ["pdf", ".pdf", "docx", "xlsx"]
+    ):
+        target = extracted_file or "converted_document.pdf"
+        return ArtifactSynthesisSpec(
+            target_filename=target,
+            capability="codeact.synthesize",
+            allowed_libraries=["python-docx", "openpyxl", "fpdf2"],
+            title=f"Convert Document: {target}",
+        )
+
+    return None
 
 
 class TaskDecomposer:
@@ -137,115 +246,23 @@ class TaskDecomposer:
         self, goal_lower: str, raw_goal: str
     ) -> SubTask | None:
         """
-        Detect artifact synthesis goals (presentations, spreadsheets, word documents,
-        data transformations, format conversions) and route them to CodeAct.
+        Detect artifact synthesis goals and route them to CodeAct.
+        Delegates directly to the authoritative resolve_artifact_synthesis helper.
         """
-        import re
-
-        # Extract filename if explicitly mentioned
-        m_file = re.search(
-            r"\b([a-zA-Z0-9_\-]+\.(?:pptx|docx|xlsx|pdf|csv|json|txt|md|py|png|jpg))\b",
-            raw_goal,
-            re.IGNORECASE,
-        )
-        extracted_file = m_file.group(1).strip("'\" ") if m_file else None
-
-        # 1. PowerPoint / Presentation
-        if any(
-            k in goal_lower
-            for k in ["presentation", "powerpoint", "slide", "slides", ".pptx"]
-        ):
-            target = extracted_file or "presentation.pptx"
-            if not target.endswith(".pptx"):
-                target += ".pptx"
+        spec = resolve_artifact_synthesis(raw_goal)
+        if spec is not None:
             return SubTask(
                 task_id="task_1",
-                title=f"Create Presentation: {target}",
+                title=spec.title,
                 required_role=PlannerRole.CODEACT,
-                capability="codeact.synthesize",
+                capability=spec.capability,
                 description=raw_goal,
                 parameters={
                     "goal": raw_goal,
-                    "output_filename": target,
-                    "allowed_libraries": ["python-pptx"],
+                    "output_filename": spec.target_filename,
+                    "allowed_libraries": spec.allowed_libraries,
                 },
             )
-
-        # 2. Word Document
-        if any(
-            k in goal_lower
-            for k in [
-                "word document",
-                ".docx",
-                "create docx",
-                "save as .docx",
-                "docx document",
-                "leave application letter in word",
-                "status report in word",
-            ]
-        ):
-            target = extracted_file or "document.docx"
-            if not target.endswith(".docx"):
-                target += ".docx"
-            return SubTask(
-                task_id="task_1",
-                title=f"Create Word Document: {target}",
-                required_role=PlannerRole.CODEACT,
-                capability="codeact.synthesize",
-                description=raw_goal,
-                parameters={
-                    "goal": raw_goal,
-                    "output_filename": target,
-                    "allowed_libraries": ["python-docx"],
-                },
-            )
-
-        # 3. Excel Spreadsheet
-        if any(
-            k in goal_lower
-            for k in [
-                "spreadsheet",
-                "excel",
-                ".xlsx",
-                "create sheet",
-                "workbook",
-                "excel sheet",
-            ]
-        ):
-            target = extracted_file or "spreadsheet.xlsx"
-            if not target.endswith(".xlsx"):
-                target += ".xlsx"
-            return SubTask(
-                task_id="task_1",
-                title=f"Create Spreadsheet: {target}",
-                required_role=PlannerRole.CODEACT,
-                capability="codeact.synthesize",
-                description=raw_goal,
-                parameters={
-                    "goal": raw_goal,
-                    "output_filename": target,
-                    "allowed_libraries": ["openpyxl"],
-                },
-            )
-
-        # 4. Format Conversion
-        if "convert" in goal_lower and any(
-            ext in goal_lower for ext in ["pdf", ".pdf", "docx", "xlsx"]
-        ):
-            target = extracted_file or "converted_document.pdf"
-            return SubTask(
-                task_id="task_1",
-                title=f"Convert Document: {target}",
-                required_role=PlannerRole.CODEACT,
-                capability="codeact.synthesize",
-                description=raw_goal,
-                parameters={
-                    "goal": raw_goal,
-                    "output_filename": target,
-                    "allowed_libraries": ["python-docx", "openpyxl", "fpdf2"],
-                },
-            )
-
         return None
 
     def _analyze_goal_clauses(

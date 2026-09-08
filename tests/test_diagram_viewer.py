@@ -158,3 +158,78 @@ def test_unclosed_fence_repair():
     assert segments[1].type == SegmentType.DIAGRAM
     assert "flowchart TD" in segments[1].content
 
+
+def test_extract_svg_content_sanitizes_br_and_amp():
+    from gui.widgets.diagram_viewer import extract_svg_content
+    broken_svg = (
+        '<svg viewBox="0 0 800 600">'
+        '<text x="50" y="50">LINE 1<br/>LINE 2</text>'
+        '<text x="50" y="80">AIR & NAV &amp; COMM</text>'
+        '</svg>'
+    )
+    cleaned = extract_svg_content(broken_svg)
+    assert "<br/>" not in cleaned
+    assert "<br" not in cleaned
+    assert "LINE 1 LINE 2" in cleaned
+    assert "AIR &amp; NAV &amp; COMM" in cleaned
+    assert 'id="mermaid-svg"' in cleaned
+
+
+def test_detect_diagram_type_mcdu():
+    mcdu_svg = '<svg viewBox="0 0 800 600"><text>MCDU Flight Management</text></svg>'
+    assert detect_diagram_type(mcdu_svg) == "UI INTERFACE LAYOUT"
+
+    art_svg = '<svg viewBox="0 0 800 600"><circle r="50"/></svg>'
+    assert detect_diagram_type(art_svg) == "SVG VECTOR ART"
+
+    sketch_svg = '<svg viewBox="0 0 800 600"><style>.sketch { stroke: black; }</style><path class="sketch" d="M0,0 L10,10"/></svg>'
+    assert detect_diagram_type(sketch_svg) == "PENCIL SKETCH"
+
+    cad_svg = '<svg viewBox="0 0 800 600"><text>Turbofan CAD Blueprint</text></svg>'
+    assert detect_diagram_type(cad_svg) == "CAD BLUEPRINT"
+
+
+def test_pencil_sketch_detection_and_auto_canvas():
+    from gui.widgets.diagram_viewer import (
+        is_sketch_or_dark_line_svg,
+        inject_canvas_background,
+        extract_svg_content,
+    )
+    
+    # 1. Sketch with dark stroke and no background
+    sketch_code = """
+    <svg viewBox="0 0 1000 400" width="1000" height="400">
+      <style>
+        .sketch { stroke: black; stroke-width: 1.5; fill: none; }
+      </style>
+      <defs><marker id="m"/></defs>
+      <path class="sketch" d="M 50 200 L 150 160" />
+    </svg>
+    """
+    assert is_sketch_or_dark_line_svg(sketch_code) is True
+
+    # 2. extract_svg_content injects canvas rect
+    processed = extract_svg_content(sketch_code)
+    assert 'id="aura-auto-canvas"' in processed
+    assert 'fill="#fcfbf7"' in processed
+    assert 'x="0"' in processed and 'y="0"' in processed
+    assert 'width="1000"' in processed and 'height="400"' in processed
+
+    # 3. Neon HUD diagram should NOT trigger canvas injection
+    neon_hud_code = """
+    <svg viewBox="0 0 800 600" style="background-color: #090d16;">
+      <path stroke="#00e5ff" stroke-width="2" d="M0,0 L100,100"/>
+    </svg>
+    """
+    assert is_sketch_or_dark_line_svg(neon_hud_code) is False
+    neon_processed = extract_svg_content(neon_hud_code)
+    assert 'id="aura-auto-canvas"' not in neon_processed
+
+    # 4. HTML includes canvas mode switcher button
+    sketch_html = build_mermaid_html(sketch_code)
+    assert "btn-canvas-mode" in sketch_html
+    assert "cycleCanvasMode" in sketch_html
+    assert "📜 Paper" in sketch_html
+
+
+

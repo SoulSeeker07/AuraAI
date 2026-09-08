@@ -184,6 +184,29 @@ class DecisionEngine:
             )
         )
 
+        is_memory_inspect = bool(
+            re.search(
+                r"\b(?:inspect|show|view|dump|list|check)\s+(?:all\s+|active\s+|working\s+|my\s+|stored\s+)*(?:memory|facts|vault|profile\s+facts)\b",
+                goal_lower,
+            )
+        ) or any(
+            w in goal_lower
+            for w in [
+                "inspect memory",
+                "working memory",
+                "task memory",
+                "memory vault",
+                "show facts",
+                "list facts",
+                "stored facts",
+                "dump memory",
+                "inspect facts",
+                "what's in memory",
+                "what is in memory",
+                "active working memory",
+            ]
+        )
+
         system_phrases = [
             "what are you",
             "who are you",
@@ -748,6 +771,9 @@ class DecisionEngine:
         elif is_session_summary:
             intent = IntentType.SESSION
             intent_capability = "session_summary"
+        elif is_memory_inspect:
+            intent = IntentType.MEMORY
+            intent_capability = "memory.inspect"
         elif is_memory_write:
             intent = IntentType.MEMORY
             intent_capability = "memory_write"

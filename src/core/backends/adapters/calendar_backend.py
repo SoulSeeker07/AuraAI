@@ -54,7 +54,19 @@ class CalendarBackendAdapter(BaseBackendAdapter):
     def execute(
         self, capability: str, goal: str, arguments: dict[str, Any] | None = None
     ) -> ExecutionResult:
-        from plugins.calendar.calendar_plugin import CalendarPlugin
+        try:
+            from plugins.calendar.calendar_plugin import CalendarPlugin
+        except ImportError:
+            import sys
+            from pathlib import Path
+            root = Path(__file__).resolve().parents[4]
+            if str(root) not in sys.path:
+                sys.path.insert(0, str(root))
+            import plugins
+            root_plugins = str(root / "plugins")
+            if hasattr(plugins, "__path__") and root_plugins not in plugins.__path__:
+                plugins.__path__.append(root_plugins)
+            from plugins.calendar.calendar_plugin import CalendarPlugin
 
         plugin = CalendarPlugin()
         plugin.load()

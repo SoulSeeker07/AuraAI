@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from typing import Any, Iterable, Optional
@@ -54,15 +55,15 @@ class GeminiProvider(Provider):
     def __init__(
         self,
         api_key: str = "",
-        default_model: str = "gemini-3.6-flash",
+        default_model: str = "gemini-2.5-flash",
     ):
         self.api_key = api_key
-        self.default_model = default_model
+        self.default_model = os.environ.get("GEMINI_MODEL", default_model)
         self._key_pool = KeyPool.get_instance()
         self._clients: dict[str, Any] = {}
         self.capabilities = ProviderCapabilities(
             name="gemini",
-            default_model=default_model,
+            default_model=self.default_model,
             supports_streaming=True,
             supports_vision=False,
             supports_tools=True,
@@ -144,9 +145,10 @@ class GeminiProvider(Provider):
             config = types.GenerateContentConfig(
                 system_instruction=sys_inst,
                 temperature=request.temperature or 0.2,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
             )
-            if request.max_tokens:
-                config.max_output_tokens = request.max_tokens
+            # Default to 16384 output tokens to allow full, non-truncated CAD vector SVGs
+            config.max_output_tokens = request.max_tokens if (request.max_tokens and request.max_tokens > 8192) else 16384
 
             return client.models.generate_content(
                 model=model,

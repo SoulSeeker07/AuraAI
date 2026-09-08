@@ -33,7 +33,7 @@ class UIAManager(BaseNativeManager):
     """
     Manages Windows UI Automation operations using UIAAdapter abstraction.
 
-    Capabilities (10 total — 5 read-only, 5 interaction):
+    Capabilities (11 total — 5 read-only, 6 interaction):
 
     Read-Only (LOW risk):
         - uia.find_element: Locate a single UI element by criteria
@@ -44,6 +44,7 @@ class UIAManager(BaseNativeManager):
 
     Interaction (HIGH risk, requires_confirmation=True):
         - uia.click: Click a UI element (requires uia.find_element, verifies uia.get_value)
+        - uia.double_click: Double-click a UI element to open/invoke (requires uia.find_element)
         - uia.type_text: Clear-then-type text into element (requires uia.find_element, verifies uia.get_value)
         - uia.invoke: Invoke default action (requires uia.find_element, verifies uia.get_value)
         - uia.select_item: Select named item in container (requires uia.find_element, verifies uia.get_value)

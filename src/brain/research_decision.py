@@ -164,6 +164,7 @@ class ResearchDecision:
         Returns:
             Tuple of (needs_research, reason, search_mode)
         """
+        import os
         import re
         normalized = query.lower().strip()
         clean_query = re.sub(r"[^a-z0-9\s']", " ", normalized)
@@ -171,6 +172,11 @@ class ResearchDecision:
 
         logger.info(f"[ResearchDecision] Analyzing query: {query}")
         logger.info(f"[ResearchDecision] Normalized: {normalized}")
+
+        from core.orchestration import is_agent_loop_enabled
+        if is_agent_loop_enabled():
+            logger.info("[ResearchDecision] NO RESEARCH - AgentLoop is active; delegating to AgentLoop")
+            return False, "Delegated to AgentLoop", SearchMode.STANDARD
 
         # Check for conversational greetings first
         greeting_phrases = (

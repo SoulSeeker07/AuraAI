@@ -1,7 +1,7 @@
 # AuraAI — Canonical Runtime Wiring
 
 > **The single source of truth for what actually executes when a user sends a message.**
-> Last updated: August 2026 — Foundation Wiring & Truth Pass
+> Last updated: September 2026 — Foundation Wiring, Autonomy & Governance Pass
 
 ---
 
@@ -254,4 +254,4 @@ DPAPIKeyManager                — Windows DPAPI master secret encryption at res
 
 ---
 
-*Last Updated: August 20, 2026*
+*Last Updated: September 08, 2026*

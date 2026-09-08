@@ -115,8 +115,11 @@ def test_full_capability_coverage():
     # Check that all capabilities are registered
     expected_capabilities = [
         "clipboard.read_text",
+        "read_clipboard",
         "clipboard.write_text",
+        "write_clipboard",
         "clipboard.clear",
+        "clear_clipboard",
         "clipboard.read_image",
         "clipboard.write_image",
         "clipboard.read_files",

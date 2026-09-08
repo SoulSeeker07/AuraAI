@@ -17,6 +17,9 @@
 
 | Status | Meaning |
 | :--- | :--- |
+| `LIVE VERIFIED` | Fully verified against real OS subsystems, live hardware, or live user entry points (E2E) |
+| `SCAFFOLDED` | Complete module implementation passing unit tests; requires live wiring / boot auto-start |
+| `SIMULATED` | Working logic verified via mocks, stubs, loopback sockets, or synthetic credentials |
 | `COMPLETE` | Implementation + Tests + Integration + Documentation + Acceptance criteria all satisfied |
 | `IN PROGRESS` | Active development. Some acceptance criteria remain incomplete |
 | `READY` | All dependencies satisfied. Implementation can begin immediately |
@@ -89,24 +92,44 @@
 Milestone IDs and software version numbers are decoupled.
 A milestone may ship across one or more releases.
 
-| Milestone | Release | Phase | Status |
+| Milestone | Release | Scope | Audited Reality Status |
 | :--- | :--- | :--- | :--- |
-| M01-M10 | `v0.1.0`-`v0.10.0` | Phase 0 — Foundation | `COMPLETE` |
-| M11–M16 | `v0.11.0`–`v0.19.0` | Phase 0 — Foundation | `COMPLETE` |
-| M17 | `v0.20.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
-| M18 | `v0.21.0` | Phase 1 — Shared Intelligence | `COMPLETE` |
-| M19 | `v0.22.0` | Phase 2 — Capability Foundation | `COMPLETE` |
-| M20 | `v0.23.0` | Phase 3 — Intelligence Expansion (Coding Agent) | `COMPLETE` |
-| M21 | `v0.25.0` | Phase 3 — Intelligence Expansion (Research Hardening) | `COMPLETE` |
-| M22 | `v0.26.0` | Phase 3 — Intelligence Expansion (Multimodal Hardening) | `COMPLETE` |
-| M23 | `v0.27.0` | Phase 4 — Autonomy & Persistent Daemon | `COMPLETE` |
-| M24 | `v0.28.0` | Phase 5 — Autonomy (Event Runtime & Autonomous Execution) | `COMPLETE` |
-| M25 | `v0.29.0` | Phase 5 — Autonomy (Professional Expert Systems) | `COMPLETE` |
-| M26 | `v0.30.0` | Phase 6 — Personal OS & Daily Workflows | `COMPLETE` |
-| M27 | `v0.31.0` | Phase 7 — Autonomous Engineering Platform | `COMPLETE` |
-| M28 | `v0.32.0` | Phase 8 — Dynamic CodeAct Runtime & Integrated Aura OS | `COMPLETE` |
-| M29 | `v0.33.0` | Phase 9 — Smart Home / IoT & Ambient Desktop HUDs | `COMPLETE` |
-| M30 | `v1.0.0` | Phase 9 — Aura GUI & Unified Command Center Parity | `COMPLETE` |
+| M01 | `v0.1.0` | Core Brain & NLU Pipeline | `LIVE VERIFIED` |
+| M02 | `v0.2.0` | Desktop Native Execution (Win32) | `LIVE VERIFIED` (via `AuraToolRegistry`; `DesktopExecutionEngine` adapter dormant) |
+| M03 | `v0.3.0` | Multi-Agent Swarm Orchestrator | `SCAFFOLDED` (BackendRegistry branch unreachable on interactive LLM path; TD-020) |
+| M04 | `v0.4.0` | Visual Arc Reactor & Sci-Fi HUD | `LIVE VERIFIED` |
+| M05 | `v0.5.0` | Tactical Voice Waveform Canvas | `LIVE VERIFIED` |
+| M06 | `v0.6.0` | Continuous Voice Loop & Barge-In | `SCAFFOLDED` (Decoupled to Voice Notch) |
+| M07 | `v0.7.0` | Groq LPU Reasoning & KeyPool Rotation | `LIVE VERIFIED` |
+| M08 | `v0.8.0` | Local Vision & Screen Grounding | `SCAFFOLDED` (Session-gated DWM/GDI) |
+| M09 | `v0.9.0` | Smart Home & LAN Automation | `SIMULATED` (Mock / Unconnected LAN) |
+| M10 | `v0.10.0` | Autonomous Web Browser (Playwright) | `LIVE VERIFIED` |
+| M11 | `v0.11.0` | Persistent SQLite & Vector Memory | `LIVE VERIFIED` |
+| M12 | `v0.12.0` | ReAct Loop Engine & Unified Tools | `LIVE VERIFIED` (15 tools in `UnifiedToolDispatcher` / `AuraToolRegistry`; M15 gated) |
+| M13 | `v0.13.0` | Self-Healing CodeAct Engine | `LIVE VERIFIED` (Wired via `create_file_artifact` Tool #15 & `codeact.synthesize`; v1.4.2+) |
+| M14 | `v0.14.0` | Enterprise Office Document Automation | `SCAFFOLDED` (In-process fallback via `OfficePlugin` in `create_file_artifact`; TD-020) |
+| M15 | `v0.15.0` | Cryptographic Approval Authority | `LIVE VERIFIED` |
+| M16 | `v0.16.0` | Autonomous Trigger Scheduler | `SCAFFOLDED` (Daemon dormant by default) |
+| M17 | `v0.20.0` | Deep Research Engine | `SCAFFOLDED` (BackendRegistry adapter dormant; subagent uses browser search; TD-020) |
+| M18 | `v0.21.0` | Local Intent Fast-Path Router | `LIVE VERIFIED` |
+| M19 | `v0.22.0` | Dynamic Reasoning Effort Tuning | `SIMULATED` (Model kwargs, unwired in chat) |
+| M20 | `v0.23.0` | Multi-Device LAN Mesh Coordination | `SIMULATED` (Loopback socket tests) |
+| M21 | `v0.25.0` | Research Intelligence & Source Hardening | `SIMULATED` (Synthetic benchmark fixtures) |
+| M22 | `v0.26.0` | Adaptive Context Window Compression | `SCAFFOLDED` (Algorithm tested on static text) |
+| M23 | `v0.27.0` | TriggerScheduler Daemon Resiliency | `SCAFFOLDED` (SQLite recovery tested) |
+| M24 | `v0.28.0` | Hardware Telemetry Gauge Calibration | `SCAFFOLDED` (Decoupled sample timers) |
+| M25 | `v0.29.0` | Professional Expert Systems & Cognitive Routing | `LIVE VERIFIED` |
+| M26 | `v0.30.0` | Personal Operating System (DailyContextEngine, WorkspaceSearch, TriggerScheduler) | `LIVE VERIFIED` |
+| M27 | `v0.31.0` | Autonomous Engineering Platform (Closed-loop repair, safety ceiling, PR assembler) | `LIVE VERIFIED` |
+| M28 | `v0.32.0` | Dynamic CodeAct Runtime, HUD Overlays & Sandboxed Pytest Runner | `LIVE VERIFIED` |
+| M29 | `v0.33.0` | Smart Home / IoT Integration & Ambient Desktop HUD Overlays | `LIVE VERIFIED` |
+| M30 | `v1.0.0` | Holographic AI Core GUI & Unified Command Center | `LIVE VERIFIED` |
+| M31 | `v1.0.1` | Isolated Background Subagents & Task HUD Overlay | `LIVE VERIFIED` (AsyncRuntime verified live) |
+| M32 | `v1.0.2` | Multi-Task FocusManager: Context Switching & Interrupt Handling | `LIVE VERIFIED` (31 passing tests) |
+| M33 | `v1.1.0` | Natural Interaction Layer & Response Steering | `LIVE VERIFIED` (Duplex streaming TTS, pause/resume, mid-flight steering trace verified; AES scaffolded) |
+| M34 | `v1.2.0` | Verified UI Macro Compilation, Speculative Pre-Fetching & Proactive Watcher | `LIVE VERIFIED` |
+| M35 | `v1.4.1` | Multi-App Vision Grounding & Coordinate Architecture (Decoupled 3-stage coordinate pipeline) | `LIVE VERIFIED` |
+| Ent | `v2.0.0` | Multi-User & Enterprise Policy Governance (RBAC, Active Directory, Splunk/Sentinel) | `PLANNED` |
 
 ---
 
@@ -1282,7 +1305,7 @@ World Model + Memory + Research + Coding + Capability Registry + Orchestrator
 
 ### M26 — Personal Operating System
 
-**Status:** `PLANNED`
+**Status:** `LIVE VERIFIED` (`v0.30.0`)
 **Priority:** 🟠 High
 
 Aura starts actively managing the user's digital environment.
@@ -1333,7 +1356,7 @@ Aura starts actively managing the user's digital environment.
 
 ### M27 — Autonomous Engineering Platform
 
-**Status:** `PLANNED`
+**Status:** `LIVE VERIFIED` (`v0.31.0`)
 **Priority:** 🔴 High
 
 Coding becomes fully autonomous — from issue to PR, with strict permissions at each step.
@@ -1388,7 +1411,7 @@ Commit / PR
 
 ### M28 — Aura OS
 
-**Status:** `PLANNED`
+**Status:** `LIVE VERIFIED` (`v0.32.0`)
 **Priority:** 🟣 Architectural milestone
 
 Not simply a GUI layer — the culmination of every previous phase into one
@@ -1461,12 +1484,12 @@ Ready (all subsystems live)
 
 ---
 
-### M29 — Natural Interaction Layer
+### M29 / M33 — Natural Interaction Layer & Response Steering
 
-**Status:** `PLANNED`
+**Status:** `LIVE VERIFIED` (`v1.1.0` as M33; M29 delivered Smart Home & Ambient HUDs in `v0.33.0`)
 **Priority:** 🟠 Experience milestone
 
-> **M29 upgrades M08. It does not rebuild M08.**
+> **Shipped in M33: full duplex streaming TTS, active pause/resume, and mid-stream response steering.**
 
 ```text
 M08 — Voice Infrastructure (COMPLETE)
@@ -1647,31 +1670,42 @@ PHASE 8 — NATURAL INTERACTION
 M29   Natural Interaction Layer     ← requires M28; upgrades M08
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 9 — AURA GUI
+PHASE 9 — AURA GUI & SMART HOME
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-M30   Aura Command Center           ← requires M28
+M29   Smart Home & Ambient Desktop HUDs COMPLETE
+M30   Aura Command Center & Holographic Core COMPLETE  ← requires M28
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 10 — SUBAGENT ARCHITECTURE & MULTI-TASK FOCUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+M31   Antigravity-Style Subagents   COMPLETE  ← builds ADR 0008
+M32   Multi-Task FocusManager       COMPLETE  ← context switching, SQLite WAL, interrupt routing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 11 — NATURAL INTERACTION & COGNITIVE SPEED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+M33   Natural Interaction Layer & Response Steering COMPLETE  ← zero-latency streaming TTS & steer
+M34   Verified UI Macro Compilation & Speculative Indexer COMPLETE
+M35   Multi-App Vision Grounding & Coordinate Architecture COMPLETE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 12 — ENTERPRISE GOVERNANCE (FUTURE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ent   Multi-User & Enterprise Policy Governance   PLANNED
 ```
 
 ---
 
-## Progress Overview
+## Progress Overview (Audited Reality)
 
 ```text
-Phase 0 — Foundation (M01–M16)          ████████████████████  16/16  COMPLETE
-Phase 1 — Shared Intelligence (M17–M18) ████████████████████   2/2   COMPLETE
-Phase 2 — Capability Foundation (M19)   ████████████████████   1/1   COMPLETE
-Phase 3 — Intelligence Expansion        ████████████████████   3/3   COMPLETE (M20 + M21 + M22)
-Phase 4 — Autonomy & Daemon (M23)       ████████████████████   1/1   COMPLETE
-Phase 5 — Domain Expertise & Autonomy   ████████████████████   2/2   COMPLETE (M24 + M25)
-Phase 6 — Personal OS & Daily Workflows ████████████████████   1/1   COMPLETE (M26)
-Phase 7 — Autonomous Engineering Loop   ████████████████████   1/1   COMPLETE (M27)
-Phase 8 — Integrated Aura OS & HUDs     ████████████████████   1/1   COMPLETE (M28)
-Phase 9 — Smart Home & Ambient HUDs     ████████████████████   1/1   COMPLETE (M29)
-Phase 9 — Aura GUI & Capability Parity  ████████████████████   1/1   COMPLETE (M30)
+Live Verified (Real Subsystems / E2E)     ████████████████░░░░  22/35  LIVE VERIFIED
+Scaffolded (Unit-Tested / Wiring Gaps)    ███████░░░░░░░░░░░░░   8/35  SCAFFOLDED
+Simulated (Mock-Gated / Synthetic State)  ████░░░░░░░░░░░░░░░░   5/35  SIMULATED
 ```
 
-**Overall:** 30 / 30 milestones complete baseline (M01–M30). 600+ source files (~140K lines), 220+ test files (~35K lines), ~5.8 MB source code.
-Next: Post-v1.0.0 Enterprise Sinks & Multi-PC Mesh Coordination.
+**Overall:** 35 milestones implemented across phases 0–11. Baseline conversational, personal OS, engineering, vision, and voice interaction loops live verified.
+Next target: Multi-User & Enterprise Policy Governance.
 
 ---
 
@@ -1679,9 +1713,10 @@ Next: Post-v1.0.0 Enterprise Sinks & Multi-PC Mesh Coordination.
 
 | Priority | Milestone | Status | Hard Blocker |
 | :--- | :--- | :--- | :--- |
-| 1 | **M31** — Multi-User & Enterprise Policy Governance | `PLANNED` | None (M01–M30 baseline complete) |
-| 2 | **Enterprise Sinks** — Active Directory, Splunk, Azure Sentinel Integration | `PLANNED` | M31 |
-| 3 | **Distributed Aura Nodes** — Multi-PC LAN Mesh Coordination | `PLANNED` | M31 |
+| 1 | **Multi-User & Enterprise Policy Governance** (RBAC, Multi-tenant) | `PLANNED` | None (M01–M35 baseline complete) |
+| 2 | **Enterprise Compliance Sinks** — Active Directory, Splunk, Azure Sentinel Integration | `PLANNED` | Enterprise Governance |
+| 3 | **Distributed Aura Nodes** — Multi-PC LAN Mesh Coordination | `PLANNED` | Enterprise Governance |
+| 4 | **Hardware Acoustic Echo Suppression (AES)** — Open-mic physical room calibration | `SCAFFOLDED` | Hardware mic array test bench |
 
 ---
 
@@ -1690,7 +1725,8 @@ Next: Post-v1.0.0 Enterprise Sinks & Multi-PC Mesh Coordination.
 Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for layer contracts and the 7-stage ACA pipeline.
 Read [`docs/ARCHITECTURE_FREEZE.md`](docs/ARCHITECTURE_FREEZE.md) for frozen guardrails
 and contributor extension guidelines.
+Read [`docs/subagent_architecture.md`](docs/subagent_architecture.md) and [`docs/adr/0008-isolated-background-subagents.md`](docs/adr/0008-isolated-background-subagents.md) for the subagent runtime specification.
 
 ---
 
-*Last Updated: August 27, 2026 — v1.0.0-holographic-ai-core*
+*Last Updated: September 08, 2026 — v1.1.0-natural-interaction-steering*

@@ -223,17 +223,53 @@ def test_network_diagnostic_capabilities(dummy_network_manager):
 
 
 def test_network_control_capabilities(dummy_network_manager):
-    res_flush = dummy_network_manager.execute("network.flush_dns")
+    from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+
+    auth = CryptographicApprovalAuthority.get_instance()
+
+    # 1. Unapproved flush -> requires confirmation and issues ticket
+    res_flush_gate = dummy_network_manager.execute("network.flush_dns")
+    assert res_flush_gate.success is False
+    assert res_flush_gate.data["requires_confirmation"] is True
+    ticket_id = res_flush_gate.data["approval_ticket_id"]
+    sig = auth.generate_human_signature(ticket_id)
+
+    res_flush = dummy_network_manager.execute(
+        "network.flush_dns",
+        arguments={"approval_ticket_id": ticket_id, "approval_signature": sig},
+    )
     assert res_flush.success is True
     assert res_flush.data["status"] == "dns_flushed"
     assert "dns_flushed" in res_flush.events
 
-    res_dis = dummy_network_manager.execute("network.disconnect_wifi")
+    # 2. Disconnect wifi with signed approval
+    res_dis_gate = dummy_network_manager.execute("network.disconnect_wifi")
+    assert res_dis_gate.success is False
+    dis_ticket = res_dis_gate.data["approval_ticket_id"]
+    dis_sig = auth.generate_human_signature(dis_ticket)
+
+    res_dis = dummy_network_manager.execute(
+        "network.disconnect_wifi",
+        arguments={"approval_ticket_id": dis_ticket, "approval_signature": dis_sig},
+    )
     assert res_dis.success is True
     assert res_dis.data["status"] == "wifi_disconnected"
 
-    res_con = dummy_network_manager.execute(
+    # 3. Connect wifi with signed approval
+    res_con_gate = dummy_network_manager.execute(
         "network.connect_wifi", arguments={"ssid": "Home-5G"}
+    )
+    assert res_con_gate.success is False
+    con_ticket = res_con_gate.data["approval_ticket_id"]
+    con_sig = auth.generate_human_signature(con_ticket)
+
+    res_con = dummy_network_manager.execute(
+        "network.connect_wifi",
+        arguments={
+            "ssid": "Home-5G",
+            "approval_ticket_id": con_ticket,
+            "approval_signature": con_sig,
+        },
     )
     assert res_con.success is True
     assert res_con.data["ssid"] == "Home-5G"

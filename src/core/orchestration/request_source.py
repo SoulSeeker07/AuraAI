@@ -17,15 +17,25 @@ class RequestSource(str, Enum):
     """
     Identifies who or what initiated a MasterOrchestrator request.
 
-    Autonomy floor mapping (enforced in process_request_async):
-        HUMAN_INTERACTIVE  → AutonomyLevel.ASSISTED  (default; HIGH-risk → ASK_USER)
-        TRIGGER_AUTONOMOUS → AutonomyLevel.AUTONOMOUS (HIGH-risk → HMAC gate, never ASK_USER)
-        DAEMON_BACKGROUND  → AutonomyLevel.AUTONOMOUS (same as TRIGGER_AUTONOMOUS)
+    Gating model (as currently implemented in process_request_async):
+        HUMAN_INTERACTIVE  → skip_confirmation_intercept=False (ASK_USER prompts are live)
+        TRIGGER_AUTONOMOUS → skip_confirmation_intercept=True  (no ASK_USER; HIGH-risk
+                             actions route to CryptographicApprovalAuthority HMAC gate
+                             and suspend the DAG for human resumption via ticket)
+        DAEMON_BACKGROUND  → same as TRIGGER_AUTONOMOUS
 
-    Note: AutonomyLevel.AUTONOMOUS is a *floor*, not a ceiling.
-    AutonomyGovernanceEngine.PROHIBITED capabilities remain unconditionally
-    hard-blocked regardless of source or token. trigger_allowed_domains
-    enforces an additional domain ceiling for TRIGGER_AUTONOMOUS requests.
+    NOTE — NOT YET IMPLEMENTED: The _autonomy_level_ctx ContextVar in ExecutionPolicy
+    is the intended future home for request-scoped AutonomyLevel escalation
+    (HUMAN_INTERACTIVE → ASSISTED, TRIGGER_AUTONOMOUS/DAEMON_BACKGROUND → AUTONOMOUS).
+    That wiring does not exist yet. _autonomy_level_ctx is never set in any production
+    code path; it always reads its default (AutonomyLevel.ASSISTED). Do not build on the
+    assumption that source type changes the ExecutionPolicy autonomy level — it does not.
+    See backlog: "Wire RequestSource → AutonomyLevel escalation through autonomy_scope()."
+
+    Hard-blocking: AutonomyGovernanceEngine.PROHIBITED capabilities remain
+    unconditionally blocked regardless of source, token, or autonomy level.
+    trigger_allowed_domains enforces an additional domain ceiling for
+    TRIGGER_AUTONOMOUS requests.
     """
 
     HUMAN_INTERACTIVE = "human_interactive"

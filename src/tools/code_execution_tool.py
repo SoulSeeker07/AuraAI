@@ -23,25 +23,25 @@ class CodeExecutionTool:
         logger.info(f"Code execution tool initialized in {self.code_dir}")
 
     def save_and_execute(
-        self, code: str, filename: str = None, timeout: int = 30
+        self,
+        code: str,
+        filename: str = None,
+        timeout: int = 30,
+        ticket_id: str | None = None,
+        signature: str | None = None,
     ) -> dict[str, Any]:
         """
-        Save code to a file and execute it.
+        Save code to a file and execute it with human confirmation gating.
 
         Args:
             code: Python code to execute
             filename: Optional filename (default: timestamp-based)
             timeout: Execution timeout in seconds
+            ticket_id: Optional approval ticket ID
+            signature: Optional cryptographic signature
 
         Returns:
-            Dictionary with execution results:
-            {
-                'success': bool,
-                'output': str | None,
-                'error': str | None,
-                'filename': str,
-                'execution_time': float
-            }
+            Dictionary with execution results or confirmation_required payload
         """
         # Generate filename if not provided
         if filename is None:
@@ -63,14 +63,66 @@ class CodeExecutionTool:
             logger.error(error_msg)
             return {
                 "success": False,
+                "status": "error",
                 "output": None,
                 "error": error_msg,
                 "filename": filename,
                 "execution_time": 0.0,
             }
 
-        # Execute the code
+        # Gate execution: raw code execution is HIGH risk and strictly requires human approval
+        try:
+            from desktop.native.security.approval_authority import CryptographicApprovalAuthority
+            auth = CryptographicApprovalAuthority.get_instance()
+            clean_params = {"filename": filename, "path": str(filepath)}
+
+            if ticket_id and signature:
+                is_valid, auth_err = auth.verify_and_redeem(
+                    ticket_id=ticket_id,
+                    signature=signature,
+                    action_type="code.execute",
+                    target=str(filepath),
+                    parameters=clean_params,
+                )
+                if not is_valid:
+                    return {
+                        "success": False,
+                        "status": "error",
+                        "error": f"Authorization failed for code execution: {auth_err}",
+                        "ticket_id": ticket_id,
+                        "filename": filename,
+                    }
+            else:
+                tid = auth.create_ticket(
+                    action_type="code.execute",
+                    target=str(filepath),
+                    parameters=clean_params,
+                    ttl_seconds=300.0,
+                )
+                return {
+                    "success": False,
+                    "status": "confirmation_required",
+                    "action": "code.execute",
+                    "risk_level": "high",
+                    "ticket_id": tid,
+                    "prompt": (
+                        f"Executing generated code '{filename}' carries HIGH risk. "
+                        f"To approve, sign ticket '{tid}' or say 'confirm {tid}'."
+                    ),
+                    "requires_human_approval": True,
+                    "filename": filename,
+                }
+        except Exception as gate_err:
+            logger.error(f"[CodeExecutionTool] Approval gate unavailable — refusing execution: {gate_err}")
+            return {
+                "success": False,
+                "status": "error",
+                "error": f"Security gate unavailable; code execution blocked: {gate_err}",
+            }
+
+        # Execute the code once authorized
         return self._execute_code(filepath, timeout)
+
 
     def _execute_code(self, filepath: Path, timeout: int) -> dict[str, Any]:
         """

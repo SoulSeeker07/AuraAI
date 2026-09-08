@@ -196,15 +196,20 @@ class ChatOverlayMessageCard(QFrame):
         head.addWidget(clock_lbl)
         layout.addLayout(head)
 
-        # Parse content segments: text, code blocks, and diagrams
+        # Parse content segments: text, code blocks, diagrams, and thoughts
         from gui.widgets.message_parser import parse_message_segments, SegmentType
         from gui.widgets.diagram_viewer import DiagramArtifactWidget
         from gui.widgets.code_block_widget import CodeBlockWidget
+        from gui.widgets.thought_block_widget import ThoughtBlockWidget
 
         segments = parse_message_segments(text)
         for seg in segments:
-            if seg.type == SegmentType.DIAGRAM:
-                diag = DiagramArtifactWidget(seg.content, title=seg.title or "Aura Architecture Flow", parent=self)
+            if seg.type == SegmentType.THOUGHT:
+                thought_widget = ThoughtBlockWidget(seg.content, title=seg.title or "Thought Process", parent=self)
+                layout.addWidget(thought_widget)
+            elif seg.type == SegmentType.DIAGRAM:
+                default_title = "Aura Interface Screen" if "<svg" in seg.content.lower() else "Aura Architecture Flow"
+                diag = DiagramArtifactWidget(seg.content, title=seg.title or default_title, parent=self)
                 layout.addWidget(diag)
             elif seg.type == SegmentType.CODE:
                 code_widget = CodeBlockWidget(seg.content, language=seg.language, parent=self)
@@ -779,7 +784,9 @@ class ChatWindowOverlay(QWidget):
         # Also reset AuraCore conversation history if initialized
         try:
             from core.aura_core import AuraCore
-            if AuraCore._instance and hasattr(AuraCore._instance, "conversation_history"):
+            if AuraCore._instance and hasattr(AuraCore._instance, "reset_session"):
+                AuraCore._instance.reset_session()
+            elif AuraCore._instance and hasattr(AuraCore._instance, "conversation_history"):
                 AuraCore._instance.conversation_history.clear()
         except Exception:
             pass
@@ -797,6 +804,16 @@ class ChatWindowOverlay(QWidget):
             widget = item.widget()
             if widget:
                 widget.deleteLater()
+        try:
+            main_win = self.window()
+            if hasattr(main_win, "reset_session"):
+                main_win.reset_session()
+            else:
+                from core.aura_core import AuraCore
+                if AuraCore._instance and hasattr(AuraCore._instance, "reset_session"):
+                    AuraCore._instance.reset_session()
+        except Exception:
+            pass
         self._append_card(
             "agent",
             "✦ New neural session initiated. Ready for instructions, system diagnostics, and multi-agent workflows.",

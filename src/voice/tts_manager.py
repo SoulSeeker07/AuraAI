@@ -294,9 +294,13 @@ class ChunkedStreamPlayer:
     def abort(self) -> None:
         """Immediately abort active playback."""
         with self._lock:
+            if self._abort_requested and not self._is_playing:
+                return  # Strict idempotency: prevent duplicate queue drains and interrupt callbacks
             self._abort_requested = True
             self._sentinel_received = False
             self._is_playing = False
+            self._drain_queue()
+            self._residual_bytes.clear()
             self._dispatch_interrupt()
 
     def is_playing(self) -> bool:
@@ -366,6 +370,17 @@ class OrderedStreamSynthesizer:
         with self._lock:
             if gen_id == self._active_gen_id:
                 self._done_submitting = True
+
+    def abort(self) -> None:
+        """Immediately abort synthesis, cancel in-flight futures, and drain pending queue."""
+        with self._lock:
+            self._active_gen_id += 1  # Invalidate any in-flight workers
+            for seq_id, fut in list(self._pending.items()):
+                fut.cancel()
+            self._pending.clear()
+            self._done_submitting = True
+        if self.player:
+            self.player.abort()
 
     def _synthesize_worker(self, text: str, gen_id: int) -> bytes | None:
         with self._lock:
@@ -600,7 +615,9 @@ class PiperTTSEngine(TTSEngine):
             self._active_generation_id += 1
         self._stream.clear()
         self._is_playing = False
-        if self.player:
+        if self.synthesizer:
+            self.synthesizer.abort()
+        elif self.player:
             self.player.abort()
         self._emit_interrupt()
         return True

@@ -34,7 +34,7 @@ class FileService:
     PRIORITY_EXTENSIONS = (
         ".pdf", ".docx", ".doc", ".txt", ".md", ".rtf",
         ".xlsx", ".xls", ".pptx", ".ppt", ".csv", ".json",
-        ".html", ".png", ".jpg", ".jpeg", ".py", ".zip"
+        ".html", ".png", ".jpg", ".jpeg", ".zip"
     )
 
     def __init__(self, search_paths: list[Path | str] | None = None):
@@ -409,9 +409,16 @@ class FileService:
             return results[0]["path"]
         return None
 
+    # Executable extensions that must NEVER be auto-launched without explicit confirmation
+    DANGEROUS_EXECUTABLE_EXTENSIONS = frozenset({
+        ".exe", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".jse",
+        ".msi", ".scr", ".com", ".pif", ".hta", ".cpl", ".wsf",
+    })
+
     def open_file(self, file_path: Path | str) -> tuple[bool, str]:
         """
-        Open a file using the default Windows system application.
+        Open a document file using the default Windows system application.
+        Refuses to auto-launch executables and scripts.
         
         Returns:
             (success: bool, message: str)
@@ -419,6 +426,15 @@ class FileService:
         target = Path(file_path)
         if not target.exists():
             return False, f"File does not exist: {target}"
+
+        # Block direct execution of dangerous scripts and binaries
+        if target.suffix.lower() in self.DANGEROUS_EXECUTABLE_EXTENSIONS:
+            logger.warning(f"[FileService] Refusing to auto-launch executable script '{target}'.")
+            return (
+                False,
+                f"⚠️ Security block: Cannot auto-launch executable or script '{target.name}'. "
+                f"Direct execution of scripts and binaries requires explicit user confirmation."
+            )
 
         try:
             # On Windows, os.startfile opens with the registered default application
@@ -431,6 +447,7 @@ class FileService:
                 return True, f"✓ Opened '{target.name}'."
             except Exception as exc:
                 return False, f"Failed to open '{target.name}': {exc}"
+
 
     def find_and_open(self, query: str) -> tuple[bool, str, Path | None]:
         """

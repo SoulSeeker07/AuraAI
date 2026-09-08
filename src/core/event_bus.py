@@ -29,6 +29,9 @@ class Events:
     LEARNING_COMPLETED = "learning.completed"
     GOAL_UPDATED = "goal.updated"
     SESSION_UPDATED = "session.updated"
+    SUBAGENT_DISPATCHED = "subagent.dispatched"
+    SUBAGENT_COMPLETED = "subagent.completed"
+    SUBAGENT_FAILED = "subagent.failed"
 
 
 @dataclass(frozen=True)

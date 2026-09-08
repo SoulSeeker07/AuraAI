@@ -16,6 +16,7 @@ All clients (CLI, GUI, Voice, API) communicate with Aura Core.
 import asyncio
 import os
 import sys
+import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from enum import Enum
@@ -83,6 +84,50 @@ except ImportError:
     import logging
 
     logger = logging.getLogger(__name__)
+
+try:
+    from core.orchestration import is_agent_loop_enabled
+except ImportError:
+    def is_agent_loop_enabled() -> bool:
+        return os.environ.get("AURA_ENABLE_AGENT_LOOP", "1").lower() in ("1", "true", "yes")
+
+
+DETERMINISTIC_LOCAL_INTENTS: frozenset[str] = frozenset({
+    "local_time",
+    "live_weather",
+    "battery_status",
+    "bluetooth_status",
+    "bluetooth_control",
+    "wifi_status",
+    "wifi_control",
+    "network_status",
+    "system_status",
+    "confirm_ticket",
+    "voice_control",
+    "restart_aura",
+    "memory_summary",
+    "remember_fact",
+    "profile_lookup",
+    "skills_lookup",
+    "goals_lookup",
+    "preferences_lookup",
+    "projects_lookup",
+    "brightness_control",
+    "audio_control",
+    "task_complete",
+    "tasks.complete",
+    "reminders_query",
+    "play_music",
+    "smarthome_control",
+    "folder_creation",
+    "hud_overlay",
+    "overlay_toggle",
+    "say_phrase",
+    "open_file",
+    "rag_query",
+    "resume_browser",
+    "capability_status",
+})
 
 
 class AuraCoreStatus(Enum):
@@ -211,6 +256,7 @@ class AuraCore:
         self.current_task_status: AuraCoreStatus = AuraCoreStatus.READY
         self.conversation_history: list[dict[str, str]] = []
         self.max_history: int = int(self.config.get("max_history", 100))
+        self._load_conversation_history()
         self.focus_manager = None
         self.grounding_engine = None
         self.visual_memory = None
@@ -218,9 +264,10 @@ class AuraCore:
         self.macro_compiler = None
         self.speculative_indexer = None
         self.proactive_watcher = None
+        self.goal_store = None
 
         AuraCore._initialized = True
-        self.groq_model = self.config.get("groq_model", "qwen/qwen3.8-27b")
+        self.groq_model = self.config.get("groq_model", "openai/gpt-oss-120b")
         self.groq_client = None
         def _timed_init(name: str, fn):
             import time
@@ -418,6 +465,62 @@ class AuraCore:
             import traceback
             traceback.print_exc()
             logger.debug(f"[AuraCore] Focus preamble skipped: {e}")
+        return None
+
+    def _subagent_preamble(self, user_goal: str) -> Optional[str]:
+        """
+        Deterministic trigger preamble for background subagent workers.
+        Handles:
+        - /background <task>
+        - /subagent <task>
+        - /subagents (or /subagent list, show subagents)
+        - /subagent cancel <id>
+        - run in background: <task>
+        - dispatch subagent: <task>
+        """
+        raw = user_goal.strip()
+        raw_lower = raw.lower()
+
+        # Query / list subagents
+        if raw_lower in ("/subagents", "/subagent list", "list subagents", "show subagents"):
+            from core.orchestration.worker_manager import WorkerManager
+            mgr = WorkerManager.get_instance()
+            workers = list(mgr._workers.values())
+            if not workers:
+                return "🤖 **Subagents**: No background subagents registered."
+            lines = ["🤖 **Background Subagents**:"]
+            for w in workers:
+                active_str = "🟢 RUNNING" if w.status == "RUNNING" else ("✅ COMPLETED" if w.status == "COMPLETED" else f"⚪ {w.status}")
+                lines.append(f"- **{w.name}** (`{w.worker_id}`) • {active_str} • Domain: `{w.domain}` • Progress: {w.progress}%")
+            return "\n".join(lines)
+
+        # Cancel subagent
+        for cancel_pfx in ("/subagent cancel ", "/cancel subagent "):
+            if raw_lower.startswith(cancel_pfx):
+                target_id = raw[len(cancel_pfx):].strip()
+                from core.orchestration.worker_manager import WorkerManager
+                mgr = WorkerManager.get_instance()
+                if mgr.cancel_worker(target_id):
+                    return f"🛑 **Subagent**: Successfully cancelled worker `{target_id}`."
+                return f"⚠️ **Subagent**: Worker `{target_id}` not found or already stopped."
+
+        # Dispatch triggers
+        dispatch_prefixes = ("/background", "/subagent", "run in background:", "dispatch subagent:")
+        for pfx in dispatch_prefixes:
+            if raw_lower.startswith(pfx):
+                clean_task = raw[len(pfx):].strip()
+                if not clean_task:
+                    return (
+                        "⚠️ **Background Subagent**: Please specify a task description.\n"
+                        "Example: `/background scan codebase for TODOs` or `/background run tests`"
+                    )
+                from core.orchestration import MasterOrchestrator
+                orchestrator = MasterOrchestrator.get_instance()
+                ack = orchestrator.dispatch_background_subagent(
+                    task_description=clean_task,
+                )
+                return ack.get("message") or f"Dispatched worker for '{clean_task}' in the background."
+
         return None
 
     def _focus_postamble(self, user_message: str, response_text: str) -> str:
@@ -842,7 +945,10 @@ class AuraCore:
             self.groq_client = pool.get_groq_client(api_key)
             self.llm_enabled = True
             self.voice_llm_model = os.environ.get("AURA_VOICE_MODEL", "qwen/qwen3.8-27b")
-            self.reasoning_llm_model = os.environ.get("AURA_REASONING_MODEL", "qwen/qwen3.8-27b")
+            self.reasoning_llm_model = os.environ.get(
+                "AURA_REASONING_MODEL",
+                os.environ.get("AURA_AGENT_MODEL", "openai/gpt-oss-120b")
+            )
             self.llm_model = self.reasoning_llm_model
 
 
@@ -924,6 +1030,7 @@ class AuraCore:
                 policy=self.policy,
                 orchestrator=orchestrator,
             )
+            self.trigger_scheduler._goal_store = self.get_goal_store()
 
             ContinuousVoiceLoop = None
             try:
@@ -1116,9 +1223,18 @@ class AuraCore:
             "inspect the visual screen (OCR), access hardware telemetry, browse the web, and store/query persistent memory facts.\n\n"
             "### Live Ambient Environment & Context:\n"
             f"{ambient_info}\n\n"
+            "### Operational Protocol: Plan-Before-Act\n"
+            "For non-trivial requests (designing UI or systems, writing/editing code, creating files, or executing multi-step tasks):\n"
+            "1. DELIBERATE BEFORE ACTING: Formulate and analyze your constraints, layout geometry, failure modes, and ordered plan thoroughly in your internal reasoning before generating artifacts or invoking tools.\n"
+            "2. When tools are required, explain the rationale for the tool call in your thought before dispatching.\n"
+            "3. If a tool fails or verification reports an issue, reflect on the failure reason before retrying.\n\n"
             "### Instructions:\n"
+            "- When the user asks to design, layout, wireframe, or mock up a UI screen, interface, hardware panel, or dashboard (e.g. MCDU cockpit screen, mobile app, web dashboard, control unit):\n"
+            "  1. ALWAYS generate a high-fidelity visual screen layout/mockup directly inside a ```svg ... ``` code block. DO NOT substitute a process flowchart when the user asks for a visual screen or interface layout.\n"
+            "  2. True Hardware / UI Architecture: For an avionics MCDU, place 6 Left Line Select Keys (LSK 1L–6L) along the left margin (e.g. x=20), 6 Right Line Select Keys (LSK 1R–6R) along the right margin (e.g. x=730), a central display area in between with realistic unique flight plan data lines (never duplicate rows with <use>), and a bottom scratchpad / mode function key row.\n"
+            "  3. SVG Syntax & Geometry Guardrails: NEVER use <br> or <br/> inside SVG <text> elements (it is invalid XML and breaks rendering). Use separate <text> elements with explicit y coordinates or <tspan x=\"...\" dy=\"...\"> for multi-line labels. Ensure all elements have non-overlapping x, y coordinates and fit cleanly inside the viewBox (e.g. viewBox=\"0 0 800 600\").\n"
             "- When the user asks to draw an illustration, character, deity, object, or artistic scene, act as a World-Class Master SVG Illustrator: generate a breathtaking, highly detailed, ornate SVG illustration with rich multi-stop gradients, metallic highlights, glow filters, realistic Bezier curves, jewelry/contours, and dark backdrop inside a ```svg ... ``` code block. Never output primitive doodles or toy shapes.\n"
-            "- When the user asks to diagram, map, flowchart, or architect any system, process, or concept, ALWAYS generate complete, fully closed, interactive visual Mermaid.js diagrams directly in your response using ```mermaid (e.g. flowchart LR, graph TD, sequenceDiagram) or clean SVG code blocks. DO NOT write notes or files to the desktop unless explicitly requested.\n"
+            "- When the user asks to diagram, map, flowchart, or architect any system architecture, process, workflow, sequence, state machine, or data relationship, ALWAYS generate complete, interactive Mermaid.js diagrams directly in your response using ```mermaid (e.g. flowchart LR/TD, sequenceDiagram, stateDiagram-v2, erDiagram, classDiagram, mindmap) or clean SVG blocks. DO NOT write notes or files to the desktop unless explicitly requested.\n"
             "- If the user requests an action or information that can be handled with an available tool, invoke the appropriate tool.\n"
             "- When the user requests multiple actions (e.g. 'Open Chrome, search for X, and create a summary note on my desktop'), execute ALL requested actions using available tools (desktop_launch_app, browser_open_url, desktop_create_note).\n"
             "- Answer questions accurately using the provided ambient context when relevant.\n"
@@ -1131,11 +1247,18 @@ class AuraCore:
         ]
 
         # Append previous conversation history window
+        import re
         history_window = self.conversation_history[-max_turns:] if self.conversation_history else []
         for entry in history_window:
             role = entry.get("role", "user")
             content = entry.get("content", "")
             if role in ["user", "assistant"] and content:
+                # Compact historical turns to prevent prompt bloat and Groq TPM limits
+                if role == "assistant":
+                    content = re.sub(r"```svg[\s\S]*?```", "[SVG Visual Mockup/Diagram generated]", content, flags=re.IGNORECASE)
+                    content = re.sub(r"<svg[\s\S]*?</svg>", "[SVG Visual Mockup/Diagram generated]", content, flags=re.IGNORECASE)
+                    if len(content) > 1500:
+                        content = content[:1500] + "... [prior response truncated for context brevity]"
                 messages.append({"role": role, "content": content})
 
         # Append current user message
@@ -1143,11 +1266,17 @@ class AuraCore:
         return messages
 
     async def get_ai_response_stream(
-        self, user_message: str, model: str = None, emitter: Optional[Any] = None
+        self,
+        user_message: str,
+        model: str = None,
+        emitter: Optional[Any] = None,
+        enable_tools: bool = False,
     ) -> AsyncGenerator[str, None]:
         """
         Streaming variant of get_ai_response: yields token chunks directly from Groq/provider
         with full multi-turn memory and ambient environment context.
+        Tool calling is disabled by default during streaming to prevent empty-stream token drops;
+        interactive multi-step tool execution routes through get_ai_response() / AgentLoop.
         """
         if not self.llm_enabled or self.groq_client is None:
             yield (
@@ -1157,9 +1286,6 @@ class AuraCore:
             return
 
         try:
-            from core.tools.aura_tool_registry import AuraToolRegistry
-            tools = AuraToolRegistry.get_tool_definitions()
-
             messages = self._build_chat_messages(user_message, emitter=emitter)
             target_model = model or getattr(self, "voice_llm_model", "openai/gpt-oss-120b")
 
@@ -1170,9 +1296,12 @@ class AuraCore:
                 "temperature": 0.7,
                 "max_tokens": 1024,
             }
-            if tools:
-                kwargs["tools"] = tools
-                kwargs["tool_choice"] = "auto"
+            if enable_tools:
+                from core.tools.unified_tool_dispatcher import UnifiedToolDispatcher
+                tools = UnifiedToolDispatcher.get_tool_definitions()
+                if tools:
+                    kwargs["tools"] = tools
+                    kwargs["tool_choice"] = "auto"
             if "gpt-oss-120b" in target_model:
                 kwargs["reasoning_effort"] = "medium"
 
@@ -1235,6 +1364,7 @@ class AuraCore:
         self,
         user_message: str,
         enable_tools: bool = True,
+        session_id: Optional[str] = None,
         emitter: Optional[Any] = None,
     ) -> str:
         """
@@ -1244,10 +1374,15 @@ class AuraCore:
         Args:
             user_message: The latest message from the user
             enable_tools: Whether to provide native function calling tools to the model
+            session_id: Caller-owned session identifier (e.g. from GUI or Voice)
+            emitter: Optional ProgressEmitter for streaming telemetry
 
         Returns:
             The AI's text response
         """
+        import uuid
+        effective_session_id = session_id or f"sess_ephemeral_{uuid.uuid4().hex[:8]}"
+
         if not self.llm_enabled or self.groq_client is None:
             return (
                 "⚠ AI is not configured. Set GROQ_API_KEY in your environment "
@@ -1275,14 +1410,71 @@ class AuraCore:
             focus_ans = self._focus_preamble(user_message)
             if focus_ans is not None:
                 logger.debug(f"[AuraCore] Resolved via Focus Preamble fast-path: {user_message}")
+                self._record_passive_fast_path(user_message, session_id, "focus_preamble", focus_ans)
                 return focus_ans
+
+            subagent_ans = self._subagent_preamble(user_message)
+            if subagent_ans is not None:
+                logger.debug(f"[AuraCore] Resolved via Subagent Preamble fast-path: {user_message}")
+                self._record_passive_fast_path(user_message, session_id, "subagent_preamble", subagent_ans)
+                return subagent_ans
 
             if conv_engine is not None:
                 try:
                     intent = conv_engine.intent_router.detect(user_message)
-                    local_answer = conv_engine._answer_local_intent(intent)
+                    is_browser_intent = bool(intent and intent.name == "autonomous_browser")
+                    loop_active = is_agent_loop_enabled()
+
+                    if loop_active and (not intent or intent.name not in DETERMINISTIC_LOCAL_INTENTS):
+                        # Under AURA_ENABLE_AGENT_LOOP=1, bypass non-deterministic local intents into AgentLoop
+                        logger.info(
+                            f"[AuraCore] Bypassing '{getattr(intent, 'name', 'unknown')}' fast-path for '{user_message[:40]}' -> delegating to AgentLoop"
+                        )
+                        local_answer = None
+                    else:
+                        if is_browser_intent and emitter is not None:
+                            try:
+                                from core.progress_events import EventStatus, EventType, ProgressEvent
+                                emitter.emit(
+                                    ProgressEvent(
+                                        label="Autonomous Web Research (in progress...)",
+                                        event_type=EventType.TOOL_CALL,
+                                        status=EventStatus.STARTED,
+                                        detail="Navigating web pages and synthesizing verified sources (may take up to a minute)...",
+                                    )
+                                )
+                            except Exception:
+                                pass
+
+                        local_answer = conv_engine._answer_local_intent(intent)
                     if local_answer is not None:
                         logger.debug(f"[AuraCore] Resolved via deterministic local fast-path: {intent}")
+                        extra_steps = None
+                        if is_browser_intent:
+                            last_res = getattr(conv_engine, "_last_browser_result", None)
+                            if isinstance(last_res, dict):
+                                extra_steps = last_res.get("steps")
+                            if emitter is not None:
+                                try:
+                                    from core.progress_events import EventStatus, EventType, ProgressEvent
+                                    emitter.emit(
+                                        ProgressEvent(
+                                            label="Autonomous Web Research completed",
+                                            event_type=EventType.TOOL_CALL,
+                                            status=EventStatus.DONE,
+                                            detail="Research exploration complete.",
+                                        )
+                                    )
+                                except Exception:
+                                    pass
+
+                        self._record_passive_fast_path(
+                            user_message,
+                            session_id,
+                            getattr(intent, "name", "local_intent"),
+                            local_answer,
+                            extra_steps=extra_steps,
+                        )
                         return local_answer
                 except Exception as ce_err:
                     import traceback
@@ -1291,12 +1483,6 @@ class AuraCore:
         else:
             # Deterministic Compound Fast-Path Splitter
             # Restrict strictly to 0ms deterministic local intents (e.g. time, weather, battery, settings)
-            DETERMINISTIC_LOCAL_INTENTS = {
-                "local_time", "live_weather", "battery_status", "memory_summary",
-                "brightness_control", "audio_control", "profile_lookup",
-                "skills_lookup", "goals_lookup", "preferences_lookup", "projects_lookup",
-                "remember_fact"
-            }
             if conv_engine is not None:
                 try:
                     import re
@@ -1318,6 +1504,7 @@ class AuraCore:
                             logger.info(f"[AuraCore] Resolved {len(clauses)} compound actions via deterministic local fast-path.")
                             self.add_to_conversation("user", user_message)
                             self.add_to_conversation("assistant", combined)
+                            self._record_passive_fast_path(user_message, session_id, "compound_local_fast_path", combined)
                             return combined
 
                 except Exception as comp_err:
@@ -1327,27 +1514,125 @@ class AuraCore:
             import json
             from core.tools.unified_tool_dispatcher import UnifiedToolDispatcher
 
-            target_model = getattr(self, "reasoning_llm_model", "qwen/qwen3.8-27b")
+            target_model = getattr(
+                self,
+                "reasoning_llm_model",
+                os.environ.get("AURA_REASONING_MODEL", os.environ.get("AURA_AGENT_MODEL", "openai/gpt-oss-120b"))
+            )
             messages = self._build_chat_messages(user_message, emitter=emitter)
             msg_low = user_message.lower().strip()
-            is_diagram_query = any(k in msg_low for k in ("draw a diagram", "draw a flowchart", "draw flowchart", "draw architecture", "draw diagram", "flowchart of", "architecture of", "mermaid diagram", "draw an svg", "draw ascii"))
+            # Classification for Specialized Generation Domains
+            # 1. Diagrams, Flowcharts & System Architecture
+            is_diagram_query = any(
+                k in msg_low
+                for k in (
+                    "draw a diagram", "draw a flowchart", "draw flowchart", "draw architecture", "draw diagram",
+                    "flowchart of", "architecture of", "mermaid diagram", "draw ascii", "diagram", "flowchart",
+                    "schematic", "mermaid", "system architecture", "sequence diagram", "state machine",
+                    "process map", "entity relationship", "data flow diagram", "dfd", "er diagram"
+                )
+            )
 
-            # Do not inject desktop file tools on pure diagram/drawing queries
-            tools = None if (is_diagram_query or not enable_tools) else UnifiedToolDispatcher.get_tool_definitions()
+            # 2. Complex SVG Mockups, UI Screen & Visual Layouts
+            is_svg_mockup_query = any(
+                k in msg_low
+                for k in (
+                    "layout design", "screen layout", "ui layout", "interface screen", "design a layout",
+                    "ui design", "screen design", "mockup", "wireframe", "visual hierarchy", "svg mockup",
+                    "cockpit screen", "mcdu", "dashboard layout", "landing page design", "component layout",
+                    "draw an svg", "svg illustration", "svg graphic", "svg diagram", "svg vector", "glass cockpit"
+                )
+            )
+
+            # 3. Code, Frontend & Backend Engineering
+            is_code_query = any(
+                k in msg_low
+                for k in (
+                    "frontend", "backend", "fullstack", "react", "vue", "angular", "svelte", "nextjs", "next.js",
+                    "html", "css", "tailwind", "javascript", "typescript", "fastapi", "flask", "django",
+                    "express", "node.js", "nodejs", "api endpoint", "rest api", "graphql", "database schema",
+                    "sql query", "write code", "write a function", "write a script", "refactor code", "refactor this",
+                    "backend service", "microservice", "web app", "code for", "implement class", "coding"
+                )
+            )
+
+            is_specialized_domain = is_diagram_query or is_svg_mockup_query or is_code_query
+
+            # Do not inject desktop OS tools on pure diagram/mockup/code generation queries
+            tools = None if (is_specialized_domain or not enable_tools) else UnifiedToolDispatcher.get_tool_definitions()
+
+            # Calculate estimated prompt tokens to detect large contexts and prevent Groq 8k TPM cap
+            prompt_chars = sum(len(str(m.get("content", ""))) for m in messages)
+            est_prompt_tokens = prompt_chars // 4
+
+            from ai.key_pool import KeyPool
+            pool = KeyPool.get_instance()
+            has_gemini = bool(pool.get_all_keys("gemini"))
+
+            # Direct Gemini Default Routing:
+            # 1. User explicitly requests Gemini
+            # 2. Diagrams, flowcharts, schematics (Gemini excels at clean Mermaid & graph topology)
+            # 3. Complex SVG Mockups, UI screens, wireframes (Gemini generates complete, multi-layer SVG layouts)
+            # 4. Code, Frontend & Backend generation (Gemini produces complete fullstack implementations)
+            # 5. Large prompt contexts (>= 5,000 tokens), avoiding Groq's strict 8,000 TPM limit
+            is_large_context = est_prompt_tokens >= 5000
+            wants_gemini = has_gemini and (
+                any(k in msg_low for k in ("using gemini", "use gemini", "with gemini", "try gemini", "try using gemini"))
+                or is_specialized_domain
+                or is_large_context
+            )
+            if wants_gemini:
+                try:
+                    logger.info(
+                        f"[AuraCore] Routing directly to Gemini | domain="
+                        f"{'diagram' if is_diagram_query else 'svg_mockup' if is_svg_mockup_query else 'code' if is_code_query else 'large_context' if is_large_context else 'explicit'} "
+                        f"| prompt_tokens~{est_prompt_tokens}"
+                    )
+                    from ai.gemini_provider import GeminiProvider
+                    from ai.models import ChatMessage, ChatRequest
+                    gp = GeminiProvider(default_model=os.environ.get("AURA_GEMINI_MODEL", "gemini-3.5-flash"))
+                    chat_msgs = []
+                    for m in messages:
+                        r = m.get("role", "user")
+                        c = m.get("content", "")
+                        if r in ("system", "user", "assistant") and c:
+                            chat_msgs.append(ChatMessage(role=r, content=c))
+                    resp = gp.chat(ChatRequest(
+                        messages=chat_msgs,
+                        max_tokens=8192,
+                        temperature=0.4,
+                    ))
+                    if resp and resp.text and resp.text.strip():
+                        gemini_text = resp.text.strip()
+                        self.add_to_conversation("user", user_message)
+                        self.add_to_conversation("assistant", gemini_text)
+                        return gemini_text
+                except Exception as gemini_err:
+                    logger.warning(f"[AuraCore] Gemini direct call error ({gemini_err}), falling back to Groq/AgentLoop.")
+
+            if "gpt-oss-120b" in target_model:
+                # Groq has a strict 8,000 TPM cap on gpt-oss-120b. Keep total (prompt + max_tokens) <= 7,200.
+                dynamic_max_tokens = max(1024, min(3500, 7200 - est_prompt_tokens))
+            else:
+                dynamic_max_tokens = 4096
 
             kwargs: dict[str, Any] = {
                 "model": target_model,
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 4096,
+                "max_tokens": dynamic_max_tokens,
             }
             if tools:
                 kwargs["tools"] = tools
                 kwargs["tool_choice"] = "auto"
             def _get_dynamic_reasoning_effort(msg: str) -> str:
                 m = msg.lower().strip()
-                # 1. HIGH: Deep debugging, tracebacks, complex algorithm design, math proofs
-                if any(w in m for w in ("debug", "traceback", "algorithm", "architecture", "solve math", "refactor code", "optimize complexity", "memory leak")):
+                # 1. HIGH: Deep debugging, tracebacks, complex algorithm design, math proofs, UI/system layout design
+                if any(w in m for w in (
+                    "debug", "traceback", "algorithm", "architecture", "solve math", "refactor code",
+                    "optimize complexity", "memory leak", "layout design", "screen layout", "ui design",
+                    "interface screen", "visual hierarchy", "interaction flow", "system design", "wireframe", "mockup"
+                )):
                     return "high"
                 # 2. MEDIUM: Long-form analysis, essays, deep explanations
                 if any(w in m for w in ("explain in detail", "write an essay", "pros and cons", "comprehensive analysis", "step-by-step breakdown")):
@@ -1371,12 +1656,15 @@ class AuraCore:
                 kw["stream"] = True
                 if "gpt-oss-120b" not in model_name:
                     kw.pop("reasoning_effort", None)
+                if "qwen3.6-27b" in model_name:
+                    kw["max_tokens"] = min(kw.get("max_tokens", 1000), 1000)
 
                 def _do_stream(api_key: str):
                     client = key_pool.get_groq_client(api_key)
                     t_req_start = time.time()
                     stream = client.chat.completions.create(**kw)
                     content_parts = []
+                    reasoning_parts = []
                     tool_calls_dict: dict[int, dict[str, Any]] = {}
                     role = "assistant"
                     in_think = False
@@ -1398,6 +1686,7 @@ class AuraCore:
 
                         # 1. Direct reasoning delta from reasoning-capable model
                         if hasattr(delta, "reasoning") and delta.reasoning:
+                            reasoning_parts.append(delta.reasoning)
                             if on_reasoning:
                                 on_reasoning(delta.reasoning)
 
@@ -1411,14 +1700,18 @@ class AuraCore:
                                     content_parts.append(parts[0])
                                     if on_content:
                                         on_content(parts[0])
-                                if len(parts) > 1 and parts[1] and on_reasoning:
-                                    on_reasoning(parts[1])
+                                if len(parts) > 1 and parts[1]:
+                                    reasoning_parts.append(parts[1])
+                                    if on_reasoning:
+                                        on_reasoning(parts[1])
                                 continue
                             if "</think>" in c:
                                 in_think = False
                                 parts = c.split("</think>")
-                                if parts[0] and on_reasoning:
-                                    on_reasoning(parts[0])
+                                if parts[0]:
+                                    reasoning_parts.append(parts[0])
+                                    if on_reasoning:
+                                        on_reasoning(parts[0])
                                 if len(parts) > 1 and parts[1]:
                                     content_parts.append(parts[1])
                                     if on_content:
@@ -1426,6 +1719,7 @@ class AuraCore:
                                 continue
 
                             if in_think:
+                                reasoning_parts.append(c)
                                 if on_reasoning:
                                     on_reasoning(c)
                             else:
@@ -1469,9 +1763,11 @@ class AuraCore:
                         ))
 
                     full_content = "".join(content_parts)
+                    full_reasoning = "".join(reasoning_parts).strip() if reasoning_parts else None
                     msg_obj = SimpleNamespace(
                         role=role,
                         content=full_content if full_content else None,
+                        reasoning=full_reasoning,
                         tool_calls=constructed_tool_calls if constructed_tool_calls else None,
                     )
                     res_choice = SimpleNamespace(message=msg_obj)
@@ -1490,6 +1786,8 @@ class AuraCore:
                 kw["model"] = model_name
                 if "gpt-oss-120b" not in model_name:
                     kw.pop("reasoning_effort", None)
+                if "qwen3.6-27b" in model_name:
+                    kw["max_tokens"] = min(kw.get("max_tokens", 1000), 1000)
 
                 def _do_chat(api_key: str):
                     client = key_pool.get_groq_client(api_key)
@@ -1502,11 +1800,42 @@ class AuraCore:
                         logger.warning(f"[AuraCore] Groq model '{model_name}' exhausted/error ({ex}), falling back to qwen/qwen3.6-27b across key pool.")
                         kw["model"] = "qwen/qwen3.6-27b"
                         kw.pop("reasoning_effort", None)
+                        kw["max_tokens"] = min(kw.get("max_tokens", 1000), 1000)
                         return key_pool.execute_with_failover(_do_chat, service="groq")
                     raise ex
 
+            # Phase 2: Active Verified Agent Loop (Feature Flag Gated, default enabled)
+            if is_agent_loop_enabled():
+                from core.orchestration.agent_loop import AgentLoop
+                agent_loop = AgentLoop(
+                    aura_core=self,
+                    goal_store=self.get_goal_store(),
+                    emitter=emitter,
+                    session_id=effective_session_id,
+                    max_steps=8,
+                )
+                return await agent_loop.run(
+                    user_message=user_message,
+                    messages=messages,
+                    kwargs=kwargs,
+                    target_model=target_model,
+                    tools=tools,
+                    call_groq_streaming=_call_groq_streaming,
+                    call_groq=_call_groq,
+                )
+
+            # Phase 1: Passive Goal telemetry tracking for ReAct Loop
+            active_goal = None
+            goal_store = self.get_goal_store()
+            if goal_store is not None:
+                try:
+                    from core.orchestration.goal_state import Goal
+                    active_goal = Goal.new(session_id=effective_session_id, user_prompt=user_message)
+                    goal_store.create_goal(active_goal)
+                except Exception as ge:
+                    logger.debug(f"[AuraCore] Passive goal init failed: {ge}")
+
             # Iterative ReAct Autonomous Tool Calling Loop (up to 5 turns)
-            import time
             final_text = ""
             for iteration in range(5):
                 turn_label = f"Turn {iteration + 1}: Reasoning"
@@ -1565,6 +1894,20 @@ class AuraCore:
                         except Exception:
                             fn_args = {}
 
+                        step_rec = None
+                        if active_goal is not None and goal_store is not None:
+                            try:
+                                from core.orchestration.goal_state import Step, StepStatus
+                                step_rec = Step.new(
+                                    goal_id=active_goal.goal_id,
+                                    tool_name=fn_name,
+                                    tool_args=fn_args,
+                                    status=StepStatus.IN_PROGRESS,
+                                )
+                                goal_store.add_step(step_rec)
+                            except Exception as se:
+                                logger.debug(f"[AuraCore] Passive step init failed: {se}")
+
                         tool_label = f"Turn {iteration + 1}: calling {fn_name}"
                         tool_start = time.time()
                         if emitter is not None:
@@ -1574,9 +1917,11 @@ class AuraCore:
                         try:
                             from core.orchestration import MasterOrchestrator
                             from core.orchestration.agent_session import AgentSession
-                            orch = MasterOrchestrator.get_instance()
-                            session = orch._last_session or AgentSession(goal=user_message)
-                            orch._last_session = session
+                            session = AgentSession(goal=user_message, session_id=effective_session_id)
+                            try:
+                                MasterOrchestrator.get_instance()._last_session = session
+                            except Exception:
+                                pass
 
                             # Execute tool with policy and risk gating
                             tool_result = await UnifiedToolDispatcher.dispatch(
@@ -1598,18 +1943,67 @@ class AuraCore:
                             "content": json.dumps(tool_result, default=str),
                         })
 
+                        if step_rec is not None and goal_store is not None:
+                            try:
+                                from core.orchestration.goal_state import StepStatus
+                                obs_str = json.dumps(tool_result, default=str)
+                                goal_store.update_step_status(
+                                    step_id=step_rec.step_id,
+                                    status=StepStatus.OBSERVED,
+                                    observation=obs_str,
+                                )
+                            except Exception as ue:
+                                logger.debug(f"[AuraCore] Passive step update failed: {ue}")
+
                         # If tool execution requires human confirmation, pause loop and return prompt immediately
                         if isinstance(tool_result, dict) and tool_result.get("status") == "confirmation_required":
                             final_text = tool_result.get("prompt", "Action requires human confirmation.")
+                            if active_goal is not None and goal_store is not None:
+                                try:
+                                    from core.orchestration.goal_state import GoalStatus
+                                    goal_store.update_goal_status(active_goal.goal_id, GoalStatus.AWAITING_USER)
+                                except Exception:
+                                    pass
                             break
 
-                    if final_text and "requires human confirmation" in final_text:
+                        # If circuit breaker tripped on repeated tool failures, pause loop and escalate to user
+                        if isinstance(tool_result, dict) and tool_result.get("circuit_breaker_tripped"):
+                            final_text = tool_result.get(
+                                "circuit_breaker_message",
+                                f"Action '{fn_name}' failed repeatedly. Execution halted by circuit breaker."
+                            )
+                            if active_goal is not None and goal_store is not None:
+                                try:
+                                    from core.orchestration.goal_state import GoalStatus
+                                    goal_store.update_goal_status(active_goal.goal_id, GoalStatus.FAILED)
+                                except Exception:
+                                    pass
+                            break
+
+                    if final_text and ("requires human confirmation" in final_text or "circuit breaker" in final_text.lower()):
                         break
 
                     # Prepare kwargs for next turn in loop
                     kwargs["messages"] = messages
                 else:
                     final_text = response_msg.content or "Action completed."
+                    r_text = getattr(response_msg, "reasoning", None)
+                    if r_text and "<think>" not in final_text:
+                        final_text = f"<think>\n{r_text}\n</think>\n\n{final_text}"
+                    if active_goal is not None and goal_store is not None:
+                        try:
+                            from core.orchestration.goal_state import Step, StepStatus
+                            reasoning_step = Step.new(
+                                goal_id=active_goal.goal_id,
+                                tool_name=None,
+                                tool_args={},
+                                status=StepStatus.VERIFIED,
+                                observation=final_text,
+                                verify_reason="Direct response generated",
+                            )
+                            goal_store.add_step(reasoning_step)
+                        except Exception as re_err:
+                            logger.debug(f"[AuraCore] Passive reasoning step failed: {re_err}")
                     break
 
             # Strip any internal chain-of-thought blocks (<think>...</think>)
@@ -1625,9 +2019,24 @@ class AuraCore:
             # Update working context and drain buffered notifications.
             final_text = self._focus_postamble(user_message, final_text)
 
+            if active_goal is not None and goal_store is not None:
+                try:
+                    from core.orchestration.goal_state import GoalStatus
+                    current_g = goal_store.get_goal(active_goal.goal_id)
+                    if current_g and current_g.status != GoalStatus.AWAITING_USER:
+                        goal_store.update_goal_status(active_goal.goal_id, GoalStatus.DONE)
+                except Exception as de:
+                    logger.debug(f"[AuraCore] Passive goal completion update failed: {de}")
+
             return final_text
 
         except Exception as e:
+            if active_goal is not None and goal_store is not None:
+                try:
+                    from core.orchestration.goal_state import GoalStatus
+                    goal_store.update_goal_status(active_goal.goal_id, GoalStatus.FAILED)
+                except Exception:
+                    pass
             from ai.exceptions import KeyPoolExhaustedError
             err_str = str(e).lower()
             if isinstance(e, KeyPoolExhaustedError) or "keypoolexhausted" in type(e).__name__.lower() or "rate-limited on cooldown" in err_str or ("all" in err_str and "keys rate-limited" in err_str):
@@ -1637,7 +2046,11 @@ class AuraCore:
             return f"✗ Error processing message: {e}"
 
     async def process_request_stream(
-        self, user_goal: str, yield_filler: bool = True, emitter: Optional[Any] = None
+        self,
+        user_goal: str,
+        yield_filler: bool = True,
+        session_id: Optional[str] = None,
+        emitter: Optional[Any] = None,
     ) -> AsyncGenerator[str, None]:
         """
         Unified OS Kernel streaming request entry point.
@@ -1647,7 +2060,7 @@ class AuraCore:
         if raw in [
             "yes", "y", "yeah", "yep", "sure", "ok", "okay", "no", "n", "nope", "nah"
         ]:
-            resp = await self.process_request(user_goal)
+            resp = await self.process_request(user_goal, session_id=session_id)
             yield resp
             return
 
@@ -1668,12 +2081,6 @@ class AuraCore:
         if conv_engine is not None:
             try:
                 import re
-                DETERMINISTIC_LOCAL_INTENTS = {
-                    "local_time", "live_weather", "battery_status", "memory_summary",
-                    "brightness_control", "audio_control", "profile_lookup",
-                    "skills_lookup", "goals_lookup", "preferences_lookup", "projects_lookup",
-                    "remember_fact"
-                }
                 intent = conv_engine.intent_router.detect(user_goal)
                 if intent and intent.name in DETERMINISTIC_LOCAL_INTENTS:
                     local_ans = conv_engine._answer_local_intent(intent)
@@ -1723,9 +2130,10 @@ class AuraCore:
             can_from_sys = decision.can_answer_from_system
             needs_planner = decision.needs_planner
 
-            # System Self-Knowledge Queries (Instant local resolution)
+            # System Self-Knowledge Queries & Memory Inspections (Instant local resolution)
             intent_val = getattr(intent_type, "value", str(intent_type)).lower()
-            if intent_val == "system_query" or can_from_sys:
+            intent_cap = getattr(decision, "capability", "") or ""
+            if intent_val == "system_query" or can_from_sys or intent_cap == "memory.inspect":
                 from core.system.system_knowledge_resolver import SystemKnowledgeResolver
                 yield SystemKnowledgeResolver.resolve(user_goal)
                 return
@@ -1801,7 +2209,12 @@ class AuraCore:
             logger.error(f"process_request_stream failed: {e}", exc_info=True)
             yield f"I encountered an error: {e}"
 
-    async def process_request(self, user_goal: str, emitter: Optional[Any] = None) -> str:
+    async def process_request(
+        self,
+        user_goal: str,
+        session_id: Optional[str] = None,
+        emitter: Optional[Any] = None,
+    ) -> str:
         """
         Unified OS Kernel request entry point.
         Executes all requests through the unified ReAct tool engine (get_ai_response).
@@ -1810,7 +2223,14 @@ class AuraCore:
             # ── M32: Focus thread preamble ──────────────────────────────────────
             focus_ans = self._focus_preamble(user_goal)
             if focus_ans is not None:
+                self._record_passive_fast_path(user_goal, session_id, "focus_preamble", focus_ans)
                 return focus_ans
+
+            # ── M31: Subagent trigger preamble ──────────────────────────────────
+            subagent_ans = self._subagent_preamble(user_goal)
+            if subagent_ans is not None:
+                self._record_passive_fast_path(user_goal, session_id, "subagent_preamble", subagent_ans)
+                return subagent_ans
 
             # 1. Deterministic Local Intent Fast-Path (< 15ms zero-latency execution)
             conv_engine = getattr(self, "conversation_engine", None)
@@ -1824,7 +2244,31 @@ class AuraCore:
             if conv_engine is not None:
                 try:
                     intent = conv_engine.intent_router.detect(user_goal)
-                    local_answer = conv_engine._answer_local_intent(intent)
+                    is_browser_intent = bool(intent and intent.name == "autonomous_browser")
+                    loop_active = is_agent_loop_enabled()
+
+                    if loop_active and (not intent or intent.name not in DETERMINISTIC_LOCAL_INTENTS):
+                        # Under AURA_ENABLE_AGENT_LOOP=1, bypass non-deterministic local intents into AgentLoop
+                        logger.info(
+                            f"[AuraCore.process_request] Bypassing '{getattr(intent, 'name', 'unknown')}' fast-path for '{user_goal[:40]}' -> delegating to AgentLoop"
+                        )
+                        local_answer = None
+                    else:
+                        if is_browser_intent and emitter is not None:
+                            try:
+                                from core.progress_events import EventStatus, EventType, ProgressEvent
+                                emitter.emit(
+                                    ProgressEvent(
+                                        label="Autonomous Web Research (in progress...)",
+                                        event_type=EventType.TOOL_CALL,
+                                        status=EventStatus.STARTED,
+                                        detail="Navigating web pages and synthesizing verified sources (may take up to a minute)...",
+                                    )
+                                )
+                            except Exception:
+                                pass
+
+                        local_answer = conv_engine._answer_local_intent(intent)
                     if local_answer is not None:
                         from brain.models import ConversationContext
                         ctx = ConversationContext(
@@ -1834,6 +2278,32 @@ class AuraCore:
                             attachments=[],
                         )
                         conv_engine._save_turn(ctx, local_answer)
+                        extra_steps = None
+                        if is_browser_intent:
+                            last_res = getattr(conv_engine, "_last_browser_result", None)
+                            if isinstance(last_res, dict):
+                                extra_steps = last_res.get("steps")
+                            if emitter is not None:
+                                try:
+                                    from core.progress_events import EventStatus, EventType, ProgressEvent
+                                    emitter.emit(
+                                        ProgressEvent(
+                                            label="Autonomous Web Research completed",
+                                            event_type=EventType.TOOL_CALL,
+                                            status=EventStatus.DONE,
+                                            detail="Research exploration complete.",
+                                        )
+                                    )
+                                except Exception:
+                                    pass
+
+                        self._record_passive_fast_path(
+                            user_goal,
+                            session_id,
+                            getattr(intent, "name", "local_intent"),
+                            local_answer,
+                            extra_steps=extra_steps,
+                        )
                         return local_answer
                 except Exception as ce_err:
                     logger.debug(f"[AuraCore.process_request] Local intent fast-path bypassed: {ce_err}")
@@ -1854,11 +2324,15 @@ class AuraCore:
             ):
                 resolved_res = orchestrator.resolve_pending_confirmation(user_goal)
                 if resolved_res is not None:
-                    return "\n".join(resolved_res.observations) if resolved_res.observations else "Action confirmed and executed."
+                    ans = "\n".join(resolved_res.observations) if resolved_res.observations else "Action confirmed and executed."
+                    self._record_passive_fast_path(user_goal, session_id, "confirmation_resolution", ans)
+                    return ans
 
             # 2. Direct Unified ReAct Tool & LLM Engine across CLI, GUI, and Voice
             if self.llm_enabled and self.groq_client is not None:
-                return await self.get_ai_response(user_goal, enable_tools=True, emitter=emitter)
+                return await self.get_ai_response(
+                    user_goal, enable_tools=True, session_id=session_id, emitter=emitter
+                )
 
             from core.orchestration import MasterOrchestrator
 
@@ -1946,10 +2420,9 @@ class AuraCore:
             )
             intent_type = decision.get("intent_type")
             can_from_sys = decision.get("can_answer_from_system", False)
-            needs_planner = decision.get("needs_planner", True)
-
-            # System Self-Knowledge Queries (Who are you?, What are your capabilities?, Limitations, Planners, Backends)
-            if intent_type == "system_query" or can_from_sys:
+            # System Self-Knowledge Queries & Memory Inspections (Who are you?, What are your capabilities?, Limitations, Planners, Backends, Memory)
+            intent_cap = decision.get("capability", "") if isinstance(decision, dict) else getattr(decision, "capability", "")
+            if intent_type == "system_query" or can_from_sys or intent_cap == "memory.inspect":
                 from core.system.system_knowledge_resolver import (
                     SystemKnowledgeResolver,
                 )
@@ -2738,6 +3211,69 @@ class AuraCore:
         """Clear conversation history."""
         self.conversation_history = []
         logger.info("Conversation history cleared")
+
+    def reset_session(self) -> None:
+        """Reset conversation history for the current session."""
+        self.clear_conversation_history()
+
+    def get_goal_store(self):
+        """Returns the GoalStore instance for goal/step persistence, initializing lazily if needed."""
+        if getattr(self, "goal_store", None) is None:
+            try:
+                from core.orchestration.goal_store import GoalStore
+                self.goal_store = GoalStore()
+            except Exception as e:
+                logger.warning(f"[AuraCore] Failed to initialize GoalStore: {e}")
+                return None
+        return self.goal_store
+
+    def _record_passive_fast_path(
+        self,
+        user_goal: str,
+        session_id: Optional[str],
+        action_name: str,
+        result_text: str,
+        extra_steps: Optional[list[dict[str, Any]]] = None,
+    ) -> None:
+        """Passively records a single-turn deterministic fast-path execution into GoalStore, unpacking sub-steps if available."""
+        try:
+            store = self.get_goal_store()
+            if store is not None:
+                import uuid
+                from core.orchestration.goal_state import Goal, GoalStatus, Step, StepStatus
+                effective_sess = session_id or f"sess_ephemeral_{uuid.uuid4().hex[:8]}"
+                g = Goal.new(session_id=effective_sess, user_prompt=user_goal)
+                store.create_goal(g)
+
+                if extra_steps:
+                    for s in extra_steps:
+                        tool_name = f"browser.{s.get('tool', 'action')}"
+                        tool_args = s.get("args") or {}
+                        obs = str(s.get("result") or s.get("output") or s.get("summary") or "")
+                        step_status = StepStatus.VERIFIED if s.get("status") != "BLOCKED" else StepStatus.FAILED
+                        step_obj = Step.new(
+                            goal_id=g.goal_id,
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            status=step_status,
+                            observation=obs[:10000] if obs else None,
+                            verify_reason=f"Browser action: {s.get('tool', 'action')}",
+                        )
+                        store.add_step(step_obj)
+                else:
+                    s = Step.new(
+                        goal_id=g.goal_id,
+                        tool_name="fast_path",
+                        tool_args={"action": action_name},
+                        status=StepStatus.VERIFIED,
+                        observation=result_text[:10000] if result_text else None,
+                        verify_reason=f"Resolved via {action_name}",
+                    )
+                    store.add_step(s)
+
+                store.update_goal_status(g.goal_id, GoalStatus.DONE)
+        except Exception as e:
+            logger.debug(f"[AuraCore] Passive fast-path recording failed: {e}")
 
     def load_plugin(self, plugin_name: str) -> bool:
         """

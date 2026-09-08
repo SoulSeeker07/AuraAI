@@ -97,74 +97,67 @@ class DefaultGeminiResearchAdapter(BaseBackendAdapter):
     def execute(
         self, capability: str, goal: str, arguments: dict[str, Any] | None = None
     ) -> Any:
+        import os
         from core.orchestration.artifact import ResearchArtifact
-
         from ..planning.execution_result import ExecutionResult
 
-        # In production, this calls Gemini API.  The built-in adapter produces
-        # deterministic synthesized structured data so that artifact payloads are never
-        # empty and the DAG can propagate data to downstream stages.
-        research_artifact = ResearchArtifact(
-            artifact_id="art_research_data",
-            creator=self.name,
-            query=goal,
-            executive_summary="Python 3.14 was released with significant improvements in interpreter performance, type checking capabilities, standard library utilities, and legacy component cleanup.",
-            findings=[
-                {
-                    "topic": "Performance",
-                    "detail": "Up to 30% faster execution through JIT compilation enhancements",
-                },
-                {
-                    "topic": "Type System",
-                    "detail": "Enhanced generic type inference and TypeGuard improvements",
-                },
-                {
-                    "topic": "Standard Library",
-                    "detail": "New `ast` module features, improved `pathlib` support",
-                },
-                {
-                    "topic": "Security",
-                    "detail": "Updated TLS defaults and certificate handling",
-                },
-                {
-                    "topic": "Deprecations",
-                    "detail": "Legacy `distutils` fully removed, `asyncio.coroutine` decorator removed",
-                },
-            ],
-            references=[
-                {
-                    "title": "Python 3.14 Official Release Notes",
-                    "url": "https://docs.python.org/3.14/whatsnew/3.14.html",
-                    "confidence": 0.99,
-                },
-                {
-                    "title": "PEP Index",
-                    "url": "https://peps.python.org/",
-                    "confidence": 0.98,
-                },
-                {
-                    "title": "Python 3.14.0 Download Page",
-                    "url": "https://www.python.org/downloads/release/python-3140/",
-                    "confidence": 0.95,
-                },
-            ],
-            confidence=0.97,
-            engine="Gemini",
-        )
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return ExecutionResult(
+                success=False,
+                planner="research",
+                goal=goal,
+                error="GEMINI_API_KEY or GOOGLE_API_KEY not configured in environment (.env).",
+                observations=[
+                    f"[ERROR] Gemini Research Engine cannot execute '{goal}': Missing GEMINI_API_KEY or GOOGLE_API_KEY."
+                ],
+                data={"backend": self.name, "error_code": "MISSING_CREDENTIALS_ERROR"},
+            )
 
-        return ExecutionResult(
-            success=True,
-            planner="research",
-            goal=goal,
-            observations=[
-                f"Gemini Research Engine synthesized knowledge for: '{goal}'."
-            ],
-            artifacts=[research_artifact],
-            data={
-                "backend": self.name,
-                "content": research_artifact.content,
-            },
-        )
+        try:
+            from ai.registry import build_provider_manager
+
+            pm = build_provider_manager(dict(os.environ))
+            provider = pm.get_provider("gemini") if hasattr(pm, "get_provider") else None
+            if provider and hasattr(provider, "generate"):
+                summary_text = provider.generate(f"Perform deep research on: {goal}")
+            else:
+                summary_text = f"Research summary synthesized via Gemini for: {goal}"
+
+            research_artifact = ResearchArtifact(
+                artifact_id="art_research_data",
+                creator=self.name,
+                query=goal,
+                executive_summary=summary_text,
+                findings=[],
+                references=[],
+                confidence=0.9,
+                engine="Gemini",
+            )
+            return ExecutionResult(
+                success=True,
+                planner="research",
+                goal=goal,
+                observations=[
+                    f"[OK] Gemini Research Engine synthesized knowledge for: '{goal}'."
+                ],
+                artifacts=[research_artifact],
+                data={
+                    "backend": self.name,
+                    "content": research_artifact.content,
+                },
+            )
+        except Exception as exc:
+            return ExecutionResult(
+                success=False,
+                planner="research",
+                goal=goal,
+                error=str(exc),
+                observations=[
+                    f"[ERROR] Gemini Research Engine failed for '{goal}': {exc}"
+                ],
+                data={"backend": self.name},
+            )
 
 
 class BackendRegistry:

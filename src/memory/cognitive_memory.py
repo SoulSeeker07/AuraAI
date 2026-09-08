@@ -22,6 +22,7 @@ from .decay_engine import DecayEngine
 from .episodic_memory import EpisodicMemoryRecorder
 from .models import MemoryItem, MemoryProvenance, MemoryType, ProvenanceSource
 from .preference_learner import PreferenceLearner
+from .procedural_failure_ledger import ProceduralFailureLedger
 from .procedural_memory import ProceduralMemoryStore
 from .project_isolation import ProjectMemoryFilter
 from .recall_engine import RecallEngine
@@ -48,6 +49,7 @@ class CognitiveMemoryEngine:
         self.episodic_memory = EpisodicMemoryRecorder()
         self.semantic_memory = SemanticMemoryStore()
         self.procedural_memory = ProceduralMemoryStore()
+        self.failure_ledger = ProceduralFailureLedger(db_path=self.db_path)
         self.recall_engine = RecallEngine()
         self.consolidation_engine = ConsolidationEngine()
         self.decay_engine = DecayEngine()
@@ -61,6 +63,7 @@ class CognitiveMemoryEngine:
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
         try:
             yield conn
             conn.commit()
@@ -85,9 +88,17 @@ class CognitiveMemoryEngine:
                     access_count INTEGER NOT NULL,
                     last_accessed TEXT NOT NULL,
                     expires_at TEXT,
-                    metadata TEXT NOT NULL
+                    metadata TEXT NOT NULL,
+                    embedding BLOB
                 )
             """)
+            # Check PRAGMA table_info to guard ALTER TABLE on repeated app launches
+            existing_cols = [r["name"] if hasattr(r, "keys") else r[1] for r in conn.execute("PRAGMA table_info(cognitive_memories)").fetchall()]
+            if "embedding" not in existing_cols:
+                try:
+                    conn.execute("ALTER TABLE cognitive_memories ADD COLUMN embedding BLOB")
+                except sqlite3.OperationalError:
+                    pass  # column already exists
             conn.execute("CREATE INDEX IF NOT EXISTS idx_cog_mem_type ON cognitive_memories(type)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_cog_mem_project ON cognitive_memories(project_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_cog_mem_importance ON cognitive_memories(importance)")
@@ -119,14 +130,25 @@ class CognitiveMemoryEngine:
         now = dt.datetime.now().isoformat(timespec="seconds")
         memory.updated_at = now
 
+        # Pre-cache dense vector embedding on write if not already present
+        if memory.embedding is None and memory.content:
+            try:
+                from memory.vector_memory import VectorMemoryEngine
+                vec_eng = VectorMemoryEngine.get_instance(db_path=self.db_path)
+                emb = vec_eng.encode(memory.content)
+                if emb is not None:
+                    memory.embedding = emb.tobytes()
+            except Exception as ve:
+                logger.debug(f"[CognitiveMemoryEngine] Vector embedding pre-cache note: {ve}")
+
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO cognitive_memories (
                     memory_id, type, content, provenance, created_at, updated_at,
                     importance, confidence, project_id, topic, access_count,
-                    last_accessed, expires_at, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    last_accessed, expires_at, metadata, embedding
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(memory_id) DO UPDATE SET
                     content = excluded.content,
                     updated_at = excluded.updated_at,
@@ -134,7 +156,8 @@ class CognitiveMemoryEngine:
                     confidence = excluded.confidence,
                     access_count = cognitive_memories.access_count + 1,
                     last_accessed = excluded.last_accessed,
-                    metadata = excluded.metadata
+                    metadata = excluded.metadata,
+                    embedding = excluded.embedding
                 """,
                 (
                     memory.memory_id,
@@ -150,7 +173,8 @@ class CognitiveMemoryEngine:
                     memory.access_count,
                     memory.last_accessed,
                     memory.expires_at,
-                    json.dumps(memory.metadata),
+                    json.dumps({k: v for k, v in memory.metadata.items() if not str(k).startswith("_")} if isinstance(memory.metadata, dict) else {}),
+                    memory.embedding,
                 ),
             )
         logger.debug(f"[CognitiveMemoryEngine] Stored memory '{memory.memory_id}' [{memory.type}]")
@@ -163,7 +187,7 @@ class CognitiveMemoryEngine:
                 """
                 SELECT memory_id, type, content, provenance, created_at, updated_at,
                        importance, confidence, project_id, topic, access_count,
-                       last_accessed, expires_at, metadata
+                       last_accessed, expires_at, metadata, embedding
                 FROM cognitive_memories WHERE memory_id = ?
                 """,
                 (memory_id,),
@@ -184,7 +208,7 @@ class CognitiveMemoryEngine:
         Search memories matching query, optionally filtering by type and project.
         """
         with self._connect() as conn:
-            sql = "SELECT memory_id, type, content, provenance, created_at, updated_at, importance, confidence, project_id, topic, access_count, last_accessed, expires_at, metadata FROM cognitive_memories WHERE 1=1"
+            sql = "SELECT memory_id, type, content, provenance, created_at, updated_at, importance, confidence, project_id, topic, access_count, last_accessed, expires_at, metadata, embedding FROM cognitive_memories WHERE 1=1"
             params: list[Any] = []
 
             if query.strip():
@@ -282,7 +306,7 @@ class CognitiveMemoryEngine:
             for cand in candidates:
                 cat = cand.metadata.get("category", "")
                 existing_rows = conn.execute(
-                    "SELECT memory_id, type, content, provenance, created_at, updated_at, importance, confidence, project_id, topic, access_count, last_accessed, expires_at, metadata FROM cognitive_memories WHERE type = 'preference'"
+                    "SELECT memory_id, type, content, provenance, created_at, updated_at, importance, confidence, project_id, topic, access_count, last_accessed, expires_at, metadata, embedding FROM cognitive_memories WHERE type = 'preference'"
                 ).fetchall()
                 existing_items = [self._row_to_memory_item(r) for r in existing_rows]
 
@@ -306,44 +330,79 @@ class CognitiveMemoryEngine:
             row = conn.execute("SELECT COUNT(*) FROM cognitive_memories").fetchone()
             return row[0] if row else 0
 
-    def _row_to_memory_item(self, row: tuple) -> MemoryItem:
+    def _row_to_memory_item(self, row: Any) -> MemoryItem:
+        if hasattr(row, "keys"):
+            # Robust sqlite3.Row name-based access
+            mem_id = row["memory_id"]
+            mt = row["type"]
+            content = row["content"]
+            prov_raw = row["provenance"]
+            created_at = row["created_at"]
+            updated_at = row["updated_at"]
+            importance = row["importance"]
+            confidence = row["confidence"]
+            project_id = row["project_id"]
+            topic = row["topic"]
+            access_count = row["access_count"]
+            last_accessed = row["last_accessed"]
+            expires_at = row["expires_at"]
+            meta_raw = row["metadata"]
+            embedding = row["embedding"] if "embedding" in row.keys() else None
+        else:
+            # Positional tuple fallback for mock objects / legacy queries
+            mem_id = row[0]
+            mt = row[1]
+            content = row[2]
+            prov_raw = row[3]
+            created_at = row[4]
+            updated_at = row[5]
+            importance = row[6]
+            confidence = row[7]
+            project_id = row[8]
+            topic = row[9]
+            access_count = row[10]
+            last_accessed = row[11]
+            expires_at = row[12]
+            meta_raw = row[13] if len(row) > 13 else "{}"
+            embedding = row[14] if len(row) > 14 else None
+
         prov_dict = {}
-        if row[3] and str(row[3]).strip():
+        if prov_raw and str(prov_raw).strip():
             try:
-                prov_dict = json.loads(row[3])
+                prov_dict = json.loads(prov_raw)
             except Exception:
                 prov_dict = {}
 
         meta_dict = {}
-        if row[13] and str(row[13]).strip():
+        if meta_raw and str(meta_raw).strip():
             try:
-                meta_dict = json.loads(row[13])
+                meta_dict = json.loads(meta_raw)
             except Exception:
                 meta_dict = {}
 
         prov = MemoryProvenance.from_dict(prov_dict)
 
-        mt = row[1]
         try:
             type_enum = MemoryType(mt)
         except ValueError:
             type_enum = MemoryType.LONG_TERM
 
         return MemoryItem(
-            memory_id=row[0],
+            memory_id=mem_id,
             type=type_enum,
-            content=row[2],
+            content=content,
             provenance=prov,
-            created_at=row[4],
-            updated_at=row[5],
-            importance=row[6],
-            confidence=row[7],
-            project_id=row[8],
-            topic=row[9],
-            access_count=row[10],
-            last_accessed=row[11],
-            expires_at=row[12],
+            created_at=created_at,
+            updated_at=updated_at,
+            importance=importance,
+            confidence=confidence,
+            project_id=project_id,
+            topic=topic,
+            access_count=access_count,
+            last_accessed=last_accessed,
+            expires_at=expires_at,
             metadata=meta_dict,
+            embedding=embedding,
         )
 
     def import_from_external(
@@ -485,4 +544,56 @@ class CognitiveMemoryEngine:
         """
         from .retrieval_gate import MemoryRetrievalGate
         return MemoryRetrievalGate(self, **kwargs)
+
+    def record_failure(
+        self,
+        tool_name: str,
+        error: Any,
+        anti_pattern: str | None = None,
+        session_id: str | None = None,
+    ) -> Any:
+        """Record an execution/tool failure in the procedural failure ledger."""
+        return self.failure_ledger.record_failure(
+            tool_name=tool_name,
+            error=error,
+            anti_pattern=anti_pattern,
+            session_id=session_id,
+        )
+
+    def record_resolution(
+        self,
+        tool_name: str,
+        countermeasure: str,
+        fingerprint: str | None = None,
+        session_id: str | None = None,
+    ) -> int:
+        """Record a resolution/countermeasure in the procedural failure ledger."""
+        return self.failure_ledger.record_resolution(
+            tool_name=tool_name,
+            countermeasure=countermeasure,
+            fingerprint=fingerprint,
+            session_id=session_id,
+        )
+
+    def get_anti_patterns(
+        self,
+        tool_name: str | None = None,
+        limit: int = 5,
+        include_resolved: bool = False,
+    ) -> list[Any]:
+        """Get anti-patterns from the failure ledger."""
+        return self.failure_ledger.get_anti_patterns(
+            tool_name=tool_name,
+            limit=limit,
+            include_resolved=include_resolved,
+        )
+
+    def format_anti_patterns_prompt(
+        self,
+        tool_name: str | None = None,
+        limit: int = 5,
+    ) -> str:
+        """Get formatted prompt block for anti-patterns."""
+        return self.failure_ledger.format_anti_patterns_prompt(tool_name=tool_name, limit=limit)
+
 

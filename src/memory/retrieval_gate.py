@@ -59,7 +59,7 @@ IMPORTED_FACT_CONFIDENCE_DISCOUNT: float = 0.70
 MAX_INJECTED_FACTS: int = 5
 """Maximum number of facts injected into a single prompt."""
 
-DOMAIN_PREFILTER_MIN_SCORE: float = 0.40
+DOMAIN_PREFILTER_MIN_SCORE: float = 0.10
 """Minimum domain match score to proceed with retrieval (below = skip entirely)."""
 
 SENSITIVE_DOMAIN_THRESHOLD: float = 0.55
@@ -79,67 +79,82 @@ _IMPORTED_SOURCES: frozenset[str] = frozenset({
 # Domain classifier — keyword heuristic, no embedding fallback
 # ---------------------------------------------------------------------------
 
-# Mapping: domain tag → set of trigger keywords
-_DOMAIN_KEYWORDS: dict[str, frozenset[str]] = {
-    "preferences": frozenset({
-        "prefer", "favorite", "favourite", "like", "dislike", "always",
-        "default", "choice", "chosen",
-    }),
-    "projects": frozenset({
+import re
+
+# Mapping: domain tag → set of trigger keywords (whole-word boundary matched)
+_DOMAIN_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "preferences": (
+        "prefer", "preference", "preferences", "favorite", "favourite",
+        "dislike", "always", "default", "choice", "chosen",
+    ),
+    "projects": (
         "project", "repo", "repository", "codebase", "milestone", "sprint",
         "deploy", "branch", "workspace",
-    }),
-    "procedures": frozenset({
-        "how to", "workflow", "step", "procedure", "process", "routine",
+    ),
+    "procedures": (
+        "how to", "workflow", "procedure", "process", "routine",
         "recipe", "guide",
-    }),
-    "tech": frozenset({
+    ),
+    "tech": (
         "gpu", "cpu", "ram", "monitor", "driver", "hardware", "software",
-        "version", "install", "update", "os", "windows", "linux",
-    }),
-    "personal": frozenset({
-        "name", "age", "birthday", "location", "city", "country", "hobby",
-        "pet", "family",
-    }),
-    "health": frozenset({
+        "version", "install", "update", "os", "windows", "linux", "python",
+        "editor", "terminal", "docker", "ide",
+    ),
+    "personal": (
+        "name", "birthday", "location", "city", "country", "hobby",
+        "pet", "family", "residence", "me", "myself", "about me",
+        "who am i", "profile", "identity", "user", "my info", "detailed",
+        "what do you know", "remember about me", "stored about me", "tell me about myself",
+    ),
+    "health": (
         "health", "medical", "doctor", "medication", "diagnosis", "symptom",
         "therapy", "exercise", "diet",
-    }),
-    "relationships": frozenset({
+    ),
+    "relationships": (
         "partner", "spouse", "friend", "family", "relationship", "dating",
         "married", "children",
-    }),
-    "finance": frozenset({
+    ),
+    "finance": (
         "salary", "income", "savings", "investment", "budget", "expense",
         "bank", "tax", "debt",
-    }),
+    ),
 }
 
 
 class DomainClassifier:
     """
-    Cheap keyword-based domain pre-filter.
+    Cheap keyword-based domain pre-filter using word boundaries.
 
     Checks if goal_text plausibly touches any domain the memory system
     tracks. A generic question ("what's the capital of France") should
     return an empty dict, skipping retrieval entirely.
     """
 
+    def __init__(self) -> None:
+        self._patterns: dict[str, list[re.Pattern]] = {
+            domain: [
+                re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE)
+                for kw in keywords
+            ]
+            for domain, keywords in _DOMAIN_KEYWORDS.items()
+        }
+
     def classify(self, goal_text: str) -> dict[str, float]:
         """
         Returns {domain_tag: score} for domains above noise floor.
 
         Score is the fraction of domain keywords found in the goal text.
-        Only domains with at least one keyword hit are returned.
+        Guarantees score >= 0.10 for any single distinct keyword hit so
+        legitimate queries with 1 hit pass DOMAIN_PREFILTER_MIN_SCORE.
         """
-        text_lower = goal_text.lower()
         scores: dict[str, float] = {}
 
-        for domain, keywords in _DOMAIN_KEYWORDS.items():
-            hits = sum(1 for kw in keywords if kw in text_lower)
+        for domain, patterns in self._patterns.items():
+            hits = sum(1 for pat in patterns if pat.search(goal_text))
             if hits > 0:
-                score = hits / len(keywords)
-                scores[domain] = round(score, 3)
+                raw_score = hits / len(patterns)
+                score = max(0.10, round(raw_score, 3))
+                scores[domain] = score
 
         return scores
 
@@ -316,10 +331,36 @@ class MemoryRetrievalGate:
             if has_sensitive:
                 threshold = max(threshold, self._sensitive_threshold)
 
-            # Gate: recall_score discounted by imported factor must clear threshold
+            # Gate: raw relevance score discounted by imported factor must clear threshold
+            raw_rel = getattr(mem, "_recall_relevance", None)
+            if raw_rel is None and hasattr(mem, "metadata") and isinstance(mem.metadata, dict):
+                raw_rel = mem.metadata.get("_recall_relevance")
+            if raw_rel is None:
+                if hasattr(self._engine, "recall_engine"):
+                    import re
+                    q_terms = set(re.findall(r"\b\w+\b", goal_text.lower()))
+                    raw_rel = self._engine.recall_engine._compute_relevance(q_terms, mem)
+                else:
+                    raw_rel = recall_score
+
             discount_factor = self._imported_discount if is_imported else 1.0
-            combined = recall_score * discount_factor
-            if combined < threshold:
+            combined = raw_rel * discount_factor
+            gate_pass = combined >= threshold
+
+            # Privacy-safe, zero-overhead telemetry gated strictly behind DEBUG verbosity
+            if logger.isEnabledFor(logging.DEBUG):
+                import hashlib
+                q_hash = hashlib.sha256(goal_text.encode("utf-8")).hexdigest()[:8]
+                mem_id = getattr(mem, "memory_id", "") or hashlib.sha256(mem.content.encode("utf-8")).hexdigest()[:8]
+                mem_topic = getattr(mem, "topic", "unknown")
+                mem_type = mem.type.value if hasattr(mem.type, "value") else str(mem.type)
+                logger.debug(
+                    f"[RetrievalGateTelemetry] q_hash={q_hash} q_len={len(goal_text)} "
+                    f"mem_id={mem_id} topic={mem_topic} type={mem_type} "
+                    f"rel={raw_rel:.4f} threshold={threshold:.2f} gate_pass={gate_pass}"
+                )
+
+            if not gate_pass:
                 continue
 
             source = FactSource.IMPORTED if is_imported else FactSource.OBSERVED
@@ -327,7 +368,7 @@ class MemoryRetrievalGate:
                 InjectedFact(
                     text=mem.content,
                     effective_confidence=round(effective_confidence, 4),
-                    recall_score=round(recall_score, 4),
+                    recall_score=round(raw_rel, 4),
                     source=source,
                     topic=mem.topic,
                 )

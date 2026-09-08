@@ -90,6 +90,14 @@ class VoiceManager:
             on_resume=self._on_resume,
         )
 
+        # Response Steering Controller
+        try:
+            from .response_steering import ResponseSteeringController
+            self.steering_controller = ResponseSteeringController()
+        except Exception as e:
+            logger.debug(f"[VoiceManager] Steering controller init notice: {e}")
+            self.steering_controller = None
+
         # Event callbacks
         self.on_state_change: Callable[[ConversationState], None] | None = None
         self.on_wake_word_detected: Callable[[str], None] | None = None
@@ -507,6 +515,8 @@ class VoiceManager:
 
             logger.info("[STT] Transcription: PASS")
             self.stt_manager.reset()
+            if self.audio_manager and hasattr(self.audio_manager, "disable_capture"):
+                self.audio_manager.disable_capture()
 
             if self.on_stt_result:
                 self.on_stt_result(context)
@@ -545,12 +555,17 @@ class VoiceManager:
             if self.session:
                 self.session.update_state(ConversationState.SPEAKING)
 
-            # Ensure microphone capture remains active so wake-word / barge-in can listen
+            # Audio capture gating during speech
             if self.audio_manager:
-                if not self.audio_manager.is_recording():
-                    self._ensure_input_recording()
-                elif hasattr(self.audio_manager, "enable_capture"):
-                    self.audio_manager.enable_capture()
+                is_full_duplex = self.settings.get("full_duplex", False) or os.getenv("ENABLE_FULL_DUPLEX", "false").lower() == "true"
+                if is_full_duplex:
+                    if not self.audio_manager.is_recording():
+                        self._ensure_input_recording()
+                    elif hasattr(self.audio_manager, "enable_capture"):
+                        self.audio_manager.enable_capture()
+                else:
+                    if hasattr(self.audio_manager, "disable_capture"):
+                        self.audio_manager.disable_capture()
 
             logger.info(f"[TTS] Piper playback: PASS ({text})")
 
@@ -565,6 +580,70 @@ class VoiceManager:
                 self.on_error(f"Speaking error: {e}")
             return False
 
+    def speak_stream(self, chunk_iterator: Any) -> bool:
+        """
+        Stream text chunks directly into concurrent synthesis and playback.
+        
+        Args:
+            chunk_iterator: Synchronous or asynchronous iterator of text chunks.
+            
+        Returns:
+            True if playback stream started successfully.
+        """
+        try:
+            # Update state to SPEAKING
+            self._update_state(ConversationState.SPEAKING)
+            if self.session:
+                self.session.update_state(ConversationState.SPEAKING)
+
+            # Audio capture gating during speech
+            if self.audio_manager:
+                is_full_duplex = self.settings.get("full_duplex", False) or os.getenv("ENABLE_FULL_DUPLEX", "false").lower() == "true"
+                if is_full_duplex:
+                    if not self.audio_manager.is_recording():
+                        self._ensure_input_recording()
+                    elif hasattr(self.audio_manager, "enable_capture"):
+                        self.audio_manager.enable_capture()
+                else:
+                    if hasattr(self.audio_manager, "disable_capture"):
+                        self.audio_manager.disable_capture()
+
+            logger.info("[TTS] Streaming playback engaged via speak_stream")
+            return self.tts_manager.speak_stream(chunk_iterator)
+
+        except Exception as e:
+            logger.error(f"Error in speak_stream: {e}")
+            if self.on_error:
+                self.on_error(f"speak_stream error: {e}")
+            return False
+
+    def steer(self, steering_input: str) -> bool:
+        """
+        Steer the active response in real-time.
+        
+        Args:
+            steering_input: The user's redirecting phrase (e.g. 'Actually, focus on X instead').
+            
+        Returns:
+            True if steering event was processed.
+        """
+        if not self.steering_controller:
+            logger.warning("[VoiceManager] Steering requested but steering_controller unavailable.")
+            self.interrupt()
+            return False
+
+        logger.info(f"[VoiceManager] Executing mid-generation response.steer: '{steering_input}'")
+        event = self.steering_controller.steer(
+            steering_input,
+            on_abort_output=self.tts_manager.stop,
+        )
+        if event is not None:
+            self._update_state(ConversationState.THINKING)
+            return True
+        else:
+            self.interrupt()
+            return False
+
     def interrupt(self) -> None:
         """Interrupt current speech or conversation."""
         try:
@@ -572,9 +651,13 @@ class VoiceManager:
             self.tts_manager.stop()
             self._current_speaking_text = ""
 
-            # Re-enable microphone capture if needed
-            if self.audio_manager and hasattr(self.audio_manager, "enable_capture"):
-                self.audio_manager.enable_capture()
+            # Capture gating on interrupt
+            if self.audio_manager:
+                is_full_duplex = self.settings.get("full_duplex", False) or os.getenv("ENABLE_FULL_DUPLEX", "false").lower() == "true"
+                if is_full_duplex and hasattr(self.audio_manager, "enable_capture"):
+                    self.audio_manager.enable_capture()
+                elif hasattr(self.audio_manager, "disable_capture"):
+                    self.audio_manager.disable_capture()
 
             # Update state
             self._update_state(ConversationState.INTERRUPTED)

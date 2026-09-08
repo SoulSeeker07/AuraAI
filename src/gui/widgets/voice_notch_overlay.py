@@ -1395,17 +1395,18 @@ class VoiceNotchOverlay(QWidget):
                 except Exception:
                     pass
 
-                reply_text = ""
-                loop = asyncio.new_event_loop()
                 try:
+                    from core.async_runtime import AsyncRuntime
+                    runtime = AsyncRuntime.get_instance()
                     if core is not None and hasattr(core, "get_ai_response"):
-                        reply_text = loop.run_until_complete(core.get_ai_response(text, enable_tools=True))
+                        reply_text = runtime.run_coroutine_sync(core.get_ai_response(text, enable_tools=True, session_id="sess_voice_notch"))
                     elif core is not None and hasattr(core, "process_request"):
-                        reply_text = loop.run_until_complete(core.process_request(text))
+                        reply_text = runtime.run_coroutine_sync(core.process_request(text, session_id="sess_voice_notch"))
                     else:
                         reply_text = "Backend is initializing. Please try again in a moment."
-                finally:
-                    loop.close()
+                except Exception as run_err:
+                    logger.error(f"[VoiceNotchOverlay] Execution error via AsyncRuntime: {run_err}")
+                    reply_text = f"Error: {run_err}"
 
                 if cancel_event.is_set():
                     logger.info("[VoiceNotchOverlay] Suppressing late response for canceled in-flight command.")
@@ -1435,9 +1436,9 @@ class VoiceNotchOverlay(QWidget):
 
             reply_text = ""
             if core is not None and hasattr(core, "get_ai_response"):
-                reply_text = await core.get_ai_response(text, enable_tools=True)
+                reply_text = await core.get_ai_response(text, enable_tools=True, session_id="sess_voice_notch")
             elif core is not None and hasattr(core, "process_request"):
-                reply_text = await core.process_request(text)
+                reply_text = await core.process_request(text, session_id="sess_voice_notch")
             else:
                 reply_text = "Backend is initializing. Please try again in a moment."
 
@@ -1623,6 +1624,16 @@ class VoiceNotchOverlay(QWidget):
         elif action == agent_action:
             self.mode_changed.emit("agent")
         elif action == restart_action:
+            from PyQt6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                self,
+                "Confirm Restart",
+                "Are you sure you want to restart AuraAI?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
             try:
                 self.set_state(NotchState.PROCESSING, "Restarting...")
                 root = Path(__file__).resolve().parents[3]
