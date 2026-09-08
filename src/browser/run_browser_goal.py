@@ -13,12 +13,17 @@ from browser.agent_loop import run_goal
 from browser.tier1_shortcuts import try_shortcut
 
 
-def run_browser_goal(goal: str, max_steps: int = 20) -> Dict[str, Any]:
+def run_browser_goal(
+    goal: str,
+    max_steps: int = 20,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+) -> Dict[str, Any]:
     shortcut_result = try_shortcut(goal)
     if shortcut_result:
         return shortcut_result
 
-    return run_goal(goal=goal, max_steps=max_steps)
+    return run_goal(goal=goal, max_steps=max_steps, model=model, provider=provider)
 
 
 def format_for_chat(result: Dict[str, Any], goal: str) -> str:

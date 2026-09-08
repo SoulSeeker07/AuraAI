@@ -121,24 +121,19 @@ async def main_cli(query_str: str = "", tts_enabled: bool = False):
             from brain.conversation_engine import ConversationEngine
             from voice.continuous_loop import ContinuousVoiceLoop
             
-            aura_core = get_aura_core(config={"voice_enabled": True}) if is_voice_start else None
-            if aura_core:
+            aura_core = get_aura_core(config={"voice_enabled": True}) if is_voice_start else get_aura_core()
+            if aura_core and is_voice_start:
                 ContinuousVoiceLoop.set_global_aura_core(aura_core)
-            
-            mem = Memory(db_path="Memory.db", chat_log_path="Data/ChatLog.json")
-            pm = build_provider_manager(dict(os.environ))
-            engine = ConversationEngine(memory=mem, provider_manager=pm, aura_core=aura_core)
-            if aura_core:
-                setattr(aura_core, "conversation_engine", engine)
-            res = await engine.process(query_str)
-            print(f"\n🔮 Aura: {res.text}\n")
 
-            if is_explicit_speak and res.text:
+            res_text = await aura_core.process_request(query_str)
+            print(f"\n🔮 Aura: {res_text}\n")
+
+            if is_explicit_speak and res_text:
                 try:
                     from voice.tts_manager import TTSManager
                     tts = TTSManager()
                     if tts.initialize():
-                        tts.add_text(res.text)
+                        tts.add_text(res_text)
                         tts.speak()
                         while tts.is_playing():
                             await asyncio.sleep(0.08)

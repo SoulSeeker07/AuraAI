@@ -191,18 +191,32 @@ class BrowserTools:
         seen_queries = list(dict.fromkeys(q for q in query_variants if q))
 
         for q in seen_queries:
+            q_lower = q.lower()
+            is_cart_or_buy = any(k in q_lower for k in ("cart", "add to cart", "buy", "buy now"))
+
             strategies = [
                 lambda query=q: page.get_by_role("button", name=query, exact=False),
                 lambda query=q: page.locator(f"input[type='submit'][value*='{query}' i], input[type='button'][value*='{query}' i]"),
-                lambda query=q: page.locator(f"#add-to-cart-button, #buy-now-button, [name='submit.add-to-cart'], button:has-text('{query}')"),
                 lambda query=q: page.get_by_role("link", name=query, exact=False),
                 lambda query=q: page.locator(f"a:has-text('{query}')"),
                 lambda query=q: page.get_by_label(query, exact=False),
                 lambda query=q: page.locator(f"[aria-label*='{query}' i]"),
                 lambda query=q: page.get_by_placeholder(query, exact=False),
                 lambda query=q: page.locator(f"[title*='{query}' i]"),
+                lambda query=q: page.locator(f"button:has-text('{query}')"),
                 lambda query=q: page.get_by_text(query, exact=False),
             ]
+
+            # If user explicitly asked for cart/buy actions, prioritize high-fidelity e-commerce selectors
+            if is_cart_or_buy:
+                cart_strategies = [
+                    lambda: page.locator("#add-to-cart-button, input#add-to-cart-button, [name='submit.add-to-cart']"),
+                    lambda: page.locator("#buy-now-button, input#buy-now-button"),
+                    lambda: page.locator("#a-autoid-0-announce, [aria-label*='Add to Cart' i], [aria-label*='Add to cart' i]"),
+                    lambda: page.locator("button:has-text('Add to Cart'), button:has-text('Add to cart')"),
+                    lambda: page.locator("a:has-text('Add to Cart'), a:has-text('Add to cart')"),
+                ]
+                strategies = cart_strategies + strategies
             for strategy in strategies:
                 try:
                     loc = strategy()
@@ -241,8 +255,15 @@ class BrowserTools:
             try:
                 loc.click(timeout=2000, force=True)
             except Exception:
-                loc.evaluate("el => el.click()")
-        self.page.wait_for_timeout(500)
+                try:
+                    loc.evaluate("el => el.click()")
+                except Exception:
+                    pass
+        self.page.wait_for_timeout(1000)
+        try:
+            self.page.wait_for_load_state("domcontentloaded", timeout=3000)
+        except Exception:
+            pass
         return self._post_action_snapshot(f"Clicked '{description}'")
 
     def type_text(self, description: str, text: str, press_enter: bool = False) -> Dict[str, Any]:

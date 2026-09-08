@@ -102,15 +102,16 @@ sequenceDiagram
 
 ---
 
-### D. Intent Routing & Heuristic Pruning (Phase 4)
+### D. Intent Routing & Heuristic Pruning (Phase 4 & Phase 5)
 - **Centralized Feature Flag**: `is_agent_loop_enabled() -> bool` (defined in `src/core/orchestration/agent_loop.py`). Defaults to `True` (`"1"`). Opt-out via `"0"`, `"false"`, `"no"`.
-- **Heuristic Pruning in `IntentRouter` & `ResearchDecision`**:
-  - `_asks_for_autonomous_browser`: Returns `False` under `is_agent_loop_enabled()`.
+- **Heuristic Pruning & Interactive Preservation in `IntentRouter`**:
+  - Passive informational queries ("go to ... and read", "search google for ...") bypass into `AgentLoop` via `provider_chat`.
+  - Multi-step interactive e-commerce and web automation goals ("add to cart", "checkout", "buy", "order", "book flight", "fill form") route directly to `autonomous_browser`.
   - `_detect_shell_command`: Returns `None` under `is_agent_loop_enabled()`.
   - `_asks_for_desktop_action`: Returns `False` under `is_agent_loop_enabled()`.
   - `ResearchDecision.analyze`: Returns `(False, "Delegated to AgentLoop", SearchMode.STANDARD)`.
 - **Deterministic Fast-Path Allowlist (`AuraCore.DETERMINISTIC_LOCAL_INTENTS`)**:
-  32 canonical intents remain local:
+  34 canonical intents are evaluated via `conv_engine._answer_local_intent()`:
   ```python
   DETERMINISTIC_LOCAL_INTENTS: frozenset[str] = frozenset({
       "local_time", "live_weather", "battery_status",
@@ -125,9 +126,18 @@ sequenceDiagram
       "play_music", "smarthome_control", "folder_creation",
       "hud_overlay", "overlay_toggle", "say_phrase",
       "open_file", "rag_query", "resume_browser", "capability_status",
+      "autonomous_browser",
   })
   ```
-  Cognitive queries, terminal operations, file edits, and web research bypass `_answer_local_intent()` and fall through directly into `AgentLoop`.
+  Cognitive queries, terminal operations, and file edits bypass `_answer_local_intent()` and fall through directly into `AgentLoop`.
+
+### E. Unified Architecture & Single Source of Truth
+- All client interfaces (**CLI one-shot `main.py`**, **Interactive CLI `clients/cli_client.py`**, **PySide6 GUI `clients/gui_client.py`**, **Spotlight Chat `run_chat_window.py`**, and **Voice Notch `run_voice_notch.py` / `ContinuousVoiceLoop`**) funnel directly into `AuraCore.process_request()` and `AuraCore.process_request_stream()`.
+- **Autonomous Browser Engine Engine Configuration**:
+  - Default Model: `gemini-3.5-flash` via `google.genai` SDK (`GeminiTurnRunner`).
+  - Auto-Escalation Guardrail: If an LLM run reaches \(\ge 5,000\) tokens, it automatically escalates from Groq to Gemini 3.5 Flash to prevent Groq 8k TPM rate-limiting.
+  - Headless configuration: Controlled by `AURA_BROWSER_HEADLESS=false` in `.env`.
+
 
 ---
 

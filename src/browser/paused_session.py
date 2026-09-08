@@ -40,6 +40,9 @@ class PausedSession:
     # asking the model to re-derive one from scratch and hoping it matches.
     pending_ticket_id: Optional[str] = None
     pending_tool: Optional[Dict[str, Any]] = None
+    provider: str = "gemini"
+    gemini_history: Optional[List[Any]] = None
+    pending_fn_responses: Optional[List[Any]] = None
 
 
 class PausedSessionStore:

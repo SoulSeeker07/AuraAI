@@ -769,13 +769,21 @@ class IntentRouter:
         return folder_name, loc
 
     def _asks_for_autonomous_browser(self, normalized: str) -> bool:
-        if is_agent_loop_enabled():
-            return False
-
         if os.environ.get("AURA_AUTONOMOUS_BROWSER_ENABLED", "1") == "0":
             return False
 
         clean = re.sub(r"^aura\s+", "", normalized).strip()
+
+        # Check for interactive e-commerce / transaction automation verbs
+        # These multi-step interactive workflows require full browser execution (e.g. adding to cart, checkout, booking)
+        interactive_automation = bool(
+            re.search(r"\badd\b.*\b(?:to|in)\s+cart\b", clean)
+            or any(v in clean for v in ("add to cart", "add in cart", "add to basket", "checkout", "buy now", "place order", "solve captcha", "autonomous browser"))
+            or (any(v in clean for v in ("buy ", "purchase ", "order ", "book flight", "book ticket", "fill form")) and any(s in clean for s in ("amazon", "flipkart", "ebay", "walmart", "makemytrip", "booking", "airbnb", "irctc", "store", "shop", ".com", ".in")))
+        )
+
+        if is_agent_loop_enabled() and not interactive_automation:
+            return False
 
         # Pure app launch/focus requests (e.g. "open chrome", "open instagram", "open youtube")
         # should be desktop_action app launch so open windows are brought to front or opened in the user's real browser,

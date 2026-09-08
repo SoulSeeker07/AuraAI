@@ -55,7 +55,6 @@ class BrowserSession:
 
         common_args = [
             "--disable-blink-features=AutomationControlled",
-            "--no-sandbox",
             "--window-size=1280,850",
             "--window-position=50,50",
         ]
@@ -97,22 +96,25 @@ class BrowserSession:
         except Exception as ex:
             logger.debug("[BrowserSession] Profile sync notice: %s", ex)
 
-        try:
-            self._context = self._playwright.chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                channel=channel,
-                headless=self.headless,
-                viewport={"width": 1280, "height": 800},
-                user_agent=user_agent,
-                args=[f"--profile-directory={target_profile}"] + common_args,
-            )
-            logger.info("[BrowserSession] Launched persistent context using: %s (profile=%s)", user_data_dir, target_profile)
-            self.page = self._context.pages[0] if self._context.pages else self._context.new_page()
-            return self
-        except Exception as ex:
-            logger.warning("[BrowserSession] Persistent context launch failed (%s), falling back to clean context", ex)
+        # 2. Sync and launch persistent profile directory (uses user's real Chrome profile & logins)
+        # Try launch persistent context with specified channel first, then fallback to bundled chromium persistent context
+        for chan in ([channel, None] if channel else [None]):
+            try:
+                self._context = self._playwright.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    channel=chan,
+                    headless=self.headless,
+                    viewport={"width": 1280, "height": 800},
+                    user_agent=user_agent,
+                    args=[f"--profile-directory={target_profile}"] + common_args,
+                )
+                logger.info("[BrowserSession] Launched persistent context using: %s (profile=%s, channel=%s)", user_data_dir, target_profile, chan)
+                self.page = self._context.pages[0] if self._context.pages else self._context.new_page()
+                return self
+            except Exception as ex:
+                logger.warning("[BrowserSession] Persistent context launch failed with channel=%s (%s)", chan, ex)
 
-        # 3. Fallback to clean context if persistent directory is locked
+        # 3. Fallback to clean context only if persistent directory is locked
         try:
             browser = self._playwright.chromium.launch(channel=channel, headless=self.headless, args=common_args)
         except Exception:
@@ -136,11 +138,12 @@ class BrowserSession:
                 pass
         return self.page
 
-    def close(self) -> None:
+    def close(self, force: bool = False) -> None:
         """Explicitly shut down the browser context and Playwright instance."""
-        self.__exit__(None, None, None)
+        if force or self.headless:
+            self._force_close()
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def _force_close(self) -> None:
         try:
             if self._context:
                 self._context.close()
@@ -154,3 +157,10 @@ class BrowserSession:
         self.page = None
         self._context = None
         self._playwright = None
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if not self.headless:
+            # User requirement: NEVER close visible browser window so user can view/interact with cart/page
+            logger.info("[BrowserSession] Visible mode: keeping browser window open for user.")
+            return
+        self._force_close()

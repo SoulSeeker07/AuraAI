@@ -127,6 +127,7 @@ DETERMINISTIC_LOCAL_INTENTS: frozenset[str] = frozenset({
     "rag_query",
     "resume_browser",
     "capability_status",
+    "autonomous_browser",
 })
 
 
